@@ -215,6 +215,16 @@ export interface GodEarRhythmicPercussion {
    *  Unlike snare_energy (EMA-smoothed), this preserves transient sharpness
    *  even under heavy compression. Used by LiquidEngineBase for onset detection. */
   raw_snare_delta: number;
+  /** ⚒️ WAVE 7749.69: UNGATED snare energy — sqrt(body * crack) WITHOUT the
+   *  adaptive threshold gate. The gated snare_energy is 0 when the snare
+   *  doesn't pass body+crack adaptive thresholds (common in techno where the
+   *  kick saturates the body band, raising bodyThresh). This ungated version
+   *  preserves the actual energy even when the gate is closed, allowing the
+   *  EMA momentum detector to fire on snares that produce crack energy but
+   *  can't exceed the kick-saturated body threshold.
+   *  sinsnare2.md (Brejcha Gravity): SnareE=0 but raw_snare_delta > 0.20 →
+   *  ungated energy captures the transient the gate kills. */
+  snare_energy_ungated: number;
 }
 
 export interface GodEarSpectrum {
@@ -2173,6 +2183,7 @@ class RhythmicPercussionTracker {
       hh_absence_ms: hhAbsenceMs,
       rhythmic_void: rhythmicVoid,
       raw_snare_delta: rawSnareDelta,
+      snare_energy_ungated: snareEnergyUngated,
     };
   }
 

@@ -264,6 +264,8 @@ export abstract class LiquidEngineBase {
   private _diagBassDelta: number = 0
   private _diagIsKick: boolean = false
   private _diagSnareEnergy: number = 0
+  // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
+  private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
   private _diagFlux: number = 0
   private _diagWns: number = 0
@@ -744,6 +746,7 @@ export abstract class LiquidEngineBase {
 
       // WAVE 7749.21: OPUS AUDIT — capture for diagnostic log outside this block
       this._diagSnareEnergy = snareEnergy
+      this._diagSnareEnergyUngated = input.snare_energy_ungated ?? snareEnergy
       this._diagRawSnareDelta = rawSnareDelta
       this._diagFlux = spectralFlux
       this._diagWns = wns
@@ -826,14 +829,23 @@ export abstract class LiquidEngineBase {
       if (momoTh !== undefined) {
         const aF = p.snareMomentumAlphaFast ?? 0.50
         const aS = p.snareMomentumAlphaSlow ?? 0.05
-        this._snareEmaFast += aF * (snareEnergy - this._snareEmaFast)
-        this._snareEmaSlow += aS * (snareEnergy - this._snareEmaSlow)
+        // ⚒️ WAVE 7749.69: UNGATED ENERGY — use snare_energy_ungated instead of
+        // gated snare_energy for the EMA momentum detector. The gated version
+        // is 0 when the snare doesn't pass body+crack adaptive thresholds
+        // (common in techno where kick saturates body band). The ungated
+        // sqrt(body*crack) preserves the actual transient energy even when
+        // the gate is closed, allowing detection of snares that produce crack
+        // energy but can't exceed the kick-saturated body threshold.
+        // sinsnare2.md (Brejcha Gravity): SnareE=0 but ungated > 0 → detectable.
+        const momoEnergy = input.snare_energy_ungated ?? snareEnergy
+        this._snareEmaFast += aF * (momoEnergy - this._snareEmaFast)
+        this._snareEmaSlow += aS * (momoEnergy - this._snareEmaSlow)
         let momentum = this._snareEmaFast - this._snareEmaSlow
-        // ⚒️ WAVE 7749.68: SNARE ENERGY FLOOR — reject onsets when SnareE is
-        // below floor (background noise in silence). Without this, SnareE
+        // ⚒️ WAVE 7749.68: SNARE ENERGY FLOOR — reject onsets when energy is
+        // below floor (background noise in silence). Without this, energy
         // rising from 0.001 to ~0.025 in silence crosses momentum threshold.
         const snareFloor = p.snareMomentumFloor ?? 0
-        rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh && snareEnergy >= snareFloor
+        rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh && momoEnergy >= snareFloor
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a
@@ -1211,6 +1223,7 @@ export abstract class LiquidEngineBase {
       console.log(
         `[FINESSE_AUDIT] ` +
         `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
+        `UnG:${this._diagSnareEnergyUngated.toFixed(3)} ` +
         `RawΔ:${this._diagRawSnareDelta.toFixed(3)} ` +
         `Flux:${this._diagFlux.toFixed(3)} ` +
         `WNS:${this._diagWns.toFixed(3)} ` +

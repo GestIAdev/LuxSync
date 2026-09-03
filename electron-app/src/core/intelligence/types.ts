@@ -176,6 +176,9 @@ export interface TitanStabilizedState {
 
   /** WAVE 7749.7: Raw (pre-EMA) snare transient delta — for onset detection */
   raw_snare_delta?: number
+
+  /** ⚒️ WAVE 7749.69: Ungated snare energy — sqrt(body*crack) without adaptive gate */
+  snare_energy_ungated?: number
   
   // ═══════════════════════════════════════════════════════════════════════
   // PALETA ACTUAL (para simulaciones)

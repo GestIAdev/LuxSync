@@ -135,6 +135,8 @@ export interface SeleneLuxAudioMetrics {
   hh_energy?: number;     // 0-1 — high band (5-15kHz)
   // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
   raw_snare_delta?: number;
+  // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
+  snare_energy_ungated?: number;
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number;
 }
@@ -682,6 +684,8 @@ export class SeleneLux {
         hh_energy: audioMetrics.hh_energy,
         // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
         raw_snare_delta: audioMetrics.raw_snare_delta,
+        // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
+        snare_energy_ungated: audioMetrics.snare_energy_ungated,
         // WAVE 8005.2: Photon block for front channel strobe bypass
         photon: audioMetrics.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
@@ -1408,6 +1412,8 @@ export class SeleneLux {
       hh_energy: clamp01(src.hh_energy, 0),
       // WAVE 7749.7: Raw transient delta — NOT clamped (can be negative for decay)
       raw_snare_delta: safeNumber(src.raw_snare_delta, 0),
+      // ⚒️ WAVE 7749.69: Ungated snare energy — clamped to [0,1]
+      snare_energy_ungated: clamp01(src.snare_energy_ungated, 0),
       photon: src.photon,
     }
   }

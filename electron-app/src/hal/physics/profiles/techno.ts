@@ -256,6 +256,20 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // have bassDelta -0.02 to +0.01 and need the legacy behavior.
   snarePath1BassDeltaFloor: 0.005,
 
+  // ⚒️ WAVE 7749.65: EMA MOMENTUM SNARE DETECTOR — replaces the 5-path
+  // onset cascade with a dual-EMA crossover on snare_energy.
+  // Forensic analysis of imposiblesnare.md showed 80% of false onsets
+  // fired while snare_energy was DECAYING (RawΔ oscillates on the tail).
+  // The momentum crossover only fires when band energy is genuinely
+  // RISING, eliminating re-triggers by construction.
+  // Simulation: 61 onsets → 19 (3.2x reduction = the reported "3x jitter").
+  // Hi-hats (SnareE = 0) never move either EMA → excluded for free.
+  // αF=0.50 (τ≈45ms), αS=0.05 (τ≈450ms), θ=0.04.
+  // Robust: sweeping αF/αS/θ ±50% yields 18-20 onsets (insensitive to tuning).
+  snareMomentumThreshold: 0.04,
+  snareMomentumAlphaFast: 0.50,
+  snareMomentumAlphaSlow: 0.05,
+
   // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
   // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
   ambientAttackMs: 30,

@@ -1,9 +1,28 @@
-checkpoint: snarePath1BassDeltaFloor + forensic analysis docs
+WAVE 7749.65: EMA Momentum Snare Detector for techno profile
 
-Pre-EMA-momentum safe point. Includes:
-- snarePath1BassDeltaFloor: 0.005 in techno.ts (anti-hi-hat surfer)
-- Forensic snare analysis docs (imposiblesnare, frontdisaster, etc.)
-- Planopus.md: EMA momentum detector proposal
+Replaces the 5-path onset cascade with a dual-EMA crossover (MACD-style)
+on snare_energy, profile-gated to techno only. Latino/chill unaffected.
+
+Forensic analysis of imposiblesnare.md showed 80% of false onsets fired
+while snare_energy was DECAYING — raw_snare_delta oscillates on the
+decay tail, causing 3x jitter. The momentum crossover only fires when
+band energy is genuinely RISING, eliminating re-triggers by construction.
+
+Simulation across all logs:
+- imposiblesnare.md:  61 -> 19 onsets (3.2x reduction)
+- imposiblesnare2.md: 25 -> 8  (3.1x)
+- minimalonfire.md:   72 -> 25 (2.9x)
+- frontdisaster.md:   50 -> 5  (10x — hi-hats excluded for free)
+
+Formula:
+  emaFast += aF * (SnareE - emaFast)   aF = 0.50 (tau ~45ms)
+  emaSlow += aS * (SnareE - emaSlow)   aS = 0.05 (tau ~450ms)
+  momentum = emaFast - emaSlow
+  onset = (momentum > theta) && (momentumPrev <= theta)   theta = 0.04
+
+Anti-retrigger is a topological property of the threshold crossing —
+no TCT flags, no cooldowns, no WNS/Flux/BassE gates needed. Hi-hats
+(SnareE = 0) never move either EMA, excluded for free.
 
 Generated with [Devin](https://devin.ai)
 

@@ -252,6 +252,35 @@ export interface ILiquidProfile {
    *  because Latin snares hit on the off-beat where bass is decaying). */
   readonly snarePath1BassDeltaFloor?: number
 
+  /** ⚒️ WAVE 7749.65: EMA MOMENTUM SNARE DETECTOR (profile-gated).
+   *  When snareMomentumThreshold is defined, the entire 5-path onset
+   *  cascade is REPLACED by a dual-EMA crossover (MACD-style) on
+   *  snare_energy. This is a pure-math detector with no if/else paths,
+   *  no TCT flags, no cooldowns — the anti-retrigger is a topological
+   *  property of the threshold crossing.
+   *
+   *  Formula:
+   *    emaFast += αF · (SnareE − emaFast)     αF default 0.50 (τ ≈ 45 ms)
+   *    emaSlow += αS · (SnareE − emaSlow)     αS default 0.05 (τ ≈ 450 ms)
+   *    momentum = emaFast − emaSlow
+   *    onset = (momentum > θ) ∧ (momentumPrev ≤ θ)
+   *
+   *  Why: in minimal techno, raw_snare_delta oscillates on the decay
+   *  tail of real snares (micro-transients in the texture), causing
+   *  3x jitter. The EMA momentum only fires when the band energy is
+   *  genuinely RISING, eliminating re-triggers on the decay by
+   *  construction. Hi-hats (SnareE = 0) never move either EMA, so
+   *  they are excluded for free — no bassDelta floor or WNS gate
+   *  needed.
+   *
+   *  Absent (undefined) = legacy 5-path cascade (latino, chill, etc.).
+   *  Techno sets snareMomentumThreshold: 0.04. */
+  readonly snareMomentumThreshold?: number
+  /** EMA fast coefficient for momentum detector. Default 0.50. */
+  readonly snareMomentumAlphaFast?: number
+  /** EMA slow coefficient for momentum detector. Default 0.05. */
+  readonly snareMomentumAlphaSlow?: number
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
   // El morphFactor normaliza avgMidProfiler a [0,1] usando:
@@ -429,5 +458,9 @@ export interface ILiquidProfile {
     readonly snareImpulseDecay?: number
     // WAVE 7749.64: Path 1 bass-impact floor (4.1 override)
     readonly snarePath1BassDeltaFloor?: number
+    // WAVE 7749.65: EMA momentum snare detector (4.1 override)
+    readonly snareMomentumThreshold?: number
+    readonly snareMomentumAlphaFast?: number
+    readonly snareMomentumAlphaSlow?: number
   }
 }

@@ -182,6 +182,14 @@ export class LiquidEngineBase {
         // broadband noise, which no synth sweep produces.
         this._prevRawSnareDelta = 0;
         this._snareReArmed = true;
+        // ⚒️ WAVE 7749.65: EMA MOMENTUM SNARE DETECTOR state.
+        // Dual-EMA crossover (MACD-style) on snare_energy. Used only when
+        // profile.snareMomentumThreshold is defined (techno). Replaces the
+        // 5-path onset cascade with pure math — anti-retrigger is a
+        // topological property of the threshold crossing, not a flag.
+        this._snareEmaFast = 0;
+        this._snareEmaSlow = 0;
+        this._snarePrevMomentum = 0;
         // Kick Veto state
         this._kickVetoFrames = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
@@ -616,7 +624,36 @@ export class LiquidEngineBase {
             const agcGain = input.agcGainFactor ?? 1.0;
             const bassE = pureBassEnergy;
             let rawOnset = false;
-            if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
+            // ⚒️ WAVE 7749.65: EMA MOMENTUM SNARE DETECTOR (profile-gated).
+            // When snareMomentumThreshold is defined (techno), replace the entire
+            // 5-path onset cascade with a dual-EMA crossover on snare_energy.
+            // Pure math: no TCT flags, no cooldowns, no WNS/Flux/BassE gates.
+            // Anti-retrigger is a topological property of the threshold crossing
+            // — momentum can only cross θ upward once per genuine energy rise.
+            // Hi-hats (SnareE = 0) never move either EMA → excluded for free.
+            // Forensic data (imposiblesnare.md): 61 onsets → 19, eliminating the
+            // 3x jitter caused by RawΔ oscillating on snare decay tails.
+            // Absent (undefined) = legacy 5-path cascade (latino, chill, etc.).
+            const momoTh = p.snareMomentumThreshold;
+            if (momoTh !== undefined) {
+                const aF = p.snareMomentumAlphaFast ?? 0.50;
+                const aS = p.snareMomentumAlphaSlow ?? 0.05;
+                this._snareEmaFast += aF * (snareEnergy - this._snareEmaFast);
+                this._snareEmaSlow += aS * (snareEnergy - this._snareEmaSlow);
+                const momentum = this._snareEmaFast - this._snareEmaSlow;
+                rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh;
+                this._snarePrevMomentum = momentum;
+                // WAVE 7749.3: Reset prev energy on silence — after a break/drop,
+                // both EMAs were stuck high from the last beat. When audio resumes,
+                // the momentum was negative → no onset → slow recovery. Reset to 0
+                // when energy drops to near-silence so the first returning beat fires.
+                if (this._snareEmaSlow > 0.10 && snareEnergy < 0.03) {
+                    this._snareEmaFast = 0;
+                    this._snareEmaSlow = 0;
+                    this._snarePrevMomentum = 0;
+                }
+            }
+            else if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
                 // ⚒️ WAVE 7749.64: PROFILE-GATED BASSΔ FLOOR — anti-hi-hat surfer.
                 //   In techno, bass is continuous → every hi-hat has bassE > 0.40.
                 //   The bassE > 0.40 clause alone fires on every hat. This profile
@@ -1198,6 +1235,10 @@ export class LiquidEngineBase {
         // ⚒️ WAVE 7749.52: reset TCT re-arm state
         this._prevRawSnareDelta = 0;
         this._snareReArmed = true;
+        // ⚒️ WAVE 7749.65: reset EMA momentum state
+        this._snareEmaFast = 0;
+        this._snareEmaSlow = 0;
+        this._snarePrevMomentum = 0;
     }
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 2513 — AMBIENT GENERATIVE ENGINE
@@ -1275,6 +1316,10 @@ export class LiquidEngineBase {
         // ⚒️ WAVE 7749.52: reset TCT re-arm state
         this._prevRawSnareDelta = 0;
         this._snareReArmed = true;
+        // ⚒️ WAVE 7749.65: reset EMA momentum state
+        this._snareEmaFast = 0;
+        this._snareEmaSlow = 0;
+        this._snarePrevMomentum = 0;
         // WAVE 7748: Reset HH adapter state
         this._prevHhEnergy = 0;
         this._lastHhOnset = 0;

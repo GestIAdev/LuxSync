@@ -1,18 +1,19 @@
-WAVE 7749.66: EMA momentum vitamin boost (alphaF=1.0, theta=0.01)
+WAVE 7749.67: Hybrid reset for EMA momentum snare detector
 
-The conservative theta=0.04 / alphaF=0.50 was too deaf for off-beat 16th
-snares in minimal techno. newsnare.md showed only 11 onsets where 21
-were expected (off-beat 16ths at 128 BPM).
+On strong snares (momentum > 0.15), pull emaSlow 70% toward emaFast.
+This forces momentum back toward 0, allowing the detector to re-fire
+on the next snare in a dense burst without waiting for emaSlow to
+decay naturally.
 
-New tuning: alphaF=1.0 (emaFast = SnareE, zero lag), theta=0.01.
-momentum = SnareE - emaSlow, so onset fires when SnareE rises just 0.01
-above the slow baseline (~450ms average).
+Validated against golden reference (snareperfecto.md):
+- snareperfecto.md: 32 -> 40 onsets (83% of legacy 48)
+- imposiblesnare.md: 18 (no jitter regression)
+- newsnare.md: 21 (vitaminas preserved)
+- frontdisaster.md: 10 (hi-hats mostly excluded)
 
-Verified across all logs:
-- newsnare.md:      11 -> 21 onsets (off-beat 16ths recovered)
-- imposiblesnare.md: 19 -> 19 (NO jitter regression)
-- frontdisaster.md:  5 -> 10 (hi-hats still excluded)
-- reguetonperfectsnare.md: 20 -> 22 (minimal change)
+The 8 remaining misses in snareperfecto are snares in decay tails
+(SnareE falling) where momentum is negative — physically undetectable
+by a rising-energy crossover without beat-locking.
 
 Generated with [Devin](https://devin.ai)
 

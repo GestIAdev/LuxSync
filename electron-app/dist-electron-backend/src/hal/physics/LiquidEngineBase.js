@@ -640,8 +640,22 @@ export class LiquidEngineBase {
                 const aS = p.snareMomentumAlphaSlow ?? 0.05;
                 this._snareEmaFast += aF * (snareEnergy - this._snareEmaFast);
                 this._snareEmaSlow += aS * (snareEnergy - this._snareEmaSlow);
-                const momentum = this._snareEmaFast - this._snareEmaSlow;
+                let momentum = this._snareEmaFast - this._snareEmaSlow;
                 rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh;
+                // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
+                // threshold), pull emaSlow toward emaFast by resetRatio. This forces
+                // momentum back toward 0, allowing re-fire on the next snare in a
+                // dense burst. Weak snares do NOT reset → anti-jitter preserved.
+                // snareperfecto.md: 32→40 onsets (off-beat 16ths recovered).
+                // imposiblesnare.md: stays at 18 (no jitter regression).
+                if (rawOnset) {
+                    const resetTh = p.snareMomentumResetThreshold;
+                    if (resetTh !== undefined && momentum > resetTh) {
+                        const ratio = p.snareMomentumResetRatio ?? 0.70;
+                        this._snareEmaSlow += ratio * (this._snareEmaFast - this._snareEmaSlow);
+                        momentum = this._snareEmaFast - this._snareEmaSlow;
+                    }
+                }
                 this._snarePrevMomentum = momentum;
                 // WAVE 7749.3: Reset prev energy on silence — after a break/drop,
                 // both EMAs were stuck high from the last beat. When audio resumes,

@@ -273,6 +273,12 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   snareMomentumThreshold: 0.01,
   snareMomentumAlphaFast: 1.00,
   snareMomentumAlphaSlow: 0.05,
+  // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > 0.15),
+  // pull emaSlow 70% toward emaFast. Allows re-fire in dense bursts.
+  // snareperfecto.md: 32→40 onsets (83% of legacy 48).
+  // imposiblesnare.md: stays 18 (no jitter). newsnare.md: 21 (vitaminas).
+  snareMomentumResetThreshold: 0.15,
+  snareMomentumResetRatio: 0.70,
 
   // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
   // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.

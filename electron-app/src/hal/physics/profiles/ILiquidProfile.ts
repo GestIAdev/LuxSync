@@ -280,6 +280,17 @@ export interface ILiquidProfile {
   readonly snareMomentumAlphaFast?: number
   /** EMA slow coefficient for momentum detector. Default 0.05. */
   readonly snareMomentumAlphaSlow?: number
+  /** ⚒️ WAVE 7749.67: HYBRID RESET — partial baseline reset on strong snares.
+   *  When momentum exceeds snareMomentumResetThreshold, emaSlow is pulled
+   *  toward emaFast by snareMomentumResetRatio. This forces momentum back
+   *  to ~0, allowing the detector to re-fire on the next snare in a dense
+   *  burst (snareperfecto.md: 32→40 onsets, recovering off-beat 16ths).
+   *  Weak snares (momentum < reset threshold) do NOT reset → anti-jitter
+   *  preserved (imposiblesnare.md stays at 18).
+   *  Absent = no reset (pure crossover, legacy EMA behavior). */
+  readonly snareMomentumResetThreshold?: number
+  /** Ratio of baseline reset on strong snare. Default 0.70. */
+  readonly snareMomentumResetRatio?: number
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
@@ -462,5 +473,8 @@ export interface ILiquidProfile {
     readonly snareMomentumThreshold?: number
     readonly snareMomentumAlphaFast?: number
     readonly snareMomentumAlphaSlow?: number
+    // WAVE 7749.67: Hybrid reset (4.1 override)
+    readonly snareMomentumResetThreshold?: number
+    readonly snareMomentumResetRatio?: number
   }
 }

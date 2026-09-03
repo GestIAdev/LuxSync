@@ -1,0 +1,61 @@
+WAVE 7749.51: SURGICAL DSP REVERT — Operation Golden Snare
+
+Reverted 3 DSP detection files to commit d9d1e507 (WAVE 7749.13-23),
+restoring the golden 4D Snare Detection state that resolved the Opus
+Paradox via dynamic FBL thresholds + high-flux bypass.
+
+Files reverted to d9d1e507:
+  - LiquidEngineBase.ts    — snare detection logic (dynamic FBL, high-flux
+                              bypass at spectralFlux>0.20, fail-open photon
+                              fallback ??1, _airEMA soft follower, no TCT
+                              re-arm discriminator)
+  - profiles/ILiquidProfile.ts — removed envelopeAir/Floor (WAVE 7749.27)
+  - profiles/latino.ts     — snare decay 0.60 (breathing TAcka), choke
+                              frames 4 / rate 0.60 (staccato), impulse
+                              decay 0.25
+
+Files kept at HEAD (NO-TOUCH ZONE):
+  - LiquidStereoPhysics.ts — declares raw_snare_delta?: number in
+                              LiquidStereoInput (fixes latent TS strict
+                              error in d9d1e507 where LiquidEngineBase
+                              accessed input.raw_snare_delta without
+                              interface declaration)
+  - TickEngine.ts          — passes raw_snare_delta into physics input
+                              (WAVE 7749.7). d9d1e507's TickEngine did NOT
+                              pass it, so the rawOnset path was dead. Now
+                              both onset paths are active: rawDelta AND
+                              high-flux bypass. Strictly better than
+                              original golden state.
+  - All Aether/Hephaestus   — strobe fixes (WAVE 7749.46-50) untouched
+  - ChillAmbientEngine.ts   — color morph speed (WAVE 7749.37/38)
+  - ColorTranslator.ts      — openSlot saturation search (WAVE 7749.40)
+
+Manual patch applied to reverted ILiquidProfile.ts:
+  Added `snareImpulseDecay?: number` field declaration (both top-level
+  and 4.1 override interface). d9d1e507's LiquidEngineBase, latino.ts,
+  AND techno.ts all referenced this field but the interface never
+  declared it — another latent TS strict error in the golden commit.
+  This patch fixes it without changing any logic.
+
+What returns:
+  - High-flux bypass (spectralFlux > 0.20 → snare onset)
+  - Fail-open photon fallback (?? 1)
+  - Dynamic clamp floors (0.06 threshold, 0.10 flux gate)
+  - Latino TAcka breathing (decayBase 0.60)
+  - _airEMA soft follower for Air zone
+  - Raw floor passthrough (no envFloor)
+
+What stays removed:
+  - TCT re-arm discriminator (_snareReArmed, _prevRawSnareDelta)
+  - Fail-closed photon fallback (?? 0)
+  - Raised clamp floors (0.08, 0.12)
+  - envAir/envFloor LiquidEnvelope processing
+  - Latino glow sustain (decayBase 0.70, choke 15/0.85)
+
+tsc --noEmit: CLEAN
+tsc -p tsconfig.node.json: CLEAN
+dist-electron-backend: rebuilt with golden state logic
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

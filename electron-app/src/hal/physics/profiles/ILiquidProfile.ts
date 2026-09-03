@@ -43,19 +43,6 @@ export interface ILiquidProfile {
   readonly envelopeTreble: LiquidEnvelopeConfig
 
   // ═══════════════════════════════════════════════════════════════
-  // WAVE 7749.27: LASER DOMAIN — Air & Floor zone envelopes.
-  // Optional with fallback defaults in LiquidEngineBase. Profiles that
-  // want genre-specific laser kinematics can override these.
-  // ═══════════════════════════════════════════════════════════════
-
-  /** Air — Aerial laser (treble + ultraAir velocity). Zero-attack, fast decay.
-   *  Default: gateOn 0.35, decayBase 0.08, crushExponent 2.5, boost 4.0. */
-  readonly envelopeAir?: LiquidEnvelopeConfig
-  /** Floor — Ground sweep laser (spectralFlux + bassDelta onset-driven).
-   *  Default: gateOn 0.12, decayBase 0.12, crushExponent 2.0, boost 3.0. */
-  readonly envelopeFloor?: LiquidEnvelopeConfig
-
-  // ═══════════════════════════════════════════════════════════════
   // BACK R: SCHWARZENEGGER — Aislamiento percusivo de agudos
   // rawRight = max(0, treble - mid × percMidSubtract)
   // if (rawRight > percGate) → pow(gated, percExponent) × percBoost

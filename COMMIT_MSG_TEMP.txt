@@ -1,0 +1,21 @@
+WAVE 7749.46: Neutralize Selene physicsModifier strobe — .lfx curve is law
+
+The physicsModifier.strobeIntensity from DecisionMaker was competing with
+the .lfx strobe curve, degrading effects to ~50% power via DROP path:
+
+- DROP path: strobeIntensity = 0.3 + emotionalTension * 0.3 ≈ 0.45
+- Hunt path: strobeIntensity = 0.7 + rhythmicIntensity * 0.3 ≈ 0.85
+- .lfx curve: strobe = 0.95 (constant)
+
+The selene-aether-adapter emitted these as separate strobe intents to the
+bus, which via LTP blend would override the .lfx value. The DROP path's
+"contención antes del estallido" (0.45) was designed for pre-drop tension
+but persisted during the actual effect firing, halving the strobe rate.
+
+Fix: _processPhysicsModifier() is now a no-op. The strobe channel is
+owned exclusively by the .lfx curve. If the clip says strobe=1, it fires
+at 1. No external modifiers, no safety caps, no legacy contención.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

@@ -1,9 +1,9 @@
-WAVE 7749.62: Hi-Hat Silencer + SnareE-grounded Energy Bypass
+checkpoint: snarePath1BassDeltaFloor + forensic analysis docs
 
-- Path 3: added snareEnergy > 0.10 floor to block hi-hats (WNS=1.0, SnareE=0.000)
-- Energy Bypass: replaced AGC<2.5 gate with WNS>0.05 physical discriminator
-  Old: SnareE>0.80 || (SnareE>0.40 && agcGain<2.5) || (SnareE>0.40 && wns>0.15)
-  New: SnareE>0.75 || (SnareE>0.25 && wns>0.05)
+Pre-EMA-momentum safe point. Includes:
+- snarePath1BassDeltaFloor: 0.005 in techno.ts (anti-hi-hat surfer)
+- Forensic snare analysis docs (imposiblesnare, frontdisaster, etc.)
+- Planopus.md: EMA momentum detector proposal
 
 Generated with [Devin](https://devin.ai)
 

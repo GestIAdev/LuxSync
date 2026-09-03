@@ -241,6 +241,17 @@ export interface ILiquidProfile {
    *  Latino 0.15 — fast enough for staccato Latin percussion. */
   readonly snareImpulseDecay?: number
 
+  /** WAVE 7749.64: Path 1 bass-impact floor (anti-hi-hat surfer).
+   *  When WNS > 0.3 but SnareE < 0.15, Path 1 allows bassE > 0.40 as
+   *  "rhythmic context." In techno, bass is continuous — every hi-hat
+   *  has bassE > 0.40, so this clause fires on every hat. This floor
+   *  requires the bass to be RISING (bassDelta > floor) to prove a real
+   *  percussive hit, not a hi-hat surfing a sustained bassline.
+   *  Techno: 0.005 (hi-hats have bassDelta ≤ +0.002, real snares > +0.009).
+   *  Latino: omit / 0 = legacy behavior (bassE > 0.40 alone suffices,
+   *  because Latin snares hit on the off-beat where bass is decaying). */
+  readonly snarePath1BassDeltaFloor?: number
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
   // El morphFactor normaliza avgMidProfiler a [0,1] usando:
@@ -416,5 +427,7 @@ export interface ILiquidProfile {
     readonly snareChokeRate?: number
     // WAVE 7749.7: Impulse decay (4.1 override)
     readonly snareImpulseDecay?: number
+    // WAVE 7749.64: Path 1 bass-impact floor (4.1 override)
+    readonly snarePath1BassDeltaFloor?: number
   }
 }

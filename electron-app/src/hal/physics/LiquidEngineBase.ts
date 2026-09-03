@@ -153,6 +153,8 @@ function fuseProfileFor41(base: ILiquidProfile): ILiquidProfile {
     snareChokeRate: ov.snareChokeRate ?? base.snareChokeRate,
     // WAVE 7749.7: Impulse decay — fusionar al perfil efectivo
     snareImpulseDecay: ov.snareImpulseDecay ?? base.snareImpulseDecay,
+    // WAVE 7749.64: Path 1 bass-impact floor — fusionar al perfil efectivo
+    snarePath1BassDeltaFloor: ov.snarePath1BassDeltaFloor ?? base.snarePath1BassDeltaFloor,
   }
 }
 
@@ -802,11 +804,21 @@ export abstract class LiquidEngineBase {
 
       let rawOnset = false
       if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
-        if (wns > 0.3 && (snareEnergy > 0.15 || bassE > 0.40)) {
+        // ⚒️ WAVE 7749.64: PROFILE-GATED BASSΔ FLOOR — anti-hi-hat surfer.
+        //   In techno, bass is continuous → every hi-hat has bassE > 0.40.
+        //   The bassE > 0.40 clause alone fires on every hat. This profile
+        //   param (snarePath1BassDeltaFloor) requires the bass to be RISING
+        //   to prove a real percussive hit. Techno sets 0.005; Latino omits
+        //   (default 0 = legacy behavior, preserves off-beat snares).
+        //   Data: techno hi-hats have bassDelta ≤ +0.002; real snares > +0.009.
+        //         Latin off-beat snares have bassDelta -0.02 to +0.01 (need 0).
+        const path1BassDeltaFloor = p.snarePath1BassDeltaFloor ?? 0
+        if (wns > 0.3 && (snareEnergy > 0.15 || (bassE > 0.40 && bassDelta > path1BassDeltaFloor))) {
           // Path 1: WNS-confirmed — OMNI-GATE: WNS + contextual confirmation.
           // WNS > 0.3 proves broadband noise. SnareE > 0.15 proves crack-band
-          // energy (real snare). BassE > 0.40 proves rhythmic context (snare
-          // co-occurs with bass/kick). Sweeps fail both: SnareE ≈ 0, BassE < 0.30.
+          // energy (real snare). BassE > 0.40 (+ bassDelta > floor per profile)
+          // proves rhythmic context (snare co-occurs with a real bass hit,
+          // not just surfing a continuous bassline). Sweeps fail both.
           // NO TCT restriction — WNS already proves broadband noise.
           rawOnset = true
         } else if (spectralFlux > 0.20 && this._snareReArmed && (snareEnergy > 0.45 || (snareEnergy > 0.15 && wns > 0.05) || (wns > 0.10 && bassE > 0.40 && snareEnergy > 0.05))) {

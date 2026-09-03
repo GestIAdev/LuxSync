@@ -213,6 +213,16 @@ export const TECHNO_PROFILE = {
     morphCeiling: 0.70, // avgMid máximo = morph pleno (70%)
     kickEdgeMinInterval: 180, // WAVE 8005.2: 80→180 — subbass rodante dispara armónicos cada ~120ms, 180ms los filtra
     kickVetoFrames: 0, // WAVE 2419: 5→0 (veto ON 48% del tiempo, asfixiaba Mover R)
+    // ⚒️ WAVE 7749.64: PATH 1 BASSΔ FLOOR — anti-hi-hat surfer.
+    // In techno, the bassline is continuous — every hi-hat has bassE > 0.40.
+    // Path 1's bassE > 0.40 clause (designed for Latin "rhythmic context")
+    // fires on every hat. This floor requires bassDelta > 0.005 to prove the
+    // bass is RISING (real percussive hit), not just sustained.
+    // Data (frontdisaster.md): techno hi-hats have bassDelta ≤ +0.002.
+    // Real snares in techno have bassDelta > +0.009. Clean gap at 0.005.
+    // Latino profile omits this field (default 0) — Latin off-beat snares
+    // have bassDelta -0.02 to +0.01 and need the legacy behavior.
+    snarePath1BassDeltaFloor: 0.005,
     // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
     // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
     ambientAttackMs: 30,

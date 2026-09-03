@@ -1,0 +1,29 @@
+WAVE 7749.44: Remove Flux/Energy bypasses causing epileptic strobing
+
+The WAVE 7749.18 (Flux > 0.20) and WAVE 7749.19 (Energy > 0.40) bypasses
+were added for synthesized snare rolls in melodic techno (Anyma). But in
+latina music with dense percussion (congas, timbales, guira), these
+instruments produce Flux > 0.20 in the crack band constantly, causing
+6 of 14 onsets to be false positives — strobing the back par at 5-11Hz.
+
+Telemetry analysis (snarelog16.md) confirmed:
+- All legit onsets had WNS > 0.05 (primary path)
+- All false onsets had WNS = 0 but Flux > 0.20 (Flux bypass)
+
+Removed both bypasses. The 4D onset detection now uses only:
+1. Primary path: WNS > 0.05 + crackDelta + Flux gate + re-arm
+2. Pending WNS: 1-frame confirmation window
+
+This restores the "modo dios" behavior from before the roll detection
+additions (WAVE 7749.13-7749.23), while keeping the TCT re-arm
+discriminator (7749.42-7749.43) that prevents the "3 beats pegados" bug.
+
+Trade-off: synthesized snares in melodic techno with WNS = 0 will be
+missed. This is acceptable — the primary WNS path covers acoustic
+snares, electronic snares with noise content, and claps. Pure synth
+snares without broadband noise are a niche case that can be re-added
+later with a tighter discriminator if needed.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

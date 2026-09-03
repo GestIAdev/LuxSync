@@ -603,14 +603,22 @@ export class LiquidEngineBase {
             // WAVE 7749.42: TCT RE-ARM DISCRIMINATOR — Delta Decay Test.
             // A real snare transient spikes crackDelta and decays within 1-2 frames.
             // A sustained synth lead keeps crackDelta elevated frame after frame.
-            // We require the PREVIOUS frame's rawSnareDelta to have fallen below
-            // 0.02 before allowing a new onset. This prevents the synth lead from
-            // re-triggering every 68ms via the _snareImpulse retrigger guard.
-            // The _snareReArmed flag is set true when the delta decays below 0.02,
-            // and consumed (set false) when an onset fires. A real snare roll has
-            // ~45-125ms between hits — the delta drops to ~0 between hits, re-arming
-            // the detector. A synth lead never drops, so the detector stays choked.
-            if (this._prevRawSnareDelta < 0.02) {
+            // We require the PREVIOUS frame's rawSnareDelta to have settled to near
+            // zero (|Δ| < 0.02) before allowing a new onset. This prevents the synth
+            // lead from re-triggering every 68ms via the _snareImpulse retrigger guard.
+            // The _snareReArmed flag is set true when the delta decays below 0.02 in
+            // ABSOLUTE value, and consumed (set false) when an onset fires. A real
+            // snare roll has ~45-125ms between hits — the delta drops to ~0 between
+            // hits, re-arming the detector. A synth lead never drops, so the detector
+            // stays choked.
+            // WAVE 7749.43: BUGFIX — use Math.abs(). The original `< 0.02` check let
+            // negative deltas (energy decay: -0.154, -0.570) re-arm the detector on
+            // the very next frame after an onset, causing "3 beats pegados" — the
+            // decay frame re-armed, then a bypass path (Energy>0.40 or Flux>0.20)
+            // fired a second onset, then its decay re-armed again for a third. With
+            // Math.abs(), the decay frame (|Δ|=0.154-0.570) does NOT re-arm; only a
+            // true settle to |Δ|<0.02 between separate hits re-arms.
+            if (Math.abs(this._prevRawSnareDelta) < 0.02) {
                 this._snareReArmed = true;
             }
             let rawOnset = false;
@@ -802,16 +810,28 @@ export class LiquidEngineBase {
             // WAVE 7749.22: DISABLED — snare 4D is now production-ready across all
             // genres (techno acoustic, techno melodic/Anyma, latino). Back R is perfect.
             // Commented out to stop console spam. Re-enable for future debugging.
-            // console.log(
-            //   `[SNARE_TELEMETRY] ` +
-            //   `E:${input.snare_energy?.toFixed(3) ?? 'N/A'} | ` +
-            //   `RawΔ:${input.raw_snare_delta === undefined ? 'UNDEF' : input.raw_snare_delta.toFixed(3)} | ` +
-            //   `Flat:${flatness.toFixed(3)} (Gate:${flatnessGate.toFixed(2)}) | ` +
-            //   `WNS:${wns.toFixed(3)} (Gate:${wnsGate.toFixed(2)}) | ` +
-            //   `Flux:${flux.toFixed(3)} (Gate:${fluxGate.toFixed(2)}) | ` +
-            //   `Veto:${vetoFactor.toFixed(3)} -> Out:${hybridSnare.toFixed(3)}` +
-            //   (snareOnsetThisFrame ? ' [ONSET]' : '')
-            // )
+            // WAVE 7749.42: RE-ENABLED with TCT state + activity gating. Only logs when
+            // there's meaningful activity (onset, near-onset delta, or active impulse) to
+            // avoid the 44Hz spam that caused WAVE 7749.25 to retire it.
+            const hasActivity = snareOnsetThisFrame
+                || (input.raw_snare_delta ?? 0) > 0.04
+                || this._snareImpulse > 0.05
+                || this._snarePendingWns;
+            if (hasActivity) {
+                console.log(`[SNARE_T] ` +
+                    `E:${input.snare_energy?.toFixed(3) ?? 'N/A'} | ` +
+                    `Δ:${input.raw_snare_delta === undefined ? 'UNDEF' : input.raw_snare_delta.toFixed(3)} | ` +
+                    `prevΔ:${this._prevRawSnareDelta.toFixed(3)} | ` +
+                    `Flux:${flux.toFixed(3)} | ` +
+                    `WNS:${wns.toFixed(3)} | ` +
+                    `Flat:${flatness.toFixed(3)}(g:${flatnessGate.toFixed(2)}) | ` +
+                    `Veto:${vetoFactor.toFixed(3)} -> Out:${hybridSnare.toFixed(3)} | ` +
+                    `Imp:${this._snareImpulse.toFixed(2)} | ` +
+                    `ReArm:${this._snareReArmed ? 'Y' : 'N'} | ` +
+                    `fBL:${this._fluxBaseline.toFixed(3)}` +
+                    (snareOnsetThisFrame ? ' [ONSET]' : '') +
+                    (this._snarePendingWns ? ' [PEND]' : ''));
+            }
             // WAVE 7749.21: OPUS AUDIT — Frame-by-frame diagnostic for buildup collapse.
             // 🩸 WAVE 7749.25: REMOVED. The diagnostic log was spamming the console at
             // ~44Hz on every frame with bass/snare activity, contributing to backend

@@ -279,10 +279,12 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // imposiblesnare.md: stays 18 (no jitter). newsnare.md: 21 (vitaminas).
   snareMomentumResetThreshold: 0.15,
   snareMomentumResetRatio: 0.70,
-  // ⚒️ WAVE 7749.68: SNARE ENERGY FLOOR — reject onsets when SnareE < 0.05.
-  // Elimina falsos en silencio (SnareE 0.024-0.028 = ruido de fondo).
-  // sinsnare.md: 4 falsos eliminados. snarebueno.md: 7 falsos eliminados.
-  snareMomentumFloor: 0.05,
+  // ⚒️ WAVE 7749.68→7749.70: SNARE ENERGY FLOOR — reject onsets when UnG < floor.
+  // WAVE 7749.68: floor=0.05 para gated SnareE (eliminaba ruido en silencio).
+  // WAVE 7749.70: floor=0.15 para crack-only UnG. El crack band (2-5kHz) tiene
+  // baseline de ~0.04-0.08 de harmonicos de synth/kick. floor=0.15 elimina
+  // ruido y la mayoria de kicks/synths sin tocar snares reales (UnG > 0.20).
+  snareMomentumFloor: 0.15,
 
   // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
   // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.

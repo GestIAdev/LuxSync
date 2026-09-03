@@ -306,6 +306,11 @@ export abstract class LiquidEngineBase {
   private _snareEmaFast: number = 0
   private _snareEmaSlow: number = 0
   private _snarePrevMomentum: number = 0
+  // ⚒️ WAVE 7749.70: COOLDOWN — frames since last momentum onset. Prevents
+  // decay-tail re-firing when momentum oscillates around θ during decay.
+  // snarepasado.md: 6 consecutive onsets on a single transient (0.312→0.112).
+  private _snareMomentumCooldown: number = 0
+  private static readonly SNARE_MOMENTUM_COOLDOWN_FRAMES = 5  // ~110ms @ 44Hz
 
   // Kick Veto state
   private _kickVetoFrames = 0
@@ -845,7 +850,19 @@ export abstract class LiquidEngineBase {
         // below floor (background noise in silence). Without this, energy
         // rising from 0.001 to ~0.025 in silence crosses momentum threshold.
         const snareFloor = p.snareMomentumFloor ?? 0
-        rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh && momoEnergy >= snareFloor
+        // ⚒️ WAVE 7749.70: KICK VETO + COOLDOWN — prevent firing on kicks and
+        // decay-tail re-fires. Kick veto: isKick means bass transient, not
+        // snare. Cooldown: momentum oscillates around θ during decay → multiple
+        // upward crossings → multiple onsets on ONE transient. 5-frame cooldown
+        // (~110ms) blocks re-fires within the same snare envelope.
+        if (this._snareMomentumCooldown > 0) this._snareMomentumCooldown--
+        const kickVeto = isKick  // kick transient this frame → not a snare
+        const cooldownClear = this._snareMomentumCooldown === 0
+        rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh
+          && momoEnergy >= snareFloor && !kickVeto && cooldownClear
+        if (rawOnset) {
+          this._snareMomentumCooldown = LiquidEngineBase.SNARE_MOMENTUM_COOLDOWN_FRAMES
+        }
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a

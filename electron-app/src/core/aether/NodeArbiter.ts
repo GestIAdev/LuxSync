@@ -64,11 +64,16 @@ import type {
 } from './intent-bus'
 
 // ── Canales con prioridad estricta por capa (WAVE 4775 / 4752) ─────────────
-// strobe/shutter: prioridad estricta descendente (L4>LP>L3>L2>L1>L0).
+// strobe/shutter/strobeRate: prioridad estricta descendente (L4>LP>L3>L2>L1>L0).
 // HTP solo dentro de L0 (multi-fuente en el mismo bus).
 // dimmer/brightness: ahora LTP absoluto — L2 gana cuando está activo;
 // L0 sigue fluyendo si L2 NO toca ese canal en ese nodo.
-const STRICT_PRIORITY_CHANNELS = new Set<string>(['strobe', 'shutter'])
+// ⚒️ WAVE 7749.47: Añadido 'strobeRate' al set — el dual-alias del WAVE 7749.35
+// escribió ambos 'strobe' y 'strobeRate' pero solo 'strobe' tenía prioridad
+// estricta. 'strobeRate' caía a LTP universal, permitiendo que L1 (Selene
+// physicsModifier) pisara a L3 (.lfx) en fixtures que declaran chDef.type=
+// 'strobeRate'. Ahora los tres canales tienen la misma protección de capa.
+const STRICT_PRIORITY_CHANNELS = new Set<string>(['strobe', 'strobeRate', 'shutter'])
 
 // ── WAVE 4752: SMART GATE — bloqueo per-node/per-channel ────────────────────
 // Reemplaza OPAQUE_BLOCKED_CHANNELS_L0_L1 (fixture-wide).
@@ -97,7 +102,7 @@ const FIXTURE_DIMMER_LOCK_EXEMPT_FAMILIES = new Set<string>([
 // :color, TODOS estos canales quedan dominados en _l3DominatedChannels para
 // el fixture padre completo. L0 queda físicamente amordazado en luminancia.
 const L3_LUMINANCE_GAG_CHANNELS = new Set<string>([
-  'dimmer', 'strobe', 'shutter', 'master_brightness', 'brightness',
+  'dimmer', 'strobe', 'strobeRate', 'shutter', 'master_brightness', 'brightness',
 ])
 // Familias de nodo que disparan el Gag cuando L3 las escribe
 const L3_GAG_TRIGGER_FAMILIES = new Set<string>(['impact', 'color'])

@@ -405,6 +405,16 @@ function _populateValues(
       values['strobeRate'] = output.normalizedValue
       if (output.normalizedValue > 0) {
         values['shutter'] = 1.0  // abre el obturador mecánico cuando hay strobe
+        // ⚒️ WAVE 7749.49: STROBE-DIMMER COUPLING FIX
+        // Cuando un effect con strobe>0 se solapa con otro effect que tiene
+        // dimmer bajo (ej: latin_bubbles dimmer=0.5 + Salsa Fire strobe=1.0),
+        // el dimmer del effect light persiste porque el strobe effect no tiene
+        // dimmer track. El fixture recibe dimmer=0.5 + strobe=1.0 → flashea
+        // al 50% de brillo. Forzar dimmer=1.0 cuando hay strobe activo asegura
+        // que la lámpara esté a full para que el strobe se vea a máxima potencia.
+        // Si el mismo clip tiene un dimmer track que viene después en el buffer,
+        // ese track sobrescribirá este 1.0 con su valor real.
+        values['dimmer'] = 1.0
       }
       break
     case 'color': {

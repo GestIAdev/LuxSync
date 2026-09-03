@@ -135,6 +135,8 @@ export interface SeleneLuxAudioMetrics {
   hh_energy?: number;     // 0-1 — high band (5-15kHz)
   // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
   raw_snare_delta?: number;
+  // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
+  agcGainFactor?: number;
 }
 
 /**
@@ -682,6 +684,8 @@ export class SeleneLux {
         raw_snare_delta: audioMetrics.raw_snare_delta,
         // WAVE 8005.2: Photon block for front channel strobe bypass
         photon: audioMetrics.photon,
+        // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+        agcGainFactor: audioMetrics.agcGainFactor,
       };
       
       // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy

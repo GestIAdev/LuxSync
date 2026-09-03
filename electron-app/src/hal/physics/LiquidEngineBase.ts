@@ -780,11 +780,26 @@ export abstract class LiquidEngineBase {
         this._snareReArmed = true
       }
 
+      // ⚒️ WAVE 7749.54: OMNI-GATE — Hybrid gates for Path 1 and Path 3.
+      // Path 1 (WNS): requires crack-band energy (SnareE > 0.15) OR bass context
+      //   (BassE > 0.40) in addition to WNS > 0.3. Prevents broadband synth sweeps
+      //   in breakdowns from firing — sweeps have SnareE ≈ 0 and BassE < 0.30.
+      // Path 3 (Energy): AGC-aware hybrid. SnareE > 0.80 always passes (saturated
+      //   snare = dembow). Otherwise requires AGC < 2.5x (low compression) or
+      //   WNS > 0.15 (broadband confirmation). Blocks AGC-amplified piano/kick
+      //   tails in quiet sections (Brejcha "bombo fantasma").
+      // Path 2 (High-Flux): unchanged, TCT-protected.
+      const agcGain = input.agcGainFactor ?? 1.0
+      const bassE = pureBassEnergy
+
       let rawOnset = false
       if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
-        if (wns > 0.05) {
-          // Path 1: WNS-confirmed — fire immediately, NO TCT restriction.
-          // WNS proves broadband noise. Synth sweeps never produce WNS.
+        if (wns > 0.3 && (snareEnergy > 0.15 || bassE > 0.40)) {
+          // Path 1: WNS-confirmed — OMNI-GATE: WNS + contextual confirmation.
+          // WNS > 0.3 proves broadband noise. SnareE > 0.15 proves crack-band
+          // energy (real snare). BassE > 0.40 proves rhythmic context (snare
+          // co-occurs with bass/kick). Sweeps fail both: SnareE ≈ 0, BassE < 0.30.
+          // NO TCT restriction — WNS already proves broadband noise.
           rawOnset = true
         } else if (spectralFlux > 0.20 && this._snareReArmed) {
           // WAVE 7749.18: HIGH-FLUX BYPASS — Synthesized snare detection
@@ -803,18 +818,22 @@ export abstract class LiquidEngineBase {
           // Prevents sustained synth sweeps from holding the onset open.
           rawOnset = true
           this._snareReArmed = false
-        } else if (snareEnergy > 0.40 && this._snareReArmed) {
-          // WAVE 7749.19: ENERGY-CONDITIONED BORDER ZONE BYPASS
-          // Some synth snares in melodic techno have moderate Flux (0.15-0.20)
-          // — not enough to trigger the 0.20 bypass, and WNS = 0 (synthesized).
-          // These are missed by both the WNS path and the Flux bypass.
-          // Discriminator: snare_energy. Real snares have high crack-band
-          // energy (> 0.40) because the noise burst is loud. Kicks in the same
-          // Flux zone have E < 0.36 (their energy is in the bass band, not the
-          // crack band). Empirical data:
-          //   techno11 kicks (Flux 0.15-0.40, WNS=0): E = 0.14-0.36
-          //   techno15 border snares (Flux 0.15-0.20, WNS=0): E = 0.30-0.87
-          // Threshold 0.40 sits in the clean gap above kick max (0.36).
+        } else if (this._snareReArmed && (
+          snareEnergy > 0.80 ||
+          (snareEnergy > 0.40 && agcGain < 2.5) ||
+          (snareEnergy > 0.40 && wns > 0.15)
+        )) {
+          // WAVE 7749.19 → 7749.54: ENERGY BYPASS — OMNI-GATE (AGC-aware hybrid)
+          // Three conditions, any one sufficient:
+          //   1. SnareE > 0.80 — saturated snare (dembow electronic) = almost
+          //      certainly real. Never occurs in Brejcha piano (max 0.66) or
+          //      Anyma synth bleed (max 0.88 sporadic). Dembow saturates 1.000.
+          //   2. SnareE > 0.40 AND AGC < 2.5x — moderate snare with low
+          //      compression. Brejcha falsos have AGC 4.0x → blocked. Dembow
+          //      reals have AGC 1.4-1.6x → pass. Anyma stabs AGC 3.0x → blocked
+          //      (conservative).
+          //   3. SnareE > 0.40 AND WNS > 0.15 — moderate snare with broadband
+          //      confirmation. WNS > 0.15 proves real noise content.
           // ⚒️ WAVE 7749.52: TCT guard — only fire if previous delta settled.
           rawOnset = true
           this._snareReArmed = false
@@ -823,13 +842,13 @@ export abstract class LiquidEngineBase {
           // Wait 1 frame for WNS confirmation.
           this._snarePendingWns = true
         }
-      } else if (this._snarePendingWns && wns > 0.05 && this._snareImpulse < 0.15) {
-        // WAVE 7749.17: Confirmation only needs WNS — Flux was already validated
-        // on the pending frame. The snare body's spectral change rate decays
-        // faster than WNS: in 4/57 cases (the "negros"), Flux dropped to 0.11-0.14
-        // on the confirmation frame while WNS arrived strong (0.28-0.70). Requiring
-        // Flux > 0.15 again blocked these real snares. WNS alone is sufficient to
-        // confirm snare vs kick — kicks never produce WNS on either frame.
+      } else if (this._snarePendingWns && wns > 0.05 && (snareEnergy > 0.15 || bassE > 0.40) && this._snareImpulse < 0.15) {
+        // WAVE 7749.17: Confirmation — WNS arrived 1 frame late.
+        // OMNI-GATE: apply same contextual gate as Path 1 (SnareE > 0.15 OR
+        // BassE > 0.40) to block sweeps. WNS threshold stays at 0.05 because
+        // WNS may still be ramping (0.28-0.70 on confirmation frame). The
+        // contextual gate is what blocks sweeps — they have SnareE ≈ 0 and
+        // BassE < 0.30 regardless of WNS value.
         rawOnset = true
         this._snarePendingWns = false
       } else {

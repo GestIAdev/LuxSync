@@ -161,6 +161,8 @@ export interface EngineAudioMetrics {
   raw_snare_delta?: number
   // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
   photon?: GodEarPhoton
+  // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
+  agcGainFactor?: number
 }
 
 /**
@@ -924,6 +926,8 @@ export class TitanEngine extends EventEmitter {
         raw_snare_delta: audio.raw_snare_delta,
         // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity
         photon: audio.photon,
+        // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+        agcGainFactor: audio.agcGainFactor,
       },
       elementalMods
     )

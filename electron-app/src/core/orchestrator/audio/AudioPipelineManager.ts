@@ -56,6 +56,8 @@ export interface AudioDataSnapshot {
   photon?: GodEarPhoton
   // WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
   rhythmic?: GodEarRhythmicPercussion
+  // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
+  agcGainFactor?: number
 }
 
 export interface BeatState {
@@ -218,6 +220,8 @@ export class AudioPipelineManager {
       photon?: GodEarPhoton;
       // WAVE 8008: Rhythmic percussion telemetry
       rhythmic?: GodEarRhythmicPercussion;
+      // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate
+      agcGainFactor?: number;
     }) => {
       const matrixStatus = this.ctx.trinity?.getAudioMatrix()?.getStatus()
       const activeSource = matrixStatus?.activeSource ?? null
@@ -279,6 +283,8 @@ export class AudioPipelineManager {
           photon: levels.photon ?? this.lastAudioData.photon,
           // WAVE 8008: Rhythmic percussion telemetry
           rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
+          // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+          agcGainFactor: levels.agcGainFactor ?? this.lastAudioData.agcGainFactor,
         }
 
         const wasActive = this.hasRealAudio
@@ -326,6 +332,8 @@ export class AudioPipelineManager {
           photon: levels.photon ?? this.lastAudioData.photon,
           // WAVE 8008: Rhythmic percussion telemetry
           rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
+          // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+          agcGainFactor: levels.agcGainFactor ?? this.lastAudioData.agcGainFactor,
         }
       }
     })

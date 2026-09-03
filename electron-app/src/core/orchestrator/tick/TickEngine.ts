@@ -766,6 +766,8 @@ export class TickEngine {
       photon: this.audioPipeline.lastAudioData.photon,
       // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction
       isPLLBeat: beatState.pllOnBeat,
+      // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+      agcGainFactor: this.audioPipeline.lastAudioData.agcGainFactor,
     }
     
     // For HAL

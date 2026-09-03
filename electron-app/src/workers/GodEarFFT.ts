@@ -215,15 +215,17 @@ export interface GodEarRhythmicPercussion {
    *  Unlike snare_energy (EMA-smoothed), this preserves transient sharpness
    *  even under heavy compression. Used by LiquidEngineBase for onset detection. */
   raw_snare_delta: number;
-  /** ⚒️ WAVE 7749.69: UNGATED snare energy — sqrt(body * crack) WITHOUT the
-   *  adaptive threshold gate. The gated snare_energy is 0 when the snare
+  /** ⚒️ WAVE 7749.69: UNGATED snare energy — crack band ONLY (2-5kHz) without
+   *  the adaptive threshold gate. The gated snare_energy is 0 when the snare
    *  doesn't pass body+crack adaptive thresholds (common in techno where the
-   *  kick saturates the body band, raising bodyThresh). This ungated version
-   *  preserves the actual energy even when the gate is closed, allowing the
-   *  EMA momentum detector to fire on snares that produce crack energy but
-   *  can't exceed the kick-saturated body threshold.
-   *  sinsnare2.md (Brejcha Gravity): SnareE=0 but raw_snare_delta > 0.20 →
-   *  ungated energy captures the transient the gate kills. */
+   *  kick saturates the body band, raising bodyThresh). This ungated crack
+   *  energy preserves the actual snare snap energy even when the gate is
+   *  closed, allowing the EMA momentum detector to fire on snares that
+   *  produce crack energy but can't exceed the kick-saturated body threshold.
+   *  WAVE 7749.69b: Uses ONLY crack (not sqrt(body*crack)) because the body
+   *  band is saturated by the kick → sqrt(body*crack) has a ~0.25 baseline
+   *  that fires on every kick beat. Crack-only is immune to kick bleed.
+   *  sinsnare2.md (Brejcha Gravity): SnareE=0 but crack energy > 0 → detectable. */
   snare_energy_ungated: number;
 }
 
@@ -2183,7 +2185,12 @@ class RhythmicPercussionTracker {
       hh_absence_ms: hhAbsenceMs,
       rhythmic_void: rhythmicVoid,
       raw_snare_delta: rawSnareDelta,
-      snare_energy_ungated: snareEnergyUngated,
+      // ⚒️ WAVE 7749.69b: Use ONLY crack band (2-5kHz) — NOT sqrt(body*crack).
+      // The body band (150-250Hz) is saturated by the kick in techno, giving
+      // sqrt(body*crack) a baseline of ~0.25 that fires the EMA momentum on
+      // every kick beat. The crack band alone is where the snare snap lives
+      // and is immune to kick bleed.
+      snare_energy_ungated: snareCrack,
     };
   }
 

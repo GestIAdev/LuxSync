@@ -213,7 +213,37 @@ export class HephaestusAetherAdapter {
     // fixture lights up to show the color.
     this._ensureColorDimmer()
 
+    // ⚒️ WAVE 7749.50: STROBE-DIMMER COUPLING POST-PASS
+    // Cuando un clip tiene strobe>0 Y un dimmer track con curva baja (ej: dientes
+    // de sierra de seismic_snap a 0.3), el dimmer track sobrescribe el dimmer=1.0
+    // que el strobe track puso en _populateValues. El orden de procesamiento de
+    // tracks en el runtime determina quién gana — si dimmer viene después, gana.
+    // Este post-pass garantiza que cualquier intent con strobe activo tenga
+    // dimmer=1.0, independientemente del orden de los tracks en el buffer.
+    this._ensureStrobeDimmer()
+
     arbiter.setHephaestusIntents(this._frameIntents)
+  }
+
+  /**
+   * ⚒️ WAVE 7749.50: Post-pass — force dimmer=1.0 on any intent with strobe>0.
+   *
+   * Without this, a clip's dimmer track (e.g. seismic_snap's sawtooth at 0.3)
+   * can overwrite the dimmer=1.0 that the strobe track set in _populateValues,
+   * because the dimmer track may come later in the output buffer. The fixture
+   * then receives dimmer=0.3 + strobe=1.0 → strobe flashes at 30% brightness.
+   *
+   * This pass runs AFTER all outputs are consolidated in _frameIntentMap, so
+   * it has the final word on the dimmer value when strobe is active.
+   */
+  private _ensureStrobeDimmer(): void {
+    for (let i = 0; i < this._frameIntents.length; i++) {
+      const intent = this._frameIntents[i] as MutableNodeIntent
+      const strobe = intent.values['strobe'] ?? intent.values['strobeRate'] ?? 0
+      if (strobe > 0) {
+        intent.values['dimmer'] = 1.0
+      }
+    }
   }
 
   /**

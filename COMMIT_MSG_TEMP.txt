@@ -1,0 +1,28 @@
+WAVE 7749.50: Strobe-dimmer coupling post-pass — fix intra-clip overwrite
+
+WAVE 7749.49 added dimmer=1.0 in _populateValues when strobe>0, but that
+value can be overwritten by the SAME clip's dimmer track if it comes
+later in the output buffer. The _frameIntentMap consolidates outputs in
+buffer order — last writer wins per channel.
+
+Scenario (single clip, no overlap):
+  1. strobe track → output[i] → _populateValues sets dimmer=1.0
+  2. dimmer track (sawtooth 0.3) → output[j] → _populateValues sets dimmer=0.3
+  3. Consolidated intent: { dimmer: 0.3, strobe: 1.0 } → strobe at 30% brightness
+
+This explains the "pocho" strobe even without effect overlap — any clip
+with both a strobe track and a low dimmer track (like seismic_snap's
+sawtooth) would flash at reduced brightness.
+
+Fix: added _ensureStrobeDimmer() post-pass that runs AFTER all outputs
+are consolidated. It scans every frame intent and forces dimmer=1.0 on
+any intent with strobe>0 or strobeRate>0. This gives the strobe track
+the final word on dimmer, regardless of track processing order.
+
+Combined with WAVE 7749.49, this covers both cases:
+  - Cross-clip: latin_bubbles dimmer + Salsa Fire strobe → 7749.49 fix
+  - Intra-clip: seismic_snap sawtooth dimmer + strobe → 7749.50 fix
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

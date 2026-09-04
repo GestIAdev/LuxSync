@@ -73,6 +73,8 @@ export interface LiquidStereoInput {
   snare_crack_flux?: number
   // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
   snare_body_factor?: number
+  // ⚒️ WAVE 7749.80: Raw (pre-EMA) hi-hat band delta — treble-ghost rescue
+  raw_hh_delta?: number
   // WAVE 8005.2: Photon block — para bypass frontal durante strobe FFT V3
   photon?: GodEarPhoton
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)

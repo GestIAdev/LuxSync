@@ -240,6 +240,14 @@ export interface GodEarRhythmicPercussion {
    *  0.1, real snares (body > EMA) get boosted up to 2.0. Used as a third
    *  multiplicative term in snareDrive = residual * crackFlux * bodyFactor. */
   snare_body_factor: number;
+  /** ⚒️ WAVE 7749.80: Raw (pre-EMA) hi-hat band delta — frame-to-frame transient
+   *  in the 5-15kHz band. Positive = onset (energy rising), negative = decay.
+   *  This is the "treble ghost" signal: EDM snares (Tiesto) that lack body/crack
+   *  energy still produce a sharp transient in the 5-15kHz reverb tail. When the
+   *  crack band (2-5kHz) is dead but raw_hh_delta spikes, a synthetic snare has
+   *  fired. Used by LiquidEngineBase as a treble-ghost rescue path in the
+   *  snareDrive calculation. */
+  raw_hh_delta: number;
 }
 
 export interface GodEarSpectrum {
@@ -1975,6 +1983,8 @@ class RhythmicPercussionTracker {
   // WAVE 7749.7b: Per-band raw tracking — crack and body deltas independently
   private _prevSnareCrackRaw = 0;
   private _prevSnareBodyRaw = 0;
+  // ⚒️ WAVE 7749.80: Raw (pre-EMA) hi-hat band tracking — for treble-ghost delta
+  private _prevHhRaw = 0;
   // ⚒️ WAVE 7749.76: Crack-band spectral flux — localized to 2-5kHz bins.
   // Same algorithm as computeSpectralFlux but only over crack bins, so hi-hats
   // at 10kHz and breakdown section changes don't inflate the flux.
@@ -2076,6 +2086,10 @@ class RhythmicPercussionTracker {
     const snareBody = this.extractSubBandRaw(power, this.snareBodyLoBin, this.snareBodyHiBin);
     const snareCrack = this.extractSubBandRaw(power, this.snareCrackLoBin, this.snareCrackHiBin);
     const hhRaw = this.extractSubBand(power, this.hhLoBin, this.hhHiBin);
+    // ⚒️ WAVE 7749.80: UNCLAMPED hh for treble-ghost delta — same rationale as
+    // body/crack: the clamped version saturates at high HF energy, zeroing the
+    // delta. We need the raw transient to detect synthetic snare reverb tails.
+    const hhRawUnclamped = this.extractSubBandRaw(power, this.hhLoBin, this.hhHiBin);
 
     // ⚒️ WAVE 7749.76: Crack-band spectral flux — half-wave rectified, whitened,
     // normalized. Same algorithm as the global computeSpectralFlux but restricted
@@ -2180,6 +2194,11 @@ class RhythmicPercussionTracker {
     const rawSnareDelta = crackDelta;
     this._prevSnareCrackRaw = snareCrack;
     this._prevSnareBodyRaw = snareBody;
+    // ⚒️ WAVE 7749.80: Treble-ghost delta — raw 5-15kHz transient for EDM snare
+    // rescue. Half-wave rectified (only rising edges = onsets). When the crack
+    // band is dead but this spikes, a synthetic snare reverb tail has fired.
+    const rawHhDelta = Math.max(0, hhRawUnclamped - this._prevHhRaw);
+    this._prevHhRaw = hhRawUnclamped;
     // Keep _prevSnareEnergyRaw for backward compat (unused now but reset() clears it)
     this._prevSnareEnergyRaw = snareEnergyUngated;
 
@@ -2252,6 +2271,8 @@ class RhythmicPercussionTracker {
       snare_crack_flux: this._lastCrackFlux,
       // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
       snare_body_factor: bodyFactor,
+      // ⚒️ WAVE 7749.80: Treble-ghost delta — raw 5-15kHz transient for EDM rescue
+      raw_hh_delta: rawHhDelta,
     };
   }
 
@@ -2264,6 +2285,8 @@ class RhythmicPercussionTracker {
     this._prevSnareEnergyRaw = 0;
     this._prevSnareCrackRaw = 0;
     this._prevSnareBodyRaw = 0;
+    // ⚒️ WAVE 7749.80: reset treble-ghost delta state
+    this._prevHhRaw = 0;
     this._elapsedMs = 0;
     this._lastSnareHitMs = 0;
     this._lastHHHitMs = 0;

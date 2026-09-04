@@ -273,6 +273,11 @@ export abstract class LiquidEngineBase {
   // ⚒️ WAVE 7749.78: SnareEnergyFactor — strict coincidence gate as soft multiplier
   private _diagSnareEnergyFactor: number = 1.0
   private _diagSnareEnergy: number = 0
+  // ⚒️ WAVE 7749.80: Macro-awareness diagnostics
+  private _diagDynamicMomoTh: number = 0.010
+  private _diagSpectralDensity: number = 0
+  private _diagRawHhDelta: number = 0
+  private _diagTrebleGhost: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
@@ -926,8 +931,80 @@ export abstract class LiquidEngineBase {
         //   FP clean:    SnareE ≈ 0.01 → sEF = 0.05 (aplastado, no veto)
         const crackFlux = input.snare_crack_flux ?? spectralFlux
         const bodyFactor = input.snare_body_factor ?? 1.0
-        const snareEnergyFactor = Math.max(0.05, Math.min(1.0, snareEnergy * 2.0))
-        const snareDrive = residual * crackFlux * bodyFactor * snareEnergyFactor
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚒️ WAVE 7749.80: MACRO-AWARENESS — El Umbral Respira con la Canción
+        // ═══════════════════════════════════════════════════════════════════
+        // The fixed momoTh (0.04 in techno profile) was a compromise that
+        // over-triggered on dense tracks (Brejcha) and under-triggered on
+        // clean EDM (Tiesto). Now the threshold breathes with the spectral
+        // density of the track, computed from real GodEarFFT variables that
+        // arrive every frame via LiquidStereoInput.
+        //
+        //   spectralDensity = 0.4×harshness + 0.3×flatness + 0.3×hh_energy
+        //   dynamicMomoTh   = 0.010 + 0.020 × spectralDensity
+        //   sectionBonus    = ×1.2 if drop/chorus (errors more visible)
+        //
+        // Measured behavior (from simulation):
+        //   Tiesto (clean EDM):  density ~0.27 → dynTh ~0.0169 (contracts)
+        //   Brejcha (dense):     density ~0.46 → dynTh ~0.0216 (expands)
+        //   Minimal (medium):    density ~0.39 → dynTh ~0.0197 (neutral)
+        const hhEnergy = input.hh_energy ?? 0
+        const harsh = input.harshness ?? 0.45
+        const flat = input.flatness ?? 0.35
+        const spectralDensity = Math.max(0, Math.min(1,
+          0.4 * harsh + 0.3 * flat + 0.3 * hhEnergy))
+        let dynamicMomoTh = 0.010 + (0.020 * spectralDensity)
+        const sectionType = input.sectionType ?? 'verse'
+        if (sectionType === 'drop' || sectionType === 'chorus') {
+          dynamicMomoTh *= 1.2
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚒️ WAVE 7749.80: SMART sEF — Treble Bypass Natural
+        // ═══════════════════════════════════════════════════════════════════
+        // When the track has strong treble presence (hh_energy high), the snare
+        // may not have body resonance (SnareE=0) but still be a real synthetic
+        // snare. The original sEF floor of 0.05 kills these. We relax the floor
+        // proportionally to treble presence, up to 0.40 when hh_energy is maxed.
+        //   Normal track:  treblePresence=0.0 → relaxedMin=0.05 (unchanged)
+        //   Tiesto:        treblePresence=0.5 → relaxedMin=0.225 (rescued)
+        //   Brejcha:       treblePresence=0.3 → relaxedMin=0.155 (mild lift)
+        const treblePresence = Math.max(0, Math.min(1, hhEnergy * 2.0))
+        const relaxedMinSef = 0.05 + (0.35 * treblePresence)
+        const smartSef = Math.max(relaxedMinSef, Math.min(1.0, snareEnergy * 2.0))
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚒️ WAVE 7749.80: TREBLE-GHOST INJECTION — EDM Snare Rescue
+        // ═══════════════════════════════════════════════════════════════════
+        // In EDM tracks like Tiesto, the snare is synthetic: no body resonance
+        // (bFct ≈ 0.1), no crack-band transient (cFx ≈ 0.04), and the NLMS
+        // residual is zero (k converges to match the bass→crack coupling).
+        // The Drive equation:  Drive = Res × cFx × bFct × sEF  →  0 × 0.04 × 0.1 × 0.2 = 0
+        //
+        // But the snare's reverb tail lives in 5-15kHz (the hh band). When a
+        // synthetic snare fires, raw_hh_delta spikes sharply even though the
+        // crack band is dead. We inject this treble-ghost as a parallel drive
+        // path that bypasses the NLMS and crack-band entirely:
+        //
+        //   trebleGhost = raw_hh_delta × smartSef × (1 - spectralDensity)
+        //
+        // The (1 - spectralDensity) factor ensures the ghost only contributes
+        // in CLEAN tracks (Tiesto: density 0.27 → ghost weight 0.73). In dense
+        // tracks (Brejcha: density 0.46 → ghost weight 0.54) the ghost is
+        // attenuated because the crack band already carries the signal and
+        // hi-hats would contaminate the ghost path.
+        //
+        // The final Drive is the max of the crack path and the ghost path:
+        //   snareDrive = max(crackDrive, trebleGhost)
+        //
+        // This preserves the original behavior for acoustic snares (crack path
+        // dominates) while rescuing synthetic snares (ghost path dominates).
+        const rawHhDelta = input.raw_hh_delta ?? 0
+        const crackDrive = residual * crackFlux * bodyFactor * smartSef
+        const ghostWeight = 1.0 - spectralDensity
+        const trebleGhost = rawHhDelta * smartSef * ghostWeight
+        const snareDrive = Math.max(crackDrive, trebleGhost)
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
         // snareDrive is per-frame and raw. The MACD does its own smoothing;
@@ -939,7 +1016,8 @@ export abstract class LiquidEngineBase {
         // ── CRUCE TOPOLÓGICO (MACD, intacto) ────────────────────────────────
         // momentum can only cross θ upward once per genuine energy rise; decay
         // tails cross downward. Anti-retrigger is topology, not a cooldown.
-        const isCrossover = momentum > momoTh && this._snarePrevMomentum <= momoTh
+        // ⚒️ WAVE 7749.80: momoTh → dynamicMomoTh (breathes with spectral density)
+        const isCrossover = momentum > dynamicMomoTh && this._snarePrevMomentum <= dynamicMomoTh
 
         // Noise floor on the decorrelated+fluxed drive (not on raw energy).
         const snareFloor = p.snareMomentumFloor ?? 0
@@ -949,8 +1027,13 @@ export abstract class LiquidEngineBase {
         this._diagSnareResidual = residual
         this._diagCrackFlux = crackFlux
         this._diagBodyFactor = bodyFactor
-        this._diagSnareEnergyFactor = snareEnergyFactor
+        this._diagSnareEnergyFactor = smartSef
         this._diagSnareDrive = snareDrive
+        // ⚒️ WAVE 7749.80: macro-awareness diagnostics
+        this._diagDynamicMomoTh = dynamicMomoTh
+        this._diagSpectralDensity = spectralDensity
+        this._diagRawHhDelta = rawHhDelta
+        this._diagTrebleGhost = trebleGhost
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a
@@ -1367,6 +1450,9 @@ export abstract class LiquidEngineBase {
         `bFct:${this._diagBodyFactor.toFixed(3)} ` +
         `sEF:${this._diagSnareEnergyFactor.toFixed(3)} ` +
         `Drive:${this._diagSnareDrive.toFixed(3)} ` +
+        `dynTh:${this._diagDynamicMomoTh.toFixed(3)} ` +
+        `hhDlt:${this._diagRawHhDelta.toFixed(3)} ` +
+        `ghst:${this._diagTrebleGhost.toFixed(3)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +
         (this._diagSnareOnset ? ' [ONSET]' : '') +

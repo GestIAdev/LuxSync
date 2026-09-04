@@ -141,6 +141,8 @@ export interface SeleneLuxAudioMetrics {
   snare_crack_flux?: number;
   // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
   snare_body_factor?: number;
+  // ⚒️ WAVE 7749.80: Raw (pre-EMA) hi-hat band delta — treble-ghost rescue
+  raw_hh_delta?: number;
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number;
 }
@@ -694,6 +696,8 @@ export class SeleneLux {
         snare_crack_flux: audioMetrics.snare_crack_flux,
         // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
         snare_body_factor: audioMetrics.snare_body_factor,
+        // ⚒️ WAVE 7749.80: Treble-ghost delta for EDM snare rescue
+        raw_hh_delta: audioMetrics.raw_hh_delta,
         // WAVE 8005.2: Photon block for front channel strobe bypass
         photon: audioMetrics.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
@@ -1425,6 +1429,8 @@ export class SeleneLux {
       snare_crack_flux: clamp01(src.snare_crack_flux, 0),
       // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.1, 2.0] (not [0,1])
       snare_body_factor: Math.max(0.1, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
+      // ⚒️ WAVE 7749.80: Treble-ghost delta — half-wave rectified (>=0), NOT clamped to [0,1]
+      raw_hh_delta: Math.max(0, safeNumber(src.raw_hh_delta, 0)),
       photon: src.photon,
     }
   }

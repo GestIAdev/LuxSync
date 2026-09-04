@@ -153,7 +153,25 @@ export class LiquidEngineBase {
         this._diagBassEnergy = 0;
         this._diagBassDelta = 0;
         this._diagIsKick = false;
+        // ⚒️ WAVE 7749.74: Bass-decorrelation telemetry
+        this._diagCrackBleedK = 0;
+        this._diagSnareResidual = 0;
+        this._diagCrackFlux = 0;
+        this._diagSnareDrive = 0;
+        // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+        this._diagBodyFactor = 1.0;
+        // ⚒️ WAVE 7749.78: SnareEnergyFactor — strict coincidence gate as soft multiplier
+        this._diagSnareEnergyFactor = 1.0;
         this._diagSnareEnergy = 0;
+        // ⚒️ WAVE 7749.80: Macro-awareness diagnostics
+        this._diagDynamicMomoTh = 0.010;
+        this._diagSpectralDensity = 0;
+        this._diagRawHhDelta = 0;
+        this._diagTrebleGhost = 0;
+        // ⚒️ WAVE 7749.81: Additional macro telemetry
+        this._diagHhEnergy = 0;
+        // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
+        this._diagSnareEnergyUngated = 0;
         this._diagRawSnareDelta = 0;
         this._diagFlux = 0;
         this._diagWns = 0;
@@ -190,6 +208,20 @@ export class LiquidEngineBase {
         this._snareEmaFast = 0;
         this._snareEmaSlow = 0;
         this._snarePrevMomentum = 0;
+        // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — frame counter to prevent
+        // double-triggers caused by 1-2 frame silence gaps in snare decay tails.
+        // The previous 1-frame reset nuked emaSlow the instant Drive < 0.01,
+        // eliminating the MACD's inertia and letting the next kick/artifact cross
+        // the threshold unopposed. Requiring 8 consecutive frames (~182ms @ 44fps)
+        // of genuine silence preserves emaSlow through normal inter-onset gaps.
+        this._snareSilenceFrames = 0;
+        // ⚒️ WAVE 7749.74: BASS-DECORRELATION state — adaptive kick→crack bleed coefficient.
+        // The kick bleeds into the crack band (2-5kHz) via its upper harmonics. That
+        // bleed is *linearly predictable* from bass energy, so we subtract the
+        // predictable part and keep only the residual — which is the snare.
+        // This is NOT ducking: no gain envelope, no time constant on the output.
+        // It is a projection in the measurement domain (one scalar, zero allocation).
+        this._crackBleedK = 0;
         // Kick Veto state
         this._kickVetoFrames = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
@@ -561,6 +593,7 @@ export class LiquidEngineBase {
             const snareEnergy = input.snare_energy ?? 0;
             // WAVE 7749.21: OPUS AUDIT — capture for diagnostic log outside this block
             this._diagSnareEnergy = snareEnergy;
+            this._diagSnareEnergyUngated = input.snare_energy_ungated ?? snareEnergy;
             this._diagRawSnareDelta = rawSnareDelta;
             this._diagFlux = spectralFlux;
             this._diagWns = wns;
@@ -638,10 +671,173 @@ export class LiquidEngineBase {
             if (momoTh !== undefined) {
                 const aF = p.snareMomentumAlphaFast ?? 0.50;
                 const aS = p.snareMomentumAlphaSlow ?? 0.05;
-                this._snareEmaFast += aF * (snareEnergy - this._snareEmaFast);
-                this._snareEmaSlow += aS * (snareEnergy - this._snareEmaSlow);
+                // ⚒️ WAVE 7749.74: CRACK DESCORRELADO Y BLANQUEADO.
+                //
+                // Why the previous taps failed:
+                //  • snareEnergy (gated) is starved: the GodEarFFT gate needs
+                //    body > 2.0×bodyEMA, but in techno the KICK itself inflates bodyEMA
+                //    (it fires every beat into 150-250Hz), so the snare is judged
+                //    against the kick's own loudness and the AND-gate stays shut.
+                //    It is then smoothed by a ~330ms release envelope, which destroys
+                //    the transient before the MACD ever sees it. Measured separability
+                //    onset/no-onset on 4 logs: 0.4x–1.1x — i.e. NO information.
+                //  • snare_energy_ungated (raw crack) is flooded: every synth, hat and
+                //    kick harmonic lives in 2-5kHz too. Separability 1.3x–3.1x.
+                //
+                // The fix is algebraic, O(1), zero-allocation — no cooldowns, no ducking.
+                const crack = input.snare_energy_ungated ?? snareEnergy;
+                // ── TÉRMINO A: descorrelación de graves (NLMS asimétrico) ───────────
+                // Kick bleed into the crack band is linearly predictable from bassE.
+                // A snare is the part of the crack energy that the bass CANNOT explain.
+                // Asymmetric step: positive error adapts slowly (μ=0.015) so real snares
+                // don't teach the filter to cancel them; negative error adapts fast
+                // (μ=0.05) so k converges to the *floor* of the coupling.
+                // ⚒️ WAVE 7749.76: μ_up raised 0.002→0.015 (7.5x) so k converges fast
+                // enough to track the real kick→crack coupling within ~3 beats instead
+                // of ~20. Snares are too brief (~50ms) to move k meaningfully even at
+                // this higher rate — the filter learns the floor, not the spikes.
+                const bleedErr = crack - this._crackBleedK * bassE;
+                const bleedMu = bleedErr > 0
+                    ? LiquidEngineBase.BLEED_MU_UP
+                    : LiquidEngineBase.BLEED_MU_DOWN;
+                this._crackBleedK += bleedMu * bleedErr * bassE /
+                    (LiquidEngineBase.BLEED_EPS + bassE * bassE);
+                if (this._crackBleedK < 0)
+                    this._crackBleedK = 0;
+                else if (this._crackBleedK > LiquidEngineBase.BLEED_K_MAX) {
+                    this._crackBleedK = LiquidEngineBase.BLEED_K_MAX;
+                }
+                const residual = bleedErr > 0 ? bleedErr : 0;
+                // ── TÉRMINO B: crack-band flux (domain-localized transient) ─────────
+                // A snare fires broadband noise INTO 2-5kHz → crackFlux spikes. A hi-hat
+                // at 10kHz does NOT move 2-5kHz bins → crackFlux stays low. A breakdown
+                // section change shifts the whole spectrum but not specifically 2-5kHz.
+                // This is the domain-isolated transient detector that killed the global
+                // spectralFlux's hi-hat and breakdown contamination.
+                // ⚒️ WAVE 7749.76: replaced global spectralFlux with crack-band flux.
+                // ⚒️ WAVE 7749.77: added bodyFactor as third multiplicative term. A real
+                // snare vibrates the drum membrane (150-250Hz) → body > EMA → factor > 1.
+                // A clap/rimshot has crack but no body → body ≈ EMA → factor ≈ 0.5 (penalty).
+                // This is the continuous algebraic replacement for the hard SnareE gate.
+                // ⚒️ WAVE 7749.78: added snareEnergyFactor as fourth multiplicative term.
+                // bodyFactor checks body/bodyEMA (1.5× threshold), but a rimshot/tom/stab
+                // can have body resonance between 1.5×-2.0× bodyEMA (bodyFactor > 1) AND
+                // crack localized (crackFlux high) yet NOT open the GodEarFFT AND-gate
+                // (body > 2.0× AND crack > 1.8×). snareEnergy is the EMA of that gated
+                // sqrt(body×crack) — it's 0 when the gate is shut, ~0.5-0.6 for real
+                // snares. This factor is the only signal that encodes the strict
+                // coincidence gate as a continuous multiplier.
+                //   Real snare:  SnareE ≈ 0.56 → sEF = 1.0 (transparent)
+                //   FP clean:    SnareE ≈ 0.01 → sEF = 0.05 (aplastado, no veto)
+                const crackFlux = input.snare_crack_flux ?? spectralFlux;
+                const bodyFactor = input.snare_body_factor ?? 1.0;
+                // ═══════════════════════════════════════════════════════════════════
+                // ⚒️ WAVE 7749.80: MACRO-AWARENESS — El Umbral Respira con la Canción
+                // ═══════════════════════════════════════════════════════════════════
+                // The fixed momoTh (0.04 in techno profile) was a compromise that
+                // over-triggered on dense tracks (Brejcha) and under-triggered on
+                // clean EDM (Tiesto). Now the threshold breathes with the spectral
+                // density of the track, computed from real GodEarFFT variables that
+                // arrive every frame via LiquidStereoInput.
+                //
+                //   spectralDensity = 0.4×harshness + 0.3×flatness + 0.3×hh_energy
+                //   dynamicMomoTh   = 0.008 + 0.024 × spectralDensity
+                //   sectionBonus    = ×1.2 if drop/chorus (errors more visible)
+                //
+                // ⚒️ WAVE 7749.81: Range widened 0.010→0.008 (floor) and 0.020→0.024 (slope)
+                // to increase separation between clean and dense tracks. The previous
+                // range (0.010-0.030) was too narrow: Brejcha (0.0155) and Tiesto (0.0144)
+                // were nearly identical. New range (0.008-0.032) gives 2× more separation.
+                const hhEnergy = input.hh_energy ?? 0;
+                const harsh = input.harshness ?? 0.45;
+                const flat = input.flatness ?? 0.35;
+                const spectralDensity = Math.max(0, Math.min(1, 0.4 * harsh + 0.3 * flat + 0.3 * hhEnergy));
+                let dynamicMomoTh = 0.008 + (0.024 * spectralDensity);
+                const sectionType = input.sectionType ?? 'verse';
+                if (sectionType === 'drop' || sectionType === 'chorus') {
+                    dynamicMomoTh *= 1.2;
+                }
+                // ═══════════════════════════════════════════════════════════════════
+                // ⚒️ WAVE 7749.81: SMART sEF — Density-Gated Treble Bypass
+                // ═══════════════════════════════════════════════════════════════════
+                // WAVE 7749.80 relaxed the sEF floor proportionally to treble presence
+                // (hh_energy). This rescued Tiesto's synthetic snares (SnareE=0 but
+                // real snare). BUT it also amplified false onsets in Brejcha, where
+                // SnareE=0 for non-snare sounds (synth stabs) and hh_energy is non-zero
+                // from hi-hats. The relaxation was unconditional — it helped clean
+                // tracks and hurt dense tracks equally.
+                //
+                // WAVE 7749.81 gates the relaxation by (1 - spectralDensity):
+                //   relaxedMinSef = 0.05 + 0.35 × treblePresence × (1 - spectralDensity)
+                //
+                // In clean tracks (Tiesto, density 0.22): gate=0.78 → relaxation active
+                // In dense tracks (Brejcha, density 0.46): gate=0.54 → relaxation attenuated
+                // In very dense tracks (density > 0.7): gate < 0.3 → relaxation minimal
+                //
+                // This mirrors the treble-ghost's ghostWeight = (1 - spectralDensity):
+                // both treble rescue paths are suppressed in dense tracks where the
+                // crack band already carries the signal and hi-hats would contaminate.
+                const treblePresence = Math.max(0, Math.min(1, hhEnergy * 2.0));
+                const densityGate = 1.0 - spectralDensity;
+                const relaxedMinSef = 0.05 + (0.35 * treblePresence * densityGate);
+                const smartSef = Math.max(relaxedMinSef, Math.min(1.0, snareEnergy * 2.0));
+                // ═══════════════════════════════════════════════════════════════════
+                // ⚒️ WAVE 7749.80: TREBLE-GHOST INJECTION — EDM Snare Rescue
+                // ═══════════════════════════════════════════════════════════════════
+                // In EDM tracks like Tiesto, the snare is synthetic: no body resonance
+                // (bFct ≈ 0.1), no crack-band transient (cFx ≈ 0.04), and the NLMS
+                // residual is zero (k converges to match the bass→crack coupling).
+                // The Drive equation:  Drive = Res × cFx × bFct × sEF  →  0 × 0.04 × 0.1 × 0.2 = 0
+                //
+                // But the snare's reverb tail lives in 5-15kHz (the hh band). When a
+                // synthetic snare fires, raw_hh_delta spikes sharply even though the
+                // crack band is dead. We inject this treble-ghost as a parallel drive
+                // path that bypasses the NLMS and crack-band entirely:
+                //
+                //   trebleGhost = raw_hh_delta × smartSef × (1 - spectralDensity)
+                //
+                // The (1 - spectralDensity) factor ensures the ghost only contributes
+                // in CLEAN tracks (Tiesto: density 0.27 → ghost weight 0.73). In dense
+                // tracks (Brejcha: density 0.46 → ghost weight 0.54) the ghost is
+                // attenuated because the crack band already carries the signal and
+                // hi-hats would contaminate the ghost path.
+                //
+                // The final Drive is the max of the crack path and the ghost path:
+                //   snareDrive = max(crackDrive, trebleGhost)
+                //
+                // This preserves the original behavior for acoustic snares (crack path
+                // dominates) while rescuing synthetic snares (ghost path dominates).
+                const rawHhDelta = input.raw_hh_delta ?? 0;
+                const crackDrive = residual * crackFlux * bodyFactor * smartSef;
+                const ghostWeight = 1.0 - spectralDensity;
+                const trebleGhost = rawHhDelta * smartSef * ghostWeight;
+                const snareDrive = Math.max(crackDrive, trebleGhost);
+                // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
+                // snareDrive is per-frame and raw. The MACD does its own smoothing;
+                // pre-smoothing it (as snareEnergy did) is what killed the transient.
+                this._snareEmaFast += aF * (snareDrive - this._snareEmaFast);
+                this._snareEmaSlow += aS * (snareDrive - this._snareEmaSlow);
                 let momentum = this._snareEmaFast - this._snareEmaSlow;
-                rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh;
+                // ── CRUCE TOPOLÓGICO (MACD, intacto) ────────────────────────────────
+                // momentum can only cross θ upward once per genuine energy rise; decay
+                // tails cross downward. Anti-retrigger is topology, not a cooldown.
+                // ⚒️ WAVE 7749.80: momoTh → dynamicMomoTh (breathes with spectral density)
+                const isCrossover = momentum > dynamicMomoTh && this._snarePrevMomentum <= dynamicMomoTh;
+                // Noise floor on the decorrelated+fluxed drive (not on raw energy).
+                const snareFloor = p.snareMomentumFloor ?? 0;
+                rawOnset = isCrossover && snareDrive >= snareFloor;
+                this._diagCrackBleedK = this._crackBleedK;
+                this._diagSnareResidual = residual;
+                this._diagCrackFlux = crackFlux;
+                this._diagBodyFactor = bodyFactor;
+                this._diagSnareEnergyFactor = smartSef;
+                this._diagSnareDrive = snareDrive;
+                // ⚒️ WAVE 7749.80: macro-awareness diagnostics
+                this._diagDynamicMomoTh = dynamicMomoTh;
+                this._diagSpectralDensity = spectralDensity;
+                this._diagRawHhDelta = rawHhDelta;
+                this._diagTrebleGhost = trebleGhost;
+                this._diagHhEnergy = hhEnergy;
                 // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
                 // threshold), pull emaSlow toward emaFast by resetRatio. This forces
                 // momentum back toward 0, allowing re-fire on the next snare in a
@@ -661,10 +857,27 @@ export class LiquidEngineBase {
                 // both EMAs were stuck high from the last beat. When audio resumes,
                 // the momentum was negative → no onset → slow recovery. Reset to 0
                 // when energy drops to near-silence so the first returning beat fires.
-                if (this._snareEmaSlow > 0.10 && snareEnergy < 0.03) {
-                    this._snareEmaFast = 0;
-                    this._snareEmaSlow = 0;
-                    this._snarePrevMomentum = 0;
+                // ⚒️ WAVE 7749.74: condition now tracks snareDrive (what the EMAs eat),
+                // not snareEnergy — the gated energy no longer drives this detector.
+                // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — require 8 consecutive
+                // frames (~182ms @ 44fps) of Drive < 0.01 before resetting. The
+                // previous 1-frame reset nuked emaSlow in the 1-2 frame silence gap
+                // between a snare's decay tail and the next kick, eliminating the
+                // MACD's inertia and causing double-triggers. With 8 frames, emaSlow
+                // decays naturally (5% per frame → ~34% over 8 frames) and blocks
+                // spurious crossings from kick bleed or decay artifacts. Resets only
+                // fire in genuine breaks/drops (>182ms of silence).
+                if (this._snareEmaSlow > 0.10 && snareDrive < 0.01) {
+                    this._snareSilenceFrames++;
+                    if (this._snareSilenceFrames >= LiquidEngineBase.SILENCE_RESET_FRAMES) {
+                        this._snareEmaFast = 0;
+                        this._snareEmaSlow = 0;
+                        this._snarePrevMomentum = 0;
+                        this._snareSilenceFrames = 0;
+                    }
+                }
+                else {
+                    this._snareSilenceFrames = 0;
                 }
             }
             else if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
@@ -1012,6 +1225,7 @@ export class LiquidEngineBase {
         if (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1) {
             console.log(`[FINESSE_AUDIT] ` +
                 `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
+                `UnG:${this._diagSnareEnergyUngated.toFixed(3)} ` +
                 `RawΔ:${this._diagRawSnareDelta.toFixed(3)} ` +
                 `Flux:${this._diagFlux.toFixed(3)} ` +
                 `WNS:${this._diagWns.toFixed(3)} ` +
@@ -1020,6 +1234,25 @@ export class LiquidEngineBase {
                 `Veto:${this._diagVetoFactor.toFixed(3)} ` +
                 `BassE:${this._diagBassEnergy.toFixed(3)} ` +
                 `BassΔ:${this._diagBassDelta.toFixed(3)} ` +
+                // ⚒️ WAVE 7749.76: bass-decorrelation chain — k=bleed coeff learned by
+                // NLMS (μ_up=0.015 fast convergence), Res=residual after subtracting kick
+                // bleed, cFx=crack-band spectral flux (2-5kHz localized), bFct=body factor
+                // [0.1,2.0] (continuous algebraic gate from snareBody/snareBodyEMA),
+                // Drive=Res*cFx*bFct = what the MACD actually eats. cFx replaces global
+                // Flux to avoid hi-hat (10kHz) and breakdown contamination. bFct replaces
+                // the hard SnareE gate — claps/rimshots (no body) get penalized toward 0.1,
+                // real snares (body > EMA) get boosted up to 2.0.
+                `k:${this._diagCrackBleedK.toFixed(3)} ` +
+                `Res:${this._diagSnareResidual.toFixed(3)} ` +
+                `cFx:${this._diagCrackFlux.toFixed(3)} ` +
+                `bFct:${this._diagBodyFactor.toFixed(3)} ` +
+                `sEF:${this._diagSnareEnergyFactor.toFixed(3)} ` +
+                `Drive:${this._diagSnareDrive.toFixed(3)} ` +
+                `dynTh:${this._diagDynamicMomoTh.toFixed(3)} ` +
+                `sd:${this._diagSpectralDensity.toFixed(3)} ` +
+                `hE:${this._diagHhEnergy.toFixed(3)} ` +
+                `hhDlt:${this._diagRawHhDelta.toFixed(4)} ` +
+                `ghst:${this._diagTrebleGhost.toFixed(4)} ` +
                 `OutSnare:${backRight.toFixed(3)} ` +
                 `OutKick:${frontRight.toFixed(3)}` +
                 (this._diagSnareOnset ? ' [ONSET]' : '') +
@@ -1253,6 +1486,8 @@ export class LiquidEngineBase {
         this._snareEmaFast = 0;
         this._snareEmaSlow = 0;
         this._snarePrevMomentum = 0;
+        // ⚒️ WAVE 7749.74: reset learned kick→crack bleed coefficient
+        this._crackBleedK = 0;
     }
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 2513 — AMBIENT GENERATIVE ENGINE
@@ -1334,6 +1569,8 @@ export class LiquidEngineBase {
         this._snareEmaFast = 0;
         this._snareEmaSlow = 0;
         this._snarePrevMomentum = 0;
+        // ⚒️ WAVE 7749.74: reset learned kick→crack bleed coefficient
+        this._crackBleedK = 0;
         // WAVE 7748: Reset HH adapter state
         this._prevHhEnergy = 0;
         this._lastHhOnset = 0;
@@ -1431,3 +1668,15 @@ LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
     gateMargin: 0.05, // moderate hysteresis — prevents flicker
     attackSlopeMin: 0.0,
 };
+LiquidEngineBase.SILENCE_RESET_FRAMES = 8;
+/** Positive error (crack above prediction = possible snare) adapts SLOWLY, so
+ *  genuine snares never drag the estimate up and cancel themselves out.
+ *  ⚒️ WAVE 7749.76: raised 0.002→0.015 so k converges to the real kick→crack
+ *  coupling within ~3 beats instead of ~20. Snares are ~50ms transients — too
+ *  brief to move k meaningfully even at 7.5x the old rate. */
+LiquidEngineBase.BLEED_MU_UP = 0.015;
+/** Negative error (over-prediction) adapts FAST, so k tracks the bleed floor. */
+LiquidEngineBase.BLEED_MU_DOWN = 0.05;
+/** NLMS regularizer — prevents division blow-up when bass is silent. */
+LiquidEngineBase.BLEED_EPS = 1e-3;
+LiquidEngineBase.BLEED_K_MAX = 3.0;

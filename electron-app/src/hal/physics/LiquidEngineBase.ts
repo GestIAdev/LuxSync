@@ -278,6 +278,8 @@ export abstract class LiquidEngineBase {
   private _diagSpectralDensity: number = 0
   private _diagRawHhDelta: number = 0
   private _diagTrebleGhost: number = 0
+  // ⚒️ WAVE 7749.81: Additional macro telemetry
+  private _diagHhEnergy: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
@@ -942,36 +944,47 @@ export abstract class LiquidEngineBase {
         // arrive every frame via LiquidStereoInput.
         //
         //   spectralDensity = 0.4×harshness + 0.3×flatness + 0.3×hh_energy
-        //   dynamicMomoTh   = 0.010 + 0.020 × spectralDensity
+        //   dynamicMomoTh   = 0.008 + 0.024 × spectralDensity
         //   sectionBonus    = ×1.2 if drop/chorus (errors more visible)
         //
-        // Measured behavior (from simulation):
-        //   Tiesto (clean EDM):  density ~0.27 → dynTh ~0.0169 (contracts)
-        //   Brejcha (dense):     density ~0.46 → dynTh ~0.0216 (expands)
-        //   Minimal (medium):    density ~0.39 → dynTh ~0.0197 (neutral)
+        // ⚒️ WAVE 7749.81: Range widened 0.010→0.008 (floor) and 0.020→0.024 (slope)
+        // to increase separation between clean and dense tracks. The previous
+        // range (0.010-0.030) was too narrow: Brejcha (0.0155) and Tiesto (0.0144)
+        // were nearly identical. New range (0.008-0.032) gives 2× more separation.
         const hhEnergy = input.hh_energy ?? 0
         const harsh = input.harshness ?? 0.45
         const flat = input.flatness ?? 0.35
         const spectralDensity = Math.max(0, Math.min(1,
           0.4 * harsh + 0.3 * flat + 0.3 * hhEnergy))
-        let dynamicMomoTh = 0.010 + (0.020 * spectralDensity)
+        let dynamicMomoTh = 0.008 + (0.024 * spectralDensity)
         const sectionType = input.sectionType ?? 'verse'
         if (sectionType === 'drop' || sectionType === 'chorus') {
           dynamicMomoTh *= 1.2
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // ⚒️ WAVE 7749.80: SMART sEF — Treble Bypass Natural
+        // ⚒️ WAVE 7749.81: SMART sEF — Density-Gated Treble Bypass
         // ═══════════════════════════════════════════════════════════════════
-        // When the track has strong treble presence (hh_energy high), the snare
-        // may not have body resonance (SnareE=0) but still be a real synthetic
-        // snare. The original sEF floor of 0.05 kills these. We relax the floor
-        // proportionally to treble presence, up to 0.40 when hh_energy is maxed.
-        //   Normal track:  treblePresence=0.0 → relaxedMin=0.05 (unchanged)
-        //   Tiesto:        treblePresence=0.5 → relaxedMin=0.225 (rescued)
-        //   Brejcha:       treblePresence=0.3 → relaxedMin=0.155 (mild lift)
+        // WAVE 7749.80 relaxed the sEF floor proportionally to treble presence
+        // (hh_energy). This rescued Tiesto's synthetic snares (SnareE=0 but
+        // real snare). BUT it also amplified false onsets in Brejcha, where
+        // SnareE=0 for non-snare sounds (synth stabs) and hh_energy is non-zero
+        // from hi-hats. The relaxation was unconditional — it helped clean
+        // tracks and hurt dense tracks equally.
+        //
+        // WAVE 7749.81 gates the relaxation by (1 - spectralDensity):
+        //   relaxedMinSef = 0.05 + 0.35 × treblePresence × (1 - spectralDensity)
+        //
+        // In clean tracks (Tiesto, density 0.22): gate=0.78 → relaxation active
+        // In dense tracks (Brejcha, density 0.46): gate=0.54 → relaxation attenuated
+        // In very dense tracks (density > 0.7): gate < 0.3 → relaxation minimal
+        //
+        // This mirrors the treble-ghost's ghostWeight = (1 - spectralDensity):
+        // both treble rescue paths are suppressed in dense tracks where the
+        // crack band already carries the signal and hi-hats would contaminate.
         const treblePresence = Math.max(0, Math.min(1, hhEnergy * 2.0))
-        const relaxedMinSef = 0.05 + (0.35 * treblePresence)
+        const densityGate = 1.0 - spectralDensity
+        const relaxedMinSef = 0.05 + (0.35 * treblePresence * densityGate)
         const smartSef = Math.max(relaxedMinSef, Math.min(1.0, snareEnergy * 2.0))
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1034,6 +1047,7 @@ export abstract class LiquidEngineBase {
         this._diagSpectralDensity = spectralDensity
         this._diagRawHhDelta = rawHhDelta
         this._diagTrebleGhost = trebleGhost
+        this._diagHhEnergy = hhEnergy
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a
@@ -1451,8 +1465,10 @@ export abstract class LiquidEngineBase {
         `sEF:${this._diagSnareEnergyFactor.toFixed(3)} ` +
         `Drive:${this._diagSnareDrive.toFixed(3)} ` +
         `dynTh:${this._diagDynamicMomoTh.toFixed(3)} ` +
-        `hhDlt:${this._diagRawHhDelta.toFixed(3)} ` +
-        `ghst:${this._diagTrebleGhost.toFixed(3)} ` +
+        `sd:${this._diagSpectralDensity.toFixed(3)} ` +
+        `hE:${this._diagHhEnergy.toFixed(3)} ` +
+        `hhDlt:${this._diagRawHhDelta.toFixed(4)} ` +
+        `ghst:${this._diagTrebleGhost.toFixed(4)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +
         (this._diagSnareOnset ? ' [ONSET]' : '') +

@@ -1,20 +1,24 @@
-WAVE 7749.89: Dynamic snare floor — breathe with fBL to rescue buildup snares
+WAVE 7749.90: Dead-Gate Rescue — use UnG to bypass asphyxiated sEF in Opus
 
-The static snareMomentumFloor (0.08, WAVE 7749.88) killed genuine snares in
-dense buildups where AGC compression crushes Drive to 0.01-0.03. calib8b
-showed Opus Prytdz lost ALL snares (fBL 0.06-0.085) and Techhouse lost the
-roll during the climb (fBL 0.045-0.064). The hi-hats we wanted to suppress
-live at fBL 0.026-0.046 — clean gap at 0.04.
+WAVE 7749.89's dynamic floor (fFloor) correctly dropped to 0.005 in Opus
+buildup, but Drive stayed at 0.001-0.005 because sEF was stuck at 0.050.
 
-The final floor now relaxes linearly with fBL above 0.04:
-  finalFloor = max(floorMin, floor - max(0, fBL-0.04)*4.0)
-    fBL=0.03 (Brejcha hats): floor=0.08 (strict, hats blocked)
-    fBL=0.05 (Techhouse):    floor=0.04 (relaxed, roll recovered)
-    fBL=0.085 (Opus peak):   floor=0.005 (max relaxation, snares recovered)
+Root cause: when GodEarFFT's crack-band gate is dead (gateHealth ≈ 0),
+snareEnergy = 0, so smartSef = relaxedMinSef. But relaxedMinSef depends on
+treblePresence = min(1, hhEnergy × 2.0), and hhEnergy is ALSO 0 when the
+gate is dead — the gate asphyxiates the entire treble chain. Result: both
+rescue paths are 0, sEF = 0.05, Drive = Res × cFx × bFct × 0.05 = dead.
 
-New profile param snareMomentumFloorMin (techno: 0.005). Added fFloor to
-FINESSE_AUDIT telemetry so the Arquitecto can watch the wall yield as Prydz
-rises.
+The paradox: UnG (ungated snare energy) is 0.4-0.7 in Opus — the raw treble
+energy IS there, the gate just kills it. The existing relaxation can't see
+it because it uses hhEnergy (post-gate) not UnG (pre-gate).
+
+Fix: add a parallel rescue path using UnG directly:
+  deadGateRescue = (1-gateHealth) × min(1, UnG × 1.5)
+  relaxedMinSef = 0.05 + max(existing, 0.30 × deadGateRescue)
+
+When gate is alive (Brejcha: gH=0.8+): rescue=0, no change.
+When gate is dead (Opus: gH=0, UnG=0.5): rescue=0.75 → sEF=0.275 → recovers.
 
 Generated with [Devin](https://devin.ai)
 

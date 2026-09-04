@@ -1074,7 +1074,23 @@ export abstract class LiquidEngineBase {
         // rescued via treble presence.
         this._snareEnergyEma += LiquidEngineBase.GATE_HEALTH_ALPHA * (snareEnergy - this._snareEnergyEma)
         const gateHealth = Math.min(1.0, this._snareEnergyEma / LiquidEngineBase.GATE_HEALTH_THRESHOLD)
-        const relaxedMinSef = 0.05 + (0.35 * treblePresence * densityGate * (1.0 - gateHealth))
+        // ⚒️ WAVE 7749.90: DEAD-GATE RESCUE — when GodEarFFT's crack-band gate is
+        // structurally dead (gateHealth ≈ 0), treblePresence (from hhEnergy) is
+        // often ALSO 0 because the gate asphyxiates the entire treble chain.
+        // Opus Prydz: SnareE=0, hhEnergy=0, but UnG=0.4-0.7 (the raw treble
+        // energy is there, the gate just kills it). The existing relaxation
+        // (treblePresence × densityGate × (1-gateHealth)) can't fire because
+        // treblePresence=0. We add a parallel rescue using UnG directly:
+        //   deadGateRescue = (1-gateHealth) × min(1, UnG × 1.5)
+        // When gate is alive (Brejcha: gateHealth=0.8+): rescue=0, no change.
+        // When gate is dead + treble present (Opus: gH=0, UnG=0.5): rescue=0.75
+        //   → relaxedMinSef = 0.05 + max(0, 0.30×0.75) = 0.275 → sEF recovers.
+        const ungatedSnare = input.snare_energy_ungated ?? snareEnergy
+        const deadGateRescue = (1.0 - gateHealth) * Math.min(1.0, ungatedSnare * 1.5)
+        const relaxedMinSef = 0.05 + Math.max(
+          0.35 * treblePresence * densityGate * (1.0 - gateHealth),
+          0.30 * deadGateRescue
+        )
         const smartSef = Math.max(relaxedMinSef, Math.min(1.0, snareEnergy * 2.0))
 
         // ═══════════════════════════════════════════════════════════════════

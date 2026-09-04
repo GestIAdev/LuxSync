@@ -295,6 +295,11 @@ export abstract class LiquidEngineBase {
   private _diagGhostRefractory: number = 0
   // ⚒️ WAVE 7749.89: Dynamic floor diagnostic
   private _diagFinalFloor: number = 0.08
+  // ⚒️ WAVE 7749.92: SMOOTHED FLOOR EMA — the raw floor (from fBL) jitters
+  // frame-to-frame because the ×4.0 slope amplifies small fBL fluctuations.
+  // This EMA smooths the final floor so it tracks buildup evolution (seconds)
+  // without flickering every frame. α=0.05 → tau ~20 frames ~450ms @ 44fps.
+  private _snareFloorEma: number = 0.08
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
@@ -1217,10 +1222,19 @@ export abstract class LiquidEngineBase {
         // At fBL=0.085 (Opus peak):      floor = 0.005 (max relaxation)
         const snareFloorBase = p.snareMomentumFloor ?? 0
         const snareFloorMin = p.snareMomentumFloorMin ?? snareFloorBase
-        const snareFloor = Math.max(
+        const rawFloor = Math.max(
           snareFloorMin,
           snareFloorBase - Math.max(0, this._fluxBaseline - 0.04) * 4.0
         )
+        // ⚒️ WAVE 7749.92: SMOOTHED FLOOR — EMA the raw floor so it glides
+        // instead of jittering. α=0.05 → tau ~450ms, tracks buildups (seconds)
+        // but ignores frame-to-frame fBL noise. On silence reset, snap to base.
+        if (this._snareEmaSlow < 0.01 && rawFloor < 0.02) {
+          this._snareFloorEma = snareFloorBase  // snap back up on silence
+        } else {
+          this._snareFloorEma = this._snareFloorEma * 0.95 + rawFloor * 0.05
+        }
+        const snareFloor = this._snareFloorEma
         this._diagFinalFloor = snareFloor
         // ⚒️ WAVE 7749.82: ANTI-DOUBLE REFRACTORY — suppress re-trigger for
         // SNARE_REFRACTORY_FRAMES after the last onset. The MACD crossover

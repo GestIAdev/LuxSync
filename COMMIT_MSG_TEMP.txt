@@ -1,10 +1,12 @@
-WAVE 7749.91: Ghost refractory 10->7 frames — recover 16th roll snares
+WAVE 7749.92: Smoothed dynamic floor EMA — glide instead of jitter
 
-calib10 Opus showed 59/73 misses blocked by gRefr=10 (227ms). At 120 BPM,
-16th note rolls fire every ~5.5 frames (125ms), so 10 frames blocks every
-other roll snare. 7 frames (159ms) still kills reverb tails (200-400ms)
-while letting 16th rolls breathe. Spacing analysis showed 58/110 onset
-spacings were < 10 frames — 7 recovers most without double-triggers.
+The raw dynamic floor (from fBL × 4.0 slope) jittered frame-to-frame because
+small fBL fluctuations get amplified. Added a dedicated EMA on the floor
+output: α=0.05 → tau ~450ms @ 44fps. This tracks buildup evolution (which
+develops over 4-8 seconds) but ignores frame-to-frame noise.
+
+On silence reset (emaSlow < 0.01 AND rawFloor < 0.02), the EMA snaps back
+to the base floor so the detector re-arms quickly after breaks/drops.
 
 Generated with [Devin](https://devin.ai)
 

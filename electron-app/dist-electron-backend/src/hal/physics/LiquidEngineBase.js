@@ -208,6 +208,13 @@ export class LiquidEngineBase {
         this._snareEmaFast = 0;
         this._snareEmaSlow = 0;
         this._snarePrevMomentum = 0;
+        // ⚒️ WAVE 7749.82: ANTI-DOUBLE REFRACTORY — hard frame counter that suppresses
+        // re-triggering for N frames after a rawOnset. The MACD topological anti-
+        // retrigger (crossover detection) fails when the hybrid reset pulls emaSlow
+        // toward emaFast, causing momentum to oscillate around dynTh and re-cross
+        // within 1-3 frames. Real snares are >5 frames apart at all genres; a 4-frame
+        // refractory (~91ms @ 44fps) kills doubles without affecting genuine snares.
+        this._snareRefractoryFrames = 0;
         // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — frame counter to prevent
         // double-triggers caused by 1-2 frame silence gaps in snare decay tails.
         // The previous 1-frame reset nuked emaSlow the instant Drive < 0.01,
@@ -740,19 +747,26 @@ export class LiquidEngineBase {
                 // density of the track, computed from real GodEarFFT variables that
                 // arrive every frame via LiquidStereoInput.
                 //
-                //   spectralDensity = 0.4×harshness + 0.3×flatness + 0.3×hh_energy
-                //   dynamicMomoTh   = 0.008 + 0.024 × spectralDensity
+                //   spectralDensity = 0.25×harshness + 0.15×flatness + 0.60×hh_energy
+                //   dynamicMomoTh   = 0.008 + 0.030 × spectralDensity
                 //   sectionBonus    = ×1.2 if drop/chorus (errors more visible)
                 //
-                // ⚒️ WAVE 7749.81: Range widened 0.010→0.008 (floor) and 0.020→0.024 (slope)
-                // to increase separation between clean and dense tracks. The previous
-                // range (0.010-0.030) was too narrow: Brejcha (0.0155) and Tiesto (0.0144)
-                // were nearly identical. New range (0.008-0.032) gives 2× more separation.
+                // ⚒️ WAVE 7749.82: REBALANCED sd formula. The original weights
+                // (0.4*harsh + 0.3*flat + 0.3*hhE) gave hh_energy only 30% weight,
+                // but real telemetry shows hh_energy is the ONLY discriminator:
+                //   Brejcha hE=0.401 (dense hi-hats) vs Tiesto hE=0.241 (clean)
+                //   But harsh+flat were INVERSELY correlated (Brejcha lower than
+                //   Tiesto), canceling hh_energy's contribution. Result: sd spread
+                //   was only 0.021 (0.214 vs 0.193) → dynTh difference 0.001.
+                // New weights (0.25/0.15/0.60) give hh_energy 60% weight, making
+                // sd track the real density discriminator. Slope increased 0.024→0.030
+                // for further separation. Expected: Brejcha sd~0.31, Tiesto sd~0.20
+                // → dynTh 0.017 vs 0.014 (meaningful 0.003 gap).
                 const hhEnergy = input.hh_energy ?? 0;
                 const harsh = input.harshness ?? 0.45;
                 const flat = input.flatness ?? 0.35;
-                const spectralDensity = Math.max(0, Math.min(1, 0.4 * harsh + 0.3 * flat + 0.3 * hhEnergy));
-                let dynamicMomoTh = 0.008 + (0.024 * spectralDensity);
+                const spectralDensity = Math.max(0, Math.min(1, 0.25 * harsh + 0.15 * flat + 0.60 * hhEnergy));
+                let dynamicMomoTh = 0.008 + (0.030 * spectralDensity);
                 const sectionType = input.sectionType ?? 'verse';
                 if (sectionType === 'drop' || sectionType === 'chorus') {
                     dynamicMomoTh *= 1.2;
@@ -825,7 +839,20 @@ export class LiquidEngineBase {
                 const isCrossover = momentum > dynamicMomoTh && this._snarePrevMomentum <= dynamicMomoTh;
                 // Noise floor on the decorrelated+fluxed drive (not on raw energy).
                 const snareFloor = p.snareMomentumFloor ?? 0;
-                rawOnset = isCrossover && snareDrive >= snareFloor;
+                // ⚒️ WAVE 7749.82: ANTI-DOUBLE REFRACTORY — suppress re-trigger for
+                // SNARE_REFRACTORY_FRAMES after the last onset. The MACD crossover
+                // can re-fire in 1-3 frames when the hybrid reset oscillates momentum
+                // around dynTh. This hard gate kills those doubles.
+                if (this._snareRefractoryFrames > 0) {
+                    this._snareRefractoryFrames--;
+                    rawOnset = false;
+                }
+                else {
+                    rawOnset = isCrossover && snareDrive >= snareFloor;
+                    if (rawOnset) {
+                        this._snareRefractoryFrames = LiquidEngineBase.SNARE_REFRACTORY_FRAMES;
+                    }
+                }
                 this._diagCrackBleedK = this._crackBleedK;
                 this._diagSnareResidual = residual;
                 this._diagCrackFlux = crackFlux;
@@ -1668,6 +1695,7 @@ LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
     gateMargin: 0.05, // moderate hysteresis — prevents flicker
     attackSlopeMin: 0.0,
 };
+LiquidEngineBase.SNARE_REFRACTORY_FRAMES = 4;
 LiquidEngineBase.SILENCE_RESET_FRAMES = 8;
 /** Positive error (crack above prediction = possible snare) adapts SLOWLY, so
  *  genuine snares never drag the estimate up and cancel themselves out.

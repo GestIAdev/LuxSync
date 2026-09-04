@@ -766,6 +766,8 @@ export class TickEngine {
       snare_energy_ungated: this.audioPipeline.lastAudioData.rhythmic?.snare_energy_ungated,
       // ⚒️ WAVE 7749.76: Crack-band flux for domain-localized snare drive
       snare_crack_flux: this.audioPipeline.lastAudioData.rhythmic?.snare_crack_flux,
+      // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+      snare_body_factor: this.audioPipeline.lastAudioData.rhythmic?.snare_body_factor,
       // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
       photon: this.audioPipeline.lastAudioData.photon,
       // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction

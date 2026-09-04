@@ -139,6 +139,8 @@ export interface SeleneLuxAudioMetrics {
   snare_energy_ungated?: number
   // ⚒️ WAVE 7749.76: Crack-band spectral flux (2-5kHz localized) — replaces global flux
   snare_crack_flux?: number;
+  // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+  snare_body_factor?: number;
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number;
 }
@@ -690,6 +692,8 @@ export class SeleneLux {
         snare_energy_ungated: audioMetrics.snare_energy_ungated,
         // ⚒️ WAVE 7749.76: Crack-band flux for domain-localized snare drive
         snare_crack_flux: audioMetrics.snare_crack_flux,
+        // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+        snare_body_factor: audioMetrics.snare_body_factor,
         // WAVE 8005.2: Photon block for front channel strobe bypass
         photon: audioMetrics.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
@@ -1419,6 +1423,8 @@ export class SeleneLux {
       // ⚒️ WAVE 7749.69: Ungated snare energy — clamped to [0,1]
       snare_energy_ungated: clamp01(src.snare_energy_ungated, 0),
       snare_crack_flux: clamp01(src.snare_crack_flux, 0),
+      // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.1, 2.0] (not [0,1])
+      snare_body_factor: Math.max(0.1, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
       photon: src.photon,
     }
   }

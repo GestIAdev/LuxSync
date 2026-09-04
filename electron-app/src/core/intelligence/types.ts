@@ -183,6 +183,10 @@ export interface TitanStabilizedState {
    *  transient detector. Replaces global spectralFlux in snareDrive to avoid hi-hat
    *  and breakdown contamination. */
   snare_crack_flux?: number
+  /** ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0] derived
+   *  from snareBody / snareBodyEMA. Penalizes claps/rimshots (no body resonance),
+   *  boosts real snares (body > EMA). Third multiplicative term in snareDrive. */
+  snare_body_factor?: number
 
   // ═══════════════════════════════════════════════════════════════════════
   // PALETA ACTUAL (para simulaciones)

@@ -234,6 +234,12 @@ export interface GodEarRhythmicPercussion {
    *  → crackFlux stays low. This is the domain-localized transient detector that
    *  replaces the global spectralFlux in the snareDrive calculation. */
   snare_crack_flux: number;
+  /** ⚒️ WAVE 7749.77: Body Factor — continuous algebraic multiplier [0.1, 2.0]
+   *  derived from snareBody / snareBodyEMA. Replaces the hard SnareE gate with
+   *  a smooth ratio: claps/rimshots (no body resonance) get penalized toward
+   *  0.1, real snares (body > EMA) get boosted up to 2.0. Used as a third
+   *  multiplicative term in snareDrive = residual * crackFlux * bodyFactor. */
+  snare_body_factor: number;
 }
 
 export interface GodEarSpectrum {
@@ -2098,6 +2104,17 @@ class RhythmicPercussionTracker {
     this._snareCrackEMA += this._emaAlpha * (snareCrack - this._snareCrackEMA);
     this._hhEMA += this._emaAlpha * (hhRaw - this._hhEMA);
 
+    // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0].
+    // bodyRatio = snareBody / snareBodyEMA measures how much the body band
+    // (150-250Hz) exceeds its moving average. A real snare vibrates the drum
+    // membrane → body >> EMA → ratio > 1.5 → bodyFactor boosts the drive.
+    // A clap/rimshot has crack energy but no body resonance → body ≈ EMA →
+    // ratio ≈ 1.0 → bodyFactor = 0.5 (penalty). The -0.5 offset centers the
+    // neutral point at ratio=1.0 (body = EMA) → factor=0.5. Clamped to [0.1, 2.0]
+    // to prevent division-by-zero collapse and MACD overflow.
+    const bodyRatio = snareBody / (this._snareBodyEMA + 1e-6);
+    const bodyFactor = Math.max(0.1, Math.min(2.0, bodyRatio - 0.5));
+
     // ── 3. Snare detection: requires BOTH body AND crack above threshold ──
     const snareBodyThresh = Math.max(
       this._snareBodyEMA * RhythmicPercussionTracker.SNARE_BODY_MULT,
@@ -2233,6 +2250,8 @@ class RhythmicPercussionTracker {
       snare_energy_ungated: snareCrack,
       // ⚒️ WAVE 7749.76: Crack-band spectral flux for the domain-localized drive
       snare_crack_flux: this._lastCrackFlux,
+      // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+      snare_body_factor: bodyFactor,
     };
   }
 

@@ -268,6 +268,8 @@ export abstract class LiquidEngineBase {
   private _diagSnareResidual: number = 0
   private _diagCrackFlux: number = 0
   private _diagSnareDrive: number = 0
+  // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+  private _diagBodyFactor: number = 1.0
   private _diagSnareEnergy: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
@@ -898,8 +900,13 @@ export abstract class LiquidEngineBase {
         // This is the domain-isolated transient detector that killed the global
         // spectralFlux's hi-hat and breakdown contamination.
         // ⚒️ WAVE 7749.76: replaced global spectralFlux with crack-band flux.
+        // ⚒️ WAVE 7749.77: added bodyFactor as third multiplicative term. A real
+        // snare vibrates the drum membrane (150-250Hz) → body > EMA → factor > 1.
+        // A clap/rimshot has crack but no body → body ≈ EMA → factor ≈ 0.5 (penalty).
+        // This is the continuous algebraic replacement for the hard SnareE gate.
         const crackFlux = input.snare_crack_flux ?? spectralFlux
-        const snareDrive = residual * crackFlux
+        const bodyFactor = input.snare_body_factor ?? 1.0
+        const snareDrive = residual * crackFlux * bodyFactor
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
         // snareDrive is per-frame and raw. The MACD does its own smoothing;
@@ -920,6 +927,7 @@ export abstract class LiquidEngineBase {
         this._diagCrackBleedK = this._crackBleedK
         this._diagSnareResidual = residual
         this._diagCrackFlux = crackFlux
+        this._diagBodyFactor = bodyFactor
         this._diagSnareDrive = snareDrive
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
@@ -1311,13 +1319,16 @@ export abstract class LiquidEngineBase {
         `BassΔ:${this._diagBassDelta.toFixed(3)} ` +
         // ⚒️ WAVE 7749.76: bass-decorrelation chain — k=bleed coeff learned by
         // NLMS (μ_up=0.015 fast convergence), Res=residual after subtracting kick
-        // bleed, cFx=crack-band spectral flux (2-5kHz localized), Drive=Res*cFx =
-        // what the MACD actually eats. cFx replaces global Flux to avoid hi-hat
-        // (10kHz) and breakdown contamination. Separability: Res×Flux=6.56x →
-        // Res×cFx expected higher (domain isolation removes cross-band noise).
+        // bleed, cFx=crack-band spectral flux (2-5kHz localized), bFct=body factor
+        // [0.1,2.0] (continuous algebraic gate from snareBody/snareBodyEMA),
+        // Drive=Res*cFx*bFct = what the MACD actually eats. cFx replaces global
+        // Flux to avoid hi-hat (10kHz) and breakdown contamination. bFct replaces
+        // the hard SnareE gate — claps/rimshots (no body) get penalized toward 0.1,
+        // real snares (body > EMA) get boosted up to 2.0.
         `k:${this._diagCrackBleedK.toFixed(3)} ` +
         `Res:${this._diagSnareResidual.toFixed(3)} ` +
         `cFx:${this._diagCrackFlux.toFixed(3)} ` +
+        `bFct:${this._diagBodyFactor.toFixed(3)} ` +
         `Drive:${this._diagSnareDrive.toFixed(3)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +

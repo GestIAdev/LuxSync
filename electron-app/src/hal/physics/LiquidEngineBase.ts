@@ -270,6 +270,8 @@ export abstract class LiquidEngineBase {
   private _diagSnareDrive: number = 0
   // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
   private _diagBodyFactor: number = 1.0
+  // ⚒️ WAVE 7749.78: SnareEnergyFactor — strict coincidence gate as soft multiplier
+  private _diagSnareEnergyFactor: number = 1.0
   private _diagSnareEnergy: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
@@ -904,9 +906,20 @@ export abstract class LiquidEngineBase {
         // snare vibrates the drum membrane (150-250Hz) → body > EMA → factor > 1.
         // A clap/rimshot has crack but no body → body ≈ EMA → factor ≈ 0.5 (penalty).
         // This is the continuous algebraic replacement for the hard SnareE gate.
+        // ⚒️ WAVE 7749.78: added snareEnergyFactor as fourth multiplicative term.
+        // bodyFactor checks body/bodyEMA (1.5× threshold), but a rimshot/tom/stab
+        // can have body resonance between 1.5×-2.0× bodyEMA (bodyFactor > 1) AND
+        // crack localized (crackFlux high) yet NOT open the GodEarFFT AND-gate
+        // (body > 2.0× AND crack > 1.8×). snareEnergy is the EMA of that gated
+        // sqrt(body×crack) — it's 0 when the gate is shut, ~0.5-0.6 for real
+        // snares. This factor is the only signal that encodes the strict
+        // coincidence gate as a continuous multiplier.
+        //   Real snare:  SnareE ≈ 0.56 → sEF = 1.0 (transparent)
+        //   FP clean:    SnareE ≈ 0.01 → sEF = 0.05 (aplastado, no veto)
         const crackFlux = input.snare_crack_flux ?? spectralFlux
         const bodyFactor = input.snare_body_factor ?? 1.0
-        const snareDrive = residual * crackFlux * bodyFactor
+        const snareEnergyFactor = Math.max(0.05, Math.min(1.0, snareEnergy * 2.0))
+        const snareDrive = residual * crackFlux * bodyFactor * snareEnergyFactor
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
         // snareDrive is per-frame and raw. The MACD does its own smoothing;
@@ -928,6 +941,7 @@ export abstract class LiquidEngineBase {
         this._diagSnareResidual = residual
         this._diagCrackFlux = crackFlux
         this._diagBodyFactor = bodyFactor
+        this._diagSnareEnergyFactor = snareEnergyFactor
         this._diagSnareDrive = snareDrive
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
@@ -1329,6 +1343,7 @@ export abstract class LiquidEngineBase {
         `Res:${this._diagSnareResidual.toFixed(3)} ` +
         `cFx:${this._diagCrackFlux.toFixed(3)} ` +
         `bFct:${this._diagBodyFactor.toFixed(3)} ` +
+        `sEF:${this._diagSnareEnergyFactor.toFixed(3)} ` +
         `Drive:${this._diagSnareDrive.toFixed(3)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +

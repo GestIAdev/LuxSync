@@ -1403,6 +1403,8 @@ export class HardwareAbstraction {
         const physicsDt = this.measurePhysicsDeltaTime();
         for (let i = 0; i < states.length; i++) {
             const state = states[i];
+            if (!state)
+                continue; // WAVE 7749.77b: skip holes from unpatched fixtures
             const isMovingFixture = state.zone?.includes('MOVING') ||
                 state.type?.toLowerCase().includes('moving') ||
                 state.type?.toLowerCase().includes('spot') ||

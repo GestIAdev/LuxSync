@@ -10,6 +10,11 @@
 import { BeatDetector } from '../../../engine/audio/BeatDetector';
 import { SyncSmoother } from '../metrics/SyncSmoother';
 // ---------------------------------------------------------------------------
+// 🩸 WAVE GARBAGE-ZERO: Hoisted to module level — was `new Set(...)` per
+// audio-levels event (~44fps), pure GC pressure. Now allocated once.
+// ---------------------------------------------------------------------------
+const OMNI_SOURCES = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
+// ---------------------------------------------------------------------------
 // AudioPipelineManager
 // ---------------------------------------------------------------------------
 export class AudioPipelineManager {
@@ -109,7 +114,7 @@ export class AudioPipelineManager {
         brain.on('audio-levels', (levels) => {
             const matrixStatus = this.ctx.trinity?.getAudioMatrix()?.getStatus();
             const activeSource = matrixStatus?.activeSource ?? null;
-            const OMNI_SOURCES = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
+            // 🩸 WAVE GARBAGE-ZERO: OMNI_SOURCES hoisted to module level (was new Set per event).
             const isOmniActive = activeSource ? OMNI_SOURCES.has(activeSource) : false;
             // WAVE 7749.22: EXTERMINATED — PIPELINE diagnostic log removed.
             // Snare 4D is production-ready. This was spamming every 44 frames.
@@ -125,45 +130,75 @@ export class AudioPipelineManager {
                     spectralCentroid: levels.spectralCentroid, subBass: levels.subBass,
                     lowMid: levels.lowMid, highMid: levels.highMid, crestFactor: levels.crestFactor,
                 }, true /* omniPath */);
-                this.lastAudioData = {
-                    ...this.lastAudioData,
-                    bass: smoothedOmni.bass,
-                    mid: smoothedOmni.mid,
-                    high: smoothedOmni.high,
-                    energy: smoothedOmni.energy,
-                    subBass: levels.subBass ?? this.lastAudioData.subBass,
-                    lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
-                    highMid: levels.highMid ?? this.lastAudioData.highMid,
-                    harshness: levels.harshness ?? this.lastAudioData.harshness,
-                    spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
-                    spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
-                    crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
-                    kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
-                    snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
-                    hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
-                    rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
-                    workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
-                    workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
-                    workerRawBpm: levels.rawBpm ?? this.lastAudioData.workerRawBpm,
-                    workerOracleRawBpm: levels.oracleRawBpm ?? this.lastAudioData.workerOracleRawBpm,
-                    workerOraclePeakHeight: levels.oraclePeakHeight ?? this.lastAudioData.workerOraclePeakHeight,
-                    workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
-                    workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
-                    workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
-                    workerKickCount: (levels.kickCount != null && levels.kickCount > 0) ? levels.kickCount : this.lastAudioData.workerKickCount,
-                    inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
-                    inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
-                    rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
-                    ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
-                    // WAVE 8002: Spectral Flux V3
-                    spectralFluxV3: levels.spectralFluxV3 ?? this.lastAudioData.spectralFluxV3,
-                    // WAVE 8003: Photon block
-                    photon: levels.photon ?? this.lastAudioData.photon,
-                    // WAVE 8008: Rhythmic percussion telemetry
-                    rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
-                    // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
-                    agcGainFactor: levels.agcGainFactor ?? this.lastAudioData.agcGainFactor,
-                };
+                // 🩸 WAVE GARBAGE-ZERO: Mutate lastAudioData IN-PLACE instead of
+                // `{ ...this.lastAudioData, ... }` which allocated a fresh ~30-prop
+                // object every audio-levels event (~44fps) → GC pressure → Event Loop
+                // freezes → DMX watchdog "isSending stuck". Zero allocations now.
+                const _d = this.lastAudioData;
+                _d.bass = smoothedOmni.bass;
+                _d.mid = smoothedOmni.mid;
+                _d.high = smoothedOmni.high;
+                _d.energy = smoothedOmni.energy;
+                if (levels.subBass != null)
+                    _d.subBass = levels.subBass;
+                if (levels.lowMid != null)
+                    _d.lowMid = levels.lowMid;
+                if (levels.highMid != null)
+                    _d.highMid = levels.highMid;
+                if (levels.harshness != null)
+                    _d.harshness = levels.harshness;
+                if (levels.spectralFlatness != null)
+                    _d.spectralFlatness = levels.spectralFlatness;
+                if (levels.spectralCentroid != null)
+                    _d.spectralCentroid = levels.spectralCentroid;
+                if (levels.crestFactor != null)
+                    _d.crestFactor = levels.crestFactor;
+                if (levels.kickDetected != null)
+                    _d.kickDetected = levels.kickDetected;
+                if (levels.snareDetected != null)
+                    _d.snareDetected = levels.snareDetected;
+                if (levels.hihatDetected != null)
+                    _d.hihatDetected = levels.hihatDetected;
+                if (levels.rawBassEnergy != null)
+                    _d.rawBassEnergy = levels.rawBassEnergy;
+                if (levels.bpm != null && levels.bpm > 0)
+                    _d.workerBpm = levels.bpm;
+                if (levels.bpmConfidence != null && levels.bpmConfidence > 0)
+                    _d.workerBpmConfidence = levels.bpmConfidence;
+                if (levels.rawBpm != null)
+                    _d.workerRawBpm = levels.rawBpm;
+                if (levels.oracleRawBpm != null)
+                    _d.workerOracleRawBpm = levels.oracleRawBpm;
+                if (levels.oraclePeakHeight != null)
+                    _d.workerOraclePeakHeight = levels.oraclePeakHeight;
+                if (levels.onBeat != null)
+                    _d.workerOnBeat = levels.onBeat;
+                if (levels.beatPhase != null)
+                    _d.workerBeatPhase = levels.beatPhase;
+                if (levels.beatStrength != null)
+                    _d.workerBeatStrength = levels.beatStrength;
+                if (levels.kickCount != null && levels.kickCount > 0)
+                    _d.workerKickCount = levels.kickCount;
+                if (levels.inputPeakAbs != null)
+                    _d.inputPeakAbs = levels.inputPeakAbs;
+                if (levels.inputRMS != null)
+                    _d.inputRMS = levels.inputRMS;
+                if (levels.rawTreble != null)
+                    _d.rawTreble = levels.rawTreble;
+                if (levels.ultraAir != null)
+                    _d.ultraAir = levels.ultraAir;
+                // WAVE 8002: Spectral Flux V3
+                if (levels.spectralFluxV3 != null)
+                    _d.spectralFluxV3 = levels.spectralFluxV3;
+                // WAVE 8003: Photon block
+                if (levels.photon != null)
+                    _d.photon = levels.photon;
+                // WAVE 8008: Rhythmic percussion telemetry
+                if (levels.rhythmic != null)
+                    _d.rhythmic = levels.rhythmic;
+                // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+                if (levels.agcGainFactor != null)
+                    _d.agcGainFactor = levels.agcGainFactor;
                 const wasActive = this.hasRealAudio;
                 this.hasRealAudio = true;
                 this.lastAudioTimestamp = Date.now();
@@ -179,41 +214,64 @@ export class AudioPipelineManager {
                 }
             }
             else {
-                this.lastAudioData = {
-                    ...this.lastAudioData,
-                    subBass: levels.subBass ?? this.lastAudioData.subBass,
-                    lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
-                    highMid: levels.highMid ?? this.lastAudioData.highMid,
-                    harshness: levels.harshness ?? this.lastAudioData.harshness,
-                    spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
-                    spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
-                    crestFactor: levels.crestFactor ?? this.lastAudioData.crestFactor,
-                    kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
-                    snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
-                    hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
-                    rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
-                    workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
-                    workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
-                    workerRawBpm: levels.rawBpm ?? this.lastAudioData.workerRawBpm,
-                    workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
-                    workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
-                    workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
-                    workerKickCount: (levels.kickCount != null && levels.kickCount > 0)
-                        ? levels.kickCount
-                        : this.lastAudioData.workerKickCount,
-                    inputPeakAbs: levels.inputPeakAbs ?? this.lastAudioData.inputPeakAbs,
-                    inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
-                    rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
-                    ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
-                    // WAVE 8002: Spectral Flux V3
-                    spectralFluxV3: levels.spectralFluxV3 ?? this.lastAudioData.spectralFluxV3,
-                    // WAVE 8003: Photon block
-                    photon: levels.photon ?? this.lastAudioData.photon,
-                    // WAVE 8008: Rhythmic percussion telemetry
-                    rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
-                    // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
-                    agcGainFactor: levels.agcGainFactor ?? this.lastAudioData.agcGainFactor,
-                };
+                // 🩸 WAVE GARBAGE-ZERO: Mutate in-place (was spread alloc per event).
+                const _d = this.lastAudioData;
+                if (levels.subBass != null)
+                    _d.subBass = levels.subBass;
+                if (levels.lowMid != null)
+                    _d.lowMid = levels.lowMid;
+                if (levels.highMid != null)
+                    _d.highMid = levels.highMid;
+                if (levels.harshness != null)
+                    _d.harshness = levels.harshness;
+                if (levels.spectralFlatness != null)
+                    _d.spectralFlatness = levels.spectralFlatness;
+                if (levels.spectralCentroid != null)
+                    _d.spectralCentroid = levels.spectralCentroid;
+                if (levels.crestFactor != null)
+                    _d.crestFactor = levels.crestFactor;
+                if (levels.kickDetected != null)
+                    _d.kickDetected = levels.kickDetected;
+                if (levels.snareDetected != null)
+                    _d.snareDetected = levels.snareDetected;
+                if (levels.hihatDetected != null)
+                    _d.hihatDetected = levels.hihatDetected;
+                if (levels.rawBassEnergy != null)
+                    _d.rawBassEnergy = levels.rawBassEnergy;
+                if (levels.bpm != null && levels.bpm > 0)
+                    _d.workerBpm = levels.bpm;
+                if (levels.bpmConfidence != null && levels.bpmConfidence > 0)
+                    _d.workerBpmConfidence = levels.bpmConfidence;
+                if (levels.rawBpm != null)
+                    _d.workerRawBpm = levels.rawBpm;
+                if (levels.onBeat != null)
+                    _d.workerOnBeat = levels.onBeat;
+                if (levels.beatPhase != null)
+                    _d.workerBeatPhase = levels.beatPhase;
+                if (levels.beatStrength != null)
+                    _d.workerBeatStrength = levels.beatStrength;
+                if (levels.kickCount != null && levels.kickCount > 0)
+                    _d.workerKickCount = levels.kickCount;
+                if (levels.inputPeakAbs != null)
+                    _d.inputPeakAbs = levels.inputPeakAbs;
+                if (levels.inputRMS != null)
+                    _d.inputRMS = levels.inputRMS;
+                if (levels.rawTreble != null)
+                    _d.rawTreble = levels.rawTreble;
+                if (levels.ultraAir != null)
+                    _d.ultraAir = levels.ultraAir;
+                // WAVE 8002: Spectral Flux V3
+                if (levels.spectralFluxV3 != null)
+                    _d.spectralFluxV3 = levels.spectralFluxV3;
+                // WAVE 8003: Photon block
+                if (levels.photon != null)
+                    _d.photon = levels.photon;
+                // WAVE 8008: Rhythmic percussion telemetry
+                if (levels.rhythmic != null)
+                    _d.rhythmic = levels.rhythmic;
+                // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+                if (levels.agcGainFactor != null)
+                    _d.agcGainFactor = levels.agcGainFactor;
             }
         });
     }

@@ -664,6 +664,12 @@ export class TitanEngine extends EventEmitter {
             hh_energy: audio.hh_energy,
             // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
             raw_snare_delta: audio.raw_snare_delta,
+            // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
+            snare_energy_ungated: audio.snare_energy_ungated,
+            // ⚒️ WAVE 7749.76: Crack-band flux for domain-localized snare drive
+            snare_crack_flux: audio.snare_crack_flux,
+            // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+            snare_body_factor: audio.snare_body_factor,
             // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity
             photon: audio.photon,
             // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
@@ -826,6 +832,12 @@ export class TitanEngine extends EventEmitter {
             // 🥁 WAVE 8008: Rhythmic percussion isolated energies
             snare_energy: audio.snare_energy,
             hh_energy: audio.hh_energy,
+            // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
+            snare_energy_ungated: audio.snare_energy_ungated,
+            // ⚒️ WAVE 7749.76: Crack-band flux for domain-localized snare drive
+            snare_crack_flux: audio.snare_crack_flux,
+            // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+            snare_body_factor: audio.snare_body_factor,
             // Paleta actual
             currentPalette: selenePalette,
             // Timing
@@ -1622,6 +1634,11 @@ export class TitanEngine extends EventEmitter {
             hh_energy: clamp01(src.hh_energy, 0),
             // WAVE 7749.7: Raw transient delta — NOT clamped (can be negative for decay)
             raw_snare_delta: safeNumber(src.raw_snare_delta, 0),
+            // ⚒️ WAVE 7749.69: Ungated snare energy — clamped to [0,1]
+            snare_energy_ungated: clamp01(src.snare_energy_ungated, 0),
+            snare_crack_flux: clamp01(src.snare_crack_flux, 0),
+            // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.1, 2.0] (not [0,1])
+            snare_body_factor: Math.max(0.1, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
             photon: src.photon,
         };
     }

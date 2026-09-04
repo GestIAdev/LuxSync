@@ -1477,6 +1477,15 @@ class RhythmicPercussionTracker {
         // WAVE 7749.7b: Per-band raw tracking — crack and body deltas independently
         this._prevSnareCrackRaw = 0;
         this._prevSnareBodyRaw = 0;
+        // ⚒️ WAVE 7749.80: Raw (pre-EMA) hi-hat band tracking — for treble-ghost delta
+        this._prevHhRaw = 0;
+        // ⚒️ WAVE 7749.76: Crack-band spectral flux — localized to 2-5kHz bins.
+        // Same algorithm as computeSpectralFlux but only over crack bins, so hi-hats
+        // at 10kHz and breakdown section changes don't inflate the flux.
+        this._prevCrackPower = new Float32Array(0);
+        this._crackFluxWhitening = new Float32Array(0);
+        this._crackBinCount = 0;
+        this._lastCrackFlux = 0;
         // Diagnostic counter for raw value logging
         this._diagCounter = 0;
         // Cooldown to prevent double-triggering on the same hit
@@ -1489,6 +1498,10 @@ class RhythmicPercussionTracker {
         this.snareCrackHiBin = Math.ceil(5000 / binRes);
         this.hhLoBin = Math.floor(5000 / binRes);
         this.hhHiBin = Math.ceil(15000 / binRes);
+        // ⚒️ WAVE 7749.76: Allocate crack-band flux state once (zero-alloc per frame)
+        this._crackBinCount = this.snareCrackHiBin - this.snareCrackLoBin + 1;
+        this._prevCrackPower = new Float32Array(this._crackBinCount);
+        this._crackFluxWhitening = new Float32Array(this._crackBinCount);
     }
     /**
      * Extract sub-band RMS energy from power spectrum (sqrt of mean power).
@@ -1547,10 +1560,46 @@ class RhythmicPercussionTracker {
         const snareBody = this.extractSubBandRaw(power, this.snareBodyLoBin, this.snareBodyHiBin);
         const snareCrack = this.extractSubBandRaw(power, this.snareCrackLoBin, this.snareCrackHiBin);
         const hhRaw = this.extractSubBand(power, this.hhLoBin, this.hhHiBin);
+        // ⚒️ WAVE 7749.80: UNCLAMPED hh for treble-ghost delta — same rationale as
+        // body/crack: the clamped version saturates at high HF energy, zeroing the
+        // delta. We need the raw transient to detect synthetic snare reverb tails.
+        const hhRawUnclamped = this.extractSubBandRaw(power, this.hhLoBin, this.hhHiBin);
+        // ⚒️ WAVE 7749.76: Crack-band spectral flux — half-wave rectified, whitened,
+        // normalized. Same algorithm as the global computeSpectralFlux but restricted
+        // to the 2-5kHz bins. This isolates the snare transient from hi-hats (10kHz+)
+        // and breakdown section changes (broadband spectral shifts). A snare fires
+        // broadband noise INTO 2-5kHz → crackFlux spikes. A hi-hat at 10kHz does NOT
+        // move the 2-5kHz bins → crackFlux stays low. Zero per-frame allocation.
+        {
+            let totalFlux = 0;
+            const upper = Math.min(this.snareCrackHiBin, power.length - 1);
+            for (let bin = this.snareCrackLoBin, i = 0; bin <= upper; bin++, i++) {
+                const p = power[bin];
+                const r = this._crackFluxWhitening[i] * 0.995;
+                this._crackFluxWhitening[i] = p > r ? p : r;
+                const d = p - this._prevCrackPower[i];
+                if (d > 0)
+                    totalFlux += d / (this._crackFluxWhitening[i] + 1e-12);
+                this._prevCrackPower[i] = p;
+            }
+            this._lastCrackFlux = totalFlux > 1e-10
+                ? totalFlux / this._crackBinCount
+                : 0;
+        }
         // ── 2. Update adaptive threshold EMAs ──
         this._snareBodyEMA += this._emaAlpha * (snareBody - this._snareBodyEMA);
         this._snareCrackEMA += this._emaAlpha * (snareCrack - this._snareCrackEMA);
         this._hhEMA += this._emaAlpha * (hhRaw - this._hhEMA);
+        // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0].
+        // bodyRatio = snareBody / snareBodyEMA measures how much the body band
+        // (150-250Hz) exceeds its moving average. A real snare vibrates the drum
+        // membrane → body >> EMA → ratio > 1.5 → bodyFactor boosts the drive.
+        // A clap/rimshot has crack energy but no body resonance → body ≈ EMA →
+        // ratio ≈ 1.0 → bodyFactor = 0.5 (penalty). The -0.5 offset centers the
+        // neutral point at ratio=1.0 (body = EMA) → factor=0.5. Clamped to [0.1, 2.0]
+        // to prevent division-by-zero collapse and MACD overflow.
+        const bodyRatio = snareBody / (this._snareBodyEMA + 1e-6);
+        const bodyFactor = Math.max(0.1, Math.min(2.0, bodyRatio - 0.5));
         // ── 3. Snare detection: requires BOTH body AND crack above threshold ──
         const snareBodyThresh = Math.max(this._snareBodyEMA * RhythmicPercussionTracker.SNARE_BODY_MULT, RhythmicPercussionTracker.SNARE_FLOOR);
         const snareCrackThresh = Math.max(this._snareCrackEMA * RhythmicPercussionTracker.SNARE_CRACK_MULT, RhythmicPercussionTracker.SNARE_FLOOR);
@@ -1600,6 +1649,11 @@ class RhythmicPercussionTracker {
         const rawSnareDelta = crackDelta;
         this._prevSnareCrackRaw = snareCrack;
         this._prevSnareBodyRaw = snareBody;
+        // ⚒️ WAVE 7749.80: Treble-ghost delta — raw 5-15kHz transient for EDM snare
+        // rescue. Half-wave rectified (only rising edges = onsets). When the crack
+        // band is dead but this spikes, a synthetic snare reverb tail has fired.
+        const rawHhDelta = Math.max(0, hhRawUnclamped - this._prevHhRaw);
+        this._prevHhRaw = hhRawUnclamped;
         // Keep _prevSnareEnergyRaw for backward compat (unused now but reset() clears it)
         this._prevSnareEnergyRaw = snareEnergyUngated;
         if (snareEnergyGated > this._snareEnergyEMA) {
@@ -1658,6 +1712,18 @@ class RhythmicPercussionTracker {
             hh_absence_ms: hhAbsenceMs,
             rhythmic_void: rhythmicVoid,
             raw_snare_delta: rawSnareDelta,
+            // ⚒️ WAVE 7749.69b: Use ONLY crack band (2-5kHz) — NOT sqrt(body*crack).
+            // The body band (150-250Hz) is saturated by the kick in techno, giving
+            // sqrt(body*crack) a baseline of ~0.25 that fires the EMA momentum on
+            // every kick beat. The crack band alone is where the snare snap lives
+            // and is immune to kick bleed.
+            snare_energy_ungated: snareCrack,
+            // ⚒️ WAVE 7749.76: Crack-band spectral flux for the domain-localized drive
+            snare_crack_flux: this._lastCrackFlux,
+            // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+            snare_body_factor: bodyFactor,
+            // ⚒️ WAVE 7749.80: Treble-ghost delta — raw 5-15kHz transient for EDM rescue
+            raw_hh_delta: rawHhDelta,
         };
     }
     reset() {
@@ -1669,11 +1735,17 @@ class RhythmicPercussionTracker {
         this._prevSnareEnergyRaw = 0;
         this._prevSnareCrackRaw = 0;
         this._prevSnareBodyRaw = 0;
+        // ⚒️ WAVE 7749.80: reset treble-ghost delta state
+        this._prevHhRaw = 0;
         this._elapsedMs = 0;
         this._lastSnareHitMs = 0;
         this._lastHHHitMs = 0;
         this._snareCooldownMs = 0;
         this._hhCooldownMs = 0;
+        // ⚒️ WAVE 7749.76: reset crack-band flux state
+        this._prevCrackPower.fill(0);
+        this._crackFluxWhitening.fill(0);
+        this._lastCrackFlux = 0;
     }
 }
 // WAVE 8008 fix: asymmetric attack/release — instant attack, ~200ms release

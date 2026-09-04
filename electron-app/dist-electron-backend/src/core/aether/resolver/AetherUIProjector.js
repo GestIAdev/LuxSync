@@ -73,6 +73,8 @@ export class AetherUIProjector {
      */
     project(fixtures, graph, arbitrated, _blackoutActive = false, deltaMs = 0) {
         for (const fixture of fixtures) {
+            if (!fixture)
+                continue; // WAVE 7749.77b: skip holes from unpatched fixtures
             // DeviceId canónico: el UUID del fixture (no fixtureId ni name)
             // ⚡ WAVE 4559: fixtureId es el UUID canónico — el DeviceId que indexa el NodeGraph
             // (population: FixtureMapper.buildInitialState → fixtureId: fixture.id ?? fallback)

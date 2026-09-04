@@ -237,6 +237,9 @@ export const TECHNO_PROFILE = {
     // Verified: newsnare.md 11→21 onsets (off-beat 16ths recovered),
     // imposiblesnare.md stays at 19 (no jitter regression).
     // Hi-hats (SnareE = 0) never move either EMA → excluded for free.
+    // ⚒️ WAVE 7749.75: θ reducida de 0.04→0.01 porque el drive ahora es
+    // Res×Flux (escala ~4x menor que Res×Flat). El MACD necesita ver los
+    // cruces pequeños que antes quedaban bajo el radar.
     snareMomentumThreshold: 0.01,
     snareMomentumAlphaFast: 1.00,
     snareMomentumAlphaSlow: 0.05,
@@ -246,6 +249,12 @@ export const TECHNO_PROFILE = {
     // imposiblesnare.md: stays 18 (no jitter). newsnare.md: 21 (vitaminas).
     snareMomentumResetThreshold: 0.15,
     snareMomentumResetRatio: 0.70,
+    // ⚒️ WAVE 7749.75: NOISE FLOOR sobre snareDrive (= residuo × spectralFlux),
+    // no sobre la energía cruda. La escala cambió: Res×Flux ≈ 0.005-0.15 en
+    // cajas reales (Flux mediano onset=0.112, non=0.043). Floor en 0.005 deja
+    // pasar los snares tímidos pero bloquea el ruido de fondo de hi-hats
+    // sostenidos (Flux bajo → Drive bajo). PENDIENTE DE CALIBRAR con telemetría.
+    snareMomentumFloor: 0.005,
     // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
     // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
     ambientAttackMs: 30,

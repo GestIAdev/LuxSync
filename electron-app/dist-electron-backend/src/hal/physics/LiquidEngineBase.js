@@ -979,13 +979,17 @@ export class LiquidEngineBase {
                 const floorRelaxation = Math.max(0, this._fluxBaseline - 0.04) * 4.0 * (1.0 - gateHealth);
                 const rawFloor = Math.max(snareFloorMin, snareFloorBase - floorRelaxation);
                 // ⚒️ WAVE 7749.92: SMOOTHED FLOOR — EMA the raw floor so it glides
-                // instead of jittering. α=0.05 → tau ~450ms, tracks buildups (seconds)
-                // but ignores frame-to-frame fBL noise. On silence reset, snap to base.
-                if (this._snareEmaSlow < 0.01 && rawFloor < 0.02) {
-                    this._snareFloorEma = snareFloorBase; // snap back up on silence
+                // instead of jittering. α=0.15 → tau ~150ms, tracks buildup entry
+                // quickly while ignoring frame-to-frame fBL noise.
+                // ⚒️ WAVE 7749.94: FIX — silence reset was firing in Opus buildups
+                // because _snareEmaSlow < 0.01 (no snares) AND rawFloor < 0.02 (fBL
+                // high → floor low) were both true every frame → EMA never converged.
+                // Now checks fBL < 0.03 (genuine spectral silence) instead of rawFloor.
+                if (this._snareEmaSlow < 0.01 && this._fluxBaseline < 0.03) {
+                    this._snareFloorEma = snareFloorBase; // snap back up on genuine silence
                 }
                 else {
-                    this._snareFloorEma = this._snareFloorEma * 0.95 + rawFloor * 0.05;
+                    this._snareFloorEma = this._snareFloorEma * 0.85 + rawFloor * 0.15;
                 }
                 const snareFloor = this._snareFloorEma;
                 this._diagFinalFloor = snareFloor;

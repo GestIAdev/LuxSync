@@ -1,17 +1,20 @@
-WAVE 7749.93: GateHealth-gated floor relaxation — only relax when gate is dead
+WAVE 7749.94: Fix floor EMA silence reset — was blocking Opus floor drop
 
-The dynamic floor (WAVE 7749.89) relaxed on ANY track with high fBL, but
-techhouse has fBL 0.058-0.066 AND gateHealth=1.0 (gate alive, SnareE 0.2-1.0,
-crack path works perfectly). The floor dropped to 0.009-0.011, letting weak
-hi-hats through and making the snare "loquillo".
+The silence reset (WAVE 7749.92) checked _snareEmaSlow < 0.01 AND
+rawFloor < 0.02. In Opus buildups BOTH were true every frame:
+  - _snareEmaSlow < 0.01: no snares firing → drive near 0 → EMA slow near 0
+  - rawFloor < 0.02: fBL high (0.09+) → relaxation active → rawFloor = 0.005
 
-Fix: multiply the relaxation by (1 - gateHealth), same pattern as sEF
-(WAVE 7749.85) and deadGateRescue (WAVE 7749.90):
-  floorRelaxation = max(0, fBL-0.04) * 4.0 * (1 - gateHealth)
+Result: the EMA snapped back to 0.08 EVERY FRAME → floor never dropped.
+opusbuild11 showed fFloor:0.080 throughout the entire buildup despite
+fBL=0.088-0.108 and gH=0.000.
 
-  Techhouse (gH=1.0, fBL=0.065): relaxation=0 → floor stays 0.08 (strict)
-  Brejcha  (gH=0.8, fBL=0.030): relaxation=0 → floor stays 0.08 (strict)
-  Opus     (gH=0.0, fBL=0.085): relaxation=0.18 → floor=0.005 (rescued)
+Fix: check fBL < 0.03 (genuine spectral silence) instead of rawFloor < 0.02.
+  - Genuine silence (fBL < 0.03, no drive): snap to 0.08 ✓
+  - Opus buildup (fBL = 0.09, no drive yet): EMA converges to 0.005 ✓
+  - Techhouse (fBL = 0.065, drive present): EMA converges to 0.08 ✓
+
+Also sped up EMA: α 0.05→0.15 (τ 450ms→150ms) for faster buildup entry.
 
 Generated with [Devin](https://devin.ai)
 

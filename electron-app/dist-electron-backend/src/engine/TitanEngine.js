@@ -676,6 +676,11 @@ export class TitanEngine extends EventEmitter {
             photon: audio.photon,
             // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
             agcGainFactor: audio.agcGainFactor,
+            // ⚒️ WAVE 7749.86: Rhythm Gate inputs — beat phase & PLL state
+            beatPhase: audio.beatPhase,
+            pllLocked: audio.pllLocked,
+            beatCount: audio.beatCount,
+            bpm: processedContext.bpm,
         }, elementalMods);
         // ─────────────────────────────────────────────────────────────────────
         // 2. CALCULAR INTENSIDAD GLOBAL  (⚡ WAVE 3504-EXT.2: pure module)
@@ -1631,6 +1636,9 @@ export class TitanEngine extends EventEmitter {
             snareDetected: src.snareDetected === true,
             hihatDetected: src.hihatDetected === true,
             isPLLBeat: src.isPLLBeat === true,
+            // 🔬 WAVE 7002: PLL lock state & confidence (were missing from normalizer)
+            pllLocked: src.pllLocked === true,
+            beatConfidence: clamp01(src.beatConfidence, 0),
             crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
             snare_energy: clamp01(src.snare_energy, 0),
             hh_energy: clamp01(src.hh_energy, 0),

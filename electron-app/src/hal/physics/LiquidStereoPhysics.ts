@@ -79,6 +79,11 @@ export interface LiquidStereoInput {
   photon?: GodEarPhoton
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number
+  // ⚒️ WAVE 7749.86: Rhythm Gate — beat phase & PLL state for ghost-path discipline
+  beatPhase?: number    // 0-1, phase within current beat (0 = beat onset)
+  pllLocked?: boolean   // true if PLL is locked to the beat grid
+  beatCount?: number    // global beat counter (for bar position calculation)
+  bpm?: number          // BPM for beat-duration frame calculation
 }
 
 export interface LiquidStereoResult {

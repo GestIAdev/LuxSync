@@ -289,6 +289,8 @@ export abstract class LiquidEngineBase {
   private _diagHhEnergy: number = 0
   // ⚒️ WAVE 7749.85: Gate health diagnostic
   private _diagGateHealth: number = 0
+  // ⚒️ WAVE 7749.86: Rhythm gate multiplier diagnostic
+  private _diagRhythmMult: number = 1.0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
@@ -352,6 +354,27 @@ export abstract class LiquidEngineBase {
   private _snareEnergyEma: number = 0
   private static readonly GATE_HEALTH_ALPHA = 0.01
   private static readonly GATE_HEALTH_THRESHOLD = 0.15
+  // ⚒️ WAVE 7749.86: Rhythm Gate — last BPM for beat-duration frame calculation
+  private _lastBpm: number = 120
+  // ⚒️ WAVE 7749.86: RHYTHM GATE — discipline the treble-ghost with musical phase.
+  // When the gate is dead (gateHealth ≈ 0), the ghost fires on ANY 5-15kHz transient,
+  // including hi-hats and claps on off-beats. The rhythm gate uses the PLL beat grid
+  // to suppress ghost-path onsets that don't land on backbeats (beats 2 & 4).
+  //
+  // The filter is gateHealth-gated via continuous lerp:
+  //   rMult_eff = 1.0 * gateHealth + rMult_raw * (1 - gateHealth)
+  //
+  // When gateHealth = 1 (alive, Minimal): rMult_eff = 1.0 → no rhythm filter.
+  // When gateHealth = 0 (dead, Brejcha):  rMult_eff = rMult_raw → full rhythm filter.
+  //
+  // rMult_raw values:
+  //   1.0  → on backbeat (beat 2 or 4, within ±RHYTHM_WINDOW_FRAMES)
+  //   0.30 → on-beat but not backbeat (beat 1 or 3)
+  //   0.10 → off-beat (corcheas intermedias, where Brejcha claps land)
+  private static readonly RHYTHM_WINDOW_FRAMES = 3
+  private static readonly RHYTHM_BACKBEAT_MULT = 1.0
+  private static readonly RHYTHM_ONBEAT_MULT = 0.30
+  private static readonly RHYTHM_OFFBEAT_MULT = 0.10
   // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — frame counter to prevent
   // double-triggers caused by 1-2 frame silence gaps in snare decay tails.
   // The previous 1-frame reset nuked emaSlow the instant Drive < 0.01,
@@ -489,6 +512,11 @@ export abstract class LiquidEngineBase {
     } = input
     const now = Date.now()
     const p = this.profile
+
+    // ⚒️ WAVE 7749.86: Track BPM for rhythm gate beat-duration calculation
+    if (input.bpm && input.bpm > 0) {
+      this._lastBpm = input.bpm
+    }
 
     // [WAVE 4941.5] HARMONIC REJECTION GATE + WHISPER GATE
     const harmonicBase = bands.mid
@@ -1063,7 +1091,62 @@ export abstract class LiquidEngineBase {
         const rawHhDelta = input.raw_hh_delta ?? 0
         const crackDrive = residual * crackFlux * bodyFactor * smartSef
         const ghostWeight = 1.0 - spectralDensity
-        const trebleGhost = rawHhDelta * smartSef * ghostWeight
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚒️ WAVE 7749.86: RHYTHM GATE — discipline the treble-ghost
+        // ═══════════════════════════════════════════════════════════════════
+        // The raw ghost fires on ANY 5-15kHz transient. In dead-gate tracks
+        // (Brejcha breakdown), claps and hi-hats on off-beats trigger false
+        // snares. We use the PLL beat grid to suppress off-beat ghost onsets.
+        //
+        // The filter is gateHealth-gated: when the gate is alive (Minimal),
+        // gateHealth ≈ 1 and the rhythm filter is bypassed (SnareE is trusted).
+        // When the gate is dead (Brejcha), gateHealth ≈ 0 and the rhythm filter
+        // fully engages, requiring ghost onsets to land on backbeats (2 & 4).
+        //
+        // CRITICAL: This only affects trebleGhost, NEVER crackDrive. The crack
+        // path (acoustic snares) must fire regardless of beat position.
+        const beatPhase = input.beatPhase ?? 0
+        const pllLocked = input.pllLocked === true
+        const beatCount = input.beatCount ?? 0
+        let rhythmMultRaw = 1.0
+        if (pllLocked) {
+          // Bar position: 0=beat1, 1=beat2, 2=beat3, 3=beat4
+          const beatInBar = beatCount % 4
+          const barPos = beatInBar + beatPhase  // continuous [0, 4)
+          // Distance to nearest backbeat (beat 2 = 1.0, beat 4 = 3.0), wrapped
+          const distToBB = Math.min(
+            Math.abs(barPos - 1.0),
+            Math.abs(barPos - 3.0),
+            4.0 - Math.abs(barPos - 1.0),
+            4.0 - Math.abs(barPos - 3.0)
+          )
+          // Distance to any on-beat (0, 1, 2, 3)
+          const distToAny = Math.min(
+            Math.min(Math.abs(barPos - 0.0), 4.0 - Math.abs(barPos - 0.0)),
+            Math.min(Math.abs(barPos - 1.0), 4.0 - Math.abs(barPos - 1.0)),
+            Math.min(Math.abs(barPos - 2.0), 4.0 - Math.abs(barPos - 2.0)),
+            Math.min(Math.abs(barPos - 3.0), 4.0 - Math.abs(barPos - 3.0))
+          )
+          // Convert beat-fraction distance to frames (1 beat = 60/bpm * fps)
+          const bpm = this._lastBpm > 0 ? this._lastBpm : 120
+          const beatDurFrames = 60.0 / bpm * 44.0
+          const distFramesBB = distToBB * beatDurFrames
+          const distFramesAny = distToAny * beatDurFrames
+          if (distFramesBB <= LiquidEngineBase.RHYTHM_WINDOW_FRAMES) {
+            rhythmMultRaw = LiquidEngineBase.RHYTHM_BACKBEAT_MULT
+          } else if (distFramesAny <= LiquidEngineBase.RHYTHM_WINDOW_FRAMES) {
+            rhythmMultRaw = LiquidEngineBase.RHYTHM_ONBEAT_MULT
+          } else {
+            rhythmMultRaw = LiquidEngineBase.RHYTHM_OFFBEAT_MULT
+          }
+        }
+        // Continuous lerp: gateHealth-gated rhythm filter
+        // When gateHealth=1 (alive): rMult_eff = 1.0 (no filter)
+        // When gateHealth=0 (dead):  rMult_eff = rhythmMultRaw (full filter)
+        const rhythmMult = gateHealth * 1.0 + (1.0 - gateHealth) * rhythmMultRaw
+
+        const trebleGhost = rawHhDelta * smartSef * ghostWeight * rhythmMult
         const snareDrive = Math.max(crackDrive, trebleGhost)
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
@@ -1115,6 +1198,7 @@ export abstract class LiquidEngineBase {
         this._diagTrebleGhost = trebleGhost
         this._diagHhEnergy = hhEnergy
         this._diagGateHealth = gateHealth
+        this._diagRhythmMult = rhythmMult
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a
@@ -1540,6 +1624,7 @@ export abstract class LiquidEngineBase {
         `hhDlt:${this._diagRawHhDelta.toFixed(4)} ` +
         `ghst:${this._diagTrebleGhost.toFixed(4)} ` +
         `gH:${this._diagGateHealth.toFixed(3)} ` +
+        `rGate:${this._diagRhythmMult.toFixed(2)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +
         (this._diagSnareOnset ? ' [ONSET]' : '') +

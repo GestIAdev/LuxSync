@@ -145,6 +145,11 @@ export interface SeleneLuxAudioMetrics {
   raw_hh_delta?: number;
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number;
+  // ⚒️ WAVE 7749.86: Rhythm Gate — beat phase & PLL state for ghost-path discipline
+  beatPhase?: number;    // 0-1, phase within current beat (0 = beat onset)
+  pllLocked?: boolean;   // true if PLL is locked to the beat grid
+  beatCount?: number;    // global beat counter (for bar position calculation)
+  bpm?: number;          // BPM for beat-duration frame calculation
 }
 
 /**
@@ -702,6 +707,11 @@ export class SeleneLux {
         photon: audioMetrics.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
         agcGainFactor: audioMetrics.agcGainFactor,
+        // ⚒️ WAVE 7749.86: Rhythm Gate inputs — beat phase & PLL state
+        beatPhase: audioMetrics.beatPhase,
+        pllLocked: audioMetrics.pllLocked,
+        beatCount: audioMetrics.beatCount,
+        bpm: vibeContext.bpm,
       };
       
       // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
@@ -1432,6 +1442,11 @@ export class SeleneLux {
       // ⚒️ WAVE 7749.80: Treble-ghost delta — half-wave rectified (>=0), NOT clamped to [0,1]
       raw_hh_delta: Math.max(0, safeNumber(src.raw_hh_delta, 0)),
       photon: src.photon,
+      // ⚒️ WAVE 7749.86: Rhythm Gate inputs
+      beatPhase: clamp01(src.beatPhase, 0),
+      pllLocked: src.pllLocked === true,
+      beatCount: Math.max(0, Math.floor(safeNumber(src.beatCount, 0))),
+      bpm: Math.max(40, Math.min(250, safeNumber(src.bpm, 120))),
     }
   }
   

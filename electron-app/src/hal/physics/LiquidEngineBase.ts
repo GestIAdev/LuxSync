@@ -1056,29 +1056,22 @@ export abstract class LiquidEngineBase {
 
         // Noise floor on the decorrelated+fluxed drive (not on raw energy).
         const snareFloor = p.snareMomentumFloor ?? 0
-        // ⚒️ WAVE 7749.83: DENSITY-SCALED BODY SHIELD — require bodyFactor to
-        // scale with spectralDensity. In hi-hat-dense tracks (Brejcha sd~0.5),
-        // hi-hat bursts produce Res/cFx spikes with bF 0.27-0.56 (no drum
-        // membrane resonance) that cross dynTh and false-trigger. Real snares
-        // always vibrate the drum body → bF > 0.6. The shield demands:
-        //   minBF = 0.3 + 0.7 × spectralDensity
-        // Clean tracks (sd 0.12): minBF 0.38 → transparent (synth snares pass)
-        // Dense tracks (sd 0.50): minBF 0.65 → blocks hi-hat FPs (bF < 0.56)
-        // Empirical validation on calib3 logs:
-        //   Brejcha: 10 hi-hat FPs blocked (bF 0.27-0.56, hE 0.59-0.79)
-        //   Tiesto LIGHT: 0 blocked (all onsets bF > 0.6)
-        //   TechHouse: 2 hi-hat FPs blocked
-        //   Minimal: 0 blocked (all onsets bF > 0.6)
-        const minBodyFactor = 0.3 + (0.7 * spectralDensity)
         // ⚒️ WAVE 7749.82: ANTI-DOUBLE REFRACTORY — suppress re-trigger for
         // SNARE_REFRACTORY_FRAMES after the last onset. The MACD crossover
         // can re-fire in 1-3 frames when the hybrid reset oscillates momentum
         // around dynTh. This hard gate kills those doubles.
+        // ⚒️ WAVE 7749.84: BODY SHIELD ROLLBACK — the density-scaled bodyFactor
+        // gate (WAVE 7749.83) was reverted. bodyFactor compares body/bodyEMA,
+        // but in techno the kick fires every beat into 150-250Hz, inflating
+        // bodyEMA. Even real snares then show bF 0.3-0.6 and get blocked.
+        // Empirical: Brejcha dropped 63→22 onsets (-54%). The shield killed
+        // real snares instead of FPs. bodyFactor is NOT a reliable snare
+        // discriminator in techno. Reverted to snareFloor-only gate.
         if (this._snareRefractoryFrames > 0) {
           this._snareRefractoryFrames--
           rawOnset = false
         } else {
-          rawOnset = isCrossover && snareDrive >= snareFloor && bodyFactor >= minBodyFactor
+          rawOnset = isCrossover && snareDrive >= snareFloor
           if (rawOnset) {
             this._snareRefractoryFrames = LiquidEngineBase.SNARE_REFRACTORY_FRAMES
           }

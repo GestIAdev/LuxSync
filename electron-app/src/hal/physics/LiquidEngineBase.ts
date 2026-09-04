@@ -829,23 +829,37 @@ export abstract class LiquidEngineBase {
       if (momoTh !== undefined) {
         const aF = p.snareMomentumAlphaFast ?? 0.50
         const aS = p.snareMomentumAlphaSlow ?? 0.05
-        // ⚒️ WAVE 7749.69: UNGATED ENERGY — use snare_energy_ungated instead of
-        // gated snare_energy for the EMA momentum detector. The gated version
-        // is 0 when the snare doesn't pass body+crack adaptive thresholds
-        // (common in techno where kick saturates body band). The ungated
-        // sqrt(body*crack) preserves the actual transient energy even when
-        // the gate is closed, allowing detection of snares that produce crack
-        // energy but can't exceed the kick-saturated body threshold.
+        // ⚒️ WAVE 7749.69: UNGATED ENERGY — use snare_energy_ungated (crack band
+        // 2-5kHz, no adaptive gate) instead of gated snare_energy. The gated
+        // version is 0 when the snare doesn't pass body+crack adaptive
+        // thresholds (common in techno where kick saturates body band).
         // sinsnare2.md (Brejcha Gravity): SnareE=0 but ungated > 0 → detectable.
-        const momoEnergy = input.snare_energy_ungated ?? snareEnergy
-        this._snareEmaFast += aF * (momoEnergy - this._snareEmaFast)
-        this._snareEmaSlow += aS * (momoEnergy - this._snareEmaSlow)
+        const ungatedEnergy = input.snare_energy_ungated ?? snareEnergy
+        this._snareEmaFast += aF * (ungatedEnergy - this._snareEmaFast)
+        this._snareEmaSlow += aS * (ungatedEnergy - this._snareEmaSlow)
         let momentum = this._snareEmaFast - this._snareEmaSlow
-        // ⚒️ WAVE 7749.68: SNARE ENERGY FLOOR — reject onsets when energy is
-        // below floor (background noise in silence). Without this, energy
-        // rising from 0.001 to ~0.025 in silence crosses momentum threshold.
-        const snareFloor = p.snareMomentumFloor ?? 0
-        rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh && momoEnergy >= snareFloor
+
+        // ⚒️ WAVE 7749.71: HYBRID MACD + PHYSICAL SHIELD (Arquitectura Dual-EMA).
+        // Replaces cooldowns, kick vetos, and static floors with pure physics.
+        //
+        // 1. CRUCE TOPOLÓGICO (MACD): momentum crosses θ upward. By topology,
+        //    momentum can only cross θ once per genuine energy rise — decay
+        //    tails produce downward crossings (momentum → 0 as EMAs converge),
+        //    never upward. This eliminates re-fires WITHOUT cooldowns.
+        const isCrossover = momentum > momoTh && this._snarePrevMomentum <= momoTh
+
+        // 2. CANDADO FÍSICO: Is this a real snare? Require BOTH:
+        //    a) Minimum crack-band impact (ungatedEnergy > 0.25) — snares push
+        //       the crack band hard; synth harmonics and kick bleed stay < 0.20.
+        //    b) Harmonic flux (spectralFlux > 0.12) — a real percussive hit
+        //       changes the spectral content abruptly. Sustained synths/pads
+        //       have low Flux even when their crack-band energy oscillates.
+        //    This annihilates synths (low Flux) and noise (low UnG) without
+        //    temporal cooldowns or cross-vetos.
+        const isPhysicalHit = ungatedEnergy > 0.25 && spectralFlux > 0.12
+
+        // 3. ONSET FINAL: crossover AND physical confirmation
+        rawOnset = isCrossover && isPhysicalHit
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a

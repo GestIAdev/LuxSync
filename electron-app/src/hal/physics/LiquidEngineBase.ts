@@ -291,6 +291,8 @@ export abstract class LiquidEngineBase {
   private _diagGateHealth: number = 0
   // ⚒️ WAVE 7749.86: Rhythm gate multiplier diagnostic
   private _diagRhythmMult: number = 1.0
+  // ⚒️ WAVE 7749.87: Ghost refractory diagnostic
+  private _diagGhostRefractory: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
@@ -341,6 +343,17 @@ export abstract class LiquidEngineBase {
   // refractory (~91ms @ 44fps) kills doubles without affecting genuine snares.
   private _snareRefractoryFrames: number = 0
   private static readonly SNARE_REFRACTORY_FRAMES = 4
+  // ⚒️ WAVE 7749.87: GHOST-SPECIFIC REFRACTORY — longer suppression for the
+  // treble-ghost path. After ANY onset (crack or ghost), the ghost path is
+  // suppressed for GHOST_REFRACTORY_FRAMES. This kills reverb-tail re-fires
+  // (hhDlt stays elevated 6-8 frames after a real snare) while preserving
+  // genuine 16th note snare rolls (which fire via the crack path at 5-6 frame
+  // gaps). The crack path keeps its own 4-frame refractory.
+  //
+  // Simulation (calib6): Brejcha 17→3 doubles, Techhouse 20→4 doubles.
+  // All killed onsets were ghost re-fires with SnareE dropping + high hhDlt.
+  private _ghostRefractoryFrames: number = 0
+  private static readonly GHOST_REFRACTORY_FRAMES = 10
   // ⚒️ WAVE 7749.85: GATE HEALTH EMA — hyper-slow envelope (~2.3s @ 44fps)
   // that tracks the structural viability of the GodEarFFT crack-band gate.
   // When the gate is alive (TechHouse, Minimal), snareEnergy EMA sits at
@@ -1146,7 +1159,15 @@ export abstract class LiquidEngineBase {
         // When gateHealth=0 (dead):  rMult_eff = rhythmMultRaw (full filter)
         const rhythmMult = gateHealth * 1.0 + (1.0 - gateHealth) * rhythmMultRaw
 
-        const trebleGhost = rawHhDelta * smartSef * ghostWeight * rhythmMult
+        // ⚒️ WAVE 7749.87: GHOST REFRACTORY — suppress ghost path for N frames
+        // after any onset. This kills reverb-tail re-fires where hhDlt stays
+        // elevated 6-8 frames after a real snare. The crack path is unaffected.
+        let ghostRefractoryActive = false
+        if (this._ghostRefractoryFrames > 0) {
+          this._ghostRefractoryFrames--
+          ghostRefractoryActive = true
+        }
+        const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult
         const snareDrive = Math.max(crackDrive, trebleGhost)
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
@@ -1182,6 +1203,9 @@ export abstract class LiquidEngineBase {
           rawOnset = isCrossover && snareDrive >= snareFloor
           if (rawOnset) {
             this._snareRefractoryFrames = LiquidEngineBase.SNARE_REFRACTORY_FRAMES
+            // ⚒️ WAVE 7749.87: Also set ghost refractory — suppress ghost path
+            // for longer to prevent reverb-tail re-fires
+            this._ghostRefractoryFrames = LiquidEngineBase.GHOST_REFRACTORY_FRAMES
           }
         }
 
@@ -1199,6 +1223,7 @@ export abstract class LiquidEngineBase {
         this._diagHhEnergy = hhEnergy
         this._diagGateHealth = gateHealth
         this._diagRhythmMult = rhythmMult
+        this._diagGhostRefractory = this._ghostRefractoryFrames
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a
@@ -1625,6 +1650,7 @@ export abstract class LiquidEngineBase {
         `ghst:${this._diagTrebleGhost.toFixed(4)} ` +
         `gH:${this._diagGateHealth.toFixed(3)} ` +
         `rGate:${this._diagRhythmMult.toFixed(2)} ` +
+        `gRefr:${this._diagGhostRefractory.toFixed(0)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +
         (this._diagSnareOnset ? ' [ONSET]' : '') +

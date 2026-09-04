@@ -179,6 +179,10 @@ export interface TitanStabilizedState {
 
   /** ⚒️ WAVE 7749.69: Ungated snare energy — crack band (2-5kHz) without adaptive gate */
   snare_energy_ungated?: number
+  /** ⚒️ WAVE 7749.76: Spectral flux localized to crack band (2-5kHz) — domain-isolated
+   *  transient detector. Replaces global spectralFlux in snareDrive to avoid hi-hat
+   *  and breakdown contamination. */
+  snare_crack_flux?: number
 
   // ═══════════════════════════════════════════════════════════════════════
   // PALETA ACTUAL (para simulaciones)

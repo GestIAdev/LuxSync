@@ -266,6 +266,7 @@ export abstract class LiquidEngineBase {
   // ⚒️ WAVE 7749.74: Bass-decorrelation telemetry
   private _diagCrackBleedK: number = 0
   private _diagSnareResidual: number = 0
+  private _diagCrackFlux: number = 0
   private _diagSnareDrive: number = 0
   private _diagSnareEnergy: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
@@ -319,8 +320,11 @@ export abstract class LiquidEngineBase {
   // It is a projection in the measurement domain (one scalar, zero allocation).
   private _crackBleedK: number = 0
   /** Positive error (crack above prediction = possible snare) adapts SLOWLY, so
-   *  genuine snares never drag the estimate up and cancel themselves out. */
-  private static readonly BLEED_MU_UP = 0.002
+   *  genuine snares never drag the estimate up and cancel themselves out.
+   *  ⚒️ WAVE 7749.76: raised 0.002→0.015 so k converges to the real kick→crack
+   *  coupling within ~3 beats instead of ~20. Snares are ~50ms transients — too
+   *  brief to move k meaningfully even at 7.5x the old rate. */
+  private static readonly BLEED_MU_UP = 0.015
   /** Negative error (over-prediction) adapts FAST, so k tracks the bleed floor. */
   private static readonly BLEED_MU_DOWN = 0.05
   /** NLMS regularizer — prevents division blow-up when bass is silent. */
@@ -868,9 +872,13 @@ export abstract class LiquidEngineBase {
         // ── TÉRMINO A: descorrelación de graves (NLMS asimétrico) ───────────
         // Kick bleed into the crack band is linearly predictable from bassE.
         // A snare is the part of the crack energy that the bass CANNOT explain.
-        // Asymmetric step: positive error adapts slowly (μ=0.002) so real snares
+        // Asymmetric step: positive error adapts slowly (μ=0.015) so real snares
         // don't teach the filter to cancel them; negative error adapts fast
         // (μ=0.05) so k converges to the *floor* of the coupling.
+        // ⚒️ WAVE 7749.76: μ_up raised 0.002→0.015 (7.5x) so k converges fast
+        // enough to track the real kick→crack coupling within ~3 beats instead
+        // of ~20. Snares are too brief (~50ms) to move k meaningfully even at
+        // this higher rate — the filter learns the floor, not the spikes.
         const bleedErr = crack - this._crackBleedK * bassE
         const bleedMu = bleedErr > 0
           ? LiquidEngineBase.BLEED_MU_UP
@@ -883,14 +891,15 @@ export abstract class LiquidEngineBase {
         }
         const residual = bleedErr > 0 ? bleedErr : 0
 
-        // ── TÉRMINO B: flux espectral (anti-synth/anti-hat) ─────────────────
-        // A snare is a TRANSIENT — spectral flux spikes because the spectrum
-        // changes explosively. A synth pad, bass harmonic or sustained hi-hat
-        // has LOW flux (the spectrum barely changes frame-to-frame).
-        // Empirically (Brejcha log): Res×Flux separability = 6.56x vs
-        // Res×Flatness = 2.37x. Flatness is inert in techno because hi-hats
-        // are also broadband — only flux distinguishes a transient from sustain.
-        const snareDrive = residual * spectralFlux
+        // ── TÉRMINO B: crack-band flux (domain-localized transient) ─────────
+        // A snare fires broadband noise INTO 2-5kHz → crackFlux spikes. A hi-hat
+        // at 10kHz does NOT move 2-5kHz bins → crackFlux stays low. A breakdown
+        // section change shifts the whole spectrum but not specifically 2-5kHz.
+        // This is the domain-isolated transient detector that killed the global
+        // spectralFlux's hi-hat and breakdown contamination.
+        // ⚒️ WAVE 7749.76: replaced global spectralFlux with crack-band flux.
+        const crackFlux = input.snare_crack_flux ?? spectralFlux
+        const snareDrive = residual * crackFlux
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
         // snareDrive is per-frame and raw. The MACD does its own smoothing;
@@ -910,6 +919,7 @@ export abstract class LiquidEngineBase {
 
         this._diagCrackBleedK = this._crackBleedK
         this._diagSnareResidual = residual
+        this._diagCrackFlux = crackFlux
         this._diagSnareDrive = snareDrive
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
@@ -1299,14 +1309,15 @@ export abstract class LiquidEngineBase {
         `Veto:${this._diagVetoFactor.toFixed(3)} ` +
         `BassE:${this._diagBassEnergy.toFixed(3)} ` +
         `BassΔ:${this._diagBassDelta.toFixed(3)} ` +
-        // ⚒️ WAVE 7749.75: bass-decorrelation chain — k=bleed coeff learned by
-        // NLMS, Res=residual after subtracting kick bleed, Drive=Res*Flux =
-        // what the MACD actually eats. Flux (spectral change rate) replaced
-        // Flatness (Wiener entropy) — flatness is inert in techno because
-        // hi-hats are also broadband; only flux distinguishes transient from
-        // sustain. Separability: Res×Flux=6.56x vs Res×Flat=2.37x.
+        // ⚒️ WAVE 7749.76: bass-decorrelation chain — k=bleed coeff learned by
+        // NLMS (μ_up=0.015 fast convergence), Res=residual after subtracting kick
+        // bleed, cFx=crack-band spectral flux (2-5kHz localized), Drive=Res*cFx =
+        // what the MACD actually eats. cFx replaces global Flux to avoid hi-hat
+        // (10kHz) and breakdown contamination. Separability: Res×Flux=6.56x →
+        // Res×cFx expected higher (domain isolation removes cross-band noise).
         `k:${this._diagCrackBleedK.toFixed(3)} ` +
         `Res:${this._diagSnareResidual.toFixed(3)} ` +
+        `cFx:${this._diagCrackFlux.toFixed(3)} ` +
         `Drive:${this._diagSnareDrive.toFixed(3)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +

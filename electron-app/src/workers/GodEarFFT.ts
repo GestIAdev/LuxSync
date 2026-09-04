@@ -227,6 +227,13 @@ export interface GodEarRhythmicPercussion {
    *  that fires on every kick beat. Crack-only is immune to kick bleed.
    *  sinsnare2.md (Brejcha Gravity): SnareE=0 but crack energy > 0 → detectable. */
   snare_energy_ungated: number;
+  /** ⚒️ WAVE 7749.76: Spectral flux localized to the crack band (2-5kHz).
+   *  Half-wave rectified, whitened, normalized — same algorithm as the global
+   *  spectralFluxV3 but restricted to crack bins. A snare fires broadband noise
+   *  INTO 2-5kHz → crackFlux spikes. A hi-hat at 10kHz does NOT move 2-5kHz bins
+   *  → crackFlux stays low. This is the domain-localized transient detector that
+   *  replaces the global spectralFlux in the snareDrive calculation. */
+  snare_crack_flux: number;
 }
 
 export interface GodEarSpectrum {
@@ -1962,6 +1969,13 @@ class RhythmicPercussionTracker {
   // WAVE 7749.7b: Per-band raw tracking — crack and body deltas independently
   private _prevSnareCrackRaw = 0;
   private _prevSnareBodyRaw = 0;
+  // ⚒️ WAVE 7749.76: Crack-band spectral flux — localized to 2-5kHz bins.
+  // Same algorithm as computeSpectralFlux but only over crack bins, so hi-hats
+  // at 10kHz and breakdown section changes don't inflate the flux.
+  private _prevCrackPower: Float32Array = new Float32Array(0);
+  private _crackFluxWhitening: Float32Array = new Float32Array(0);
+  private _crackBinCount = 0;
+  private _lastCrackFlux = 0;
   // WAVE 8008 fix: asymmetric attack/release — instant attack, ~200ms release
   private static readonly ENERGY_ATTACK = 0.85;  // near-instant rise
   private static readonly ENERGY_RELEASE = 0.06;  // ~330ms decay @ 44Hz
@@ -1992,6 +2006,10 @@ class RhythmicPercussionTracker {
     this.snareCrackHiBin = Math.ceil(5000 / binRes);
     this.hhLoBin = Math.floor(5000 / binRes);
     this.hhHiBin = Math.ceil(15000 / binRes);
+    // ⚒️ WAVE 7749.76: Allocate crack-band flux state once (zero-alloc per frame)
+    this._crackBinCount = this.snareCrackHiBin - this.snareCrackLoBin + 1;
+    this._prevCrackPower = new Float32Array(this._crackBinCount);
+    this._crackFluxWhitening = new Float32Array(this._crackBinCount);
   }
 
   /**
@@ -2052,6 +2070,28 @@ class RhythmicPercussionTracker {
     const snareBody = this.extractSubBandRaw(power, this.snareBodyLoBin, this.snareBodyHiBin);
     const snareCrack = this.extractSubBandRaw(power, this.snareCrackLoBin, this.snareCrackHiBin);
     const hhRaw = this.extractSubBand(power, this.hhLoBin, this.hhHiBin);
+
+    // ⚒️ WAVE 7749.76: Crack-band spectral flux — half-wave rectified, whitened,
+    // normalized. Same algorithm as the global computeSpectralFlux but restricted
+    // to the 2-5kHz bins. This isolates the snare transient from hi-hats (10kHz+)
+    // and breakdown section changes (broadband spectral shifts). A snare fires
+    // broadband noise INTO 2-5kHz → crackFlux spikes. A hi-hat at 10kHz does NOT
+    // move the 2-5kHz bins → crackFlux stays low. Zero per-frame allocation.
+    {
+      let totalFlux = 0;
+      const upper = Math.min(this.snareCrackHiBin, power.length - 1);
+      for (let bin = this.snareCrackLoBin, i = 0; bin <= upper; bin++, i++) {
+        const p = power[bin];
+        const r = this._crackFluxWhitening[i] * 0.995;
+        this._crackFluxWhitening[i] = p > r ? p : r;
+        const d = p - this._prevCrackPower[i];
+        if (d > 0) totalFlux += d / (this._crackFluxWhitening[i] + 1e-12);
+        this._prevCrackPower[i] = p;
+      }
+      this._lastCrackFlux = totalFlux > 1e-10
+        ? totalFlux / this._crackBinCount
+        : 0;
+    }
 
     // ── 2. Update adaptive threshold EMAs ──
     this._snareBodyEMA += this._emaAlpha * (snareBody - this._snareBodyEMA);
@@ -2191,6 +2231,8 @@ class RhythmicPercussionTracker {
       // every kick beat. The crack band alone is where the snare snap lives
       // and is immune to kick bleed.
       snare_energy_ungated: snareCrack,
+      // ⚒️ WAVE 7749.76: Crack-band spectral flux for the domain-localized drive
+      snare_crack_flux: this._lastCrackFlux,
     };
   }
 
@@ -2208,6 +2250,10 @@ class RhythmicPercussionTracker {
     this._lastHHHitMs = 0;
     this._snareCooldownMs = 0;
     this._hhCooldownMs = 0;
+    // ⚒️ WAVE 7749.76: reset crack-band flux state
+    this._prevCrackPower.fill(0);
+    this._crackFluxWhitening.fill(0);
+    this._lastCrackFlux = 0;
   }
 }
 

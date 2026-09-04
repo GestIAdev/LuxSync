@@ -161,8 +161,6 @@ export interface EngineAudioMetrics {
   raw_snare_delta?: number
   // ⚒️ WAVE 7749.69: Ungated snare energy — crack band (2-5kHz) without adaptive gate
   snare_energy_ungated?: number
-  // ⚒️ WAVE 7749.74: Crack-band spectral flatness [0,1] — 1 = noise (snare), 0 = tonal
-  snare_crack_flatness?: number
   // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
   photon?: GodEarPhoton
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
@@ -930,8 +928,6 @@ export class TitanEngine extends EventEmitter {
         raw_snare_delta: audio.raw_snare_delta,
         // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
         snare_energy_ungated: audio.snare_energy_ungated,
-        // ⚒️ WAVE 7749.74: Crack-band flatness for the anti-synth discriminator
-        snare_crack_flatness: audio.snare_crack_flatness,
         // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity
         photon: audio.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
@@ -1118,9 +1114,7 @@ export class TitanEngine extends EventEmitter {
       hh_energy: audio.hh_energy,
       // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
       snare_energy_ungated: audio.snare_energy_ungated,
-      // ⚒️ WAVE 7749.74: Crack-band flatness for the anti-synth discriminator
-      snare_crack_flatness: audio.snare_crack_flatness,
-      
+
       // Paleta actual
       currentPalette: selenePalette,
       
@@ -2088,8 +2082,6 @@ export class TitanEngine extends EventEmitter {
       raw_snare_delta: safeNumber(src.raw_snare_delta, 0),
       // ⚒️ WAVE 7749.69: Ungated snare energy — clamped to [0,1]
       snare_energy_ungated: clamp01(src.snare_energy_ungated, 0),
-      // ⚒️ WAVE 7749.74: Crack-band spectral flatness — clamped to [0,1]
-      snare_crack_flatness: clamp01(src.snare_crack_flatness, 0),
       photon: src.photon,
     }
   }

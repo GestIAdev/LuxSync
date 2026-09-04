@@ -266,7 +266,6 @@ export abstract class LiquidEngineBase {
   // ⚒️ WAVE 7749.74: Bass-decorrelation telemetry
   private _diagCrackBleedK: number = 0
   private _diagSnareResidual: number = 0
-  private _diagCrackFlatness: number = 0
   private _diagSnareDrive: number = 0
   private _diagSnareEnergy: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
@@ -865,7 +864,6 @@ export abstract class LiquidEngineBase {
         //
         // The fix is algebraic, O(1), zero-allocation — no cooldowns, no ducking.
         const crack = input.snare_energy_ungated ?? snareEnergy
-        const flatness = input.snare_crack_flatness ?? 1
 
         // ── TÉRMINO A: descorrelación de graves (NLMS asimétrico) ───────────
         // Kick bleed into the crack band is linearly predictable from bassE.
@@ -885,12 +883,14 @@ export abstract class LiquidEngineBase {
         }
         const residual = bleedErr > 0 ? bleedErr : 0
 
-        // ── TÉRMINO B: blanqueo espectral (anti-synth) ──────────────────────
-        // A snare is broadband noise (flatness → 1); a synth pad or bass
-        // harmonic is tonal (flatness → 0). A tonal source cannot fake
-        // broadband flatness — this is structure, not amplitude, so it holds
-        // regardless of how loud the synth is.
-        const snareDrive = residual * flatness
+        // ── TÉRMINO B: flux espectral (anti-synth/anti-hat) ─────────────────
+        // A snare is a TRANSIENT — spectral flux spikes because the spectrum
+        // changes explosively. A synth pad, bass harmonic or sustained hi-hat
+        // has LOW flux (the spectrum barely changes frame-to-frame).
+        // Empirically (Brejcha log): Res×Flux separability = 6.56x vs
+        // Res×Flatness = 2.37x. Flatness is inert in techno because hi-hats
+        // are also broadband — only flux distinguishes a transient from sustain.
+        const snareDrive = residual * spectralFlux
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
         // snareDrive is per-frame and raw. The MACD does its own smoothing;
@@ -904,13 +904,12 @@ export abstract class LiquidEngineBase {
         // tails cross downward. Anti-retrigger is topology, not a cooldown.
         const isCrossover = momentum > momoTh && this._snarePrevMomentum <= momoTh
 
-        // Noise floor on the decorrelated+whitened drive (not on raw energy).
+        // Noise floor on the decorrelated+fluxed drive (not on raw energy).
         const snareFloor = p.snareMomentumFloor ?? 0
         rawOnset = isCrossover && snareDrive >= snareFloor
 
         this._diagCrackBleedK = this._crackBleedK
         this._diagSnareResidual = residual
-        this._diagCrackFlatness = flatness
         this._diagSnareDrive = snareDrive
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
@@ -1300,12 +1299,14 @@ export abstract class LiquidEngineBase {
         `Veto:${this._diagVetoFactor.toFixed(3)} ` +
         `BassE:${this._diagBassEnergy.toFixed(3)} ` +
         `BassΔ:${this._diagBassDelta.toFixed(3)} ` +
-        // ⚒️ WAVE 7749.74: bass-decorrelation chain — k=bleed coeff learned by
-        // NLMS, Res=residual after subtracting kick bleed, Flat=crack-band
-        // spectral flatness, Drive=Res*Flat = what the MACD actually eats.
+        // ⚒️ WAVE 7749.75: bass-decorrelation chain — k=bleed coeff learned by
+        // NLMS, Res=residual after subtracting kick bleed, Drive=Res*Flux =
+        // what the MACD actually eats. Flux (spectral change rate) replaced
+        // Flatness (Wiener entropy) — flatness is inert in techno because
+        // hi-hats are also broadband; only flux distinguishes transient from
+        // sustain. Separability: Res×Flux=6.56x vs Res×Flat=2.37x.
         `k:${this._diagCrackBleedK.toFixed(3)} ` +
         `Res:${this._diagSnareResidual.toFixed(3)} ` +
-        `Flat:${this._diagCrackFlatness.toFixed(3)} ` +
         `Drive:${this._diagSnareDrive.toFixed(3)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +

@@ -69,8 +69,6 @@ export interface LiquidStereoInput {
   raw_snare_delta?: number  // positive = onset, negative = decay
   // ⚒️ WAVE 7749.69: Ungated snare energy — crack band (2-5kHz) without adaptive gate
   snare_energy_ungated?: number
-  // ⚒️ WAVE 7749.74: Crack-band spectral flatness [0,1] — 1 = noise (snare), 0 = tonal
-  snare_crack_flatness?: number
   // WAVE 8005.2: Photon block — para bypass frontal durante strobe FFT V3
   photon?: GodEarPhoton
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)

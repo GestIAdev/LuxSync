@@ -227,14 +227,6 @@ export interface GodEarRhythmicPercussion {
    *  that fires on every kick beat. Crack-only is immune to kick bleed.
    *  sinsnare2.md (Brejcha Gravity): SnareE=0 but crack energy > 0 → detectable. */
   snare_energy_ungated: number;
-  /** ⚒️ WAVE 7749.74: SPECTRAL FLATNESS of the crack band (2-5kHz) ∈ [0,1].
-   *  Wiener entropy: geometric mean / arithmetic mean of the bin powers.
-   *  A snare is BROADBAND NOISE → flat spectrum → flatness → 1.
-   *  A synth pad / bass harmonic is TONAL → few sharp peaks → flatness → 0.
-   *  This is the physical discriminator that separates a real snare snap from
-   *  a synthesizer that happens to have energy in the same band. Unlike an
-   *  amplitude threshold, a tonal source CANNOT fake broadband flatness. */
-  snare_crack_flatness: number;
 }
 
 export interface GodEarSpectrum {
@@ -1992,13 +1984,6 @@ class RhythmicPercussionTracker {
   private static readonly SNARE_FLOOR = 0.008;
   private static readonly HH_FLOOR = 0.005;
 
-  // ⚒️ WAVE 7749.74: Spectral flatness of the crack band — anti-synth discriminator
-  private _lastCrackFlatness = 0;
-  /** Log-domain floor: keeps ln() finite on empty bins without biasing the ratio. */
-  private static readonly FLATNESS_EPS = 1e-10;
-  /** Below this mean power the band is silence — report flatness 0, not 1. */
-  private static readonly FLATNESS_SILENCE = 1e-9;
-
   constructor(sampleRate: number, fftSize: number) {
     const binRes = sampleRate / fftSize;
     this.snareBodyLoBin = Math.floor(150 / binRes);
@@ -2050,51 +2035,6 @@ class RhythmicPercussionTracker {
   }
 
   /**
-   * ⚒️ WAVE 7749.74: Extract sub-band energy AND spectral flatness in one pass.
-   *
-   * Spectral flatness (Wiener entropy) = geometric mean / arithmetic mean:
-   *
-   *   flatness = exp( (1/N) Σ ln(P[k]) ) / ( (1/N) Σ P[k] )
-   *
-   * ∈ [0,1] where 1 = perfectly flat (white noise) and 0 = a single pure tone.
-   *
-   * Physical rationale: a snare drum is a broadband noise burst — its 2-5kHz
-   * content is spectrally flat. A synthesizer, bass harmonic or tonal pad
-   * concentrates energy in a few partials — low flatness. Amplitude thresholds
-   * cannot tell these apart (both can be loud); flatness can, because tonality
-   * is a structural property that a harmonic source cannot disguise.
-   *
-   * Zero-allocation: writes flatness into `_lastCrackFlatness`, returns the RMS.
-   * Single pass over the same bins the plain extraction would have walked.
-   */
-  private extractSubBandRawWithFlatness(power: Float32Array, loBin: number, hiBin: number): number {
-    let sum = 0;
-    let logSum = 0;
-    let count = 0;
-    const upper = Math.min(hiBin, power.length - 1);
-    for (let bin = loBin; bin <= upper; bin++) {
-      const p = power[bin];
-      sum += p;
-      logSum += Math.log(p + RhythmicPercussionTracker.FLATNESS_EPS);
-      count++;
-    }
-    if (count === 0) {
-      this._lastCrackFlatness = 0;
-      return 0;
-    }
-    const arithMean = sum / count;
-    const geoMean = Math.exp(logSum / count);
-    // Guard: in digital silence both means collapse to FLATNESS_EPS and the
-    // ratio would read 1.0 (spuriously "perfectly flat"). Report 0 instead —
-    // silence is not a snare.
-    this._lastCrackFlatness = arithMean > RhythmicPercussionTracker.FLATNESS_SILENCE
-      ? Math.min(1, geoMean / arithMean)
-      : 0;
-    const integratedRms = Math.sqrt(sum);
-    return integratedRms * POST_FFT_LEGACY_EQ_GAIN * RhythmicPercussionTracker.RHYTHMIC_GAIN;
-  }
-
-  /**
    * Process one frame and produce rhythmic percussion telemetry.
    *
    * @param power    Pre-allocated power spectrum (Float32Array, numBins+1)
@@ -2110,8 +2050,7 @@ class RhythmicPercussionTracker {
     // WAVE 7749.7: Use UNCLAMPED extraction for body/crack — the clamped version
     // saturates at 1.25 in dense techno, making the transient delta always 0.
     const snareBody = this.extractSubBandRaw(power, this.snareBodyLoBin, this.snareBodyHiBin);
-    // ⚒️ WAVE 7749.74: crack extraction also yields spectral flatness (_lastCrackFlatness)
-    const snareCrack = this.extractSubBandRawWithFlatness(power, this.snareCrackLoBin, this.snareCrackHiBin);
+    const snareCrack = this.extractSubBandRaw(power, this.snareCrackLoBin, this.snareCrackHiBin);
     const hhRaw = this.extractSubBand(power, this.hhLoBin, this.hhHiBin);
 
     // ── 2. Update adaptive threshold EMAs ──
@@ -2252,9 +2191,6 @@ class RhythmicPercussionTracker {
       // every kick beat. The crack band alone is where the snare snap lives
       // and is immune to kick bleed.
       snare_energy_ungated: snareCrack,
-      // ⚒️ WAVE 7749.74: Wiener entropy of the crack band — 1 = noise (snare),
-      // 0 = tonal (synth/bass harmonic). Computed in the crack extraction pass.
-      snare_crack_flatness: this._lastCrackFlatness,
     };
   }
 
@@ -2272,7 +2208,6 @@ class RhythmicPercussionTracker {
     this._lastHHHitMs = 0;
     this._snareCooldownMs = 0;
     this._hhCooldownMs = 0;
-    this._lastCrackFlatness = 0;
   }
 }
 

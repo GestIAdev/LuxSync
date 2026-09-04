@@ -829,47 +829,27 @@ export abstract class LiquidEngineBase {
       if (momoTh !== undefined) {
         const aF = p.snareMomentumAlphaFast ?? 0.50
         const aS = p.snareMomentumAlphaSlow ?? 0.05
-        // ⚒️ WAVE 7749.69: UNGATED ENERGY — use snare_energy_ungated (crack band
-        // 2-5kHz, no adaptive gate) instead of gated snare_energy. The gated
-        // version is 0 when the snare doesn't pass body+crack adaptive
-        // thresholds (common in techno where kick saturates body band).
-        // sinsnare2.md (Brejcha Gravity): SnareE=0 but ungated > 0 → detectable.
-        const ungatedEnergy = input.snare_energy_ungated ?? snareEnergy
-        this._snareEmaFast += aF * (ungatedEnergy - this._snareEmaFast)
-        this._snareEmaSlow += aS * (ungatedEnergy - this._snareEmaSlow)
+        // ⚒️ WAVE 7749.73: MACD PURO SOBRE SnareE (GATED) — Rollback total de
+        // UnG. El uso de energía cruda (ungated) hipersensibilizaba el MACD a
+        // armónicos de bombo y synths al saltarse el Gate del GodEarFFT.
+        // Volvemos a snareEnergy (filtrada) — el GodEarFFT discrimina los
+        // armónicos de bombo. El MACD se encarga del jitter 3X en decaimiento.
+        // Costo: posible pérdida de snares tímidos en Minimal. Beneficio:
+        // Back R vuelve a ser un metrónomo oscuro y preciso.
+        this._snareEmaFast += aF * (snareEnergy - this._snareEmaFast)
+        this._snareEmaSlow += aS * (snareEnergy - this._snareEmaSlow)
         let momentum = this._snareEmaFast - this._snareEmaSlow
 
-        // ⚒️ WAVE 7749.71: HYBRID MACD + PHYSICAL SHIELD (Arquitectura Dual-EMA).
-        // Replaces cooldowns, kick vetos, and static floors with pure physics.
-        //
         // 1. CRUCE TOPOLÓGICO (MACD): momentum crosses θ upward. By topology,
         //    momentum can only cross θ once per genuine energy rise — decay
-        //    tails produce downward crossings (momentum → 0 as EMAs converge),
-        //    never upward. This eliminates re-fires WITHOUT cooldowns.
+        //    tails produce downward crossings, never upward. Eliminates re-fires
+        //    WITHOUT cooldowns.
         const isCrossover = momentum > momoTh && this._snarePrevMomentum <= momoTh
 
-        // 2. CANDADO FÍSICO CONTEXTUAL (Dynamic Shield) — WAVE 7749.72
-        //    The BassE "Enmascaramiento" effect: when bass is saturating (>0.80),
-        //    crack-band energy likely comes from kick harmonics or bass-heavy
-        //    synths, not a real snare. We demand more brute force. When bass
-        //    is quiet, we relax thresholds to catch timid snares in breakdowns.
-        //
-        //    Three tiers:
-        //    • BassE > 0.80 → "Bunker": minUnG=0.35, minFlux=0.18 (kick/synth war)
-        //    • BassE > 0.60 → "Defensivo": minUnG=0.25, minFlux=0.14 (medium density)
-        //    • BassE ≤ 0.60 → "Base": minUnG=0.18, minFlux=0.10 (timid snares pass)
-        let minUnG = 0.18  // Base relaxed to catch timid snares
-        let minFlux = 0.10
-        if (bassE > 0.80) {
-          // Modo "Bunker": bass is burning, demand radical force
-          minUnG = 0.35
-          minFlux = 0.18
-        } else if (bassE > 0.60) {
-          // Modo "Defensivo": medium-grave activity
-          minUnG = 0.25
-          minFlux = 0.14
-        }
-        const isPhysicalHit = ungatedEnergy > minUnG && spectralFlux > minFlux
+        // 2. CANDADO DE RUIDO SIMPLE — snareEnergy ya está filtrada por el
+        //    GodEarFFT (adaptive gate). Solo necesitamos evitar micro-falsos
+        //    en pasajes silenciosos donde SnareE oscila entre 0.02-0.10.
+        const isPhysicalHit = snareEnergy > 0.15
 
         // 3. ONSET FINAL: crossover AND physical confirmation
         rawOnset = isCrossover && isPhysicalHit

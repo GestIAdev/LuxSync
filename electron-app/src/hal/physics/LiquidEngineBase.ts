@@ -315,6 +315,14 @@ export abstract class LiquidEngineBase {
   private _snareEmaFast: number = 0
   private _snareEmaSlow: number = 0
   private _snarePrevMomentum: number = 0
+  // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — frame counter to prevent
+  // double-triggers caused by 1-2 frame silence gaps in snare decay tails.
+  // The previous 1-frame reset nuked emaSlow the instant Drive < 0.01,
+  // eliminating the MACD's inertia and letting the next kick/artifact cross
+  // the threshold unopposed. Requiring 8 consecutive frames (~182ms @ 44fps)
+  // of genuine silence preserves emaSlow through normal inter-onset gaps.
+  private _snareSilenceFrames: number = 0
+  private static readonly SILENCE_RESET_FRAMES = 8
 
   // ⚒️ WAVE 7749.74: BASS-DECORRELATION state — adaptive kick→crack bleed coefficient.
   // The kick bleeds into the crack band (2-5kHz) via its upper harmonics. That
@@ -964,10 +972,24 @@ export abstract class LiquidEngineBase {
         // when energy drops to near-silence so the first returning beat fires.
         // ⚒️ WAVE 7749.74: condition now tracks snareDrive (what the EMAs eat),
         // not snareEnergy — the gated energy no longer drives this detector.
+        // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — require 8 consecutive
+        // frames (~182ms @ 44fps) of Drive < 0.01 before resetting. The
+        // previous 1-frame reset nuked emaSlow in the 1-2 frame silence gap
+        // between a snare's decay tail and the next kick, eliminating the
+        // MACD's inertia and causing double-triggers. With 8 frames, emaSlow
+        // decays naturally (5% per frame → ~34% over 8 frames) and blocks
+        // spurious crossings from kick bleed or decay artifacts. Resets only
+        // fire in genuine breaks/drops (>182ms of silence).
         if (this._snareEmaSlow > 0.10 && snareDrive < 0.01) {
-          this._snareEmaFast = 0
-          this._snareEmaSlow = 0
-          this._snarePrevMomentum = 0
+          this._snareSilenceFrames++
+          if (this._snareSilenceFrames >= LiquidEngineBase.SILENCE_RESET_FRAMES) {
+            this._snareEmaFast = 0
+            this._snareEmaSlow = 0
+            this._snarePrevMomentum = 0
+            this._snareSilenceFrames = 0
+          }
+        } else {
+          this._snareSilenceFrames = 0
         }
       } else if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
         // ⚒️ WAVE 7749.64: PROFILE-GATED BASSΔ FLOOR — anti-hi-hat surfer.

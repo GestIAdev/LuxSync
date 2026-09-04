@@ -1025,6 +1025,7 @@ export class TickEngine {
       let _dimSum = 0, _movSum = 0, _movCount = 0, _frontSum = 0, _frontCount = 0
       for (let _ti = 0; _ti < fixtureStates.length; _ti++) {
         const _tf = fixtureStates[_ti]
+        if (!_tf) continue  // WAVE 7749.77: skip holes from unpatched/virtual fixtures
         _dimSum += _tf.dimmer
         if (_tf.zone.includes('MOVING')) { _movSum += _tf.dimmer; _movCount++ }
         if (_tf.zone === 'FRONT_PARS')   { _frontSum += _tf.dimmer; _frontCount++ }
@@ -1098,6 +1099,7 @@ export class TickEngine {
       // fixtureStates son objetos propios del HAL por frame â€” son seguros de mutar.
       for (let index = 0; index < fixtureStates.length; index++) {
         const f = fixtureStates[index]
+        if (!f) continue  // WAVE 7749.77: skip holes from unpatched/virtual fixtures
         // ðŸŽ¬ WAVE 2065: Skip fixtures that Chronos is currently painting
         const fixtureId = this.fixtures[index]?.id
         if (fixtureId && chronosFixtureIds.has(fixtureId)) continue
@@ -1220,6 +1222,7 @@ export class TickEngine {
     if (!chronosPlaying) {
       for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
         const _f = fixtureStates[_pi]
+        if (!_f) continue  // WAVE 7749.77: skip holes from unpatched/virtual fixtures
         const _id = this.fixtures[_pi]?.id
         if (!_id) continue
         const _prev = this.peakHoldMap.get(_id) ?? 0
@@ -1236,6 +1239,7 @@ export class TickEngine {
       const _hfCount = fixtureStates.length
       for (let _hfi = 0; _hfi < _hfCount; _hfi++) {
         const _f = fixtureStates[_hfi]
+        if (!_f) continue  // WAVE 7749.77: skip holes from unpatched/virtual fixtures
         const _orig = this.fixtures[_hfi]
         let _hff = this._cachedHotFrameFixtures[_hfi]
         if (!_hff) {
@@ -1721,6 +1725,7 @@ export class TickEngine {
     const view = this._glassView
     for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
       const fs = fixtureStates[fi]
+      if (!fs) continue  // WAVE 7749.77: skip holes from unpatched/virtual fixtures
       const off = 10 + fi * 16
       view[off + 0]  = fs.r ?? 0
       view[off + 1]  = fs.g ?? 0
@@ -1759,6 +1764,7 @@ export class TickEngine {
       const _tfCount = fixtureStates.length
       for (let _tvi = 0; _tvi < _tfCount; _tvi++) {
         const _f = fixtureStates[_tvi]
+        if (!_f) continue  // WAVE 7749.77: skip holes from unpatched/virtual fixtures
         const _orig = this.fixtures[_tvi]
         const _realId = _orig?.id || ''
         let _tvf = this._cachedTruthFixtures[_tvi]
@@ -1813,7 +1819,8 @@ export class TickEngine {
       // 🛠️ WAVE 5032: Count active fixtures with for loop instead of .reduce()
       let _activeCount = 0
       for (let _aci = 0; _aci < fixtureStates.length; _aci++) {
-        if (fixtureStates[_aci].dimmer > 0) _activeCount++
+        const _af = fixtureStates[_aci]
+        if (_af && _af.dimmer > 0) _activeCount++
       }
 
       // Build a valid SeleneTruth structure

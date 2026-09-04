@@ -1,12 +1,17 @@
-WAVE 7749.92: Smoothed dynamic floor EMA — glide instead of jitter
+WAVE 7749.93: GateHealth-gated floor relaxation — only relax when gate is dead
 
-The raw dynamic floor (from fBL × 4.0 slope) jittered frame-to-frame because
-small fBL fluctuations get amplified. Added a dedicated EMA on the floor
-output: α=0.05 → tau ~450ms @ 44fps. This tracks buildup evolution (which
-develops over 4-8 seconds) but ignores frame-to-frame noise.
+The dynamic floor (WAVE 7749.89) relaxed on ANY track with high fBL, but
+techhouse has fBL 0.058-0.066 AND gateHealth=1.0 (gate alive, SnareE 0.2-1.0,
+crack path works perfectly). The floor dropped to 0.009-0.011, letting weak
+hi-hats through and making the snare "loquillo".
 
-On silence reset (emaSlow < 0.01 AND rawFloor < 0.02), the EMA snaps back
-to the base floor so the detector re-arms quickly after breaks/drops.
+Fix: multiply the relaxation by (1 - gateHealth), same pattern as sEF
+(WAVE 7749.85) and deadGateRescue (WAVE 7749.90):
+  floorRelaxation = max(0, fBL-0.04) * 4.0 * (1 - gateHealth)
+
+  Techhouse (gH=1.0, fBL=0.065): relaxation=0 → floor stays 0.08 (strict)
+  Brejcha  (gH=0.8, fBL=0.030): relaxation=0 → floor stays 0.08 (strict)
+  Opus     (gH=0.0, fBL=0.085): relaxation=0.18 → floor=0.005 (rescued)
 
 Generated with [Devin](https://devin.ai)
 

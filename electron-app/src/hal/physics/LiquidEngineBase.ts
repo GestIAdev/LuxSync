@@ -1220,11 +1220,18 @@ export abstract class LiquidEngineBase {
         // At fBL=0.03 (Brejcha hi-hats): floor stays 0.08 (strict, hats blocked)
         // At fBL=0.06 (Opus buildup):    floor = 0.04 (relaxed)
         // At fBL=0.085 (Opus peak):      floor = 0.005 (max relaxation)
+        // ⚒️ WAVE 7749.93: GATEHEALTH-GATED RELAXATION — the floor only relaxes
+        // when the GodEarFFT gate is DEAD (gateHealth ≈ 0). Techhouse has
+        // fBL 0.058-0.066 (would trigger relaxation) BUT gH=1.0 (gate alive,
+        // SnareE 0.2-1.0, crack path works perfectly). Relaxing the floor there
+        // let weak hi-hats through. Now: relaxation × (1-gateHealth) → 0 when
+        // gate is alive → floor stays strict 0.08. Only Opus (gH=0) gets rescue.
         const snareFloorBase = p.snareMomentumFloor ?? 0
         const snareFloorMin = p.snareMomentumFloorMin ?? snareFloorBase
+        const floorRelaxation = Math.max(0, this._fluxBaseline - 0.04) * 4.0 * (1.0 - gateHealth)
         const rawFloor = Math.max(
           snareFloorMin,
-          snareFloorBase - Math.max(0, this._fluxBaseline - 0.04) * 4.0
+          snareFloorBase - floorRelaxation
         )
         // ⚒️ WAVE 7749.92: SMOOTHED FLOOR — EMA the raw floor so it glides
         // instead of jittering. α=0.05 → tau ~450ms, tracks buildups (seconds)

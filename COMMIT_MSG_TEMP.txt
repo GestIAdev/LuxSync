@@ -1,17 +1,20 @@
-WAVE 7749.83: Density-scaled body shield + GARBAGE-ZERO audit gate
+WAVE 7749.89: Dynamic snare floor — breathe with fBL to rescue buildup snares
 
-- Density-scaled bodyFactor gate: minBF = 0.3 + 0.7*spectralDensity.
-  Blocks hi-hat false positives in dense tracks (Brejcha bF 0.27-0.56)
-  while staying transparent in clean tracks (Tiesto minBF 0.38).
-  Empirical: Brejcha -10 FPs, TechHouse -2 FPs, Tiesto/Minimal 0 collateral.
+The static snareMomentumFloor (0.08, WAVE 7749.88) killed genuine snares in
+dense buildups where AGC compression crushes Drive to 0.01-0.03. calib8b
+showed Opus Prytdz lost ALL snares (fBL 0.06-0.085) and Techhouse lost the
+roll during the climb (fBL 0.045-0.064). The hi-hats we wanted to suppress
+live at fBL 0.026-0.046 — clean gap at 0.04.
 
-- GARBAGE-ZERO: FINESSE_AUDIT gated behind LUX_FINESSE_AUDIT env flag
-  (default ON). Was allocating ~46 strings/log at 40fps -> GC pressure
-  -> Event Loop freezes -> DMX watchdog trips. Set LUX_FINESSE_AUDIT=0
-  to silence in production.
+The final floor now relaxes linearly with fBL above 0.04:
+  finalFloor = max(floorMin, floor - max(0, fBL-0.04)*4.0)
+    fBL=0.03 (Brejcha hats): floor=0.08 (strict, hats blocked)
+    fBL=0.05 (Techhouse):    floor=0.04 (relaxed, roll recovered)
+    fBL=0.085 (Opus peak):   floor=0.005 (max relaxation, snares recovered)
 
-- TickEngine: purge peakHoldMap on show generation change to prevent
-  unbounded Map growth across show reloads / virtual fixture swaps.
+New profile param snareMomentumFloorMin (techno: 0.005). Added fFloor to
+FINESSE_AUDIT telemetry so the Arquitecto can watch the wall yield as Prydz
+rises.
 
 Generated with [Devin](https://devin.ai)
 

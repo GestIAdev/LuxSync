@@ -293,6 +293,8 @@ export abstract class LiquidEngineBase {
   private _diagRhythmMult: number = 1.0
   // ⚒️ WAVE 7749.87: Ghost refractory diagnostic
   private _diagGhostRefractory: number = 0
+  // ⚒️ WAVE 7749.89: Dynamic floor diagnostic
+  private _diagFinalFloor: number = 0.08
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
@@ -1184,7 +1186,22 @@ export abstract class LiquidEngineBase {
         const isCrossover = momentum > dynamicMomoTh && this._snarePrevMomentum <= dynamicMomoTh
 
         // Noise floor on the decorrelated+fluxed drive (not on raw energy).
-        const snareFloor = p.snareMomentumFloor ?? 0
+        // ⚒️ WAVE 7749.89: DYNAMIC FLOOR — the floor breathes with fBL.
+        // During dense buildups (Eric Prydz "Opus"), fBL rises from 0.04
+        // (normal) to 0.06-0.085 (peak). The static floor (0.08) killed
+        // genuine snares whose Drive was crushed to 0.01-0.03 by AGC. The
+        // final floor relaxes linearly with fBL above 0.04, down to floorMin:
+        //   finalFloor = max(floorMin, floor - max(0, fBL-0.04)*4.0)
+        // At fBL=0.03 (Brejcha hi-hats): floor stays 0.08 (strict, hats blocked)
+        // At fBL=0.06 (Opus buildup):    floor = 0.04 (relaxed)
+        // At fBL=0.085 (Opus peak):      floor = 0.005 (max relaxation)
+        const snareFloorBase = p.snareMomentumFloor ?? 0
+        const snareFloorMin = p.snareMomentumFloorMin ?? snareFloorBase
+        const snareFloor = Math.max(
+          snareFloorMin,
+          snareFloorBase - Math.max(0, this._fluxBaseline - 0.04) * 4.0
+        )
+        this._diagFinalFloor = snareFloor
         // ⚒️ WAVE 7749.82: ANTI-DOUBLE REFRACTORY — suppress re-trigger for
         // SNARE_REFRACTORY_FRAMES after the last onset. The MACD crossover
         // can re-fire in 1-3 frames when the hybrid reset oscillates momentum
@@ -1643,6 +1660,7 @@ export abstract class LiquidEngineBase {
         `bFct:${this._diagBodyFactor.toFixed(3)} ` +
         `sEF:${this._diagSnareEnergyFactor.toFixed(3)} ` +
         `Drive:${this._diagSnareDrive.toFixed(3)} ` +
+        `fFloor:${this._diagFinalFloor.toFixed(3)} ` +
         `dynTh:${this._diagDynamicMomoTh.toFixed(3)} ` +
         `sd:${this._diagSpectralDensity.toFixed(3)} ` +
         `hE:${this._diagHhEnergy.toFixed(3)} ` +

@@ -260,6 +260,16 @@ export const TECHNO_PROFILE = {
     // Techhouse 4.7->3.7/s, Tiesto 4.5->2.8/s. Real snares have Drive 0.15+
     // (SnareE 0.7+), well above this floor.
     snareMomentumFloor: 0.08,
+    // ⚒️ WAVE 7749.89: DYNAMIC FLOOR MIN — the floor breathes with fBL.
+    // calib8b showed the static 0.08 floor killed genuine snares in dense
+    // buildups: Opus Prytdz lost ALL snares (Drive 0.01-0.03, fBL 0.06-0.085),
+    // Techhouse lost the roll during the climb (Drive 0.007-0.015, fBL 0.045-
+    // 0.064). The hi-hats we wanted to suppress live at fBL 0.026-0.046 —
+    // clean gap at 0.04. finalFloor = max(0.005, 0.08 - max(0,fBL-0.04)*4.0):
+    //   fBL=0.03 (Brejcha hats): floor=0.08 (strict, hats blocked)
+    //   fBL=0.05 (Techhouse):    floor=0.04 (relaxed, roll recovered)
+    //   fBL=0.085 (Opus peak):   floor=0.005 (max relaxation, snares recovered)
+    snareMomentumFloorMin: 0.005,
     // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
     // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
     ambientAttackMs: 30,

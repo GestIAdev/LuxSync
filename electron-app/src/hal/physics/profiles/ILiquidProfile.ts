@@ -298,6 +298,17 @@ export interface ILiquidProfile {
    *  snarebueno.md: 7 falsos eliminados (SnareE 0.025-0.028).
    *  Absent = no floor (fire on any momentum crossing). */
   readonly snareMomentumFloor?: number
+  /** ⚒️ WAVE 7749.89: DYNAMIC FLOOR MIN — the floor breathes with fBL.
+   *  During dense buildups (Eric Prydz "Opus"), fBL rises from 0.04 (normal)
+   *  to 0.06-0.085 (peak). The static snareMomentumFloor (0.08) kills genuine
+   *  snares whose Drive is crushed to 0.01-0.03 by AGC compression. The final
+   *  floor relaxes linearly with fBL above 0.04, down to this minimum:
+   *    finalFloor = max(floorMin, snareMomentumFloor - max(0, fBL-0.04)*4.0)
+   *  At fBL=0.03 (Brejcha hi-hats): floor stays 0.08 (strict, hats blocked)
+   *  At fBL=0.06 (Opus buildup):    floor = 0.04 (relaxed)
+   *  At fBL=0.085 (Opus peak):      floor = 0.005 (max relaxation)
+   *  Absent = floor is static (always snareMomentumFloor). */
+  readonly snareMomentumFloorMin?: number
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
@@ -485,5 +496,7 @@ export interface ILiquidProfile {
     readonly snareMomentumResetRatio?: number
     // WAVE 7749.68: Snare energy floor (4.1 override)
     readonly snareMomentumFloor?: number
+    // WAVE 7749.89: Dynamic floor min (4.1 override)
+    readonly snareMomentumFloorMin?: number
   }
 }

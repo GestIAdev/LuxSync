@@ -953,8 +953,12 @@ export class TickEngine {
       // 🏗️ WAVE 7731: Skip UNPATCHED fixtures (address=0). They exist
       // spatially in Erebus but have no DMX routing. Emitting DMX for them
       // would write to address 0 (invalid) and corrupt the universe buffer.
-      // Also skip virtual fixtures (no hardware output).
-      if (fix.dmxAddress === 0 || fix.isVirtual) continue
+      // WAVE 7749.77b: Virtual fixtures ARE initialized (they need state for
+      // UI rendering in AetherUIProjector + truth broadcast) but are skipped
+      // at DMX emission time (flushToDriver / glassView). Previously they were
+      // skipped here entirely, leaving undefined holes that crashed consumer
+      // loops accessing .dimmer / .fixtureId.
+      if (fix.dmxAddress === 0) continue
       let state = this._cachedFixtureStates[_fi]
       if (!state) {
         state = {
@@ -1725,7 +1729,8 @@ export class TickEngine {
     const view = this._glassView
     for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
       const fs = fixtureStates[fi]
-      if (!fs) continue  // WAVE 7749.77: skip holes from unpatched/virtual fixtures
+      if (!fs) continue  // WAVE 7749.77: skip holes from unpatched fixtures
+      if (fs.isVirtual) continue  // WAVE 7749.77b: no DMX for virtual fixtures
       const off = 10 + fi * 16
       view[off + 0]  = fs.r ?? 0
       view[off + 1]  = fs.g ?? 0

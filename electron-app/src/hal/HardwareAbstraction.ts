@@ -1767,8 +1767,9 @@ export class HardwareAbstraction {
     
     for (let i = 0; i < states.length; i++) {
       const state = states[i]
-      
-      const isMovingFixture = state.zone?.includes('MOVING') || 
+      if (!state) continue  // WAVE 7749.77b: skip holes from unpatched fixtures
+
+      const isMovingFixture = state.zone?.includes('MOVING') ||
                               state.type?.toLowerCase().includes('moving') ||
                               state.type?.toLowerCase().includes('spot') ||
                               state.type?.toLowerCase().includes('beam')

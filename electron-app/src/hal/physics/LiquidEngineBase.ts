@@ -848,15 +848,28 @@ export abstract class LiquidEngineBase {
         //    never upward. This eliminates re-fires WITHOUT cooldowns.
         const isCrossover = momentum > momoTh && this._snarePrevMomentum <= momoTh
 
-        // 2. CANDADO FÍSICO: Is this a real snare? Require BOTH:
-        //    a) Minimum crack-band impact (ungatedEnergy > 0.25) — snares push
-        //       the crack band hard; synth harmonics and kick bleed stay < 0.20.
-        //    b) Harmonic flux (spectralFlux > 0.12) — a real percussive hit
-        //       changes the spectral content abruptly. Sustained synths/pads
-        //       have low Flux even when their crack-band energy oscillates.
-        //    This annihilates synths (low Flux) and noise (low UnG) without
-        //    temporal cooldowns or cross-vetos.
-        const isPhysicalHit = ungatedEnergy > 0.25 && spectralFlux > 0.12
+        // 2. CANDADO FÍSICO CONTEXTUAL (Dynamic Shield) — WAVE 7749.72
+        //    The BassE "Enmascaramiento" effect: when bass is saturating (>0.80),
+        //    crack-band energy likely comes from kick harmonics or bass-heavy
+        //    synths, not a real snare. We demand more brute force. When bass
+        //    is quiet, we relax thresholds to catch timid snares in breakdowns.
+        //
+        //    Three tiers:
+        //    • BassE > 0.80 → "Bunker": minUnG=0.35, minFlux=0.18 (kick/synth war)
+        //    • BassE > 0.60 → "Defensivo": minUnG=0.25, minFlux=0.14 (medium density)
+        //    • BassE ≤ 0.60 → "Base": minUnG=0.18, minFlux=0.10 (timid snares pass)
+        let minUnG = 0.18  // Base relaxed to catch timid snares
+        let minFlux = 0.10
+        if (bassE > 0.80) {
+          // Modo "Bunker": bass is burning, demand radical force
+          minUnG = 0.35
+          minFlux = 0.18
+        } else if (bassE > 0.60) {
+          // Modo "Defensivo": medium-grave activity
+          minUnG = 0.25
+          minFlux = 0.14
+        }
+        const isPhysicalHit = ungatedEnergy > minUnG && spectralFlux > minFlux
 
         // 3. ONSET FINAL: crossover AND physical confirmation
         rawOnset = isCrossover && isPhysicalHit

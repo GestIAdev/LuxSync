@@ -136,7 +136,9 @@ export interface SeleneLuxAudioMetrics {
   // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
   raw_snare_delta?: number;
   // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
-  snare_energy_ungated?: number;
+  snare_energy_ungated?: number
+  // ⚒️ WAVE 7749.74: Crack-band spectral flatness [0,1] — anti-synth discriminator
+  snare_crack_flatness?: number;
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number;
 }
@@ -686,6 +688,8 @@ export class SeleneLux {
         raw_snare_delta: audioMetrics.raw_snare_delta,
         // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
         snare_energy_ungated: audioMetrics.snare_energy_ungated,
+        // ⚒️ WAVE 7749.74: Crack-band flatness for the anti-synth discriminator
+        snare_crack_flatness: audioMetrics.snare_crack_flatness,
         // WAVE 8005.2: Photon block for front channel strobe bypass
         photon: audioMetrics.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
@@ -1414,6 +1418,8 @@ export class SeleneLux {
       raw_snare_delta: safeNumber(src.raw_snare_delta, 0),
       // ⚒️ WAVE 7749.69: Ungated snare energy — clamped to [0,1]
       snare_energy_ungated: clamp01(src.snare_energy_ungated, 0),
+      // ⚒️ WAVE 7749.74: Crack-band spectral flatness — clamped to [0,1]
+      snare_crack_flatness: clamp01(src.snare_crack_flatness, 0),
       photon: src.photon,
     }
   }

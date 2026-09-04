@@ -177,8 +177,12 @@ export interface TitanStabilizedState {
   /** WAVE 7749.7: Raw (pre-EMA) snare transient delta — for onset detection */
   raw_snare_delta?: number
 
-  /** ⚒️ WAVE 7749.69: Ungated snare energy — sqrt(body*crack) without adaptive gate */
+  /** ⚒️ WAVE 7749.69: Ungated snare energy — crack band (2-5kHz) without adaptive gate */
   snare_energy_ungated?: number
+
+  /** ⚒️ WAVE 7749.74: Spectral flatness of the crack band [0,1] — 1 = broadband
+   *  noise (snare), 0 = tonal (synth/bass harmonic). Anti-synth discriminator. */
+  snare_crack_flatness?: number
   
   // ═══════════════════════════════════════════════════════════════════════
   // PALETA ACTUAL (para simulaciones)

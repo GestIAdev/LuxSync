@@ -279,10 +279,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // imposiblesnare.md: stays 18 (no jitter). newsnare.md: 21 (vitaminas).
   snareMomentumResetThreshold: 0.15,
   snareMomentumResetRatio: 0.70,
-  // ⚒️ WAVE 7749.68: SNARE ENERGY FLOOR — reject onsets when SnareE < 0.05.
-  // Elimina falsos en silencio (SnareE 0.024-0.028 = ruido de fondo).
-  // sinsnare.md: 4 falsos eliminados. snarebueno.md: 7 falsos eliminados.
-  snareMomentumFloor: 0.05,
+  // ⚒️ WAVE 7749.74: NOISE FLOOR sobre snareDrive (= residuo × planitud), no
+  // sobre la energía cruda. La escala cambió: el residuo descorrelado ronda
+  // 0.10-0.50 en cajas reales y la planitud las pondera por ~0.3-0.8, así que
+  // snareDrive útil ≈ 0.03-0.40. Arrancamos BAJO (0.02) a propósito: el trabajo
+  // de discriminación lo hacen la descorrelación y el blanqueo, no el floor.
+  // PENDIENTE DE CALIBRAR con la telemetría Drive: del log en vivo.
+  snareMomentumFloor: 0.02,
 
   // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
   // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.

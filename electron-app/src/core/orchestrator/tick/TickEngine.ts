@@ -764,6 +764,8 @@ export class TickEngine {
       raw_snare_delta: this.audioPipeline.lastAudioData.rhythmic?.raw_snare_delta,
       // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
       snare_energy_ungated: this.audioPipeline.lastAudioData.rhythmic?.snare_energy_ungated,
+      // ⚒️ WAVE 7749.74: Crack-band flatness for the anti-synth discriminator
+      snare_crack_flatness: this.audioPipeline.lastAudioData.rhythmic?.snare_crack_flatness,
       // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
       photon: this.audioPipeline.lastAudioData.photon,
       // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction

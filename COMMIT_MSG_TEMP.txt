@@ -1,24 +1,10 @@
-WAVE 7749.90: Dead-Gate Rescue — use UnG to bypass asphyxiated sEF in Opus
+WAVE 7749.91: Ghost refractory 10->7 frames — recover 16th roll snares
 
-WAVE 7749.89's dynamic floor (fFloor) correctly dropped to 0.005 in Opus
-buildup, but Drive stayed at 0.001-0.005 because sEF was stuck at 0.050.
-
-Root cause: when GodEarFFT's crack-band gate is dead (gateHealth ≈ 0),
-snareEnergy = 0, so smartSef = relaxedMinSef. But relaxedMinSef depends on
-treblePresence = min(1, hhEnergy × 2.0), and hhEnergy is ALSO 0 when the
-gate is dead — the gate asphyxiates the entire treble chain. Result: both
-rescue paths are 0, sEF = 0.05, Drive = Res × cFx × bFct × 0.05 = dead.
-
-The paradox: UnG (ungated snare energy) is 0.4-0.7 in Opus — the raw treble
-energy IS there, the gate just kills it. The existing relaxation can't see
-it because it uses hhEnergy (post-gate) not UnG (pre-gate).
-
-Fix: add a parallel rescue path using UnG directly:
-  deadGateRescue = (1-gateHealth) × min(1, UnG × 1.5)
-  relaxedMinSef = 0.05 + max(existing, 0.30 × deadGateRescue)
-
-When gate is alive (Brejcha: gH=0.8+): rescue=0, no change.
-When gate is dead (Opus: gH=0, UnG=0.5): rescue=0.75 → sEF=0.275 → recovers.
+calib10 Opus showed 59/73 misses blocked by gRefr=10 (227ms). At 120 BPM,
+16th note rolls fire every ~5.5 frames (125ms), so 10 frames blocks every
+other roll snare. 7 frames (159ms) still kills reverb tails (200-400ms)
+while letting 16th rolls breathe. Spacing analysis showed 58/110 onset
+spacings were < 10 frames — 7 recovers most without double-triggers.
 
 Generated with [Devin](https://devin.ai)
 

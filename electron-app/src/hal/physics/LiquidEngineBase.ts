@@ -355,7 +355,11 @@ export abstract class LiquidEngineBase {
   // Simulation (calib6): Brejcha 17→3 doubles, Techhouse 20→4 doubles.
   // All killed onsets were ghost re-fires with SnareE dropping + high hhDlt.
   private _ghostRefractoryFrames: number = 0
-  private static readonly GHOST_REFRACTORY_FRAMES = 10
+  // ⚒️ WAVE 7749.91: 10→7 frames. calib10 Opus showed 59/73 misses blocked by
+  // gRefr=10 (227ms). At 120 BPM 16th rolls = 125ms = 5.5 frames, so 10 frames
+  // blocks every other roll snare. 7 frames (159ms) still kills reverb tails
+  // (200-400ms) while letting 16th rolls breathe.
+  private static readonly GHOST_REFRACTORY_FRAMES = 7
   // ⚒️ WAVE 7749.85: GATE HEALTH EMA — hyper-slow envelope (~2.3s @ 44fps)
   // that tracks the structural viability of the GodEarFFT crack-band gate.
   // When the gate is alive (TechHouse, Minimal), snareEnergy EMA sits at

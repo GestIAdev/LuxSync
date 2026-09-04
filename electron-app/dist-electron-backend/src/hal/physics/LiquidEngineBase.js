@@ -1848,7 +1848,11 @@ LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
     attackSlopeMin: 0.0,
 };
 LiquidEngineBase.SNARE_REFRACTORY_FRAMES = 4;
-LiquidEngineBase.GHOST_REFRACTORY_FRAMES = 10;
+// ⚒️ WAVE 7749.91: 10→7 frames. calib10 Opus showed 59/73 misses blocked by
+// gRefr=10 (227ms). At 120 BPM 16th rolls = 125ms = 5.5 frames, so 10 frames
+// blocks every other roll snare. 7 frames (159ms) still kills reverb tails
+// (200-400ms) while letting 16th rolls breathe.
+LiquidEngineBase.GHOST_REFRACTORY_FRAMES = 7;
 LiquidEngineBase.GATE_HEALTH_ALPHA = 0.01;
 LiquidEngineBase.GATE_HEALTH_THRESHOLD = 0.15;
 // ⚒️ WAVE 7749.86: RHYTHM GATE — discipline the treble-ghost with musical phase.

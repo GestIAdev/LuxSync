@@ -287,7 +287,12 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // cajas reales (Flux mediano onset=0.112, non=0.043). Floor en 0.005 deja
   // pasar los snares tímidos pero bloquea el ruido de fondo de hi-hats
   // sostenidos (Flux bajo → Drive bajo). PENDIENTE DE CALIBRAR con telemetría.
-  snareMomentumFloor: 0.005,
+  // ⚒️ WAVE 7749.88: Floor raised 0.005 -> 0.08. calib7 showed 6.0 onsets/s
+  // in Brejcha (31% weak Drive<0.05), 4.5/s in Tiesto (26% weak). The weak
+  // onsets are imperceptible hi-hats/cymbals. At 0.08: Brejcha 6->3/s,
+  // Techhouse 4.7->3.7/s, Tiesto 4.5->2.8/s. Real snares have Drive 0.15+
+  // (SnareE 0.7+), well above this floor.
+  snareMomentumFloor: 0.08,
 
   // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
   // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.

@@ -99,6 +99,11 @@ function fuseProfileFor41(base) {
 // ═══════════════════════════════════════════════════════════════════════════
 // ABSTRACT BASE
 // ═══════════════════════════════════════════════════════════════════════════
+// 🩸 WAVE GARBAGE-ZERO: FINESSE_AUDIT gated behind an env flag (default ON).
+// The audit log fires on kick/snare frames (~40fps in techno), allocating
+// ~46 ephemeral strings per log. Set LUX_FINESSE_AUDIT=0 to silence it
+// if GC pressure becomes problematic during long sessions.
+const FINESSE_AUDIT_ENABLED = (typeof process !== 'undefined' && process.env && process.env.LUX_FINESSE_AUDIT !== '0');
 export class LiquidEngineBase {
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 9001: PASSIVE TELEMETRY ACCESSORS — read-only probes for observers.
@@ -839,6 +844,20 @@ export class LiquidEngineBase {
                 const isCrossover = momentum > dynamicMomoTh && this._snarePrevMomentum <= dynamicMomoTh;
                 // Noise floor on the decorrelated+fluxed drive (not on raw energy).
                 const snareFloor = p.snareMomentumFloor ?? 0;
+                // ⚒️ WAVE 7749.83: DENSITY-SCALED BODY SHIELD — require bodyFactor to
+                // scale with spectralDensity. In hi-hat-dense tracks (Brejcha sd~0.5),
+                // hi-hat bursts produce Res/cFx spikes with bF 0.27-0.56 (no drum
+                // membrane resonance) that cross dynTh and false-trigger. Real snares
+                // always vibrate the drum body → bF > 0.6. The shield demands:
+                //   minBF = 0.3 + 0.7 × spectralDensity
+                // Clean tracks (sd 0.12): minBF 0.38 → transparent (synth snares pass)
+                // Dense tracks (sd 0.50): minBF 0.65 → blocks hi-hat FPs (bF < 0.56)
+                // Empirical validation on calib3 logs:
+                //   Brejcha: 10 hi-hat FPs blocked (bF 0.27-0.56, hE 0.59-0.79)
+                //   Tiesto LIGHT: 0 blocked (all onsets bF > 0.6)
+                //   TechHouse: 2 hi-hat FPs blocked
+                //   Minimal: 0 blocked (all onsets bF > 0.6)
+                const minBodyFactor = 0.3 + (0.7 * spectralDensity);
                 // ⚒️ WAVE 7749.82: ANTI-DOUBLE REFRACTORY — suppress re-trigger for
                 // SNARE_REFRACTORY_FRAMES after the last onset. The MACD crossover
                 // can re-fire in 1-3 frames when the hybrid reset oscillates momentum
@@ -848,7 +867,7 @@ export class LiquidEngineBase {
                     rawOnset = false;
                 }
                 else {
-                    rawOnset = isCrossover && snareDrive >= snareFloor;
+                    rawOnset = isCrossover && snareDrive >= snareFloor && bodyFactor >= minBodyFactor;
                     if (rawOnset) {
                         this._snareRefractoryFrames = LiquidEngineBase.SNARE_REFRACTORY_FRAMES;
                     }
@@ -1249,7 +1268,10 @@ export class LiquidEngineBase {
         //   BassΔ   — bassDelta (kick transient edge)
         //   OutSnare— final backRight (after envSnare)
         //   OutKick — final frontRight (after envKick)
-        if (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1) {
+        // 🩸 WAVE GARBAGE-ZERO: gated behind LUX_FINESSE_AUDIT=1 env flag.
+        // Was firing ~40fps in techno, allocating ~46 strings/log + blocking
+        // console I/O → GC pressure → Event Loop freezes → DMX watchdog trips.
+        if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)) {
             console.log(`[FINESSE_AUDIT] ` +
                 `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
                 `UnG:${this._diagSnareEnergyUngated.toFixed(3)} ` +

@@ -947,6 +947,11 @@ export class TickEngine {
       this._cachedFixtureStates.length = 0
       this._cachedHotFrameFixtures.length = 0
       this._cachedTruthFixtures.length = 0
+      // 🩸 WAVE GARBAGE-ZERO: Purge peakHoldMap on show change.
+      // Without this, reassigning virtual fixtures in the patch bay accumulates
+      // stale fixture-id entries indefinitely (slow memory leak). Each entry is
+      // small but the Map grows unbounded across show reloads / virtual swaps.
+      this.peakHoldMap.clear()
       this._lastShowGeneration = _currentShowGen
     }
     const fixtureCount = this.fixtures.length

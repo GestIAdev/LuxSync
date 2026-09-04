@@ -614,6 +614,14 @@ export class TickEngine {
             hh_energy: this.audioPipeline.lastAudioData.rhythmic?.hh_energy,
             // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
             raw_snare_delta: this.audioPipeline.lastAudioData.rhythmic?.raw_snare_delta,
+            // ⚒️ WAVE 7749.69: Ungated snare energy for EMA momentum detector
+            snare_energy_ungated: this.audioPipeline.lastAudioData.rhythmic?.snare_energy_ungated,
+            // ⚒️ WAVE 7749.76: Crack-band flux for domain-localized snare drive
+            snare_crack_flux: this.audioPipeline.lastAudioData.rhythmic?.snare_crack_flux,
+            // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
+            snare_body_factor: this.audioPipeline.lastAudioData.rhythmic?.snare_body_factor,
+            // ⚒️ WAVE 7749.80: Treble-ghost delta for EDM snare rescue
+            raw_hh_delta: this.audioPipeline.lastAudioData.rhythmic?.raw_hh_delta,
             // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
             photon: this.audioPipeline.lastAudioData.photon,
             // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction
@@ -778,6 +786,11 @@ export class TickEngine {
             this._cachedFixtureStates.length = 0;
             this._cachedHotFrameFixtures.length = 0;
             this._cachedTruthFixtures.length = 0;
+            // 🩸 WAVE GARBAGE-ZERO: Purge peakHoldMap on show change.
+            // Without this, reassigning virtual fixtures in the patch bay accumulates
+            // stale fixture-id entries indefinitely (slow memory leak). Each entry is
+            // small but the Map grows unbounded across show reloads / virtual swaps.
+            this.peakHoldMap.clear();
             this._lastShowGeneration = _currentShowGen;
         }
         const fixtureCount = this.fixtures.length;
@@ -786,8 +799,12 @@ export class TickEngine {
             // 🏗️ WAVE 7731: Skip UNPATCHED fixtures (address=0). They exist
             // spatially in Erebus but have no DMX routing. Emitting DMX for them
             // would write to address 0 (invalid) and corrupt the universe buffer.
-            // Also skip virtual fixtures (no hardware output).
-            if (fix.dmxAddress === 0 || fix.isVirtual)
+            // WAVE 7749.77b: Virtual fixtures ARE initialized (they need state for
+            // UI rendering in AetherUIProjector + truth broadcast) but are skipped
+            // at DMX emission time (flushToDriver / glassView). Previously they were
+            // skipped here entirely, leaving undefined holes that crashed consumer
+            // loops accessing .dimmer / .fixtureId.
+            if (fix.dmxAddress === 0)
                 continue;
             let state = this._cachedFixtureStates[_fi];
             if (!state) {
@@ -855,6 +872,8 @@ export class TickEngine {
             let _dimSum = 0, _movSum = 0, _movCount = 0, _frontSum = 0, _frontCount = 0;
             for (let _ti = 0; _ti < fixtureStates.length; _ti++) {
                 const _tf = fixtureStates[_ti];
+                if (!_tf)
+                    continue; // WAVE 7749.77: skip holes from unpatched/virtual fixtures
                 _dimSum += _tf.dimmer;
                 if (_tf.zone.includes('MOVING')) {
                     _movSum += _tf.dimmer;
@@ -937,6 +956,8 @@ export class TickEngine {
             // fixtureStates son objetos propios del HAL por frame â€” son seguros de mutar.
             for (let index = 0; index < fixtureStates.length; index++) {
                 const f = fixtureStates[index];
+                if (!f)
+                    continue; // WAVE 7749.77: skip holes from unpatched/virtual fixtures
                 // ðŸŽ¬ WAVE 2065: Skip fixtures that Chronos is currently painting
                 const fixtureId = this.fixtures[index]?.id;
                 if (fixtureId && chronosFixtureIds.has(fixtureId))
@@ -1085,6 +1106,8 @@ export class TickEngine {
         if (!chronosPlaying) {
             for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
                 const _f = fixtureStates[_pi];
+                if (!_f)
+                    continue; // WAVE 7749.77: skip holes from unpatched/virtual fixtures
                 const _id = this.fixtures[_pi]?.id;
                 if (!_id)
                     continue;
@@ -1102,6 +1125,8 @@ export class TickEngine {
             const _hfCount = fixtureStates.length;
             for (let _hfi = 0; _hfi < _hfCount; _hfi++) {
                 const _f = fixtureStates[_hfi];
+                if (!_f)
+                    continue; // WAVE 7749.77: skip holes from unpatched/virtual fixtures
                 const _orig = this.fixtures[_hfi];
                 let _hff = this._cachedHotFrameFixtures[_hfi];
                 if (!_hff) {
@@ -1511,6 +1536,10 @@ export class TickEngine {
         const view = this._glassView;
         for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
             const fs = fixtureStates[fi];
+            if (!fs)
+                continue; // WAVE 7749.77: skip holes from unpatched fixtures
+            if (fs.isVirtual)
+                continue; // WAVE 7749.77b: no DMX for virtual fixtures
             const off = 10 + fi * 16;
             view[off + 0] = fs.r ?? 0;
             view[off + 1] = fs.g ?? 0;
@@ -1546,6 +1575,8 @@ export class TickEngine {
             const _tfCount = fixtureStates.length;
             for (let _tvi = 0; _tvi < _tfCount; _tvi++) {
                 const _f = fixtureStates[_tvi];
+                if (!_f)
+                    continue; // WAVE 7749.77: skip holes from unpatched/virtual fixtures
                 const _orig = this.fixtures[_tvi];
                 const _realId = _orig?.id || '';
                 let _tvf = this._cachedTruthFixtures[_tvi];
@@ -1600,7 +1631,8 @@ export class TickEngine {
             // 🛠️ WAVE 5032: Count active fixtures with for loop instead of .reduce()
             let _activeCount = 0;
             for (let _aci = 0; _aci < fixtureStates.length; _aci++) {
-                if (fixtureStates[_aci].dimmer > 0)
+                const _af = fixtureStates[_aci];
+                if (_af && _af.dimmer > 0)
                     _activeCount++;
             }
             // Build a valid SeleneTruth structure

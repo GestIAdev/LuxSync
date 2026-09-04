@@ -287,6 +287,8 @@ export abstract class LiquidEngineBase {
   private _diagTrebleGhost: number = 0
   // ⚒️ WAVE 7749.81: Additional macro telemetry
   private _diagHhEnergy: number = 0
+  // ⚒️ WAVE 7749.85: Gate health diagnostic
+  private _diagGateHealth: number = 0
   // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
   private _diagSnareEnergyUngated: number = 0
   private _diagRawSnareDelta: number = 0
@@ -337,6 +339,19 @@ export abstract class LiquidEngineBase {
   // refractory (~91ms @ 44fps) kills doubles without affecting genuine snares.
   private _snareRefractoryFrames: number = 0
   private static readonly SNARE_REFRACTORY_FRAMES = 4
+  // ⚒️ WAVE 7749.85: GATE HEALTH EMA — hyper-slow envelope (~2.3s @ 44fps)
+  // that tracks the structural viability of the GodEarFFT crack-band gate.
+  // When the gate is alive (TechHouse, Minimal), snareEnergy EMA sits at
+  // 0.15-0.45 → gateHealth ≈ 1 → no relaxation needed, sEF trusts SnareE.
+  // When the gate is dead (Brejcha, Tiesto — kick inflates bodyEMA → AND-gate
+  // never opens), snareEnergy EMA collapses to <0.05 → gateHealth ≈ 0 →
+  // relaxation activates to rescue synthetic snares via treble presence.
+  // This prevents the relaxation from creating false positives in healthy
+  // tracks (Minimal kick-bleed FPs) while preserving the rescue path for
+  // dead-gate tracks (Brejcha/Tiesto synthetic snares).
+  private _snareEnergyEma: number = 0
+  private static readonly GATE_HEALTH_ALPHA = 0.01
+  private static readonly GATE_HEALTH_THRESHOLD = 0.15
   // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — frame counter to prevent
   // double-triggers caused by 1-2 frame silence gaps in snare decay tails.
   // The previous 1-frame reset nuked emaSlow the instant Drive < 0.01,
@@ -1006,7 +1021,17 @@ export abstract class LiquidEngineBase {
         // crack band already carries the signal and hi-hats would contaminate.
         const treblePresence = Math.max(0, Math.min(1, hhEnergy * 2.0))
         const densityGate = 1.0 - spectralDensity
-        const relaxedMinSef = 0.05 + (0.35 * treblePresence * densityGate)
+        // ⚒️ WAVE 7749.85: GATE HEALTH-SCALED RELAXATION — the sEF relaxation
+        // floor is now multiplied by (1 - gateHealth), so it only activates
+        // when the GodEarFFT crack-band gate is structurally dead (kick-inflated
+        // bodyEMA keeps the AND-gate shut). In healthy tracks (Minimal,
+        // TechHouse) gateHealth ≈ 1 → relaxation ≈ 0.05 → sEF trusts SnareE,
+        // killing kick-bleed false positives. In dead-gate tracks (Brejcha,
+        // Tiesto) gateHealth ≈ 0 → relaxation fully active → synthetic snares
+        // rescued via treble presence.
+        this._snareEnergyEma += LiquidEngineBase.GATE_HEALTH_ALPHA * (snareEnergy - this._snareEnergyEma)
+        const gateHealth = Math.min(1.0, this._snareEnergyEma / LiquidEngineBase.GATE_HEALTH_THRESHOLD)
+        const relaxedMinSef = 0.05 + (0.35 * treblePresence * densityGate * (1.0 - gateHealth))
         const smartSef = Math.max(relaxedMinSef, Math.min(1.0, snareEnergy * 2.0))
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1089,6 +1114,7 @@ export abstract class LiquidEngineBase {
         this._diagRawHhDelta = rawHhDelta
         this._diagTrebleGhost = trebleGhost
         this._diagHhEnergy = hhEnergy
+        this._diagGateHealth = gateHealth
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a
@@ -1513,6 +1539,7 @@ export abstract class LiquidEngineBase {
         `hE:${this._diagHhEnergy.toFixed(3)} ` +
         `hhDlt:${this._diagRawHhDelta.toFixed(4)} ` +
         `ghst:${this._diagTrebleGhost.toFixed(4)} ` +
+        `gH:${this._diagGateHealth.toFixed(3)} ` +
         `OutSnare:${backRight.toFixed(3)} ` +
         `OutKick:${frontRight.toFixed(3)}` +
         (this._diagSnareOnset ? ' [ONSET]' : '') +
@@ -1773,6 +1800,8 @@ export abstract class LiquidEngineBase {
     this._snarePrevMomentum = 0
     // ⚒️ WAVE 7749.74: reset learned kick→crack bleed coefficient
     this._crackBleedK = 0
+    // ⚒️ WAVE 7749.85: reset gate health EMA
+    this._snareEnergyEma = 0
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -1869,6 +1898,8 @@ export abstract class LiquidEngineBase {
     this._snarePrevMomentum = 0
     // ⚒️ WAVE 7749.74: reset learned kick→crack bleed coefficient
     this._crackBleedK = 0
+    // ⚒️ WAVE 7749.85: reset gate health EMA
+    this._snareEnergyEma = 0
     // WAVE 7748: Reset HH adapter state
     this._prevHhEnergy = 0
     this._lastHhOnset = 0

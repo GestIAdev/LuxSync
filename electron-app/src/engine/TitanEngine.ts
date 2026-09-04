@@ -165,6 +165,8 @@ export interface EngineAudioMetrics {
   snare_crack_flux?: number
   // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
   snare_body_factor?: number
+  // ⚒️ WAVE 7749.80: Treble-ghost delta — raw 5-15kHz transient for EDM snare rescue
+  raw_hh_delta?: number
   // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
   photon?: GodEarPhoton
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
@@ -936,6 +938,8 @@ export class TitanEngine extends EventEmitter {
         snare_crack_flux: audio.snare_crack_flux,
         // ⚒️ WAVE 7749.77: Body Factor — continuous algebraic gate [0.1, 2.0]
         snare_body_factor: audio.snare_body_factor,
+        // ⚒️ WAVE 7749.80: Treble-ghost delta for EDM snare rescue
+        raw_hh_delta: audio.raw_hh_delta,
         // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity
         photon: audio.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
@@ -2097,6 +2101,8 @@ export class TitanEngine extends EventEmitter {
       snare_crack_flux: clamp01(src.snare_crack_flux, 0),
       // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.1, 2.0] (not [0,1])
       snare_body_factor: Math.max(0.1, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
+      // ⚒️ WAVE 7749.80: Treble-ghost delta — half-wave rectified (>=0), NOT clamped to [0,1]
+      raw_hh_delta: Math.max(0, safeNumber(src.raw_hh_delta, 0)),
       photon: src.photon,
     }
   }

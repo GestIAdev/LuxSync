@@ -175,6 +175,8 @@ export class LiquidEngineBase {
         this._diagTrebleGhost = 0;
         // ⚒️ WAVE 7749.81: Additional macro telemetry
         this._diagHhEnergy = 0;
+        // ⚒️ WAVE 7749.85: Gate health diagnostic
+        this._diagGateHealth = 0;
         // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
         this._diagSnareEnergyUngated = 0;
         this._diagRawSnareDelta = 0;
@@ -220,6 +222,17 @@ export class LiquidEngineBase {
         // within 1-3 frames. Real snares are >5 frames apart at all genres; a 4-frame
         // refractory (~91ms @ 44fps) kills doubles without affecting genuine snares.
         this._snareRefractoryFrames = 0;
+        // ⚒️ WAVE 7749.85: GATE HEALTH EMA — hyper-slow envelope (~2.3s @ 44fps)
+        // that tracks the structural viability of the GodEarFFT crack-band gate.
+        // When the gate is alive (TechHouse, Minimal), snareEnergy EMA sits at
+        // 0.15-0.45 → gateHealth ≈ 1 → no relaxation needed, sEF trusts SnareE.
+        // When the gate is dead (Brejcha, Tiesto — kick inflates bodyEMA → AND-gate
+        // never opens), snareEnergy EMA collapses to <0.05 → gateHealth ≈ 0 →
+        // relaxation activates to rescue synthetic snares via treble presence.
+        // This prevents the relaxation from creating false positives in healthy
+        // tracks (Minimal kick-bleed FPs) while preserving the rescue path for
+        // dead-gate tracks (Brejcha/Tiesto synthetic snares).
+        this._snareEnergyEma = 0;
         // ⚒️ WAVE 7749.79: SILENCE RESET REFINEMENT — frame counter to prevent
         // double-triggers caused by 1-2 frame silence gaps in snare decay tails.
         // The previous 1-frame reset nuked emaSlow the instant Drive < 0.01,
@@ -798,7 +811,17 @@ export class LiquidEngineBase {
                 // crack band already carries the signal and hi-hats would contaminate.
                 const treblePresence = Math.max(0, Math.min(1, hhEnergy * 2.0));
                 const densityGate = 1.0 - spectralDensity;
-                const relaxedMinSef = 0.05 + (0.35 * treblePresence * densityGate);
+                // ⚒️ WAVE 7749.85: GATE HEALTH-SCALED RELAXATION — the sEF relaxation
+                // floor is now multiplied by (1 - gateHealth), so it only activates
+                // when the GodEarFFT crack-band gate is structurally dead (kick-inflated
+                // bodyEMA keeps the AND-gate shut). In healthy tracks (Minimal,
+                // TechHouse) gateHealth ≈ 1 → relaxation ≈ 0.05 → sEF trusts SnareE,
+                // killing kick-bleed false positives. In dead-gate tracks (Brejcha,
+                // Tiesto) gateHealth ≈ 0 → relaxation fully active → synthetic snares
+                // rescued via treble presence.
+                this._snareEnergyEma += LiquidEngineBase.GATE_HEALTH_ALPHA * (snareEnergy - this._snareEnergyEma);
+                const gateHealth = Math.min(1.0, this._snareEnergyEma / LiquidEngineBase.GATE_HEALTH_THRESHOLD);
+                const relaxedMinSef = 0.05 + (0.35 * treblePresence * densityGate * (1.0 - gateHealth));
                 const smartSef = Math.max(relaxedMinSef, Math.min(1.0, snareEnergy * 2.0));
                 // ═══════════════════════════════════════════════════════════════════
                 // ⚒️ WAVE 7749.80: TREBLE-GHOST INJECTION — EDM Snare Rescue
@@ -877,6 +900,7 @@ export class LiquidEngineBase {
                 this._diagRawHhDelta = rawHhDelta;
                 this._diagTrebleGhost = trebleGhost;
                 this._diagHhEnergy = hhEnergy;
+                this._diagGateHealth = gateHealth;
                 // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
                 // threshold), pull emaSlow toward emaFast by resetRatio. This forces
                 // momentum back toward 0, allowing re-fire on the next snare in a
@@ -1295,6 +1319,7 @@ export class LiquidEngineBase {
                 `hE:${this._diagHhEnergy.toFixed(3)} ` +
                 `hhDlt:${this._diagRawHhDelta.toFixed(4)} ` +
                 `ghst:${this._diagTrebleGhost.toFixed(4)} ` +
+                `gH:${this._diagGateHealth.toFixed(3)} ` +
                 `OutSnare:${backRight.toFixed(3)} ` +
                 `OutKick:${frontRight.toFixed(3)}` +
                 (this._diagSnareOnset ? ' [ONSET]' : '') +
@@ -1530,6 +1555,8 @@ export class LiquidEngineBase {
         this._snarePrevMomentum = 0;
         // ⚒️ WAVE 7749.74: reset learned kick→crack bleed coefficient
         this._crackBleedK = 0;
+        // ⚒️ WAVE 7749.85: reset gate health EMA
+        this._snareEnergyEma = 0;
     }
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 2513 — AMBIENT GENERATIVE ENGINE
@@ -1613,6 +1640,8 @@ export class LiquidEngineBase {
         this._snarePrevMomentum = 0;
         // ⚒️ WAVE 7749.74: reset learned kick→crack bleed coefficient
         this._crackBleedK = 0;
+        // ⚒️ WAVE 7749.85: reset gate health EMA
+        this._snareEnergyEma = 0;
         // WAVE 7748: Reset HH adapter state
         this._prevHhEnergy = 0;
         this._lastHhOnset = 0;
@@ -1711,6 +1740,8 @@ LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
     attackSlopeMin: 0.0,
 };
 LiquidEngineBase.SNARE_REFRACTORY_FRAMES = 4;
+LiquidEngineBase.GATE_HEALTH_ALPHA = 0.01;
+LiquidEngineBase.GATE_HEALTH_THRESHOLD = 0.15;
 LiquidEngineBase.SILENCE_RESET_FRAMES = 8;
 /** Positive error (crack above prediction = possible snare) adapts SLOWLY, so
  *  genuine snares never drag the estimate up and cancel themselves out.

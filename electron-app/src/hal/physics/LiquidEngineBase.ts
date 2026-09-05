@@ -1372,7 +1372,40 @@ export abstract class LiquidEngineBase {
           ) {
             rawOnset = true
           }
-          if (rawOnset) {
+          // ⚒️ WAVE 7749.106: DENSITY PATH — white noise buildup rescue.
+          // In dense buildups (Eric Prydz "Opus"), the snare roll gets buried
+          // in white noise. The MACD can't generate crossovers because the
+          // energy is continuous, not transient. The bypass rescue can't fire
+          // because WNS<0.3, Flux<0.20, SnareE=0 — the snares don't have
+          // sharp spectral features anymore, they're part of the noise floor.
+          // But the noise IS the signal. When fBL is high (dense buildup) and
+          // the gate is dead (no percussive activity), any frame with UnG>0.45
+          // and Drive>=snareFloor is a noise frame that should paint light.
+          // "La manera de luchar contra el ruido blanco es pintar luz."
+          //   fBL > 0.09: only in dense buildups (silence has fBL < 0.04)
+          //   gH < 0.05: dead gate (no percussive activity = no synth FPs)
+          //   UnG > 0.45: ungated energy present (noise has substance)
+          //   Drive >= snareFloor: passes the dynamic floor
+          //   Refractory: 2 frames (not 4) — denser firing in noise
+          //   opusbuild20 dark zone: fBL 0.103-0.125, UnG 0.52, Drive 0.007
+          //   → 34 missed frames would fire, filling the 66-frame gap
+          //   calib19 silence: fBL < 0.04 → blocked
+          //   missedsnare real: fBL ~0.05 → blocked (uses MACD/bypass instead)
+          if (
+            !rawOnset &&
+            this._fluxBaseline > 0.09 &&
+            gateHealth < 0.05 &&
+            ungatedSnare > 0.45 &&
+            snareDrive >= snareFloor
+          ) {
+            rawOnset = true
+            // ⚒️ WAVE 7749.106: DENSITY REFRACTORY — 2 frames (not 4) for
+            // denser firing in white noise. The noise is continuous, so we
+            // want to fire every 2-3 frames (~45-68ms) to paint continuous
+            // light. The standard 4-frame refractory leaves gaps.
+            this._snareRefractoryFrames = 2
+            this._ghostRefractoryFrames = LiquidEngineBase.GHOST_REFRACTORY_FRAMES
+          } else if (rawOnset) {
             this._snareRefractoryFrames = LiquidEngineBase.SNARE_REFRACTORY_FRAMES
             // ⚒️ WAVE 7749.87: Also set ghost refractory — suppress ghost path
             // for longer to prevent reverb-tail re-fires

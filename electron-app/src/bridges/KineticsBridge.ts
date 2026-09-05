@@ -404,11 +404,26 @@ class KineticsBridgeClass {
     ms.setFanValue(0)
     ms.setChaosAmount(0)
 
-    // WAVE 4712: tras un Unlock, el backend ya limpió las pistas — refresca
-    // el hydration store para que la UI (PatternArsenal, faders, radar)
-    // refleje el estado neutral inmediato sin esperar a un cambio de selección.
-    useKineticHydrationStore.getState().reset()
-    void this._hydrateFromBackend(getSelectedIds())
+    // WAVE 4712: tras un Unlock, el backend ya limpió las pistas.
+    // 🩸 WAVE 7754 AMNESIA FIX: Do NOT call reset() + _hydrateFromBackend() here.
+    // The backend was just purged by kineticHandoff, so _hydrateFromBackend would
+    // return speed=0 (purged motor), overwriting the neutral 50 that
+    // handleUnlockKinetics just set in movementStore. Instead, project the neutral
+    // state directly into the hydration store via applyOperatorIntent, matching
+    // the values that handleUnlockKinetics established (speed=50, amp=50, etc.).
+    const selectedIds = getSelectedIds()
+    if (selectedIds.length > 0) {
+      useKineticHydrationStore.getState().applyOperatorIntent(selectedIds, {
+        pattern: 'none',
+        speed: 50,
+        amplitude: 50,
+        fan: 0,
+        panAnchor: 270,
+        tiltAnchor: 135,
+      })
+    } else {
+      useKineticHydrationStore.getState().reset()
+    }
   }
 
   stop(): void {

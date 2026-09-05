@@ -162,12 +162,13 @@ function fuseProfileFor41(base: ILiquidProfile): ILiquidProfile {
 // ABSTRACT BASE
 // ═══════════════════════════════════════════════════════════════════════════
 
-// 🩸 WAVE GARBAGE-ZERO: FINESSE_AUDIT gated behind an env flag (default ON).
+// 🩸 WAVE GARBAGE-ZERO: FINESSE_AUDIT gated behind an env flag (default OFF).
 // The audit log fires on kick/snare frames (~40fps in techno), allocating
-// ~46 ephemeral strings per log. Set LUX_FINESSE_AUDIT=0 to silence it
-// if GC pressure becomes problematic during long sessions.
+// ~46 ephemeral strings per log. Set LUX_FINESSE_AUDIT=1 to re-enable it
+// for future debugging. Disabled by default since WAVE 7754 to stop the
+// 3-day diagnostic spam.
 const FINESSE_AUDIT_ENABLED =
-  (typeof process !== 'undefined' && process.env && process.env.LUX_FINESSE_AUDIT !== '0')
+  (typeof process !== 'undefined' && process.env && process.env.LUX_FINESSE_AUDIT === '1')
 
 export abstract class LiquidEngineBase {
 

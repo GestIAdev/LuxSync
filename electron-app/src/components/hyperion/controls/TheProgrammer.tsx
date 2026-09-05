@@ -55,7 +55,8 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     hydrateFromL2,
     fixtureOverrides,
   } = useProgrammerStore()
-  const hydrateMovementFromL2 = useMovementStore(s => s.hydrateFromL2)
+  // 🩸 WAVE 7754 AMNESIA FIX: hydrateMovementFromL2 removed — TheProgrammer
+  // no longer hydrates the kinetic domain. That's KineticsBridge's job.
   const pruneManualOverride = useMovementStore(s => s.pruneManualOverride)
 
   // WAVE 4731: HIVE MIND — células agregadas por firma de capacidad compartida
@@ -106,6 +107,14 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
   }, [])
 
   // ─── WAVE 4529: Sincronizar selección con el store ───────────────────────
+  // 🩸 WAVE 7754 AMNESIA FIX: isActive removed from deps + hydrateMovementFromL2
+  // removed from this effect. Previously, switching to the CONTROLS tab re-triggered
+  // this effect (isActive changed), which called hydrateMovementFromL2 and overwrote
+  // movementStore.patternSpeed/Amplitude with stale backend L2 values, destroying the
+  // operator's intent set in the KINETICS tab. The kinetic domain is hydrated
+  // exclusively by KineticsBridge._hydrateFromBackend (selection-change subscription),
+  // not by TheProgrammer. TheProgrammer should only hydrate its own domain
+  // (impact/color/beam/extras).
   useEffect(() => {
     const fixtureIds = [...selectedIds]
     syncSelection(fixtureIds)
@@ -113,14 +122,8 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
     pruneManualOverride(fixtureIds)
 
     if (fixtureIds.length === 0) {
-      hydrateMovementFromL2({
-        pan: null,
-        tilt: null,
-        speed: null,
-        pattern: 'none',
-        amplitude: 0.5,
-        fan: 0,
-      })
+      // No selection: reset programmer domain only. Kinetic domain is handled
+      // by KineticsBridge selection subscription.
       return
     }
     // Guard: no hidratar desde IPC si la pestaña CONTROLS no está visible.
@@ -151,29 +154,11 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
 
         hydrateFromL2(fixtureIds, result.overrides)
 
-        const firstFixtureId = fixtureIds[0]
-        const firstNodeId = `${firstFixtureId}:kinetic`
-        const kinetic = result.overrides[firstNodeId]
-        const kineticState = await window.lux?.aether?.getManualKineticState?.()
-
-        const pattern = kineticState?.success
-          && kineticState.active
-          && kineticState.nodeIds?.includes(firstNodeId)
-          ? kineticState.pattern
-          : 'none'
-
-        hydrateMovementFromL2({
-          pan: typeof kinetic?.pan_base === 'number'
-            ? kinetic.pan_base
-            : (typeof kinetic?.pan === 'number' ? kinetic.pan : null),
-          tilt: typeof kinetic?.tilt_base === 'number'
-            ? kinetic.tilt_base
-            : (typeof kinetic?.tilt === 'number' ? kinetic.tilt : null),
-          speed: typeof kinetic?.speed === 'number' ? kinetic.speed : null,
-          pattern,
-          amplitude: kineticState?.success && kineticState.active ? kineticState.amplitude : 0.5,
-          fan: kineticState?.success && kineticState.active ? kineticState.fan : 0,
-        })
+        // 🩸 WAVE 7754 AMNESIA FIX: hydrateMovementFromL2 call REMOVED.
+        // The kinetic domain (pan/tilt/speed/pattern/amplitude/fan) is owned by
+        // KineticsBridge, which hydrates via _hydrateFromBackend on selection
+        // changes. TheProgrammer must NOT overwrite movementStore with L2
+        // snapshots — that destroys the operator's intent when switching tabs.
       } catch (err) {
         console.error('[TheProgrammer] L2 hydration error:', err)
       }
@@ -181,7 +166,7 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
 
     hydrate()
     return () => { cancelled = true }
-  }, [selectedIds.join(','), isActive, syncSelection, pruneManualOverride, hydrateFromL2, hydrateMovementFromL2])
+  }, [selectedIds.join(','), isActive, syncSelection, pruneManualOverride, hydrateFromL2])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS

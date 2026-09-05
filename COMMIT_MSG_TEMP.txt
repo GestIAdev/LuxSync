@@ -1,31 +1,26 @@
-WAVE 7749.100: MACD bypass rescue + ghost Res gate — recover missed snares in dead-gate tracks
+WAVE 7749.101: Flux gate on MACD bypass rescue — kill synth FPs in silence
 
-missedsnare.md frame-by-frame log revealed 2 missed snares (frames 182, 217)
-with strong signatures that the MACD couldn't detect:
+minimalcalib19.md showed 9 onsets in a silent passage (no kick, no snare,
+just synthesizers). All 9 were synth FPs triggered by the WAVE 7749.100
+MACD bypass rescue. The synth stabs mimic snare attacks:
+  - UnG 0.40-0.74 (high ungated energy)
+  - Res 0.30-0.45 (high NLMS residual)
+  - RawD 0.21-0.53 (rising edge)
 
-  frame 182: UnG=0.447 Res=0.365 RawD=0.218 bFct=0.100 Drive=0.046
-  frame 217: UnG=0.484 Res=0.411 RawD=0.215 bFct=0.100 Drive=0.053
+But they lack the broadband signature of a real snare:
+  - Flux 0.035-0.129 (narrowband — synth stabs are tonal)
+  - WNS 0.00-0.20 (no white noise)
+  - BassE 0.06-0.22 (no kick context)
 
-Both had Drive > fFloor (0.005) and gRefr=0, but the MACD crossover didn't
-fire because Drive was too low to generate enough momentum vs dynTh (0.017-
-0.021). The crack path was killed by bFct=0.100, and the ghost provided
-only 0.046-0.053 — roughly half the weakest successful onset (0.081).
+Real snares from missedsnare.md had Flux 0.258-0.475 (broadband transient).
 
-Fix 1: MACD BYPASS RESCUE — if the snare signature is unequivocal, bypass
-the MACD crossover entirely:
-  UnG > 0.4  (strong ungated energy)
-  Res > 0.3  (strong residual — real percussive transient)
-  RawD > 0.2 (rising edge — not reverb tail)
-  gRefr = 0  (not in refractory)
+Fix: Add spectralFlux > 0.15 to the MACD bypass rescue condition. This
+kills all 9 synth FPs (max Flux 0.129 < 0.15) while preserving the 2
+missed snares (Flux 0.258, 0.321) and all 5 successful onsets
+(Flux 0.31-0.47).
 
-This is highly selective — all 9 synth FPs from the earlier analysis had
-Res < 0.25, so they won't trigger the rescue. Reverb tails have RawD < 0.
-
-Fix 2: GHOST RES GATE — replaced the UnG-based ghost gate (WAVE 7749.99)
-with a Residual-based gate. The UnG gate hurt real snares with UnG 0.40-
-0.50 (frame 182: UnG=0.447, ghost reduced 26%). Residual is a better
-discriminator: real snares have Res>0.15, synth stabs have Res<0.10.
-Soft-gate: ramp 0.3→1.0 as Res goes 0.05→0.20.
+Also reverts the temporary frame-by-frame FINESSE_AUDIT logging back to
+activity-gated (onset || kick || hybridSnare > 0.1).
 
 Generated with [Devin](https://devin.ai)
 

@@ -1061,12 +1061,19 @@ export class LiquidEngineBase {
                     // crackDrive, and moderate hhDlt which gives ghost Drive=0.046-0.053.
                     // The MACD can't generate enough momentum to cross dynTh with such
                     // low Drive. But the snare signature is unequivocal: high UnG, high
-                    // Residual, rising edge. Bypass the MACD for these frames.
-                    //   missedsnare frame 182: UnG=0.447 Res=0.365 RawD=0.218 → RESCUE
-                    //   missedsnare frame 217: UnG=0.484 Res=0.411 RawD=0.215 → RESCUE
+                    // Residual, rising edge, AND broadband spectral flux. Bypass the MACD
+                    // for these frames.
+                    //   missedsnare frame 182: UnG=0.447 Res=0.365 RawD=0.218 Flux=0.258 → RESCUE
+                    //   missedsnare frame 217: UnG=0.484 Res=0.411 RawD=0.215 Flux=0.321 → RESCUE
                     //   Synth FPs: Res<0.25 → no rescue (Res>0.3 required)
                     //   Reverb tails: RawD<0 → no rescue (RawD>0.2 required)
-                    if (!rawOnset && ungatedSnare > 0.4 && residual > 0.3 && rawSnareDelta > 0.2) {
+                    // ⚒️ WAVE 7749.101: FLUX GATE — synth stabs in minimal techno mimic
+                    // snare attacks (high UnG, Res, RawD) but are narrowband (Flux<0.13).
+                    // Real snares have broadband transients (Flux>0.25). Require Flux>0.15
+                    // to kill synth FPs while preserving real missed snares.
+                    //   calib19 synth FPs: Flux 0.035-0.129 → blocked
+                    //   missedsnare real snares: Flux 0.258-0.475 → preserved
+                    if (!rawOnset && ungatedSnare > 0.4 && residual > 0.3 && rawSnareDelta > 0.2 && spectralFlux > 0.15) {
                         rawOnset = true;
                     }
                     if (rawOnset) {
@@ -1478,9 +1485,7 @@ export class LiquidEngineBase {
         // 🩸 WAVE GARBAGE-ZERO: gated behind LUX_FINESSE_AUDIT=1 env flag.
         // Was firing ~40fps in techno, allocating ~46 strings/log + blocking
         // console I/O → GC pressure → Event Loop freezes → DMX watchdog trips.
-        // ⚠️ TEMPORARY DEBUG: logging every frame to catch invisible misses.
-        // Revert to: (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)
-        if (FINESSE_AUDIT_ENABLED) {
+        if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)) {
             console.log(`[FINESSE_AUDIT] ` +
                 `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
                 `UnG:${this._diagSnareEnergyUngated.toFixed(3)} ` +

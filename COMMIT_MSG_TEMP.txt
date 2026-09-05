@@ -1,22 +1,30 @@
-WAVE 7749.96: Instant gate-dead detection — rescue transient gate blindness
+WAVE 7749.97: GateHealth-gated ghost path — kill multi-triggers in alive-gate tracks
 
-The deadGateRescue (WAVE 7749.90) used (1-gateHealth) where gateHealth is a
-slow EMA (~2.3s). In minimal/synth-heavy tracks, gateHealth reads 1.0 (gate
-alive on average) but individual frames have SnareE=0.003 with UnG=0.58 —
-the gate is instantaneously blind but the EMA doesn't see it.
+The ghost path (trebleGhost) was designed for dead-gate tracks (Opus: gH=0.0)
+where the crack gate can't see snares. But it doesn't check gateHealth, so in
+alive-gate tracks (Minimal: gH=1.0) it fires on every hhDlt spike.
 
-minimalcalib12 misses: gH=1.0, SnareE=0.003, UnG=0.58, Res=0.50, sEF=0.050
-→ Drive=0.001 → missed snare. Pattern repeats 6+ times in a 300-frame log.
+minimalcalib13: 47 onsets in 9.1s (5.2/s). Analysis:
+  - 20 onsets GHOST-driven (Drive=ghst, crackDrive=0.0002-0.078, below floor)
+  - 27 onsets BOTH (crack>ghost, SnareE=0.8-1.0, crackDrive=0.07-0.90)
+  - 0 onsets crack-only
+  - ALL frames gH=1.000
 
-Fix: add instantGateDead detection:
-  instantGateDead = (SnareE < 0.05 AND UnG > 0.3) ? 1.0 : 0.0
-  effectiveGateDead = max(1-gateHealth, instantGateDead)
-  deadGateRescue = effectiveGateDead × min(1, UnG × 1.5)
+The 20 ghost-driven onsets are multi-triggers: moderate SnareE (0.4-0.6),
+high hhDlt (0.24-0.50), but crack path can't see them (Res/cFx too low).
+These are synth stabs or hi-hat fluctuations, not real snares.
 
-  Minimal miss (gH=1.0, SnareE=0.003, UnG=0.58): instantDead=1.0 → rescue fires
-  Techhouse (gH=1.0, SnareE=0.3, UnG=0.10): instantDead=0.0 → no rescue
-  Brejcha hat (gH=0.8, SnareE=0.0, UnG=0.05): instantDead=0.0 → no rescue
-  Opus (gH=0.0, SnareE=0.0, UnG=0.50): instantDead=1.0 → rescue fires
+Fix: scale ghost by (1-gateHealth):
+  ghostGateFactor = 1.0 - gateHealth
+  trebleGhost = ... * ghostGateFactor
+
+  Minimal (gH=1.0): ghost=0 → 27 BOTH survive via crack, 18 GHOST killed
+  Opus (gH=0.0): ghost=1.0 → full rescue, no change
+  Brejcha (gH=0.8): ghost=0.2 → mostly suppressed, cleaner
+
+The 27 BOTH onsets all have crackDrive > 0.07 (floor), so they survive
+without ghost. The instantGateDead fix (WAVE 7749.96) handles dead-gate
+misses via boosted sEF/crackDrive, not via ghost.
 
 Generated with [Devin](https://devin.ai)
 

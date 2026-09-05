@@ -1202,7 +1202,18 @@ export abstract class LiquidEngineBase {
           this._ghostRefractoryFrames--
           ghostRefractoryActive = true
         }
-        const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult
+        // ⚒️ WAVE 7749.97: GATEHEALTH-GATED GHOST — the ghost path was designed
+        // for dead-gate tracks (Opus: gH=0.0) where the crack gate can't see
+        // snares. But in alive-gate tracks (Minimal: gH=1.0), the ghost fires
+        // on every hhDlt spike, causing multi-triggers. minimalcalib13 showed
+        // 47 onsets in 9.1s, 20 of them ghost-driven with crackDrive=0.0002-0.07
+        // (below floor). Fix: scale ghost by (1-gateHealth) so it only fires
+        // when the gate is dead.
+        //   Minimal (gH=1.0): ghost=0 → only crack fires → clean
+        //   Opus (gH=0.0): ghost=1.0 → full rescue → no change
+        //   Brejcha (gH=0.8): ghost=0.2 → mostly suppressed → cleaner
+        const ghostGateFactor = 1.0 - gateHealth
+        const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult * ghostGateFactor
         const snareDrive = Math.max(crackDrive, trebleGhost)
 
         // ── TÉRMINO C: sin envolvente ───────────────────────────────────────

@@ -982,17 +982,16 @@ export class LiquidEngineBase {
                 //   Opus (gH=0.0): ghost=1.0 → full rescue → no change
                 //   Brejcha (gH=0.8): ghost=0.2 → mostly suppressed → cleaner
                 const ghostGateFactor = 1.0 - gateHealth;
-                // ⚒️ WAVE 7749.99: GHOST UNG GATE — in dead-gate tracks (gH≈0), the ghost
-                // fires on any hhDlt spike, including synth stabs. missedsnare.md showed
-                // 9/30 onsets were synth FPs with UnG 0.32-0.48 (real snares: 0.41-0.86).
-                // The ghost was designed for Tiesto synthetic snares (UnG > 0.5) and Opus
-                // (UnG > 0.5), not minimal synth bass stabs (UnG 0.3-0.5).
-                // Fix: soft-gate ghost by UnG. Ramps 0→1 as UnG goes 0.30→0.50.
-                //   Synth stab (UnG=0.35): gate=0.25 → ghost reduced 75%
-                //   Tiesto snare (UnG=0.60): gate=1.0 → full ghost
-                //   Real snare (UnG=0.45): gate=0.75 → mostly preserved
-                const ghostUnGGate = Math.max(0, Math.min(1, (ungatedSnare - 0.30) / 0.20));
-                const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult * ghostGateFactor * ghostUnGGate;
+                // ⚒️ WAVE 7749.99→7749.100: GHOST RES GATE — replaced UnG gate with Res
+                // gate. The UnG gate hurt real snares with UnG 0.40-0.50 (like
+                // missedsnare frame 182: UnG=0.447, reduced ghost by 26%). Residual is
+                // a better discriminator: real snares have Res>0.15, synth stabs have
+                // Res<0.10. Soft-gate: ramp 0.3→1.0 as Res goes 0.05→0.20.
+                //   Synth stab (Res=0.05): gate=0.3 → ghost reduced 70%
+                //   Real snare (Res=0.30): gate=1.0 → full ghost
+                //   Hi-hat (Res=0.00): gate=0.3 → ghost reduced 70%
+                const ghostResGate = 0.3 + 0.7 * Math.max(0, Math.min(1, (residual - 0.05) / 0.15));
+                const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult * ghostGateFactor * ghostResGate;
                 const snareDrive = Math.max(crackDrive, trebleGhost);
                 // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
                 // snareDrive is per-frame and raw. The MACD does its own smoothing;
@@ -1057,6 +1056,19 @@ export class LiquidEngineBase {
                 }
                 else {
                     rawOnset = isCrossover && snareDrive >= snareFloor;
+                    // ⚒️ WAVE 7749.100: MACD BYPASS RESCUE — in dead-gate tracks, some
+                    // real snares have bFct=0.100 (no body resonance) which kills
+                    // crackDrive, and moderate hhDlt which gives ghost Drive=0.046-0.053.
+                    // The MACD can't generate enough momentum to cross dynTh with such
+                    // low Drive. But the snare signature is unequivocal: high UnG, high
+                    // Residual, rising edge. Bypass the MACD for these frames.
+                    //   missedsnare frame 182: UnG=0.447 Res=0.365 RawD=0.218 → RESCUE
+                    //   missedsnare frame 217: UnG=0.484 Res=0.411 RawD=0.215 → RESCUE
+                    //   Synth FPs: Res<0.25 → no rescue (Res>0.3 required)
+                    //   Reverb tails: RawD<0 → no rescue (RawD>0.2 required)
+                    if (!rawOnset && ungatedSnare > 0.4 && residual > 0.3 && rawSnareDelta > 0.2) {
+                        rawOnset = true;
+                    }
                     if (rawOnset) {
                         this._snareRefractoryFrames = LiquidEngineBase.SNARE_REFRACTORY_FRAMES;
                         // ⚒️ WAVE 7749.87: Also set ghost refractory — suppress ghost path
@@ -1466,7 +1478,9 @@ export class LiquidEngineBase {
         // 🩸 WAVE GARBAGE-ZERO: gated behind LUX_FINESSE_AUDIT=1 env flag.
         // Was firing ~40fps in techno, allocating ~46 strings/log + blocking
         // console I/O → GC pressure → Event Loop freezes → DMX watchdog trips.
-        if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)) {
+        // ⚠️ TEMPORARY DEBUG: logging every frame to catch invisible misses.
+        // Revert to: (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)
+        if (FINESSE_AUDIT_ENABLED) {
             console.log(`[FINESSE_AUDIT] ` +
                 `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
                 `UnG:${this._diagSnareEnergyUngated.toFixed(3)} ` +

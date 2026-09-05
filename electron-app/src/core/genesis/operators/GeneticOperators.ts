@@ -595,13 +595,14 @@ export function focalMutation(
   }
 
   // 🔬 WAVE 7536: PLEIOTROPY — number of simultaneous mutations scaled by chaos.
-  // Amplifier: chaos=0.66 already maps to 1.0, so mid-chaos organisms enter
-  // the full pleiotropy regime earlier. Low-chaos organisms remain conservative.
-  //   effectiveChaos=0.0 → always 1 mutation (conservative)
-  //   effectiveChaos=0.5 → 1-2 mutations (moderate pleiotropy)
-  //   effectiveChaos=1.0 → 1-3 mutations (frenzy — complex structural variation)
+  // 🩸 WAVE 7757 CHAOS FIX: Aggressive pleiotropy — 2-6 mutations, not 1-3.
+  // Previously, chaos < 0.5 → always 1 mutation. Too conservative — operators
+  // were "light", barely changing the clip. Now:
+  //   effectiveChaos=0.0 → 2 mutations (baseline aggression)
+  //   effectiveChaos=0.5 → 2-5 mutations (moderate)
+  //   effectiveChaos=1.0 → 2-8 mutations (frenzy — real structural variation)
   const effectiveChaos = Math.min(1.0, chaos * 1.5)
-  const numMutations = 1 + Math.floor(effectiveChaos * rng() * 3)
+  const numMutations = 2 + Math.floor(effectiveChaos * rng() * 6)
 
   for (let m = 0; m < numMutations; m++) {
     const pick = numericTracks[Math.floor(rng() * numericTracks.length)]
@@ -643,14 +644,19 @@ export function focalMutation(
     // 🔬 KINETIC SECURITY (re-evaluated per track inside the loop):
     //    pan/tilt use conservative uniform magnitude.
     //    Optical channels use Cauchy-sampled magnitude for punctuated equilibrium.
+    // 🩸 WAVE 7757 CHAOS FIX: Cauchy scale 0.15 → 0.25, maxAbs 0.60 → 0.80.
+    //    Previously median shift = 0.15·span (imperceptible for intensity [0,1]).
+    //    Now median shift = 0.25·span, with rare jumps up to 0.80·span.
+    //    This makes mutations VISIBLE — a 0.25 intensity change is perceptible,
+    //    a 0.80 jump crosses aptitude valleys.
     let shiftMagnitude: number
     if (KINETIC_SECURE_PARAMS.has(track.paramId)) {
       // Mechanical fixture — uniform [0.20, 0.40), safe for servo/motor systems
       shiftMagnitude = 0.20 + rng() * 0.20
     } else {
-      // Optical channel — Cauchy(scale=0.15, maxAbs=0.60)
-      //    Median |shift| ≈ 0.15, but heavy tails allow rare jumps up to 0.60·span
-      shiftMagnitude = Math.min(0.60, Math.abs(fatRng.sampleCauchy(0.15, 0.60)))
+      // Optical channel — Cauchy(scale=0.25, maxAbs=0.80)
+      //    Median |shift| ≈ 0.25, heavy tails allow rare jumps up to 0.80·span
+      shiftMagnitude = Math.min(0.80, Math.abs(fatRng.sampleCauchy(0.25, 0.80)))
     }
     const sign = rng() < 0.5 ? -1 : 1
     const newVal = clamp(oldVal + sign * shiftMagnitude * span, range[0], range[1])
@@ -713,7 +719,20 @@ export function focalMutation(
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Hardware parameters that gene_augmentation can inject. */
-const AUGMENTABLE_PARAMS: HephParamId[] = ['intensity', 'color', 'strobe', 'pan', 'tilt', 'zoom']
+// 🩸 WAVE 7757 CHAOS FIX: Expanded from 6 → 18 params.
+// Previously, only intensity/color/strobe/pan/tilt/zoom were augmentable.
+// If a blueprint already had all 6, gene_augmentation fell into the
+// multicellular path and injected DUPLICATES of existing params into
+// complementary zones — producing "pistas duplicadas de color, dimmer,
+// strobe" instead of novel parameter tracks. Now includes gobo, prism,
+// focus, iris, white, amber, speed, direction, width, rot_x, rot_y,
+// smoke_density, fan_speed — enabling real structural innovation.
+const AUGMENTABLE_PARAMS: HephParamId[] = [
+  'intensity', 'color', 'strobe', 'pan', 'tilt', 'zoom',
+  'white', 'amber', 'speed', 'focus', 'iris',
+  'gobo1', 'gobo2', 'prism', 'direction', 'width',
+  'rot_x', 'rot_y', 'smoke_density', 'fan_speed',
+]
 
 /** Canonical ranges per paramId for curve generation. */
 const PARAM_RANGES: Record<string, [number, number]> = {
@@ -723,6 +742,20 @@ const PARAM_RANGES: Record<string, [number, number]> = {
   pan: [0, 255],
   tilt: [0, 255],
   zoom: [0, 1],
+  white: [0, 1],
+  amber: [0, 1],
+  speed: [0, 1],
+  focus: [0, 1],
+  iris: [0, 1],
+  gobo1: [0, 1],
+  gobo2: [0, 1],
+  prism: [0, 1],
+  direction: [0, 1],
+  width: [0, 1],
+  rot_x: [0, 360],
+  rot_y: [0, 360],
+  smoke_density: [0, 1],
+  fan_speed: [0, 1],
 }
 
 /** 3-decimal precision clamp. */
@@ -857,7 +890,9 @@ export function geneAugmentation(
   const gridStep = duration / divisions
 
   // Number of keyframes scales with chaos: 2 (conservative) to 8 (frenzy)
-  const numKfs = Math.max(2, Math.min(8, 2 + Math.floor(effectiveChaos * rng() * 6)))
+  // 🩸 WAVE 7757 CHAOS FIX: Minimum 3 keyframes (was 2), max 12 (was 8).
+  // More keyframes = richer curves = more visible structural variation.
+  const numKfs = Math.max(3, Math.min(12, 3 + Math.floor(effectiveChaos * rng() * 9)))
 
   // Generate keyframes snapped to grid points
   const keyframes: HephKeyframe[] = []
@@ -1487,11 +1522,12 @@ export function macroSplice(
 
   // 🔬 WAVE 7536: PLEIOTROPY — number of simultaneous splices scaled by chaos.
   // Amplifier: chaos=0.66 already maps to 1.0 (same as focal_mutation).
-  //   effectiveChaos=0.0 → always 1 splice (conservative)
-  //   effectiveChaos=0.5 → 1-2 splices (moderate)
-  //   effectiveChaos=1.0 → 1-2 splices (high-chaos organisms insert multiple blocks)
+  // 🩸 WAVE 7757 CHAOS FIX: 2-5 splices (was 1-3). More structural insertion.
+  //   effectiveChaos=0.0 → 2 splices (baseline)
+  //   effectiveChaos=0.5 → 2-4 splices (moderate)
+  //   effectiveChaos=1.0 → 2-7 splices (high-chaos organisms insert multiple blocks)
   const effectiveChaos = Math.min(1.0, chaos * 1.5)
-  const maxSplices = 1 + Math.floor(effectiveChaos * rng() * 2)
+  const maxSplices = 2 + Math.floor(effectiveChaos * rng() * 5)
 
   // Deterministic Fisher-Yates shuffle of the gap list using our rng.
   // This ensures reproducible offspring from the same seed while allowing
@@ -1916,62 +1952,99 @@ export function curveAdaptation(
     return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 }
   }
 
-  const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)]
-  const track = pick.track
-  const trackIdx = pick.index
-  const kfs = track.curve.keyframes
-
-  // Exclude last keyframe (interpolation defines transition TO next)
-  const kfIdx = Math.floor(rng() * (kfs.length - 1))
-  const kf = kfs[kfIdx]
-  const currentInterp = kf.interpolation
-
-  // DNA-driven target interpolation
+  // 🩸 WAVE 7757 CHAOS FIX: Mutate MULTIPLE tracks, not just one.
+  // Previously, curve_adaptation picked ONE keyframe on ONE track and
+  // changed its interpolation. If the interpolation already matched the
+  // DNA-preferred type, it was a no-op (l2Distance=0). Now we mutate
+  // 2-4 tracks and FORCE a change even if the interp already matches
+  // (by picking a different interpolation from the DNA-preferred set).
   const dna = child.cognitiveDNA
   const genome = dna?.genome
   const aggression = genome?.aggression ?? 0.5
   const chaos = genome?.chaos ?? 0.5
   const organicity = genome?.organicity ?? 0.5
 
-  let newInterp: HephInterpolation
-  if (organicity > 0.5) {
-    newInterp = 'bezier'
-  } else if (aggression > 0.5 || chaos > 0.5) {
-    newInterp = 'hold'
-  } else {
-    newInterp = 'linear'
+  const effectiveChaos = Math.min(1.0, chaos * 1.5)
+  const numTracksToMutate = Math.min(eligibleTracks.length, 2 + Math.floor(effectiveChaos * rng() * 3))
+
+  // Fisher-Yates shuffle for random selection
+  const shuffled = [...eligibleTracks]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
 
-  if (newInterp === currentInterp) {
-    return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 }
-  }
+  let mutationsApplied = 0
 
-  kf.interpolation = newInterp
-  delta.push({
-    op: 'replace',
-    path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/interpolation`,
-    value: newInterp,
-  })
+  for (let t = 0; t < numTracksToMutate; t++) {
+    const pick = shuffled[t]
+    const track = pick.track
+    const trackIdx = pick.index
+    const kfs = track.curve.keyframes
 
-  if (newInterp === 'bezier') {
-    // Generate default bezier handles from preset
-    const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)]
-    const handles = [...BEZIER_PRESETS[presetKey]] as [number, number, number, number]
-    kf.bezierHandles = handles
-    delta.push({
-      op: 'replace',
-      path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
-      value: handles,
-    })
-  } else {
-    // Leaving bezier — remove handles if present
-    if (kf.bezierHandles) {
-      delete kf.bezierHandles
+    // Mutate 1-3 keyframes per track
+    const numKfsToMutate = Math.min(kfs.length - 1, 1 + Math.floor(rng() * 3))
+
+    for (let k = 0; k < numKfsToMutate; k++) {
+      // Exclude last keyframe (interpolation defines transition TO next)
+      const kfIdx = Math.floor(rng() * (kfs.length - 1))
+      const kf = kfs[kfIdx]
+      const currentInterp = kf.interpolation
+
+      // DNA-driven target interpolation
+      let newInterp: HephInterpolation
+      if (organicity > 0.5) {
+        newInterp = 'bezier'
+      } else if (aggression > 0.5 || chaos > 0.5) {
+        newInterp = 'hold'
+      } else {
+        newInterp = 'linear'
+      }
+
+      // 🩸 WAVE 7757: If interp already matches, FORCE a different one.
+      // This prevents the no-op case where curve_adaptation returns
+      // l2Distance=0 because the keyframe already has the "right" interp.
+      // We cycle to the next interpolation type instead of giving up.
+      if (newInterp === currentInterp) {
+        const allInterps: HephInterpolation[] = ['linear', 'bezier', 'hold']
+        const alternatives = allInterps.filter((i) => i !== currentInterp)
+        newInterp = alternatives[Math.floor(rng() * alternatives.length)]
+      }
+
+      kf.interpolation = newInterp
       delta.push({
-        op: 'remove',
-        path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+        op: 'replace',
+        path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/interpolation`,
+        value: newInterp,
       })
+
+      if (newInterp === 'bezier') {
+        // Generate default bezier handles from preset
+        const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)]
+        const handles = [...BEZIER_PRESETS[presetKey]] as [number, number, number, number]
+        kf.bezierHandles = handles
+        delta.push({
+          op: 'replace',
+          path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+          value: handles,
+        })
+      } else {
+        // Leaving bezier — remove handles if present
+        if (kf.bezierHandles) {
+          delete kf.bezierHandles
+          delta.push({
+            op: 'remove',
+            path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+          })
+        }
+      }
+      mutationsApplied++
     }
+  }
+
+  // If no mutations were applied (edge case), return with l2=0
+  if (mutationsApplied === 0) {
+    return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 }
   }
 
   // DNA Drift
@@ -1980,11 +2053,13 @@ export function curveAdaptation(
     let newChaos = genome.chaos
     let newOrganicity = genome.organicity
 
-    if (newInterp === 'bezier') {
-      newOrganicity = clamp3(newOrganicity + driftScaled(0.040, genome.chaos), 0, 1)
-    } else if (newInterp === 'hold') {
-      newChaos = clamp3(newChaos + driftScaled(0.030, genome.chaos), 0, 1)
-      newAggression = clamp3(newAggression + driftScaled(0.020, genome.chaos), 0, 1)
+    // Scale drift by number of mutations applied
+    const driftScale = Math.min(1, mutationsApplied * 0.5)
+    if (organicity > 0.5) {
+      newOrganicity = clamp3(newOrganicity + driftScaled(0.040 * driftScale, genome.chaos), 0, 1)
+    } else if (aggression > 0.5 || chaos > 0.5) {
+      newChaos = clamp3(newChaos + driftScaled(0.030 * driftScale, genome.chaos), 0, 1)
+      newAggression = clamp3(newAggression + driftScaled(0.020 * driftScale, genome.chaos), 0, 1)
     }
 
     child.cognitiveDNA = {
@@ -2462,8 +2537,9 @@ export function colorHueShift(
   const chaos = genome?.chaos ?? 0.5
 
   // Pleiotropy: high-chaos organisms mutate multiple keyframes
+  // 🩸 WAVE 7757 CHAOS FIX: 2-6 mutations (was 1-3). More visible color evolution.
   const effectiveChaos = Math.min(1.0, chaos * 1.5)
-  const numMutations = 1 + Math.floor(effectiveChaos * rng() * 3)
+  const numMutations = 2 + Math.floor(effectiveChaos * rng() * 4)
 
   for (let m = 0; m < numMutations; m++) {
     const pick = colorTracks[Math.floor(rng() * colorTracks.length)]

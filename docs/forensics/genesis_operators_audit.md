@@ -227,3 +227,83 @@ loop de reward). Se documenta la deuda.
 
 *Forense: GLM-5.2 High. Operación Mantis — la ruleta tenía un número
 ganador que nunca salía, y la mitosis miraba solo a los vivos.*
+
+---
+
+## 4. AMPLIACIÓN — Mantis End-to-End + Operadores Caóticos
+
+### 4.1 ¿Funciona la Mantis ahora?
+
+**SÍ, con los fixes WAVE 7755 + 7756.** El flujo end-to-end:
+
+```
+_sexualReproduction()
+  → query: status IN ('alive','champion') AND fitness ≥ 0.80 AND trials ≥ 10
+  → pair within species (first pass) + across species (second pass)
+  → _breedAndSacrifice()
+    → spawnHybrid(parentA, parentB)
+      → materialize both parents
+      → crossover() — keyframe-level 1-point crossover
+      → prenatalScreening()
+      → INSERT hybrid into lfx_organisms
+    → if success: UPDATE both parents SET status='culled' (MANTIS)
+```
+
+**Bloqueos previos (ya resueltos):**
+1. Champions no recibían trials (WAVE 7755 Fix 1 — EffectManager)
+2. Mitosis excluía champions (WAVE 7756 Fix B)
+3. `color_hue_shift` nunca se seleccionaba (WAVE 7756 Fix A)
+
+**Bloqueo residual:** `SEXUAL_FITNESS_THRESHOLD = 0.80` requiere ~16
+disparos con intensity=1.0 (fitness = acumulación lineal +0.05·intensity).
+Con el bug C (evaluateFireEvent dead code), el fitness sube lentamente.
+Pero ahora que los champions reciben trials, deberían llegar.
+
+### 4.2 Operadores light — análisis estructural
+
+**`AUGMENTABLE_PARAMS` solo tiene 6 de 24 `HephParamId`:**
+
+```typescript
+const AUGMENTABLE_PARAMS: HephParamId[] = [
+  'intensity', 'color', 'strobe', 'pan', 'tilt', 'zoom'
+]
+```
+
+**Faltan 18 parámetros:** `white`, `amber`, `speed`, `focus`, `iris`,
+`gobo1`, `gobo2`, `prism`, `globalComp`, `width`, `direction`,
+`scale_x`, `scale_y`, `rot_x`, `rot_y`, `gobo_rotation`, `smoke_pump`,
+`smoke_density`, `fan_speed`.
+
+**Consecuencia:** `gene_augmentation` solo puede inyectar tracks de
+6 parámetros. Si el blueprint ya tiene los 6 (común en efectos
+complejos), el operador cae en el path multicelular — añade un
+DUPLICADO de un parámetro existente en una zona complementaria.
+Por eso el usuario ve "pistas duplicadas de color, dimmer, strobe".
+
+**`curve_adaptation` es frecuentemente no-op:**
+
+```typescript
+if (newInterp === currentInterp) {
+  return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 }
+}
+```
+
+Si el keyframe ya tiene la interpolación que el DNA pediría
+(organicity > 0.5 → bezier), el operador retorna sin cambios.
+**L2 = 0, delta = [], operador desperdiciado.**
+
+**`focal_mutation` pleiotropy conservadora:**
+
+```typescript
+const numMutations = 1 + Math.floor(effectiveChaos * rng() * 3)
+```
+
+Con chaos < 0.5 (la mayoría), siempre es 1 mutación. Magnitud Cauchy
+mediana = 0.15·span. Para intensity [0,1], eso es un cambio de 0.15.
+
+### 4.3 Fixes de caos
+
+**Fix C:** Ampliar `AUGMENTABLE_PARAMS` a 18 parámetros con sus rangos.
+**Fix D:** `focal_mutation` — pleiotropy 2-5 mutaciones, Cauchy scale=0.25.
+**Fix E:** `curve_adaptation` — mutar múltiples keyframes, forzar cambio.
+**Fix F:** `gene_augmentation` — más keyframes, más variedad de parámetros.

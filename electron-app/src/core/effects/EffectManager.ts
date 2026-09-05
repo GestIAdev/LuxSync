@@ -568,9 +568,16 @@ export class EffectManager extends EventEmitter {
         // not an organism_id (e.g. 'org_xxxx'). The old query matched
         // organism_id = config.effectType which ALWAYS returned 0 rows,
         // starving the entire ecosystem of trials and fitness.
+        // 🩸 WAVE 7755 CHAMPION FIX: Include champions in the fitness loop.
+        // Previously, only status='alive' received trials. Champions were
+        // fired by the DreamSimulator (which pre-buffers non-alive organisms)
+        // but never received trials_count/fitness_score updates. This caused
+        // champions to decay via γ^Δt_days and get demoted before accumulating
+        // the 25 trials needed for Hall of Fame. Now consistent with
+        // SpeciesQuotaSelector, LifecycleManager, and SpeciationEngine.
         const organisms = db.prepare(
           `SELECT organism_id FROM lfx_organisms
-           WHERE blueprint_id = ? AND status = 'alive'`,
+           WHERE blueprint_id = ? AND status IN ('alive', 'champion')`,
         ).all(config.effectType) as { organism_id: string }[]
 
         // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn

@@ -139,7 +139,7 @@
         ],
         "blendMode": "replace",
         "curve": {
-          "paramId": "strobeRate",
+          "paramId": "strobe",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [

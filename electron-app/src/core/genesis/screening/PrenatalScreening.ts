@@ -14,6 +14,7 @@
 //    G2 (checksum) → N/A (not checked prenatally)
 //    G7 (redundancy / clone) → fail = abort (WAVE 6000.V6)
 //    G7-spatial (spatial behavior) → warn only (not abort)
+//    G8 (param_id validity) → fail = abort (WAVE 7755)
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { HephAutomationClipV3 } from '../../hephaestus/types'
@@ -22,8 +23,19 @@ import { ENERGY_ZONES } from '../../arsenal/LfxClipInstance'
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
-export type GateId = 'G1' | 'G2' | 'G3' | 'G4' | 'G5' | 'G6' | 'G7'
+export type GateId = 'G1' | 'G2' | 'G3' | 'G4' | 'G5' | 'G6' | 'G7' | 'G8'
 export type GateStatus = 'pass' | 'warn' | 'fail' | 'na'
+
+// 🩸 WAVE 7755 PARAM_ID FIX: Canonical set of valid HephParamId values.
+// Must stay in sync with hephaestus/types.ts HephParamId union.
+// Used by G8 to reject organisms with invalid paramIds (e.g. "strobeRate")
+// before they enter the database and propagate via genetic operators.
+const VALID_HEPH_PARAM_IDS = new Set<string>([
+  'intensity', 'color', 'white', 'amber', 'speed', 'pan', 'tilt', 'zoom',
+  'focus', 'iris', 'gobo1', 'gobo2', 'prism', 'strobe', 'globalComp',
+  'width', 'direction', 'scale_x', 'scale_y', 'rot_x', 'rot_y',
+  'gobo_rotation', 'smoke_pump', 'smoke_density', 'fan_speed',
+])
 
 export interface PrenatalGateResult {
   id: GateId
@@ -188,6 +200,45 @@ function evalG6(clip: HephAutomationClipV3, simMeta: SimulationMeta | undefined)
 /** 🧬 G7 CLONE ABORT THRESHOLD: L2 distance below this = functional clone → abort. */
 const G7_CLONE_ABORT_L2_THRESHOLD = 0.02
 
+// ─── G8: PARAM_ID VALIDATION (WAVE 7755) ────────────────────────────────────
+
+/**
+ * 🩸 WAVE 7755 PARAM_ID FIX: Validates that all track paramIds and their
+ * inner curve paramIds are canonical HephParamId values.
+ *
+ * Blueprint .lfx files are JSON loaded at runtime — TypeScript type
+ * checking does not protect against invalid paramIds like "strobeRate"
+ * (which is a CombinedEffectOutput field, not a HephParamId). Without
+ * this gate, corrupt blueprints propagate invalid paramIds to mutant
+ * offspring via genetic operators.
+ */
+function evalG8(clip: HephAutomationClipV3): PrenatalGateResult {
+  const invalid: string[] = []
+  for (const track of clip.tracks) {
+    if (!VALID_HEPH_PARAM_IDS.has(track.paramId)) {
+      invalid.push(`track "${track.id}": paramId="${track.paramId}"`)
+    }
+    // Also check inner curve paramId — must match a valid HephParamId
+    if (track.curve.paramId && !VALID_HEPH_PARAM_IDS.has(track.curve.paramId)) {
+      invalid.push(`track "${track.id}": curve.paramId="${track.curve.paramId}"`)
+    }
+  }
+  if (invalid.length > 0) {
+    return {
+      id: 'G8',
+      status: 'fail',
+      label: 'PARAM_ID',
+      description: `Invalid paramId(s): ${invalid.join('; ')}. Must be one of: ${[...VALID_HEPH_PARAM_IDS].join(', ')}`,
+    }
+  }
+  return {
+    id: 'G8',
+    status: 'pass',
+    label: 'PARAM_ID',
+    description: `All ${clip.tracks.length} track(s) have valid HephParamId`,
+  }
+}
+
 // ─── GATE EVALUATORS (pure, no side effects) ────────────────────────────────
 
 function evalG7Redundancy(l2Distance: number | undefined): PrenatalGateResult {
@@ -270,10 +321,11 @@ export function prenatalScreening(
     evalG6(clip, sim),
     evalG7Redundancy(l2Distance),
     evalG7Spatial(clip, dna),
+    evalG8(clip),
   ]
 
-  // Hard-fail gates: G1, G3, G4, G5, G6, G7 (redundancy)
-  const hardFailGates: GateId[] = ['G1', 'G3', 'G4', 'G5', 'G6', 'G7']
+  // Hard-fail gates: G1, G3, G4, G5, G6, G7 (redundancy), G8 (param_id)
+  const hardFailGates: GateId[] = ['G1', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8']
   const abortGate = gates.find(
     (g) => hardFailGates.includes(g.id) && g.status === 'fail',
   )

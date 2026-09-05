@@ -1605,6 +1605,30 @@ export class SeleneColorEngine {
         // (primary) — the secondary/accent/ambient derive from it automatically.
         if (macroCycleHueShift > 0) {
           finalHue = normalizeHue(finalHue + macroCycleHueShift);
+          // 🌌 WAVE 7753 ANTI-MOSTAZA: RE-SNAP al slot después del macroCycleHueShift.
+          // El desplazamiento macro-cycle puede sacar el finalHue del rango del slot
+          // cromático activo. Sin re-snap, las derivaciones (SEC/ACC/AMB) heredan
+          // un hue fuera del slot, rompiendo la coherencia constitucional.
+          if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
+            const isFullCircleMc = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
+            if (!isFullCircleMc) {
+              let isAllowedMc = false;
+              let closestCenterMc = finalHue;
+              let minDistMc = Infinity;
+              for (const [mn, mx] of slot.allowedHueRanges) {
+                const inRangeMc = mn <= mx
+                  ? (finalHue >= mn && finalHue <= mx)
+                  : (finalHue >= mn || finalHue <= mx);
+                if (inRangeMc) { isAllowedMc = true; break; }
+                const centerMc = mn <= mx
+                  ? (mn + mx) / 2
+                  : normalizeHue((mn + mx + 360) / 2);
+                const dMc = Math.min(Math.abs(finalHue - centerMc), 360 - Math.abs(finalHue - centerMc));
+                if (dMc < minDistMc) { minDistMc = dMc; closestCenterMc = centerMc; }
+              }
+              if (!isAllowedMc) finalHue = normalizeHue(closestCenterMc);
+            }
+          }
         }
       }
     }
@@ -1684,9 +1708,36 @@ export class SeleneColorEngine {
     pal.primary.s = correctedSat;
     pal.primary.l = correctedLight;
     
-    // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌌 WAVE 7753 ANTI-MOSTAZA: Determinar ESTRATEGIA antes que nada.
+    // El Secondary, Accent y Ambient deben derivar de la misma estrategia.
+    // Anteriormente el Secondary usaba Fibonacci ciegamente (222.5°), ignorando
+    // la estrategia, produciendo saltos cromáticos que rompían la armonía
+    // análoga y aterrizaban en zona mostaza (25°-80°).
+    // ═══════════════════════════════════════════════════════════════════════
+    let strategy: 'analogous' | 'triadic' | 'complementary';
+    
+    if (options?.forceStrategy && options.forceStrategy !== 'prism') {
+      strategy = options.forceStrategy;
+    } else if (options?.forceStrategy === 'prism') {
+      // 🔮 PRISM: Estrategia especial (Tetraédrica) — label complementary para metadata
+      strategy = 'complementary';
+    } else {
+      // Decisión basada solo en syncopation
+      if (syncopation < 0.40) {
+        strategy = 'analogous';
+      } else if (syncopation < 0.65) {
+        strategy = 'triadic';
+      } else {
+        strategy = 'complementary';
+      }
+    }
+    
+    // === F. COLOR SECUNDARIO (Estrategia Real — WAVE 7753 ANTI-MOSTAZA) ===
+    // 🎨 WAVE 7753: Secondary respeta la estrategia activa.
+    // Analogous → -30° (vecino inferior), Triadic → +120°, Complementary → +180°.
+    // Fibonacci (222.5°) queda solo como fallback sin estrategia.
     // 🎨 WAVE 90 / WAVE 4760: Rotación configurable vía constitución.
-    // fibonacciRotationDeg en GenerationOptions sobreescribe el default (PHI_ROTATION ≈222.5°).
     const fibonacciRotation = options?.fibonacciRotationDeg ?? PHI_ROTATION;
     
     // 🌌 WAVE 7724: KNUTH PROCEDURAL MUTATION — Stable offset perturbation
@@ -1707,7 +1758,30 @@ export class SeleneColorEngine {
       }
     }
     
-    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation + _cycleDelta);
+    // 🎨 WAVE 7753: Secondary derivado de la estrategia, no de Fibonacci ciego.
+    let secondaryHue: number;
+    if (options?.forceStrategy === 'prism') {
+      // 🔮 PRISM: Secondary a +60° del primary (tetraédrico)
+      secondaryHue = normalizeHue(finalHue + 60 + saltRotation + _cycleDelta);
+    } else {
+      switch (strategy) {
+        case 'analogous':
+          // Vecino inferior: -30° del primary (armonía estricta)
+          secondaryHue = normalizeHue(finalHue - 30 + saltRotation + _cycleDelta);
+          break;
+        case 'triadic':
+          // 2do punto del triángulo: +120° del primary
+          secondaryHue = normalizeHue(finalHue + 120 + saltRotation + _cycleDelta);
+          break;
+        case 'complementary':
+          // Opuesto: +180° del primary
+          secondaryHue = normalizeHue(finalHue + 180 + saltRotation + _cycleDelta);
+          break;
+        default:
+          // Fallback: Fibonacci (legacy, no debería alcanzarse)
+          secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation + _cycleDelta);
+      }
+    }
     // WAVE 0-ALLOC: Mutate scratch palette
     pal.secondary.h = secondaryHue;
     pal.secondary.s = clamp(correctedSat + 5, 20, 100);  // Ligeramente más saturado
@@ -1730,15 +1804,17 @@ export class SeleneColorEngine {
     
     // === G. COLOR DE ACENTO (Estrategia de Contraste) ===
     // 🎨 WAVE 91: STRATEGY THRESHOLDS - Alineado con StrategyArbiter (0.40-0.65)
-    // Expandimos zona triadic para que sea más alcanzable en música latina
     // 🎛️ WAVE 142: forceStrategy puede sobrescribir la decisión
+    // 🌌 WAVE 7753: strategy ya determinada arriba; aquí solo calculamos accentHue.
     let accentHue: number;
-    let strategy: 'analogous' | 'triadic' | 'complementary';
     
     // WAVE 142: Si hay estrategia forzada, usarla
     // 🌌 WAVE 7724: _cycleDelta applied to all accent offsets for procedural variety
-    if (options?.forceStrategy && options.forceStrategy !== 'prism') {
-      strategy = options.forceStrategy;
+    if (options?.forceStrategy === 'prism') {
+      // 🔮 PRISM: Estrategia especial (Tetraédrica)
+      // Primary → Secondary (+60°) → Ambient (+120°) → Accent (+180°)
+      accentHue = finalHue + 180 + _cycleDelta;
+    } else {
       switch (strategy) {
         case 'analogous':
           accentHue = finalHue + 30 + _cycleDelta;
@@ -1749,23 +1825,8 @@ export class SeleneColorEngine {
         case 'complementary':
           accentHue = finalHue + 180 + _cycleDelta;
           break;
-      }
-    } else if (options?.forceStrategy === 'prism') {
-      // 🔮 PRISM: Estrategia especial de Techno (Tetraédrica)
-      // Primary → Secondary (+60°) → Ambient (+120°) → Accent (+180°)
-      strategy = 'complementary';  // Label para metadata
-      accentHue = finalHue + 180 + _cycleDelta;
-    } else {
-      // Decisión basada solo en syncopation
-      if (syncopation < 0.40) {
-        strategy = 'analogous';
-        accentHue = finalHue + 30 + _cycleDelta;   // Vecino
-      } else if (syncopation < 0.65) {
-        strategy = 'triadic';
-        accentHue = finalHue + 120 + _cycleDelta;  // Triángulo
-      } else {
-        strategy = 'complementary';
-        accentHue = finalHue + 180 + _cycleDelta;  // Opuesto
+        default:
+          accentHue = finalHue + 30 + _cycleDelta;
       }
     }
     
@@ -2028,16 +2089,19 @@ export class SeleneColorEngine {
     // elástica hasta encontrar zona legal.
     // ═══════════════════════════════════════════════════════════════════════
     
-    if (options?.forbiddenHueRanges) {
-      const elasticStep = options.elasticRotation ?? 15;
+    // 🌌 WAVE 7753 ANTI-MOSTAZA: Usar effectiveOptions (slot-aware) en vez de
+    // options (plantilla en blanco). Esto garantiza que allowedHueRanges del
+    // slot activo del Reloj Sideral se aplique a TODA la paleta, no solo al PRI.
+    if (effectiveOptions?.forbiddenHueRanges) {
+      const elasticStep = effectiveOptions.elasticRotation ?? 15;
       const maxIterations = Math.ceil(360 / elasticStep);
       
       // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
       // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
-      this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.primary, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.secondary, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.ambient, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.accent, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
       
       // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
       // Si Ambient está demasiado cerca de Secondary (< 30°), separarlos
@@ -2050,7 +2114,7 @@ export class SeleneColorEngine {
         pal.ambient.h = normalizeHue(pal.ambient.h + 60);
         
         // Re-validar que no cayó en zona prohibida tras el empujón
-        this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+        this._enforceForbiddenHue(pal.ambient, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
       }
     }
     
@@ -2063,9 +2127,10 @@ export class SeleneColorEngine {
     // SOLUCIÓN: Si hay allowedHueRanges, todo lo que esté FUERA es ilegal.
     // Empujar hacia el borde más cercano del rango permitido.
     // ═══════════════════════════════════════════════════════════════════════
-    if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+    // 🌌 WAVE 7753: Usar effectiveOptions.allowedHueRanges (slot-aware).
+    if (effectiveOptions?.allowedHueRanges && effectiveOptions.allowedHueRanges.length > 0) {
       const isInAllowedRange = (hue: number): boolean => {
-        for (const [min, max] of options.allowedHueRanges!) {
+        for (const [min, max] of effectiveOptions.allowedHueRanges!) {
           if (min <= max) {
             if (hue >= min && hue <= max) return true;
           } else {
@@ -2080,7 +2145,7 @@ export class SeleneColorEngine {
         let nearestHue = hue;
         let minDistance = Infinity;
         
-        for (const [min, max] of options.allowedHueRanges!) {
+        for (const [min, max] of effectiveOptions.allowedHueRanges!) {
           // Distancia al borde inferior
           let distToMin = Math.abs(hue - min);
           if (distToMin > 180) distToMin = 360 - distToMin;
@@ -2115,12 +2180,13 @@ export class SeleneColorEngine {
     // PROBLEMA: hueRemapping: [{ from: 90, to: 110, target: 130 }] no se aplicaba.
     // Cualquier verde césped (90-110) debería transformarse en verde láser (130).
     // ═══════════════════════════════════════════════════════════════════════
-    if (options?.hueRemapping && options.hueRemapping.length > 0) {
+    // 🌌 WAVE 7753: Usar effectiveOptions.hueRemapping (slot-aware).
+    if (effectiveOptions?.hueRemapping && effectiveOptions.hueRemapping.length > 0) {
       // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
-      this._applyHueRemap(pal.primary, options.hueRemapping);
-      this._applyHueRemap(pal.secondary, options.hueRemapping);
-      this._applyHueRemap(pal.ambient, options.hueRemapping);
-      this._applyHueRemap(pal.accent, options.hueRemapping);
+      this._applyHueRemap(pal.primary, effectiveOptions.hueRemapping);
+      this._applyHueRemap(pal.secondary, effectiveOptions.hueRemapping);
+      this._applyHueRemap(pal.ambient, effectiveOptions.hueRemapping);
+      this._applyHueRemap(pal.accent, effectiveOptions.hueRemapping);
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -2133,11 +2199,12 @@ export class SeleneColorEngine {
     // SOLUCIÓN: Aplicar Thermal Gravity a TODOS los colores de la paleta.
     // WAVE 284: Ahora con thermalGravityStrength configurable por vibe.
     // ═══════════════════════════════════════════════════════════════════════
-    if (options?.atmosphericTemp) {
-      const gravityStrength = options.thermalGravityStrength;
-      pal.secondary.h = applyThermalGravity(pal.secondary.h, options.atmosphericTemp, gravityStrength);
-      pal.ambient.h   = applyThermalGravity(pal.ambient.h,   options.atmosphericTemp, gravityStrength);
-      pal.accent.h    = applyThermalGravity(pal.accent.h,    options.atmosphericTemp, gravityStrength);
+    // 🌌 WAVE 7753: Usar effectiveOptions.atmosphericTemp (slot-aware).
+    if (effectiveOptions?.atmosphericTemp) {
+      const gravityStrength = effectiveOptions.thermalGravityStrength;
+      pal.secondary.h = applyThermalGravity(pal.secondary.h, effectiveOptions.atmosphericTemp, gravityStrength);
+      pal.ambient.h   = applyThermalGravity(pal.ambient.h,   effectiveOptions.atmosphericTemp, gravityStrength);
+      pal.accent.h    = applyThermalGravity(pal.accent.h,    effectiveOptions.atmosphericTemp, gravityStrength);
     }
     // ═══════════════════════════════════════════════════════════════════════
     
@@ -2176,10 +2243,11 @@ export class SeleneColorEngine {
     //   2. BLANCO HIELO (si no pueden ser neón)
     // ═══════════════════════════════════════════════════════════════════════
     // WAVE 0-ALLOC: applyNeonProtocol mutates in place — no new objects
-    applyNeonProtocol(pal.primary, options);
-    applyNeonProtocol(pal.secondary, options);
-    applyNeonProtocol(pal.ambient, options);
-    applyNeonProtocol(pal.accent, options);
+    // 🌌 WAVE 7753: Usar effectiveOptions (slot-aware) para neonProtocol.
+    applyNeonProtocol(pal.primary, effectiveOptions);
+    applyNeonProtocol(pal.secondary, effectiveOptions);
+    applyNeonProtocol(pal.ambient, effectiveOptions);
+    applyNeonProtocol(pal.accent, effectiveOptions);
     // ═══════════════════════════════════════════════════════════════════════
     
     // === M. RETORNAR PALETA COMPLETA ===

@@ -1155,7 +1155,19 @@ export abstract class LiquidEngineBase {
         // This preserves the original behavior for acoustic snares (crack path
         // dominates) while rescuing synthetic snares (ghost path dominates).
         const rawHhDelta = input.raw_hh_delta ?? 0
-        const crackDrive = residual * crackFlux * bodyFactor * smartSef
+        let crackDrive = residual * crackFlux * bodyFactor * smartSef
+        // ⚒️ WAVE 7749.102: WNS SOFT GATE ON CRACK PATH — synth bass stabs in
+        // silence have energy in the snare band (high SnareE → high sEF) and
+        // body resonance (high bFct), generating crackDrive > fFloor. But they
+        // lack white noise (WNS=0.000) — real snares have noise from snare
+        // wires. When the gate is alive (gH > 0.1) and WNS < 0.05, reduce
+        // crackDrive by 70%. This kills synth FPs while preserving:
+        //   - Dead-gate real snares (gH≈0 → no WNS gate)
+        //   - Alive-gate real snares (WNS > 0.1 → no reduction)
+        // Synth FPs blocked: calib19 onsets 1,3,5 (WNS=0, gH=0.2-1.0)
+        if (gateHealth > 0.1 && wns < 0.05) {
+          crackDrive *= 0.3
+        }
         const ghostWeight = 1.0 - spectralDensity
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1322,11 +1334,27 @@ export abstract class LiquidEngineBase {
           //   Reverb tails: RawD<0 → no rescue (RawD>0.2 required)
           // ⚒️ WAVE 7749.101: FLUX GATE — synth stabs in minimal techno mimic
           // snare attacks (high UnG, Res, RawD) but are narrowband (Flux<0.13).
-          // Real snares have broadband transients (Flux>0.25). Require Flux>0.15
+          // Real snares have broadband transients (Flux>0.25). Require Flux>0.20
           // to kill synth FPs while preserving real missed snares.
-          //   calib19 synth FPs: Flux 0.035-0.129 → blocked
+          //   calib19 synth FPs: Flux 0.035-0.151 → blocked
           //   missedsnare real snares: Flux 0.258-0.475 → preserved
-          if (!rawOnset && ungatedSnare > 0.4 && residual > 0.3 && rawSnareDelta > 0.2 && spectralFlux > 0.15) {
+          // ⚒️ WAVE 7749.102: Raised 0.15→0.20 — calib19 onset 4 had Flux=0.151
+          // and slipped through. missedsnare real snares all have Flux>0.25.
+          // ⚒️ WAVE 7749.102: HI-HAT EXCLUSION — if hE>0.5 AND SnareE<0.2, the
+          // bypass rescue is catching a hi-hat/cymbal/noise burst, not a snare.
+          // Real snares have SnareE>0.2 (alive gate) or gH≈0 (dead gate, SnareE
+          // is 0 but hE is moderate 0.29-0.49). Hi-hats have hE>0.5 + low SnareE.
+          //   calib19 onset 6: hE=0.662 SnareE=0.111 → blocked
+          //   missedsnare frame 182: hE=0.292 → safe
+          //   missedsnare frame 217: hE=0.347 → safe
+          if (
+            !rawOnset &&
+            ungatedSnare > 0.4 &&
+            residual > 0.3 &&
+            rawSnareDelta > 0.2 &&
+            spectralFlux > 0.20 &&
+            !(snareEnergy < 0.2 && hhEnergy > 0.5)
+          ) {
             rawOnset = true
           }
           if (rawOnset) {

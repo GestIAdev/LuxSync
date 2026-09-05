@@ -1090,12 +1090,20 @@ export abstract class LiquidEngineBase {
         // energy is there, the gate just kills it). The existing relaxation
         // (treblePresence × densityGate × (1-gateHealth)) can't fire because
         // treblePresence=0. We add a parallel rescue using UnG directly:
-        //   deadGateRescue = (1-gateHealth) × min(1, UnG × 1.5)
+        //   deadGateRescue = effectiveGateDead × min(1, UnG × 1.5)
         // When gate is alive (Brejcha: gateHealth=0.8+): rescue=0, no change.
         // When gate is dead + treble present (Opus: gH=0, UnG=0.5): rescue=0.75
         //   → relaxedMinSef = 0.05 + max(0, 0.30×0.75) = 0.275 → sEF recovers.
+        // ⚒️ WAVE 7749.96: INSTANT GATE DEAD — gateHealth is a slow EMA (~2.3s)
+        // so it reads 1.0 in minimal even when SnareE=0.003 on a specific frame.
+        // Minimal misses: gH=1.0, SnareE=0.003, UnG=0.58, Res=0.50 → sEF stuck
+        // at 0.050. Fix: detect instant gate death (SnareE<0.05 AND UnG>0.3) and
+        // bypass the EMA gateHealth for rescue purposes. This catches transient
+        // gate blindness that the EMA can't see.
         const ungatedSnare = input.snare_energy_ungated ?? snareEnergy
-        const deadGateRescue = (1.0 - gateHealth) * Math.min(1.0, ungatedSnare * 1.5)
+        const instantGateDead = (snareEnergy < 0.05 && ungatedSnare > 0.3) ? 1.0 : 0.0
+        const effectiveGateDead = Math.max(1.0 - gateHealth, instantGateDead)
+        const deadGateRescue = effectiveGateDead * Math.min(1.0, ungatedSnare * 1.5)
         const relaxedMinSef = 0.05 + Math.max(
           0.35 * treblePresence * densityGate * (1.0 - gateHealth),
           0.30 * deadGateRescue

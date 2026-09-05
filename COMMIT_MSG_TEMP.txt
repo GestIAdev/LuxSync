@@ -1,8 +1,22 @@
-WAVE 7749.95: Lower snareMomentumFloor 0.08->0.07 (experimental)
+WAVE 7749.96: Instant gate-dead detection — rescue transient gate blindness
 
-Temporary tuning to test floor sensitivity across textures. The 0.08 floor
-was eating some legitimate snares in minimal/synth-heavy tracks. 0.07 gives
-a bit more headroom while we work on the gateHealth-gated relaxation.
+The deadGateRescue (WAVE 7749.90) used (1-gateHealth) where gateHealth is a
+slow EMA (~2.3s). In minimal/synth-heavy tracks, gateHealth reads 1.0 (gate
+alive on average) but individual frames have SnareE=0.003 with UnG=0.58 —
+the gate is instantaneously blind but the EMA doesn't see it.
+
+minimalcalib12 misses: gH=1.0, SnareE=0.003, UnG=0.58, Res=0.50, sEF=0.050
+→ Drive=0.001 → missed snare. Pattern repeats 6+ times in a 300-frame log.
+
+Fix: add instantGateDead detection:
+  instantGateDead = (SnareE < 0.05 AND UnG > 0.3) ? 1.0 : 0.0
+  effectiveGateDead = max(1-gateHealth, instantGateDead)
+  deadGateRescue = effectiveGateDead × min(1, UnG × 1.5)
+
+  Minimal miss (gH=1.0, SnareE=0.003, UnG=0.58): instantDead=1.0 → rescue fires
+  Techhouse (gH=1.0, SnareE=0.3, UnG=0.10): instantDead=0.0 → no rescue
+  Brejcha hat (gH=0.8, SnareE=0.0, UnG=0.05): instantDead=0.0 → no rescue
+  Opus (gH=0.0, SnareE=0.0, UnG=0.50): instantDead=1.0 → rescue fires
 
 Generated with [Devin](https://devin.ai)
 

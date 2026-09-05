@@ -100,7 +100,7 @@
           "flash"
         ],
         "curve": {
-          "paramId": "strobeRate",
+          "paramId": "strobe",
           "valueType": "number",
           "range": [
             0,
@@ -234,5 +234,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:4ec5bb4f7cdfe2c50b9d69cbf28fc187cea8fe02ceb659f2709cbd0b71b76350"
+  "checksum": "sha256:cd96906ca4e490a060055175af9d5c0859b2c690de7ff18de83b1747b1084cc5"
 }

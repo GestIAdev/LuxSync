@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-05T09:11:53.356Z",
+  "generatedAt": "2026-09-05T09:16:28.724Z",
   "count": 42,
   "files": {
     "chill/solar_caustics.lfx": {
@@ -36,8 +36,8 @@
     },
     "latin/divine_obliteration.lfx": {
       "relPath": "latin/divine_obliteration.lfx",
-      "checksum": "08d59776d156fc88",
-      "size": 5159
+      "checksum": "c7627af2420c3201",
+      "size": 5156
     },
     "latin/ghost_breath.lfx": {
       "relPath": "latin/ghost_breath.lfx",

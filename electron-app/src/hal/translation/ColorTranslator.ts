@@ -247,17 +247,32 @@ export class ColorTranslator {
 
   // Cache de traducciones (LRU)
   private translationCache = new Map<string, ColorTranslationResult>()
-  
+
   // Pre-computed L*a*b* for wheel colors (cached per profile)
   private wheelLabCache = new Map<string, Lab[]>()
-  
+
   // ΔE* threshold for "poor match"
   // ΔE* > 40 means colors are extremely different
   private readonly POOR_MATCH_THRESHOLD = 40
-  
+
   // Tamaño máximo del cache
   private readonly MAX_CACHE_SIZE = 512
-  
+
+  // ⚒️ WAVE 7752: TRUTH ENGINE — Veto de Chroma perceptual.
+  // Slots con CIE chroma C* < 30 son "blancos teñidos" (CTB, CTO, White).
+  // Cuando el target es cromático, estos slots reciben veto (hueDiff=180°)
+  // para que nunca ganen contra colores verdaderamente saturados.
+  // HSL saturation no distingue CTB (s=1.0) de Blue (s=1.0), pero CIE
+  // chroma sí: CTB C*≈13 vs Blue C*≈133.
+  private readonly SLOT_CHROMA_THRESHOLD = 30
+
+  // ⚒️ WAVE 7752: TRUTH ENGINE — Pathfinding mecánico.
+  // Trackea la última posición DMX de la rueda por profileId para elegir
+  // el duplicado mecánicamente más cercano (shortest path). Resuelve el
+  // problema de Magenta en DMX 31 y 141: si la rueda está en 141, ir a
+  // 141 (0 pasos) en vez de 31 (110 pasos).
+  private currentWheelDmx = new Map<string, number>()
+
   constructor() {
     // WAVE 2098: Boot silence
   }
@@ -386,6 +401,24 @@ export class ColorTranslator {
    *      - Resto: distancia = diferencia de hue circular (0-180°)
    *   3. Si target es neutro (s < 0.15): usar slot 0 (Open/White) directamente
    *   4. poorMatch = hue diff > 45°
+   *
+   * ⚒️ WAVE 7752: TRUTH ENGINE — Veto de Chroma perceptual (Opción C) +
+   * Pathfinding mecánico (Opción D).
+   *
+   * VETO DE CHROMA:
+   *   - Cada slot se convierte a CIE L*a*b* y se calcula chroma C* = √(a*² + b*²).
+   *   - Slots con C* < SLOT_CHROMA_THRESHOLD (30) son "blancos teñidos"
+   *     (CTB, CTO, White, Open). HSL saturation no los distingue de colores
+   *     saturados (CTB s=1.0 = Blue s=1.0), pero CIE chroma sí (CTB C*≈13 vs Blue C*≈133).
+   *   - Cuando el target es cromático, los blancos teñidos reciben veto
+   *     (hueDiff = 180°) para que nunca ganen contra colores saturados.
+   *
+   * PATHFINDING MECÁNICO:
+   *   - Se trackea currentWheelDmx por profileId.
+   *   - Tras encontrar el color final, si hay duplicados (mismo nombre en
+   *     distintos DMX), se elige el DMX mecánicamente más cercano a la
+   *     posición actual. Respeta allowsContinuousSpin (distancia circular).
+   *   - Resuelve: Magenta en DMX 31 y 141 → si la rueda está en 141, ir a 141.
    */
   private findNearestColorLab(target: RGB, wheel: ColorWheelDefinition, profileId: string): ColorTranslationResult {
     // Convertir target a HSL para matching por hue
@@ -406,6 +439,8 @@ export class ColorTranslator {
           openSlot = wheel.colors[i]
         }
       }
+      // ⚒️ WAVE 7752: Pathfinding — actualizar posición de rueda para slots neutros
+      this._updateWheelPosition(profileId, openSlot.dmx, wheel)
       return {
         outputRGB: openSlot.rgb,
         colorWheelDmx: openSlot.dmx,
@@ -419,14 +454,17 @@ export class ColorTranslator {
     // 🥇 WAVE 4831: THE GOLDEN SNAP — identidad cultural del color Oro
     // Si el hue objetivo cae en el rango ámbar/dorado (35°-55°), forzar
     // selección del slot Amber/Gold cuando existe en la rueda física.
+    // ⚒️ WAVE 7752: Excluido 'CTO' del Golden Snap — es un blanco teñido
+    // (C*≈20), no un ámbar saturado. Solo Amber/Gold/Orange califican.
     if (targetHsl.h >= 35 && targetHsl.h <= 55) {
       const amberSlot = wheel.colors.find(
-        (s) => s.name === 'Amber' || s.name === 'Gold' || s.name === 'CTO' || s.name === 'Orange'
+        (s) => s.name === 'Amber' || s.name === 'Gold' || s.name === 'Orange'
       )
       if (amberSlot) {
+        const bestDmx = this._resolveDuplicateDmx(profileId, amberSlot, wheel)
         return {
           outputRGB: amberSlot.rgb,
-          colorWheelDmx: amberSlot.dmx,
+          colorWheelDmx: bestDmx,
           colorName: amberSlot.name,
           colorDistance: 0,
           wasTranslated: true,
@@ -444,10 +482,22 @@ export class ColorTranslator {
       const slotHsl = rgbToHsl(wheel.colors[i].rgb)
       const slotIsChromatic = slotHsl.s > 0.15
 
-      // Slots neutros (White, Open): distancia máxima cuando target es cromático
-      const hueDiff = slotIsChromatic
-        ? circularHueDiff(targetHsl.h, slotHsl.h)
-        : 180
+      // ⚒️ WAVE 7752: VETO DE CHROMA perceptual.
+      // Calcular CIE chroma del slot para detectar blancos teñidos.
+      // HSL saturation clasifica CTB (s=1.0) como cromático, pero CIE
+      // chroma (C*≈13) revela que es un blanco teñido. El veto asegura
+      // que CTB/CTO nunca ganen contra targets saturados.
+      const slotLab = rgbToLab(wheel.colors[i].rgb)
+      const slotChroma = Math.sqrt(slotLab.a * slotLab.a + slotLab.b * slotLab.b)
+      const slotIsTintedWhite = slotChroma < this.SLOT_CHROMA_THRESHOLD
+
+      // Slots neutros (White, Open) Y blancos teñidos (CTB, CTO):
+      // veto total cuando el target es cromático.
+      const hueDiff = (targetIsChromatic && (!slotIsChromatic || slotIsTintedWhite))
+        ? 180
+        : slotIsChromatic
+          ? circularHueDiff(targetHsl.h, slotHsl.h)
+          : 180
 
       if (hueDiff < smallestHueDiff) {
         secondSmallestHueDiff = smallestHueDiff
@@ -487,6 +537,11 @@ export class ColorTranslator {
       }
     }
 
+    // ⚒️ WAVE 7752: PATHFINDING MECÁNICO — resolver duplicados.
+    // Si hay múltiples slots con el mismo nombre, elegir el DMX
+    // mecánicamente más cercano a la posición actual de la rueda.
+    interpolatedDmx = this._resolveDuplicateDmx(profileId, finalColor, wheel, interpolatedDmx)
+
     return {
       outputRGB: finalColor.rgb,
       colorWheelDmx: interpolatedDmx,
@@ -494,6 +549,89 @@ export class ColorTranslator {
       colorDistance: smallestHueDiff,
       wasTranslated: true,
       poorMatch,
+    }
+  }
+
+  /**
+   * ⚒️ WAVE 7752: PATHFINDING MECÁNICO — Resuelve duplicados de rueda.
+   *
+   * Si la rueda tiene múltiples slots con el mismo nombre en distintas
+   * posiciones DMX (ej: Magenta en DMX 31 y 141), evalúa la distancia
+   * mecánica desde la posición actual y elige el DMX que requiera el
+   * menor desplazamiento. Respeta allowsContinuousSpin para distancia
+   * circular (shortest path en ruedas que pueden girar en ambos sentidos).
+   *
+   * @param profileId  ID del perfil (para trackear posición por fixture)
+   * @param finalColor Color seleccionado por el matcher
+   * @param wheel      Definición de la rueda (para allowsContinuousSpin)
+   * @param interpolatedDmx DMX interpolado opcional (half-color positioning)
+   * @returns DMX final tras pathfinding
+   */
+  private _resolveDuplicateDmx(
+    profileId: string,
+    finalColor: WheelColor,
+    wheel: ColorWheelDefinition,
+    interpolatedDmx?: number,
+  ): number {
+    // Buscar duplicados por nombre en la rueda
+    const duplicates = wheel.colors.filter(c => c.name === finalColor.name)
+    if (duplicates.length <= 1) {
+      // Sin duplicados: usar el DMX interpolado o el del color directo
+      const resultDmx = interpolatedDmx ?? finalColor.dmx
+      this.currentWheelDmx.set(profileId, resultDmx)
+      return resultDmx
+    }
+
+    // Hay duplicados: elegir el mecánicamente más cercano a la posición actual
+    const currentDmx = this.currentWheelDmx.get(profileId) ?? finalColor.dmx
+    const allowsContinuousSpin = wheel.allowsContinuousSpin ?? false
+
+    let bestDmx = duplicates[0].dmx
+    let bestDist = this._mechanicalDistance(currentDmx, bestDmx, allowsContinuousSpin)
+
+    for (let i = 1; i < duplicates.length; i++) {
+      const candidateDmx = duplicates[i].dmx
+      const candidateDist = this._mechanicalDistance(currentDmx, candidateDmx, allowsContinuousSpin)
+      if (candidateDist < bestDist) {
+        bestDist = candidateDist
+        bestDmx = candidateDmx
+      }
+    }
+
+    // Si hay interpolación half-color, preservarla solo si no hay duplicado
+    // mecánicamente mejor. La interpolación es para slots adyacentes, no
+    // para duplicados lejanos.
+    const resultDmx = interpolatedDmx !== undefined && duplicates.length <= 1
+      ? interpolatedDmx
+      : bestDmx
+
+    this.currentWheelDmx.set(profileId, resultDmx)
+    return resultDmx
+  }
+
+  /**
+   * ⚒️ WAVE 7752: Distancia mecánica entre dos posiciones DMX de rueda.
+   * Si allowsContinuousSpin=true, la rueda puede girar en ambos sentidos
+   * → distancia circular (shortest path). Si no, distancia lineal.
+   */
+  private _mechanicalDistance(fromDmx: number, toDmx: number, allowsContinuousSpin: boolean): number {
+    const rawDelta = Math.abs(toDmx - fromDmx)
+    return allowsContinuousSpin
+      ? Math.min(rawDelta, 256 - rawDelta)
+      : rawDelta
+  }
+
+  /**
+   * ⚒️ WAVE 7752: Actualiza la posición de rueda trackeada (slots neutros).
+   */
+  private _updateWheelPosition(profileId: string, dmx: number, wheel: ColorWheelDefinition): void {
+    // Para slots neutros sin duplicados, actualizar directo.
+    // Si hay duplicados del slot neutro, resolver pathfinding.
+    const duplicates = wheel.colors.filter(c => c.dmx === dmx)
+    if (duplicates.length > 1) {
+      this._resolveDuplicateDmx(profileId, duplicates[0], wheel)
+    } else {
+      this.currentWheelDmx.set(profileId, dmx)
     }
   }
   

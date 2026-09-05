@@ -144,6 +144,11 @@ export interface FixtureState {
   gobo?: number          // 0-255 (gobo wheel position)
   prism?: number         // 0-255 (prism rotation)
   strobe?: number        // 0-255 (strobe speed)
+  // ⚒️ WAVE 7751: TRUTH ENGINE — normalized strobe (0-1 float) for HTP merge.
+  // El path Legacy ahora usa HTP en dominio float para evitar la doble
+  // cuantización y la suma aditiva. _getChannelValue es el único punto
+  // donde strobeNorm se convierte a 8 bits (Math.round(norm * 255)).
+  strobeNorm?: number    // 0-1 (normalized strobe, HTP-merged)
   white?: number         // 0-255 (white LED)
   amber?: number         // 0-255 (amber LED)
   uv?: number            // 0-255 (UV LED)
@@ -547,6 +552,12 @@ export class FixtureMapper {
       case 'strobe':
         // Strobe speed: 0 = no strobe, higher = faster
         // phantomChannels tiene prioridad (viene del Arbiter/manual override)
+        // ⚒️ WAVE 7751: TRUTH ENGINE — única conversión float→8-bit del strobe.
+        // strobeNorm (HTP-merged en TickEngine) tiene prioridad sobre el
+        // strobe entero legacy. Math.round es la cuantización final única.
+        if (state.strobeNorm !== undefined) {
+          return Math.round(state.strobeNorm * 255)
+        }
         return state.phantomChannels?.['strobe'] ?? state.strobe ?? (channel.defaultValue ?? 0)
       
       // ═══════════════════════════════════════════════════════════════════

@@ -1135,11 +1135,19 @@ export class TickEngine {
 
         // âš’ï¸ WAVE 2030.21: THE TRANSLATOR â€” mutar f in-place
         // Values arrive PRE-SCALED from HephaestusRuntime. Zero scaling here.
+        // ⚒️ WAVE 7751: TRUTH ENGINE — strobe usa HTP en dominio float
+        // (normalizedValue) en vez de suma aditiva con enteros. La
+        // conversión a 8-bit ocurre una sola vez en FixtureMapper.
+        // La curva de Bezier es la única autoridad — no se fuerza dimmer
+        // ni shutter aquí. Los Gobernadores DMX del usuario controlan
+        // la protección de la mecánica.
         const applyOutputs = (outputs: HephFixtureOutput[]) => {
           for (const output of outputs) {
             switch (output.parameter) {
               case 'intensity': f.dimmer = Math.max(f.dimmer, output.value); break
-              case 'strobe': f.strobe = Math.min(255, (f.strobe || 0) + output.value); break
+              case 'strobe':
+                f.strobeNorm = Math.max(f.strobeNorm || 0, output.normalizedValue ?? (output.value / 255))
+                break
               case 'pan':
                 f.pan = output.value
                 if (output.fine !== undefined) (f as any).panFine = output.fine

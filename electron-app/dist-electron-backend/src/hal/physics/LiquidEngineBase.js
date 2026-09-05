@@ -867,10 +867,28 @@ export class LiquidEngineBase {
                 // gate blindness that the EMA can't see.
                 const ungatedSnare = input.snare_energy_ungated ?? snareEnergy;
                 const instantGateDead = (snareEnergy < 0.05 && ungatedSnare > 0.3) ? 1.0 : 0.0;
-                const effectiveGateDead = Math.max(1.0 - gateHealth, instantGateDead);
+                // ⚒️ WAVE 7749.98: PARTIAL GATE BLINDNESS — instantGateDead only catches
+                // SnareE<0.05 (fully dead gate). But minimalcalib14 showed a miss with
+                // SnareE=0.124, UnG=0.620 — the gate passes 20% of real energy, not
+                // enough for sEF=SnareE×2=0.248 to push crackDrive above floor 0.070.
+                // Fix: detect partial blindness via UnG/SnareE ratio > 3.0 AND UnG>0.3.
+                //   Minimal miss: ratio=5.0x → partialBlind=1.0 → sefInput uses UnG
+                //   Techhouse: SnareE=0.3, UnG=0.1 → ratio=0.33x → no change
+                //   Brejcha hh: UnG=0.05 < 0.3 → no change
+                const gateBlindnessRatio = snareEnergy > 0.02
+                    ? ungatedSnare / snareEnergy
+                    : (ungatedSnare > 0.3 ? 100.0 : 1.0);
+                const partialGateBlind = (gateBlindnessRatio > 3.0 && ungatedSnare > 0.3) ? 1.0 : 0.0;
+                const effectiveGateDead = Math.max(1.0 - gateHealth, instantGateDead, partialGateBlind);
                 const deadGateRescue = effectiveGateDead * Math.min(1.0, ungatedSnare * 1.5);
                 const relaxedMinSef = 0.05 + Math.max(0.35 * treblePresence * densityGate * (1.0 - gateHealth), 0.30 * deadGateRescue);
-                const smartSef = Math.max(relaxedMinSef, Math.min(1.0, snareEnergy * 2.0));
+                // When gate is (partially) blind, use UnG×0.4 as a floor for sEF input.
+                // The gate typically passes ~40% of raw treble energy when healthy;
+                // using UnG×0.4 reconstructs the expected gated energy from the raw.
+                const sefInput = effectiveGateDead > 0.5
+                    ? Math.max(snareEnergy, ungatedSnare * 0.4)
+                    : snareEnergy;
+                const smartSef = Math.max(relaxedMinSef, Math.min(1.0, sefInput * 2.0));
                 // ═══════════════════════════════════════════════════════════════════
                 // ⚒️ WAVE 7749.80: TREBLE-GHOST INJECTION — EDM Snare Rescue
                 // ═══════════════════════════════════════════════════════════════════

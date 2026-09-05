@@ -1,30 +1,25 @@
-WAVE 7749.97: GateHealth-gated ghost path — kill multi-triggers in alive-gate tracks
+WAVE 7749.98: Partial gate blindness — rescue snares when gate passes <33% of energy
 
-The ghost path (trebleGhost) was designed for dead-gate tracks (Opus: gH=0.0)
-where the crack gate can't see snares. But it doesn't check gateHealth, so in
-alive-gate tracks (Minimal: gH=1.0) it fires on every hhDlt spike.
+instantGateDead (WAVE 7749.96) only catches SnareE<0.05 (fully dead gate).
+But minimalcalib14 showed a miss with SnareE=0.124, UnG=0.620 — the gate
+passes 20% of real energy, not enough for sEF=0.248 to push crackDrive
+above floor 0.070.
 
-minimalcalib13: 47 onsets in 9.1s (5.2/s). Analysis:
-  - 20 onsets GHOST-driven (Drive=ghst, crackDrive=0.0002-0.078, below floor)
-  - 27 onsets BOTH (crack>ghost, SnareE=0.8-1.0, crackDrive=0.07-0.90)
-  - 0 onsets crack-only
-  - ALL frames gH=1.000
+The missed snare had:
+  SnareE=0.124  UnG=0.620  Res=0.506  cFx=0.255  bFct=1.305
+  ratio UnG/SnareE = 5.0x (gate blinds 80% of energy)
+  sEF = 0.124 * 2.0 = 0.248 (based on blinded SnareE)
+  crackDrive = 0.506 * 0.255 * 1.305 * 0.248 = 0.042 < floor 0.070
 
-The 20 ghost-driven onsets are multi-triggers: moderate SnareE (0.4-0.6),
-high hhDlt (0.24-0.50), but crack path can't see them (Res/cFx too low).
-These are synth stabs or hi-hat fluctuations, not real snares.
+Fix: detect partial gate blindness via UnG/SnareE ratio > 3.0 AND UnG > 0.3.
+When detected, use UnG×0.4 as a floor for sEF input (reconstructs expected
+gated energy from raw — gate typically passes ~40% when healthy).
 
-Fix: scale ghost by (1-gateHealth):
-  ghostGateFactor = 1.0 - gateHealth
-  trebleGhost = ... * ghostGateFactor
-
-  Minimal (gH=1.0): ghost=0 → 27 BOTH survive via crack, 18 GHOST killed
-  Opus (gH=0.0): ghost=1.0 → full rescue, no change
-  Brejcha (gH=0.8): ghost=0.2 → mostly suppressed, cleaner
-
-The 27 BOTH onsets all have crackDrive > 0.07 (floor), so they survive
-without ghost. The instantGateDead fix (WAVE 7749.96) handles dead-gate
-misses via boosted sEF/crackDrive, not via ghost.
+  Minimal miss: ratio=5.0x → sefInput=max(0.124, 0.248)=0.248
+    sEF=0.496 → crackDrive=0.084 > floor 0.070 → TRIGGERS
+  Techhouse: SnareE=0.3, UnG=0.1 → ratio=0.33x → no change
+  Brejcha hh: UnG=0.05 < 0.3 → no change
+  Opus: SnareE=0.0, UnG=0.5 → ratio=100x → sefInput=0.20 → sEF=0.40
 
 Generated with [Devin](https://devin.ai)
 

@@ -302,7 +302,12 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //   fBL=0.03 (Brejcha hats): floor=0.08 (strict, hats blocked)
   //   fBL=0.05 (Techhouse):    floor=0.04 (relaxed, roll recovered)
   //   fBL=0.085 (Opus peak):   floor=0.005 (max relaxation, snares recovered)
-  snareMomentumFloorMin: 0.020,
+  // ⚒️ WAVE 7749.105: REVERT 0.020→0.005 — the 0.020 floorMin killed Opus
+  // build snares (Drive 0.005-0.016 in dense AGC-compressed rolls). The UnG
+  // ghost gate (WAVE 7749.99 Fix 1) already filters synth FPs by soft-gating
+  // ghost contribution when UnG < 0.50. The floorMin raise was redundant
+  // protection that cost the Opus roll. Back to 0.005.
+  snareMomentumFloorMin: 0.005,
 
   // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
   // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.

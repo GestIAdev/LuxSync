@@ -1,33 +1,23 @@
-WAVE 7749.104: Adaptive Flux threshold on bypass rescue — recover Opus build snares
+WAVE 7749.105: Revert floorMin 0.020→0.005 — recover Opus build roll
 
-Opus build snares are synthetic and narrowband (Flux 0.09-0.16), similar
-to synth FPs in minimal techno. Raising the bypass Flux threshold from
-0.15 to 0.20 (WAVE 7749.102) killed synth FPs but also blocked Opus
-build snares that were previously recovered.
+WAVE 7749.99 raised snareMomentumFloorMin from 0.005 to 0.020 to filter
+synth FPs in dead-gate tracks. But opusbuild17 showed the Opus build roll
+died: 38 snares in 601 frames (13.3 kicks per snare), with 245 missed
+frames having Drive 0.005-0.016 — all below the 0.020 floor.
 
-Key insight: synth FPs only occur with gH > 0.1 (alive gate = percussive
-activity present). Opus build snares occur with gH ≈ 0 (dead gate = no
-activity = no synth FPs in silence).
+The floorMin raise was redundant: WAVE 7749.99 Fix 1 (UnG ghost gate)
+already soft-gates ghost contribution when UnG < 0.50, filtering synth
+FPs (UnG 0.319-0.476) while preserving Opus snares (UnG 0.495-0.880).
+The floorMin only blocked the weakest synth FPs (Drive < 0.020) but also
+blocked genuine Opus snares crushed by AGC to Drive 0.005-0.016.
 
-Fix: Make the Flux threshold adaptive based on gate health:
-  - gH < 0.1 (dead gate): Flux > 0.08 (Opus snares are narrowband but
-    legitimate — no synth FPs possible in dead-gate silence)
-  - gH >= 0.1 (alive gate): Flux > 0.20 (blocks synth stabs)
+Reverting to 0.005 restores the Opus roll. The UnG ghost gate handles
+synth FPs in the ghost path, and the base floor (0.07) handles them in
+normal (non-buildup) conditions.
 
-Opus missed snares recovered:
-  f634: UnG=0.838 Res=0.335 RawD=0.377 Flux=0.136 gH=0.000 → RESCUE
-  f642: UnG=0.784 Res=0.273 RawD=0.286 Flux=0.128 gH=0.000 → RESCUE
-
-Synth FPs still blocked (all have gH > 0.1 → Flux > 0.20 required):
-  calib19: gH 0.162-1.000, Flux 0.035-0.310
-  synth_war: gH 0.214-1.000, Flux 0.070-0.310
-
-missedsnare still rescued (gH 0.026-0.029, Flux 0.258-0.475):
-  All have Flux > 0.08 and gH < 0.1 → RESCUE
-
-Teminite & Panda Eyes confirmed as impossible for pure percussion:
-  hE=0.000 on ALL frames, WNS avg 0.889, 100% synthetic stabs.
-  7.1 with synth toggle is the correct approach for this track type.
+Expected recovery in opusbuild17:
+  ~245 missed frames with UnG > 0.45 and Drive 0.005-0.016 would now
+  pass the floor (0.005) and fire through the MACD/crack path.
 
 Generated with [Devin](https://devin.ai)
 

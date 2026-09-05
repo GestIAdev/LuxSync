@@ -14,9 +14,10 @@
  *   npx tsx scripts/sync-factory-effects.ts [options]
  *
  * Options:
- *   --dry-run    Show what would be synced without writing
- *   --verbose    Print every file comparison
- *   --author=X   Override the factory author string (default: "LuxSync Factory")
+ *   --dry-run         Show what would be synced without writing
+ *   --verbose         Print every file comparison
+ *   --author=X        Override the factory author string (default: "LuxSync Factory")
+ *   --include-custom  Also sync custom/ user effects to builtins/custom/ (default: skip)
  *
  * npm run sync-effects
  * ═══════════════════════════════════════════════════════════════════════════
@@ -32,8 +33,11 @@ const BUILTINS_DIR = path.resolve(__dirname, '..', 'src', 'core', 'arsenal', 'bu
 const MANIFEST_PATH = path.join(BUILTINS_DIR, 'manifest.json')
 
 // userData path resolution (same logic as Electron's app.getPath('userData'))
+// 🩸 WAVE 7759 FIX: Electron uses `name` (not `productName`) for the userData
+// folder. The folder is %APPDATA%\luxsync-electron\, not %APPDATA%\LuxSync\.
+// We try `name` first, then fall back to `productName` for safety.
 const pkg = require(path.resolve(__dirname, '..', 'package.json'))
-const appName = pkg.productName || pkg.name || 'LuxSync'
+const appName = pkg.name || pkg.productName || 'luxsync-electron'
 const USERDATA_DIR = process.env.APPDATA
   ? path.join(process.env.APPDATA, appName)
   : path.resolve(__dirname, '..', 'userData')
@@ -221,6 +225,9 @@ async function main() {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run')
   const verbose = args.includes('--verbose')
+  // 🩸 WAVE 7759: Skip custom/ user effects by default — they are user-created,
+  // not factory edits. Use --include-custom to also sync them to builtins/custom/.
+  const includeCustom = args.includes('--include-custom')
 
   // Parse --author=X override
   let factoryAuthor = DEFAULT_FACTORY_AUTHOR
@@ -238,6 +245,7 @@ async function main() {
   console.log(`  User arsenal:  ${USER_ARSENAL_DIR}`)
   console.log(`  Factory author: "${factoryAuthor}"`)
   console.log(`  Mode:          ${dryRun ? 'DRY RUN (no writes)' : 'LIVE (will overwrite)'}`)
+  console.log(`  Custom:        ${includeCustom ? 'INCLUDED (sync custom/ to builtins)' : 'SKIPPED (default — use --include-custom)'}`)
   console.log('═════════════════════════════════════════════════════════\n')
 
   if (!fs.existsSync(USER_ARSENAL_DIR)) {
@@ -256,7 +264,13 @@ async function main() {
   console.log(`📦 Builtins indexed: ${builtinIndex.size} effects\n`)
 
   // ─── STEP 2: Collect user .lfx files ─────────────────────────────────────
-  const userFiles = collectLfxFiles(USER_ARSENAL_DIR).filter(f => f.endsWith('.lfx'))
+  // 🩸 WAVE 7759: Skip custom/ unless --include-custom is passed.
+  let userFiles = collectLfxFiles(USER_ARSENAL_DIR).filter(f => f.endsWith('.lfx'))
+  if (!includeCustom) {
+    const before = userFiles.length
+    userFiles = userFiles.filter(f => !path.relative(USER_ARSENAL_DIR, f).replace(/\\/g, '/').startsWith('custom/'))
+    if (verbose) console.log(`  🩸 Skipped ${before - userFiles.length} custom/ file(s) (use --include-custom to sync them)\n`)
+  }
   console.log(`📂 User .lfx files found: ${userFiles.length}\n`)
 
   let synced = 0

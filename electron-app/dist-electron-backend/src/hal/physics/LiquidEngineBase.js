@@ -921,12 +921,17 @@ export class LiquidEngineBase {
                 // silence have energy in the snare band (high SnareE → high sEF) and
                 // body resonance (high bFct), generating crackDrive > fFloor. But they
                 // lack white noise (WNS=0.000) — real snares have noise from snare
-                // wires. When the gate is alive (gH > 0.1) and WNS < 0.05, reduce
-                // crackDrive by 70%. This kills synth FPs while preserving:
-                //   - Dead-gate real snares (gH≈0 → no WNS gate)
-                //   - Alive-gate real snares (WNS > 0.1 → no reduction)
-                // Synth FPs blocked: calib19 onsets 1,3,5 (WNS=0, gH=0.2-1.0)
-                if (gateHealth > 0.1 && wns < 0.05) {
+                // wires. When the gate is alive (gH > 0.1), WNS < 0.05, AND Flux is
+                // low (narrowband), reduce crackDrive by 70%.
+                // ⚒️ WAVE 7749.103: FLUX EXEMPTION — Anyma's synthetic snares have
+                // WNS=0.000 (no noise, 100% synthetic) but Flux 0.30-0.39 (broadband
+                // transient). The WNS gate was killing them. Only apply WNS gate when
+                // Flux < 0.25 (narrowband synth stab). Real snares (acoustic or
+                // synthetic) have broadband transients → exempted.
+                //   Synth FPs: Flux 0.070-0.194 → gated (blocked)
+                //   Anyma snares: Flux 0.300-0.393 → exempted (fire)
+                //   missedsnare: Flux 0.258-0.475 → exempted (fire)
+                if (gateHealth > 0.1 && wns < 0.05 && spectralFlux < 0.25) {
                     crackDrive *= 0.3;
                 }
                 const ghostWeight = 1.0 - spectralDensity;

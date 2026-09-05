@@ -56,6 +56,29 @@ export interface ILiquidProfile {
    *  Default: gateOn 0.35, decayBase 0.08, crushExponent 2.5, boost 4.0. */
   readonly envelopeAir?: LiquidEnvelopeConfig
 
+  /**
+   * ⚒️ WAVE 7750: FLOOR SUB WEIGHT — peso del subgrave continuo inyectado
+   * en el input del envFloor. El Floor ya no es solo bassDelta (seco): ahora
+   * es un híbrido `max(0,bassDelta)*2.0 + bands.subBass*floorSubWeight`.
+   * El envelope (gate + decay) sigue cortando a negro total entre bombos.
+   * Default 0 = comportamiento legacy (solo bassDelta). > 0 = baño de luz
+   * de suelo sostenido por el subgrave, con la compuerta del envelope
+   * garantizando el apagado a 0% cuando el DJ corta la mezcla.
+   */
+  readonly floorSubWeight?: number
+
+  /**
+   * ⚒️ WAVE 7750: AIR SPECTRAL WEIGHTS — pesos de la mezcla espectral del
+   * envAir. Antes hardcodeado `treble*0.6 + highMid*0.4`. Ahora configurable
+   * para que cada perfil aisle el treble puro (láseres cuchillo) o mezcle
+   * highMid (Tungsten Fans con cuerpo).
+   * Defaults 0.6 / 0.4 = retrocompatibilidad WAVE 7749.52.
+   * Techno: 1.0 / 0.0 = haces centrales de puro ruido blanco (sin highMid
+   * del snare body 2-6kHz).
+   */
+  readonly airTrebleWeight?: number
+  readonly airHighMidWeight?: number
+
   // ═══════════════════════════════════════════════════════════════
   // BACK R: SCHWARZENEGGER — Aislamiento percusivo de agudos
   // rawRight = max(0, treble - mid × percMidSubtract)

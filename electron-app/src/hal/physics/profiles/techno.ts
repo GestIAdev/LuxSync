@@ -314,6 +314,26 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   ambientAttackMs: 30,
   ambientReleaseMs: 120,
 
+  // ⚒️ WAVE 7750: AMBIENT DESBLOQUEO DE LUMINOSIDAD — el ambientCrushExponent
+  // default de 2.0 asfixiaba los valores medios del washer Tungsten (RGBW LED,
+  // sin inercia térmica). Bajamos a 1.2 para transferencia casi lineal:
+  // subBass=0.30 → 0.30^1.2=0.24 (antes 0.30^2.0=0.09). Más luz en medios.
+  // El fade de apagado (<0.001→0) garantiza caída a 0.000 absoluto sin
+  // brillos residuales cuando el DJ corta la mezcla.
+  ambientCrushExponent: 1.2,
+
+  // ⚒️ WAVE 7750: AIR SPECTRAL — haces centrales de puro ruido blanco.
+  // treble×1.0 + highMid×0.0 = cuchillos espectrales sin contaminación del
+  // snare body (2-6kHz). Los LEDs RGBW responden instantáneo al contraste.
+  airTrebleWeight: 1.0,
+  airHighMidWeight: 0.0,
+
+  // ⚒️ WAVE 7750: FLOOR TERREMOTO HÍBRIDO — inyecta subgrave continuo en el
+  // input del envFloor. bassDelta*2.0 da el pulso transitorio; subBass*0.5
+  // da el baño de luz de suelo sostenido. La compuerta del envelope (gate
+  // 0.08 + decay 0.12) sigue cortando a negro total entre bombos.
+  floorSubWeight: 0.5,
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2520: OVERRIDES 4.1 — CALIBRACIÓN EXTREMA ANTI-MELAZA
   //

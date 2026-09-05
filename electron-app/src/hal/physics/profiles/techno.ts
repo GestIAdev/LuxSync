@@ -292,7 +292,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // onsets are imperceptible hi-hats/cymbals. At 0.08: Brejcha 6->3/s,
   // Techhouse 4.7->3.7/s, Tiesto 4.5->2.8/s. Real snares have Drive 0.15+
   // (SnareE 0.7+), well above this floor.
-  snareMomentumFloor: 0.08,
+  snareMomentumFloor: 0.07,
   // ⚒️ WAVE 7749.89: DYNAMIC FLOOR MIN — the floor breathes with fBL.
   // calib8b showed the static 0.08 floor killed genuine snares in dense
   // buildups: Opus Prytdz lost ALL snares (Drive 0.01-0.03, fBL 0.06-0.085),

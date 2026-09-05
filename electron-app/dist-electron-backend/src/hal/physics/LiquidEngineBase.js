@@ -187,7 +187,7 @@ export class LiquidEngineBase {
         // frame-to-frame because the ×4.0 slope amplifies small fBL fluctuations.
         // This EMA smooths the final floor so it tracks buildup evolution (seconds)
         // without flickering every frame. α=0.05 → tau ~20 frames ~450ms @ 44fps.
-        this._snareFloorEma = 0.08;
+        this._snareFloorEma = 0.07;
         // ⚒️ WAVE 7749.69: Ungated snare energy for diagnostic log
         this._diagSnareEnergyUngated = 0;
         this._diagRawSnareDelta = 0;

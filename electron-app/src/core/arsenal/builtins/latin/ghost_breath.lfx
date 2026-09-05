@@ -1,192 +1,197 @@
 {
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "ghost_breath",
-                 "name":  "Ghost Breath",
-                 "author":  "LuxSync-Migrator-v3 / WAVE 4848",
-                 "category":  "physical",
-                 "tags":  [
-                              "ambient",
-                              "soft",
-                              "silence",
-                              "fiesta-latina"
-                          ],
-                 "vibeCompat":  [
-                                    "chill-lounge",
-                                    "fiesta-latina"
-                                ],
-                 "spatialZones":  [
-                                      "all"
-                                  ],
-                 "mixBus":  "ambient",
-                 "priority":  10,
-                 "durationMs":  3000,
-                 "effectType":  "heph_custom",
-                 "tracks":  [
-                                {
-                                    "id":  "70d61653-c064-449e-ae5c-bb51bbcd2685",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  667,
-                                                                        "value":  0.449,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1326,
-                                                                        "value":  0.141,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace",
-                                    "phaseConfig":  {
-                                                        "spreadDeg":  181,
-                                                        "symmetry":  "linear",
-                                                        "wings":  1,
-                                                        "blocks":  1,
-                                                        "shuffle":  0,
-                                                        "shuffleSeed":  1,
-                                                        "direction":  1
-                                                    }
-                                },
-                                {
-                                    "id":  "822f7317-4bc3-4623-86f0-954695b734b8",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  0,
-                                                                       "s":  100,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  190,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  {
-                                                                                      "h":  96,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "dimmerScale":  1,
-                                    "blendMode":  "replace"
-                                }
-                            ],
-                 "staticParams":  {
-                                      "dominantColorH":  200,
-                                      "dominantColorS":  30,
-                                      "dominantColorL":  40,
-                                      "isOneShot":  false,
-                                      "legacyMixBus":  "ambient",
-                                      "bpmRef":  128
-                                  },
-                 "cognitiveDNA":  {
-                                      "archetype":  "utility",
-                                      "genome":  {
-                                                     "aggression":  0.1,
-                                                     "chaos":  0.3,
-                                                     "organicity":  0.1
-                                                 },
-                                      "textureAffinity":  "clean",
-                                      "compatibleVibes":  [
-                                                              "chill-lounge",
-                                                              "fiesta-latina"
-                                                          ],
-                                      "validSections":  [
-                                                            "intro",
-                                                            "outro",
-                                                            "silence"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "valley",
-                                                         "max":  "ambient"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.1,
-                                                              "max":  0.1
-                                                          },
-                                      "pressureRange":  {
-                                                            "min":  0,
-                                                            "max":  1
-                                                        },
-                                      "spatialBehavior":  "static"
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.45,
-                                                              "energyMultiplier":  1.05,
-                                                              "vibeBonus":  0.05
-                                                          },
-                                        "gpuCost":  0.3,
-                                        "fatigueImpact":  0.06,
-                                        "minDurationMs":  1000,
-                                        "cooldownMs":  4500,
-                                        "isStrobe":  false,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  false,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ":  null,
-                                                             "minimumEnergy":  null
-                                                         }
-                                    },
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "sha256:4d0e70d93476a321911913203412e7131b390212f43ddb8714d0a0abda83aeda"
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "ghost_breath",
+    "name": "Ghost Breath",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "ambient",
+      "soft",
+      "silence",
+      "fiesta-latina"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "all-movers",
+      "all-pars",
+      "ambient",
+      "air",
+      "all"
+    ],
+    "mixBus": "ambient",
+    "priority": 10,
+    "durationMs": 3000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "70d61653-c064-449e-ae5c-bb51bbcd2685",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "all-pars",
+          "ambient",
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 667,
+              "value": 0.449,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 1326,
+              "value": 0.141,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            }
+          ],
+          "mode": "relative"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 181,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "822f7317-4bc3-4623-86f0-954695b734b8",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 190,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": {
+                "h": 96,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "relative"
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 200,
+      "dominantColorS": 30,
+      "dominantColorL": 40,
+      "isOneShot": false,
+      "legacyMixBus": "ambient",
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.406,
+        "chaos": 0.3,
+        "organicity": 0.1
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [
+        "intro",
+        "outro",
+        "silence"
+      ],
+      "energyZone": {
+        "min": "ambient",
+        "max": "gentle"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 0.8
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.45,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 1000,
+      "cooldownMs": 4500,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:2e0c135ea767c451cea6c30100567aff384437daf79ac3ce0a163bf5e5820169"
 }

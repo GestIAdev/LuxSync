@@ -3,7 +3,7 @@
   "clip": {
     "id": "arena_sweep",
     "name": "Arena Sweep",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "composite",
     "tags": [
       "sweep",
@@ -175,5 +175,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:5133697819bd4919e137c4b999e65a560f59c1b3d6442dec0043526efaa0f9b2"
+  "checksum": "sha256:c1115e5e81f162c63542ca61efbbf827460d0e3cd43c280e063fb9722a50432f"
 }

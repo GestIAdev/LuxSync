@@ -3,7 +3,7 @@
   "clip": {
     "id": "void_mist",
     "name": "Void Mist",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "ambient",
@@ -28,7 +28,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -72,7 +71,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "7e7c97e8-4cde-4c43-be0b-89088ffa3d09",
@@ -80,7 +80,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -114,7 +113,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -129,6 +129,7 @@
       "moverMinDimmer": 0.03
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.6,
         "chaos": 0.3,
@@ -149,13 +150,13 @@
       },
       "aggressionRange": {
         "min": 0,
-        "max": 0.75
+        "max": 1
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0,
-        "max": 1
-      }
+        "max": 0.86
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -178,5 +179,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:ed666657e3af3b7dff2a07efcfe281eb333cc27a31d6bacbeff7795217105ba7"
+  "checksum": "sha256:7e3d65b8bc80e81a45065d3836f9cdadf14417ecb6aa1d6d575f0b25f0f5d0b7"
 }

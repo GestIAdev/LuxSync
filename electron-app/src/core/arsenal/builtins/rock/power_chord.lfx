@@ -3,7 +3,7 @@
   "clip": {
     "id": "power_chord",
     "name": "Power Chord",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "flash",
@@ -201,5 +201,5 @@
       "communityTrusted": false
     }
   },
-  "checksum": "sha256:8b6f116fc06059f66e72cc9d576e5cb874ec6716e73a505bbfff5cd2b6cb19f5"
+  "checksum": "sha256:f227478b104f7a055db18d92425d6a4295d051edbbd60f9ec021aba7d95f1e3e"
 }

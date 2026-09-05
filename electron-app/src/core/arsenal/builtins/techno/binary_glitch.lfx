@@ -13,175 +13,20 @@
       "digital"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "spatialZones": [
       "front",
-      "back"
+      "back",
+      "all-pars",
+      "all-left",
+      "all-right",
+      "all",
+      "all-movers"
     ],
     "durationMs": 3000,
     "effectType": "heph_custom",
     "tracks": [
-      {
-        "id": "glitch-front",
-        "paramId": "intensity",
-        "zones": [
-          "front"
-        ],
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 100,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 200,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 300,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 400,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 500,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 600,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 700,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 733,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 833,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 933,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1033,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1133,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1233,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1333,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1433,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "glitch-back",
-        "paramId": "intensity",
-        "zones": [
-          "back"
-        ],
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 100,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 200,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 300,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 400,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 500,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 600,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 700,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        },
-        "blendMode": "replace"
-      },
       {
         "id": "white-front",
         "paramId": "color",
@@ -204,9 +49,9 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 0,
-                "s": 0,
-                "l": 100
+                "h": 121,
+                "s": 100,
+                "l": 50
               },
               "interpolation": "hold"
             }
@@ -237,9 +82,9 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 0,
-                "s": 0,
-                "l": 100
+                "h": 350,
+                "s": 100,
+                "l": 50
               },
               "interpolation": "hold"
             }
@@ -252,7 +97,8 @@
         "id": "b89075d4-182b-42c5-934b-d681d62012e6",
         "paramId": "strobe",
         "zones": [
-          "all"
+          "all-pars",
+          "all-left"
         ],
         "curve": {
           "paramId": "strobe",
@@ -265,22 +111,148 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 0.5336,
               "interpolation": "hold"
             },
             {
-              "timeMs": 3000,
-              "value": 0.95,
+              "timeMs": 1500,
+              "value": 0,
               "interpolation": "hold"
             }
           ],
           "mode": "absolute"
         },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 66,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "7dbbb6a6-1f09-4f39-b102-e8fb28aec692",
+        "paramId": "strobe",
+        "zones": [
+          "all-pars",
+          "all-right"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0.5082,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0.5052,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 66,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "5cdeb7ed-c8bf-4cbe-8291-b1401b20cacd",
+        "paramId": "intensity",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.6936,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0.701,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "max",
+        "phaseConfig": {
+          "spreadDeg": 90,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "06a6dd0b-3d0d-42e3-b887-19752a1f2735",
+        "paramId": "strobe",
+        "zones": [
+          "all-movers"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.5037,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0.5097,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
         "blendMode": "replace"
       }
     ],
     "staticParams": {},
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.88,
         "chaos": 0.75,
@@ -295,12 +267,12 @@
         "impact"
       ],
       "energyZone": {
-        "min": "intense",
-        "max": "peak"
+        "min": "active",
+        "max": "intense"
       },
       "aggressionRange": {
-        "min": 0.88,
-        "max": 0.88
+        "min": 0,
+        "max": 1
       },
       "pressureRange": {
         "min": 0.61,
@@ -319,8 +291,8 @@
       "minDurationMs": 800,
       "cooldownMs": 4000,
       "isStrobe": true,
-      "isDivineCandidate": true,
-      "isHeavyCandidate": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
         "minimumZ": null,
@@ -334,5 +306,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:92ba25d142df32b5cf93ff90f9bf7b139d85c4ad9ce60a71d79c784448b31df4"
+  "checksum": "sha256:57c8ee5fd7c484ba5df5a3c49757a1af22a7f47fb49a2f6375b04d3cf640646d"
 }

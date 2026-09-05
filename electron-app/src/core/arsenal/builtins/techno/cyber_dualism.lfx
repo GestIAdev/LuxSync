@@ -3,7 +3,7 @@
   "clip": {
     "id": "cyber_dualism",
     "name": "Cyber Dualism",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "pingpong",
@@ -217,5 +217,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:276855d2737b6c0caef06312500ef12ecff9432cbd4367c061003e11afab3fb9"
+  "checksum": "sha256:58e93d9e898b07176c0c7a7a491e08337d070f29d65b2af06ee92cda08ca69b5"
 }

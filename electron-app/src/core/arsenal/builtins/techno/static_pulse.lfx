@@ -3,7 +3,7 @@
   "clip": {
     "id": "static_pulse",
     "name": "Static Pulse",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "stab",
@@ -15,12 +15,11 @@
       "techno-club"
     ],
     "spatialZones": [
-      "all-pars",
-      "all-movers"
+      "all-pars"
     ],
     "mixBus": "global",
     "priority": 70,
-    "durationMs": 5000,
+    "durationMs": 3500,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -29,7 +28,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -45,7 +43,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 100,
+              "timeMs": 70,
               "value": 0.75,
               "interpolation": "linear",
               "bezierHandles": [
@@ -56,12 +54,12 @@
               ]
             },
             {
-              "timeMs": 4800,
+              "timeMs": 3360,
               "value": 0.75,
               "interpolation": "hold"
             },
             {
-              "timeMs": 5000,
+              "timeMs": 3500,
               "value": 0,
               "interpolation": "linear",
               "bezierHandles": [
@@ -73,7 +71,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "a26b067a-e36a-4f92-95bc-69a4fff8d087",
@@ -81,7 +80,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -105,7 +103,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2500,
+              "timeMs": 1750,
               "value": {
                 "h": 120,
                 "s": 100,
@@ -114,41 +112,12 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 5000,
+              "timeMs": 3500,
               "value": {
                 "h": 210,
                 "s": 100,
                 "l": 55
               },
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        }
-      },
-      {
-        "id": "97ca6e98-e9fd-4b0a-ac24-7f4ecacba244",
-        "paramId": "strobe",
-        "zones": [
-          "all"
-        ],
-        "curve": {
-          "paramId": "strobe",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0.95,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 5000,
-              "value": 0.95,
               "interpolation": "hold"
             }
           ],
@@ -169,8 +138,9 @@
       "maxBeatsInterval": 4
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
-        "aggression": 0.75,
+        "aggression": 0.588,
         "chaos": 0.75,
         "organicity": 0.1
       },
@@ -184,18 +154,18 @@
         "breakdown"
       ],
       "energyZone": {
-        "min": "active",
-        "max": "intense"
+        "min": "ambient",
+        "max": "gentle"
       },
       "aggressionRange": {
         "min": 0,
-        "max": 0.9
-      },
-      "spatialBehavior": "static",
-      "pressureRange": {
-        "min": 0.5,
         "max": 1
-      }
+      },
+      "pressureRange": {
+        "min": 0.1,
+        "max": 0.83
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -207,7 +177,7 @@
       "fatigueImpact": 0.18,
       "minDurationMs": 1000,
       "cooldownMs": 7500,
-      "isStrobe": true,
+      "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
       "zScoreGuards": {
@@ -216,12 +186,12 @@
         "minimumEnergy": null
       }
     },
-    "schemaVersion": "3.0",
     "safetyDeclaration": {
       "maxStrobeFreqHz": 25,
       "containsRapidFlash": true,
       "communityTrusted": false
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "sha256:6512304b1864121f3d4284658f08ea4239d48fe5d0ed4ca6a056c8d34008f5d9"
+  "checksum": "sha256:b13de1cd5159c2fbe620baf93a63914b2aef4d2dedbc0939945ea6860728aeb9"
 }

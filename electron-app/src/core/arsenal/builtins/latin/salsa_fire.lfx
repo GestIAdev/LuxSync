@@ -3,7 +3,7 @@
   "clip": {
     "id": "salsa_fire",
     "name": "Salsa Fire",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "fire",
@@ -19,7 +19,7 @@
     ],
     "mixBus": "global",
     "priority": 80,
-    "durationMs": 2000,
+    "durationMs": 3000,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -43,13 +43,13 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 50,
+              "timeMs": 75,
               "value": 0,
               "interpolation": "hold"
             },
             {
-              "timeMs": 200,
-              "value": 0.8,
+              "timeMs": 215,
+              "value": 0.9994,
               "interpolation": "linear",
               "bezierHandles": [
                 0,
@@ -59,13 +59,18 @@
               ]
             },
             {
-              "timeMs": 1650,
-              "value": 0.8,
+              "timeMs": 1001,
+              "value": 0.4807,
               "interpolation": "hold"
             },
             {
-              "timeMs": 2000,
-              "value": 0.35,
+              "timeMs": 1573,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2143,
+              "value": 0.4804,
               "interpolation": "linear",
               "bezierHandles": [
                 0,
@@ -73,6 +78,16 @@
                 1,
                 1
               ]
+            },
+            {
+              "timeMs": 2153,
+              "value": 0.997,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2987,
+              "value": 0.994,
+              "interpolation": "linear"
             }
           ],
           "mode": "absolute"
@@ -108,7 +123,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 667,
+              "timeMs": 1001,
               "value": {
                 "h": 25,
                 "s": 100,
@@ -117,7 +132,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 1333,
+              "timeMs": 2000,
               "value": {
                 "h": 27,
                 "s": 100,
@@ -126,7 +141,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2000,
+              "timeMs": 3000,
               "value": {
                 "h": 5,
                 "s": 100,
@@ -156,12 +171,12 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 2000,
-              "value": 0.95,
+              "timeMs": 3000,
+              "value": 1,
               "interpolation": "hold"
             }
           ],
@@ -201,8 +216,8 @@
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.757,
-        "max": 0.757
+        "min": 0.607,
+        "max": 0.907
       },
       "pressureRange": {
         "min": 0.9,
@@ -236,5 +251,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:ed94fccc0971aa5ec8a709a6395e22aeedf24695e49c4559cdddb0ebdb09ad8b"
+  "checksum": "sha256:46a129482900cd1375351a3df15c3207862752980912929881a966bb0c979924"
 }

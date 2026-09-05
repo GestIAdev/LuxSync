@@ -2,7 +2,7 @@
   "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "corazon_latino",
-    "name": "Coraz�n Latino",
+    "name": "Corazon Latino",
     "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
@@ -87,8 +87,8 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 280,
-              "value": 0.92,
+              "timeMs": 250,
+              "value": 1,
               "interpolation": "linear"
             },
             {
@@ -97,8 +97,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 860,
-              "value": 0.72,
+              "timeMs": 910,
+              "value": 0.877,
               "interpolation": "linear"
             },
             {
@@ -107,8 +107,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2200,
-              "value": 0.9,
+              "timeMs": 2164,
+              "value": 0.9957,
               "interpolation": "linear"
             },
             {
@@ -117,8 +117,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2820,
-              "value": 0.7,
+              "timeMs": 2934,
+              "value": 0.8435,
               "interpolation": "linear"
             },
             {
@@ -157,8 +157,8 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 280,
-              "value": 0.92,
+              "timeMs": 250,
+              "value": 0.9917,
               "interpolation": "linear"
             },
             {
@@ -167,8 +167,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 860,
-              "value": 0.72,
+              "timeMs": 924,
+              "value": 0.862,
               "interpolation": "linear"
             },
             {
@@ -177,8 +177,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2200,
-              "value": 0.9,
+              "timeMs": 2250,
+              "value": 1,
               "interpolation": "linear"
             },
             {
@@ -295,8 +295,8 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 280,
-              "value": 0.72,
+              "timeMs": 250,
+              "value": 1,
               "interpolation": "linear"
             },
             {
@@ -305,8 +305,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 860,
-              "value": 0.56,
+              "timeMs": 903,
+              "value": 0.8948,
               "interpolation": "linear"
             },
             {
@@ -315,8 +315,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2200,
-              "value": 0.7,
+              "timeMs": 2250,
+              "value": 1,
               "interpolation": "linear"
             },
             {
@@ -378,76 +378,6 @@
         "blendMode": "replace"
       },
       {
-        "id": "gold-floor-intensity",
-        "paramId": "intensity",
-        "zones": [
-          "floor"
-        ],
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 0.12,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0.12,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 280,
-              "value": 0.4,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 540,
-              "value": 0.2,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 860,
-              "value": 0.34,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 1260,
-              "value": 0.16,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 2200,
-              "value": 0.38,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 2460,
-              "value": 0.18,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 2820,
-              "value": 0.3,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 3300,
-              "value": 0.16,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 4000,
-              "value": 0.1,
-              "interpolation": "linear"
-            }
-          ],
-          "mode": "absolute"
-        },
-        "blendMode": "replace"
-      },
-      {
         "id": "gold-ambient-color",
         "paramId": "color",
         "zones": [
@@ -501,8 +431,8 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 280,
-              "value": 0.42,
+              "timeMs": 250,
+              "value": 0.9895,
               "interpolation": "linear"
             },
             {
@@ -511,8 +441,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 860,
-              "value": 0.36,
+              "timeMs": 931,
+              "value": 0.7561,
               "interpolation": "linear"
             },
             {
@@ -521,8 +451,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2200,
-              "value": 0.4,
+              "timeMs": 2122,
+              "value": 0.9904,
               "interpolation": "linear"
             },
             {
@@ -531,8 +461,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2820,
-              "value": 0.32,
+              "timeMs": 3000,
+              "value": 0.6668,
               "interpolation": "linear"
             },
             {
@@ -555,9 +485,9 @@
     "cognitiveDNA": {
       "archetype": "utility",
       "genome": {
-        "aggression": 0.3,
-        "chaos": 0.25,
-        "organicity": 0.65
+        "aggression": 0.612,
+        "chaos": 0.497,
+        "organicity": 0.497
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
@@ -574,12 +504,12 @@
         "max": "active"
       },
       "aggressionRange": {
-        "min": 0.3,
-        "max": 0.3
+        "min": 0,
+        "max": 1
       },
       "pressureRange": {
-        "min": 0,
-        "max": 0.58
+        "min": 0.31,
+        "max": 0.9
       },
       "spatialBehavior": "static"
     },
@@ -604,5 +534,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:47883871e37654ed72dbe3607446e6cf931fd63fe58f6919d60924215c8c16ed"
+  "checksum": "sha256:1390a7acc73a1777e1a14eb922ce343aa3b1cfe59575621030bef5ebcc62dbad"
 }

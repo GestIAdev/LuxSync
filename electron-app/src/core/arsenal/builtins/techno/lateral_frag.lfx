@@ -219,8 +219,8 @@
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.92,
-        "max": 0.92
+        "min": 0,
+        "max": 1
       },
       "pressureRange": {
         "min": 0.5,
@@ -254,5 +254,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:f74e0301fe23fcabbe132c9277ce1e9762d1c89d76129e09fae7c106bbdd3057"
+  "checksum": "sha256:7b88511466e8751559fd8db3449cda1750ca241d09ae9964afed1149e4ab3546"
 }

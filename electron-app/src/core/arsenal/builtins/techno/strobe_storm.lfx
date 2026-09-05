@@ -3,7 +3,7 @@
   "clip": {
     "id": "strobe_storm",
     "name": "Strobe Storm",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "strobe",
@@ -16,21 +16,21 @@
       "techno-club"
     ],
     "spatialZones": [
+      "all",
       "all-pars",
-      "all-movers"
+      "ambient"
     ],
     "mixBus": "global",
     "priority": 90,
-    "durationMs": 1010,
+    "durationMs": 4000,
     "effectType": "heph_custom",
     "tracks": [
       {
         "id": "5ff8719f-4333-4ce1-a478-d698536e577a",
         "paramId": "intensity",
         "zones": [
-          "all-pars"
+          "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -42,44 +42,64 @@
           "keyframes": [
             {
               "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 667,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 855,
+              "value": 0.9985,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
               "value": 0,
               "interpolation": "linear"
             },
             {
-              "timeMs": 50.5,
+              "timeMs": 2154,
               "value": 0,
-              "interpolation": "hold"
+              "interpolation": "linear"
             },
             {
-              "timeMs": 51.5,
-              "value": 1,
-              "interpolation": "linear",
-              "bezierHandles": [
-                0,
-                0,
-                1,
-                1
-              ]
+              "timeMs": 2154,
+              "value": 0.997,
+              "interpolation": "linear"
             },
             {
-              "timeMs": 851.5,
-              "value": 1,
-              "interpolation": "hold"
+              "timeMs": 4000,
+              "value": 0.997,
+              "interpolation": "linear"
             },
             {
-              "timeMs": 1010,
+              "timeMs": 4000,
+              "value": 0.9955,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
               "value": 0,
-              "interpolation": "linear",
-              "bezierHandles": [
-                0,
-                0,
-                1,
-                1
-              ]
+              "interpolation": "linear"
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "9b3722bf-4935-4185-8a69-baf01d4f90b4",
@@ -98,17 +118,61 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 1010,
-              "value": 0.95,
+              "timeMs": 4000,
+              "value": 1,
               "interpolation": "hold"
             }
           ],
           "mode": "absolute"
         },
+        "blendMode": "replace"
+      },
+      {
+        "id": "db5a7681-b1c9-4b53-b983-cf91ae4dc685",
+        "paramId": "color",
+        "zones": [
+          "all-pars",
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 234,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": {
+                "h": 342,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
         "blendMode": "replace"
       }
     ],
@@ -124,12 +188,13 @@
       "decayMs": 150
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
-        "aggression": 0.9500000000000001,
-        "chaos": 0.75,
+        "aggression": 1,
+        "chaos": 0.819,
         "organicity": 0.1
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
         "fiesta-latina",
         "techno-club"
@@ -139,18 +204,18 @@
         "peak"
       ],
       "energyZone": {
-        "min": "intense",
+        "min": "peak",
         "max": "peak"
       },
       "aggressionRange": {
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static",
       "pressureRange": {
-        "min": 0.5,
+        "min": 0.78,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -171,12 +236,12 @@
         "minimumEnergy": 0.7
       }
     },
-    "schemaVersion": "3.0",
     "safetyDeclaration": {
       "maxStrobeFreqHz": 25,
       "containsRapidFlash": true,
       "communityTrusted": false
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "sha256:2702abf054e86589dec3e78d2fae7ad71e28d7a223f69a90d57ee01dce0bac10"
+  "checksum": "sha256:eb177a3098e54fb652415e4706ac1f3d5db78d5fd289b3adbf1264ae8dfec679"
 }

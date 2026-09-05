@@ -16,55 +16,14 @@
     "vibeCompat": [
       "techno-club"
     ],
-    "durationMs": 2000,
+    "spatialZones": [
+      "front",
+      "back",
+      "all",
+      "all-movers"
+    ],
+    "durationMs": 3500,
     "effectType": "heph_custom",
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 0.85,
-        "chaos": 0.7,
-        "organicity": 0.2
-      },
-      "textureAffinity": "dirty",
-      "compatibleVibes": [
-        "techno-club"
-      ],
-      "validSections": [
-        "drop",
-        "peak"
-      ],
-      "energyZone": {
-        "min": "intense",
-        "max": "peak"
-      },
-      "aggressionRange": {
-        "min": 0.6,
-        "max": 1
-      },
-      "spatialBehavior": "dynamic",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.85,
-        "energyMultiplier": 1,
-        "vibeBonus": 0.1
-      },
-      "gpuCost": 0.35,
-      "fatigueImpact": 0.45,
-      "minDurationMs": 2000,
-      "cooldownMs": 3500,
-      "isStrobe": true,
-      "isDivineCandidate": false,
-      "isHeavyCandidate": true,
-      "zScoreGuards": {
-        "requireRising": false,
-        "minimumZ": null,
-        "minimumEnergy": 0.8
-      }
-    },
     "tracks": [
       {
         "id": "color-front-blue",
@@ -75,6 +34,10 @@
         "curve": {
           "paramId": "color",
           "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
           "defaultValue": {
             "h": 220,
             "s": 100,
@@ -84,17 +47,14 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 220,
+                "h": 248,
                 "s": 100,
                 "l": 60
               },
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            360
-          ]
+          "mode": "absolute"
         },
         "blendMode": "replace"
       },
@@ -107,6 +67,10 @@
         "curve": {
           "paramId": "color",
           "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
           "defaultValue": {
             "h": 185,
             "s": 100,
@@ -116,17 +80,14 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 185,
+                "h": 161,
                 "s": 100,
                 "l": 55
               },
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            360
-          ]
+          "mode": "absolute"
         },
         "blendMode": "replace"
       },
@@ -134,73 +95,67 @@
         "id": "intensity-front",
         "paramId": "intensity",
         "zones": [
-          "front"
+          "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 1,
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "intensity-back",
-        "paramId": "intensity",
-        "zones": [
-          "back"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 1,
-          "keyframes": [
+              "value": 0.3154,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
             {
-              "timeMs": 0,
+              "timeMs": 1750,
               "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "movers-blackout",
-        "paramId": "intensity",
-        "zones": [
-          "all-movers",
-          "air"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
             {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
+              "timeMs": 2245,
+              "value": 0.3034,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 3500,
+              "value": 1,
+              "interpolation": "linear"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 277,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
         }
       },
       {
@@ -220,32 +175,118 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 0.6353,
               "interpolation": "hold"
             },
             {
-              "timeMs": 2000,
-              "value": 0.95,
+              "timeMs": 3500,
+              "value": 0.6368,
               "interpolation": "hold"
             }
           ],
           "mode": "absolute"
         },
         "blendMode": "replace"
+      },
+      {
+        "id": "abc234b1-18fa-480a-a8f9-5a0fd491ad39",
+        "paramId": "color",
+        "zones": [
+          "all-movers"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 310,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3500,
+              "value": {
+                "h": 314,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace"
       }
     ],
-    "spatialZones": [
-      "front",
-      "back",
-      "all-movers",
-      "air"
-    ],
-    "schemaVersion": "3.0",
+    "staticParams": {},
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.85,
+        "chaos": 0.7,
+        "organicity": 0.2
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.5,
+        "max": 0.92
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.85,
+        "energyMultiplier": 1,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.35,
+      "fatigueImpact": 0.45,
+      "minDurationMs": 2000,
+      "cooldownMs": 3500,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.8
+      }
+    },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 25,
       "containsRapidFlash": true,
       "communityTrusted": false
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "sha256:47a5348b2bfbe3cf290995e2b90ee029bb7af4ccd06ce9b976adf0d5663d1922"
+  "checksum": "sha256:4dc420d37719bb5b8a7cd79f067190acc3e383f820870b3dd09971895cf96cca"
 }

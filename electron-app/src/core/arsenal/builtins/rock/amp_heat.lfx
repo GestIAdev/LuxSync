@@ -3,7 +3,7 @@
   "clip": {
     "id": "amp_heat",
     "name": "Amp Heat",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "color",
     "tags": [
       "heat",
@@ -176,5 +176,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:4fd1660eaa529b90a517a5b232ebf6572b1df162eaead28a9cd6b42aaa6939f4"
+  "checksum": "sha256:ad41472f100f150f82879b4c6f2ed9d16db8dbe00dd16b07cc2cb14aa25781bf"
 }

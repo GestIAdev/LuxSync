@@ -3,7 +3,7 @@
   "clip": {
     "id": "liquid_solo",
     "name": "Liquid Solo",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "movement",
     "tags": [
       "sweep",
@@ -166,5 +166,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:ca2a8082057dfce558296e6f4442935fb75d5cf8069176cd8fd215ba911e9be9"
+  "checksum": "sha256:e77ad249f56450c196db8f1b9b9ffe3b46cbf2899f300be876ebb38613f29321"
 }

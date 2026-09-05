@@ -3,7 +3,7 @@
   "clip": {
     "id": "stage_wash",
     "name": "Stage Wash",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "color",
     "tags": [
       "wash",
@@ -167,5 +167,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:d23bbef228ead26dec3c816cc897af55ea9638ff104384b1149a77efc33b03b8"
+  "checksum": "sha256:d93199971caf3d10afc0fbe846555c8d0641cd88d966aad126b3e94ecc453896"
 }

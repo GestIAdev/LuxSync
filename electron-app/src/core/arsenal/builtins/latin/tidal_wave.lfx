@@ -1,381 +1,380 @@
 {
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "tidal_wave",
-                 "name":  "Tidal Wave (Golden Bounce)",
-                 "author":  "LuxSync Factory",
-                 "category":  "composite",
-                 "tags":  [
-                              "wave",
-                              "gold",
-                              "latino",
-                              "sweep",
-                              "ambient"
-                          ],
-                 "vibeCompat":  [
-                                    "fiesta-latina"
-                                ],
-                 "spatialZones":  [
-                                      "all-pars",
-                                      "all-movers",
-                                      "ambient",
-                                      "air",
-                                      "flash",
-                                      "movers-left",
-                                      "front",
-                                      "floor",
-                                      "back",
-                                      "movers-right"
-                                  ],
-                 "durationMs":  3000,
-                 "effectType":  "heph_custom",
-                 "tracks":  [
-                                {
-                                    "id":  "wave-gold-master",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all-pars",
-                                                  "all-movers",
-                                                  "ambient",
-                                                  "air",
-                                                  "flash"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  42,
-                                                                       "s":  100,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  42,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "wave-left",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "movers-left"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  500,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2500,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  1,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "wave-front-floor",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "front",
-                                                  "floor"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  500,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2500,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "wave-ambient-air",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "ambient",
-                                                  "air"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  500,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1000,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1500,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2000,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2500,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "wave-back-right",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "back",
-                                                  "movers-right"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1500,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.5,
-                                                                                              0,
-                                                                                              0.5,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                }
-                            ],
-                 "staticParams":  {
-
-                                  },
-                 "cognitiveDNA":  {
-                                      "genome":  {
-                                                     "aggression":  0.55,
-                                                     "chaos":  0.5,
-                                                     "organicity":  0.4
-                                                 },
-                                      "textureAffinity":  "clean",
-                                      "compatibleVibes":  [
-                                                              "fiesta-latina"
-                                                          ],
-                                      "validSections":  [
-                                                            "intro",
-                                                            "breakdown",
-                                                            "active",
-                                                            "outro"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "gentle",
-                                                         "max":  "active"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.3,
-                                                              "max":  0.7
-                                                          },
-                                      "spatialBehavior":  "absolute",
-                                      "pressureRange":  {
-                                                            "min":  0,
-                                                            "max":  1
-                                                        }
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.75,
-                                                              "energyMultiplier":  1.05,
-                                                              "vibeBonus":  0.1
-                                                          },
-                                        "gpuCost":  0.45,
-                                        "fatigueImpact":  0.05,
-                                        "minDurationMs":  6000,
-                                        "cooldownMs":  9000,
-                                        "isStrobe":  false,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  false,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ":  null,
-                                                             "minimumEnergy":  null
-                                                         }
-                                    },
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "sha256:5dd3bb1853524899a2590be8e19360b87d7b74a2de52f9e8d495fe194c01961b"
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "tidal_wave",
+    "name": "Tidal Wave",
+    "author": "LuxSync Factory",
+    "category": "composite",
+    "tags": [
+      "wave",
+      "gold",
+      "latino",
+      "sweep",
+      "ambient"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "all-pars",
+      "all-movers",
+      "ambient",
+      "air",
+      "flash",
+      "movers-left",
+      "front",
+      "floor",
+      "back",
+      "movers-right"
+    ],
+    "durationMs": 2500,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "wave-gold-master",
+        "paramId": "color",
+        "zones": [
+          "all-pars",
+          "all-movers",
+          "ambient",
+          "air",
+          "flash"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 42,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 42,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-left",
+        "paramId": "intensity",
+        "zones": [
+          "movers-left"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 417,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2083,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-front-floor",
+        "paramId": "intensity",
+        "zones": [
+          "front",
+          "floor"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 417,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 833,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1667,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2083,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-ambient-air",
+        "paramId": "intensity",
+        "zones": [
+          "ambient",
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 417,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 833,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1250,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1667,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2083,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-back-right",
+        "paramId": "intensity",
+        "zones": [
+          "back",
+          "movers-right"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 833,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1250,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1667,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {},
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.55,
+        "chaos": 0.5,
+        "organicity": 0.4
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [
+        "intro",
+        "breakdown",
+        "active",
+        "outro"
+      ],
+      "energyZone": {
+        "min": "gentle",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.3,
+        "max": 0.91
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.75,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.45,
+      "fatigueImpact": 0.05,
+      "minDurationMs": 6000,
+      "cooldownMs": 9000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:50c0935405c4db21000d18776bf27c8fc8dff3ce9a860e4a3458442d6d2b520d"
 }

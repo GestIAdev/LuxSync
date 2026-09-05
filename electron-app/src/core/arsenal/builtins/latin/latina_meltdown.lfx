@@ -3,7 +3,7 @@
   "clip": {
     "id": "latina_meltdown",
     "name": "Latina Meltdown",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "meltdown",
@@ -18,7 +18,7 @@
     ],
     "mixBus": "global",
     "priority": 95,
-    "durationMs": 3000,
+    "durationMs": 4000,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -42,7 +42,7 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 3000,
+              "timeMs": 4000,
               "value": 1,
               "interpolation": "hold"
             }
@@ -105,7 +105,7 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 3000,
+              "timeMs": 4000,
               "value": 0.9911,
               "interpolation": "linear"
             }
@@ -139,15 +139,15 @@
         "peak"
       ],
       "energyZone": {
-        "min": "intense",
+        "min": "peak",
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.95,
-        "max": 0.95
+        "min": 0.7999999999999999,
+        "max": 1
       },
       "pressureRange": {
-        "min": 0.75,
+        "min": 0.8,
         "max": 1
       },
       "spatialBehavior": "static"
@@ -178,5 +178,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:646dbccdf59b9f8f00d67d65cf656d6c46a19b80f06963ae4dd65bd584e5b894"
+  "checksum": "sha256:9a060ecfd00501a370b08c578924c4340aa82ccc6e451829bf1be69beb337990"
 }

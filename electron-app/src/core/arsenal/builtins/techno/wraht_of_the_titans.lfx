@@ -14,55 +14,15 @@
     "vibeCompat": [
       "techno-club"
     ],
-    "durationMs": 10000,
+    "spatialZones": [
+      "all-movers",
+      "air",
+      "all-pars",
+      "ambient",
+      "flash"
+    ],
+    "durationMs": 5000,
     "effectType": "heph_custom",
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 1,
-        "chaos": 0.8,
-        "organicity": 0.1
-      },
-      "textureAffinity": "dirty",
-      "compatibleVibes": [
-        "techno-club"
-      ],
-      "validSections": [
-        "buildup",
-        "drop"
-      ],
-      "energyZone": {
-        "min": "intense",
-        "max": "peak"
-      },
-      "aggressionRange": {
-        "min": 0.8,
-        "max": 1
-      },
-      "spatialBehavior": "dynamic",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.9,
-        "energyMultiplier": 1.5,
-        "vibeBonus": 0.2
-      },
-      "gpuCost": 0.5,
-      "fatigueImpact": 0.95,
-      "minDurationMs": 10000,
-      "cooldownMs": 20000,
-      "isStrobe": true,
-      "isDivineCandidate": true,
-      "isHeavyCandidate": true,
-      "zScoreGuards": {
-        "requireRising": true,
-        "minimumZ": null,
-        "minimumEnergy": 0.9
-      }
-    },
     "tracks": [
       {
         "id": "titans-mover-color",
@@ -71,10 +31,13 @@
           "all-movers",
           "air"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
           "defaultValue": {
             "h": 240,
             "s": 100,
@@ -91,20 +54,18 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 8000,
+              "timeMs": 5000,
               "value": {
-                "h": 0,
+                "h": 22,
                 "s": 100,
                 "l": 50
               },
               "interpolation": "linear"
             }
           ],
-          "range": [
-            0,
-            360
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "titans-mover-intensity",
@@ -113,15 +74,18 @@
           "all-movers",
           "air"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 0,
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.1,
+              "value": 0.0985,
               "interpolation": "bezier",
               "bezierHandles": [
                 0.5,
@@ -131,21 +95,19 @@
               ]
             },
             {
-              "timeMs": 8000,
+              "timeMs": 4500,
               "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 8001,
+              "timeMs": 4500,
               "value": 0,
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "titans-pars-intensity",
@@ -155,28 +117,29 @@
           "ambient",
           "flash"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 0,
           "keyframes": [
             {
               "timeMs": 0,
               "value": 0,
-              "interpolation": "hold"
+              "interpolation": "linear"
             },
             {
-              "timeMs": 8000,
+              "timeMs": 4680,
               "value": 1,
-              "interpolation": "hold"
+              "interpolation": "linear"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "982e8378-8669-4bcb-8b38-b8c1ddfdb498",
@@ -195,12 +158,12 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 10000,
-              "value": 0.95,
+              "timeMs": 5000,
+              "value": 0.9978,
               "interpolation": "hold"
             }
           ],
@@ -209,19 +172,61 @@
         "blendMode": "replace"
       }
     ],
-    "spatialZones": [
-      "all-movers",
-      "air",
-      "all-pars",
-      "ambient",
-      "flash"
-    ],
-    "schemaVersion": "3.0",
+    "staticParams": {},
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.709,
+        "chaos": 0.8,
+        "organicity": 0.1
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "buildup",
+        "drop"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.5,
+        "max": 0.87
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.5,
+        "vibeBonus": 0.2
+      },
+      "gpuCost": 0.5,
+      "fatigueImpact": 0.95,
+      "minDurationMs": 10000,
+      "cooldownMs": 20000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": null,
+        "minimumEnergy": 0.9
+      }
+    },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 25,
       "containsRapidFlash": true,
       "communityTrusted": false
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "sha256:d0eaa66dad3a9747b92d97ab82a643c80595c47a79f9c58da7368faf0c58bd9b"
+  "checksum": "sha256:9b7b89b975a5b3274233913294708c1b43c15b7713414d63a6e279a349b17ed9"
 }

@@ -3,7 +3,7 @@
   "clip": {
     "id": "spotlight_pulse",
     "name": "Spotlight Pulse",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "pulse",
@@ -165,5 +165,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:950528f3da4e15fe5c7f3da3b566b16d87d2f4489f38c97138e4e43bbc1b28ce"
+  "checksum": "sha256:a851da073f09f1e8cda138056a92352c02100c0a8497e7e8a4be2a6b8610bbf1"
 }

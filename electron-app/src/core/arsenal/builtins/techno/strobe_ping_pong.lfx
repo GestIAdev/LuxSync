@@ -12,12 +12,265 @@
       "spatial"
     ],
     "vibeCompat": [
-      "techno",
-      "hardstyle"
+      "techno-club"
     ],
-    "durationMs": 400,
+    "spatialZones": [
+      "air",
+      "all-pars",
+      "ambient",
+      "all",
+      "all-movers",
+      "all-left",
+      "all-right"
+    ],
+    "durationMs": 3000,
     "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "blackout-movers",
+        "paramId": "intensity",
+        "zones": [
+          "air",
+          "all-pars",
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "d9b2ab10-3433-466a-b3d6-0e84dca6e6da",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "b2b21bdf-10d8-4ba6-9016-e1753f43bb30",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "all-left"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 500,
+              "value": 0.0075,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1000,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2500,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2500,
+              "value": 0,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "max"
+      },
+      {
+        "id": "7ae90ff0-45da-43a7-a759-6957626dfdb8",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "all-right"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 500,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1000,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2500,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2500,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": 1,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "max"
+      },
+      {
+        "id": "0f9bd05a-1d15-41dd-951b-c7783e9df1a1",
+        "paramId": "color",
+        "zones": [
+          "air",
+          "all-pars",
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 258,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "bezier"
+            },
+            {
+              "timeMs": 3000,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {},
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.9,
         "chaos": 0.8,
@@ -25,8 +278,7 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno",
-        "hardstyle"
+        "techno-club"
       ],
       "validSections": [
         "drop",
@@ -37,10 +289,14 @@
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.5,
+        "min": 0,
         "max": 1
       },
-      "spatialBehavior": "dynamic"
+      "pressureRange": {
+        "min": 0.9,
+        "max": 1
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -61,65 +317,12 @@
         "minimumEnergy": 0.7
       }
     },
-    "tracks": [
-      {
-        "id": "blackout-movers",
-        "paramId": "intensity",
-        "zones": [
-          "all-movers",
-          "air"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ]
-        }
-      },
-      {
-        "id": "d9b2ab10-3433-466a-b3d6-0e84dca6e6da",
-        "paramId": "strobe",
-        "zones": [
-          "all"
-        ],
-        "curve": {
-          "paramId": "strobe",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0.95,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 400,
-              "value": 0.95,
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        },
-        "blendMode": "replace"
-      }
-    ],
-    "schemaVersion": "3.0",
     "safetyDeclaration": {
       "maxStrobeFreqHz": 25,
       "containsRapidFlash": true,
       "communityTrusted": false
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "sha256:854f34d29ac4186c728a4e1fe21c8c1ecd1742bb06c0cbd45ca1905385a0f802"
+  "checksum": "sha256:fa8d635dbed5752c05079ceb6fe6046e0ff3db66346c01a5197684fa61fe50d1"
 }

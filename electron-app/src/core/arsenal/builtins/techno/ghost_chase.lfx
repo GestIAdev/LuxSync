@@ -3,7 +3,7 @@
   "clip": {
     "id": "ghost_chase",
     "name": "Ghost Chase",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "ghost",
@@ -170,5 +170,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:90d2192663d6ffc733afaf8f801780bff2984e7093fe8605d8e66dd1638faea8"
+  "checksum": "sha256:7135d7d198689e28eba6cdbe920b46b048206eda1fab46271e4725b7c9efac30"
 }

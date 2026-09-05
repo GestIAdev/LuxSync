@@ -3,7 +3,7 @@
   "clip": {
     "id": "surface_shimmer",
     "name": "Surface Shimmer",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "author": "LuxSync Factory",
     "category": "chill-lounge",
     "tags": [
       "atmospheric",
@@ -128,5 +128,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:465a1775ae00603cf9092551d80abf2f9e059e3e3bdb541bce39cbc71d24c480"
+  "checksum": "sha256:6803c8f417a6f2024069cf07938a9a5e1e525cecd3aefecf7ab2b67c02f7dfe6"
 }

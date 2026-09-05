@@ -3,7 +3,7 @@
   "clip": {
     "id": "deep_breath",
     "name": "Deep Breath",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "breath",
@@ -179,5 +179,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:416dd92301a9d064a189651274d00d2f8c2f1c1346239362c78301c9cb775b25"
+  "checksum": "sha256:aa1e55c694a26dab7c25a0c6d62338fe8855d21eeaf5ffaf7c8374ee2285384a"
 }

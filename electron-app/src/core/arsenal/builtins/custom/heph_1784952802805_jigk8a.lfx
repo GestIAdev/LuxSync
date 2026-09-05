@@ -1,347 +1,346 @@
 {
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "heph_1784952802805_jigk8a",
-                 "name":  "latin_bubbles",
-                 "author":  "LuxSync User",
-                 "category":  "physical",
-                 "tags":  [
-
-                          ],
-                 "vibeCompat":  [
-
-                                ],
-                 "spatialZones":  [
-                                      "all"
-                                  ],
-                 "mixBus":  "global",
-                 "priority":  50,
-                 "durationMs":  4000,
-                 "effectType":  "custom",
-                 "tracks":  [
-                                {
-                                    "id":  "track-intensity-heph_1784952802805_jigk8a",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  308,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  667,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  667,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1000,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1333,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1333,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1667,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1978,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1978,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2286,
-                                                                        "value":  0.9985052316890882,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2663,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2667,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2971,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3330,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3332,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3640,
-                                                                        "value":  1,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.3642,
-                                                                                              0,
-                                                                                              0.6358,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3999,
-                                                                        "value":  0,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "dimmerScale":  1,
-                                    "blendMode":  "max",
-                                    "phaseConfig":  {
-                                                        "spreadDeg":  90,
-                                                        "symmetry":  "linear",
-                                                        "wings":  1,
-                                                        "blocks":  1,
-                                                        "shuffle":  0,
-                                                        "shuffleSeed":  1,
-                                                        "direction":  1
-                                                    }
-                                },
-                                {
-                                    "id":  "212a464e-413e-4253-9d22-6391f9e65e5e",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  0,
-                                                                       "s":  100,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  304,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  {
-                                                                                      "h":  278,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "dimmerScale":  1,
-                                    "blendMode":  "replace"
-                                }
-                            ],
-                 "staticParams":  {
-
-                                  },
-                 "cognitiveDNA":  {
-                                      "archetype":  "utility",
-                                      "genome":  {
-                                                     "aggression":  0.5,
-                                                     "chaos":  0.5,
-                                                     "organicity":  0.5
-                                                 },
-                                      "textureAffinity":  "clean",
-                                      "compatibleVibes":  [
-                                                              "fiesta-latina"
-                                                          ],
-                                      "validSections":  [
-
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "gentle",
-                                                         "max":  "active"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.5,
-                                                              "max":  0.5
-                                                          },
-                                      "pressureRange":  {
-                                                            "min":  0,
-                                                            "max":  0
-                                                        },
-                                      "spatialBehavior":  "static"
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.5,
-                                                              "energyMultiplier":  1,
-                                                              "vibeBonus":  0
-                                                          },
-                                        "gpuCost":  0.3,
-                                        "fatigueImpact":  0.06,
-                                        "minDurationMs":  1000,
-                                        "cooldownMs":  7000,
-                                        "isStrobe":  false,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  false,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ":  null,
-                                                             "minimumEnergy":  null
-                                                         }
-                                    },
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "sha256:b81ae57fcf0c8aaaf2eb8c06895737261fbe349569983d2934120b0665eb26c4"
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "heph_1784952802805_jigk8a",
+    "name": "latin_bubbles",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "all-movers",
+      "all-pars",
+      "ambient",
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 50,
+    "durationMs": 4000,
+    "effectType": "custom",
+    "tracks": [
+      {
+        "id": "track-intensity-heph_1784952802805_jigk8a",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "all-pars",
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 308,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 667,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 667,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 1000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 1333,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 1333,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 1667,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 1978,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 1978,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 2286,
+              "value": 0.9985052316890882,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 2663,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 2667,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 2971,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 3330,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 3332,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 3640,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.3642,
+                0,
+                0.6358,
+                1
+              ]
+            },
+            {
+              "timeMs": 3999,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "max",
+        "phaseConfig": {
+          "spreadDeg": 90,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "212a464e-413e-4253-9d22-6391f9e65e5e",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 304,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": {
+                "h": 278,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {},
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.594,
+        "chaos": 0.5,
+        "organicity": 0.5
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.4,
+        "max": 0.86
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.5,
+        "energyMultiplier": 1,
+        "vibeBonus": 0
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 1000,
+      "cooldownMs": 7000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:c0a096b8ed74dcf5a032293efd6c978609a5f58c757822b096ace307b20bf9f4"
 }

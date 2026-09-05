@@ -3,7 +3,7 @@
   "clip": {
     "id": "core_meltdown",
     "name": "Core Meltdown",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "strobe",
@@ -20,7 +20,7 @@
     ],
     "mixBus": "global",
     "priority": 100,
-    "durationMs": 4200,
+    "durationMs": 5000,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -40,29 +40,42 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0,
+              "value": 0.145,
+              "interpolation": "bezier"
+            },
+            {
+              "timeMs": 1250,
+              "value": 1,
+              "interpolation": "bezier"
+            },
+            {
+              "timeMs": 2500,
+              "value": 0.1361,
+              "interpolation": "bezier"
+            },
+            {
+              "timeMs": 3750,
+              "value": 1,
+              "interpolation": "bezier"
+            },
+            {
+              "timeMs": 5000,
+              "value": 0.154,
               "interpolation": "linear"
-            },
-            {
-              "timeMs": 1,
-              "value": 1,
-              "interpolation": "linear",
-              "bezierHandles": [
-                0,
-                0,
-                1,
-                1
-              ]
-            },
-            {
-              "timeMs": 4200,
-              "value": 1,
-              "interpolation": "hold"
             }
           ],
           "mode": "absolute"
         },
-        "blendMode": "replace"
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 898,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
       },
       {
         "id": "87c7c738-5728-422a-acb6-b87c31b67f76",
@@ -86,14 +99,23 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 300,
+                "h": 2,
                 "s": 100,
                 "l": 50
               },
               "interpolation": "linear"
             },
             {
-              "timeMs": 4200,
+              "timeMs": 3182,
+              "value": {
+                "h": 1,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 5000,
               "value": {
                 "h": 0,
                 "s": 0,
@@ -123,12 +145,12 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 4200,
-              "value": 0.95,
+              "timeMs": 5000,
+              "value": 0.9859,
               "interpolation": "hold"
             }
           ],
@@ -146,12 +168,13 @@
       "bpmRef": 128
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
-        "aggression": 1,
-        "chaos": 0.75,
+        "aggression": 0.949,
+        "chaos": 0.808,
         "organicity": 0.1
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
         "techno-club",
         "pop-rock"
@@ -161,18 +184,18 @@
         "peak"
       ],
       "energyZone": {
-        "min": "intense",
+        "min": "peak",
         "max": "peak"
       },
       "aggressionRange": {
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static",
       "pressureRange": {
-        "min": 0.5,
+        "min": 0,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -200,5 +223,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:1ca2b015e498af39dd9f15715ac55283648c47c943a6feb4bda12e8ed20fa9f7"
+  "checksum": "sha256:0c8b501c9726c298668adb50dac67192099f131c20f1c3dd15b789cd9177b2e2"
 }

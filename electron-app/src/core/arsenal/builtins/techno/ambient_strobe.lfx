@@ -2,8 +2,8 @@
   "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "ambient_strobe",
-    "name": "Ambient Strobe — Royal Atomic (15Hz)",
-    "author": "LuxSync Factory / Reforged",
+    "name": "Ambient Strobe",
+    "author": "LuxSync Factory",
     "category": "composite",
     "tags": [
       "strobe",
@@ -16,7 +16,14 @@
       "techno-club",
       "fiesta-latina"
     ],
-    "durationMs": 4000,
+    "spatialZones": [
+      "all-pars",
+      "ambient",
+      "flash",
+      "all-movers",
+      "air"
+    ],
+    "durationMs": 2000,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -27,10 +34,13 @@
           "ambient",
           "flash"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 1,
           "keyframes": [
             {
@@ -39,16 +49,14 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 4000,
+              "timeMs": 2000,
               "value": 1,
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "atomic-royal-blue",
@@ -57,10 +65,13 @@
           "all-pars",
           "ambient"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
           "defaultValue": {
             "h": 240,
             "s": 100,
@@ -70,18 +81,16 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 240,
-                "s": 100,
-                "l": 50
+                "h": 0,
+                "s": 0,
+                "l": 100
               },
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            360
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "tactical-blackout-movers",
@@ -90,10 +99,13 @@
           "all-movers",
           "air"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 0,
           "keyframes": [
             {
@@ -102,22 +114,21 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 4000,
+              "timeMs": 2000,
               "value": 0,
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "18d83fd9-1430-4d4a-a30c-c558119fb3f9",
         "paramId": "strobe",
         "zones": [
-          "all"
+          "all-pars",
+          "ambient"
         ],
         "curve": {
           "paramId": "strobe",
@@ -130,12 +141,12 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 4000,
-              "value": 0.95,
+              "timeMs": 2000,
+              "value": 1,
               "interpolation": "hold"
             }
           ],
@@ -144,13 +155,15 @@
         "blendMode": "replace"
       }
     ],
+    "staticParams": {},
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.95,
         "chaos": 0.85,
         "organicity": 0.05
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
         "techno-club",
         "fiesta-latina"
@@ -164,14 +177,14 @@
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.75,
+        "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0.5,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -184,7 +197,7 @@
       "minDurationMs": 1000,
       "cooldownMs": 16000,
       "isStrobe": true,
-      "isDivineCandidate": true,
+      "isDivineCandidate": false,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": false,
@@ -192,19 +205,12 @@
         "minimumEnergy": null
       }
     },
-    "spatialZones": [
-      "all-pars",
-      "ambient",
-      "flash",
-      "all-movers",
-      "air"
-    ],
-    "schemaVersion": "3.0",
     "safetyDeclaration": {
       "maxStrobeFreqHz": 25,
       "containsRapidFlash": true,
       "communityTrusted": false
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "sha256:2c3c31ef6a876a8c5eae0ceec59b515d473475a953f395dd8b16fb854129c7a0"
+  "checksum": "sha256:09b6cf4aee96bf40209cd2419bfc643c88a292b6c44f833d5679cb59839fa1d5"
 }

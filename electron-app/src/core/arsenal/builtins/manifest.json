@@ -1,138 +1,138 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-04T21:56:23.961Z",
+  "generatedAt": "2026-09-05T09:11:53.356Z",
   "count": 42,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
-      "checksum": "ed7378e2704ab93f",
-      "size": 6138
+      "checksum": "99fa4184a1298317",
+      "size": 6117
     },
     "chill-lounge/surface_shimmer.lfx": {
       "relPath": "chill-lounge/surface_shimmer.lfx",
-      "checksum": "e011d48a5ded2bba",
-      "size": 2931
+      "checksum": "3f2eef9b50e6eba1",
+      "size": 2910
     },
     "latin/amazon_mist.lfx": {
       "relPath": "latin/amazon_mist.lfx",
-      "checksum": "60ca3cb0b7e84859",
-      "size": 12616
+      "checksum": "9a8f6b2dc513fb77",
+      "size": 4346
     },
     "latin/arena_sweep.lfx": {
       "relPath": "latin/arena_sweep.lfx",
-      "checksum": "afebd233dd144721",
-      "size": 3940
+      "checksum": "e3b3eb545ac1d25d",
+      "size": 3924
     },
     "latin/corazon_latino.lfx": {
       "relPath": "latin/corazon_latino.lfx",
-      "checksum": "2c4651a6bd028da7",
-      "size": 13956
+      "checksum": "8f9ff950a26d2ed6",
+      "size": 12275
     },
     "latin/cumbia_moon.lfx": {
       "relPath": "latin/cumbia_moon.lfx",
-      "checksum": "461595212dceb19c",
-      "size": 13599
+      "checksum": "7063a279fba19fad",
+      "size": 4630
     },
     "latin/divine_obliteration.lfx": {
       "relPath": "latin/divine_obliteration.lfx",
-      "checksum": "24cb8cf1f89f2b34",
-      "size": 4857
+      "checksum": "08d59776d156fc88",
+      "size": 5159
     },
     "latin/ghost_breath.lfx": {
       "relPath": "latin/ghost_breath.lfx",
-      "checksum": "382db2aa3ab148bb",
-      "size": 12741
+      "checksum": "756daa57fa119a56",
+      "size": 4355
     },
     "latin/kitt_scanner.lfx": {
       "relPath": "latin/kitt_scanner.lfx",
-      "checksum": "e9d742f2a49a46de",
-      "size": 21211
+      "checksum": "e354d7609f321b3c",
+      "size": 5698
     },
     "latin/latina_meltdown.lfx": {
       "relPath": "latin/latina_meltdown.lfx",
-      "checksum": "4e5b1be5701f728c",
-      "size": 4038
+      "checksum": "aee032a5f5457eb5",
+      "size": 4029
     },
     "latin/salsa_fire.lfx": {
       "relPath": "latin/salsa_fire.lfx",
-      "checksum": "6b59968297330b26",
-      "size": 5630
+      "checksum": "8bcc3f0dba35f949",
+      "size": 5761
     },
     "latin/solar_flare.lfx": {
       "relPath": "latin/solar_flare.lfx",
-      "checksum": "98d9e20c88f992b1",
-      "size": 4012
+      "checksum": "ac26f3ae892cd53b",
+      "size": 3974
     },
     "latin/tidal_wave.lfx": {
       "relPath": "latin/tidal_wave.lfx",
-      "checksum": "996faa2f41224f20",
-      "size": 27677
+      "checksum": "1217052104ca33b3",
+      "size": 8338
     },
     "rock/amp_heat.lfx": {
       "relPath": "rock/amp_heat.lfx",
-      "checksum": "3abcf3bb6d6a6630",
-      "size": 3971
+      "checksum": "6c4baa09eba32189",
+      "size": 3955
     },
     "rock/liquid_solo.lfx": {
       "relPath": "rock/liquid_solo.lfx",
-      "checksum": "99b744aa1d46eaa8",
-      "size": 3739
+      "checksum": "4524fc07fd5de15f",
+      "size": 3723
     },
     "rock/power_chord.lfx": {
       "relPath": "rock/power_chord.lfx",
-      "checksum": "3223fe1c8bac0e61",
-      "size": 4537
+      "checksum": "18ec20b1afda7cb1",
+      "size": 4521
     },
     "rock/spotlight_pulse.lfx": {
       "relPath": "rock/spotlight_pulse.lfx",
-      "checksum": "25ffc85cc453dcef",
-      "size": 3736
+      "checksum": "7195823aa2cd97ee",
+      "size": 3720
     },
     "rock/stage_wash.lfx": {
       "relPath": "rock/stage_wash.lfx",
-      "checksum": "a7f650ae42dc1d1e",
-      "size": 3739
+      "checksum": "357ae9ae8a90d1b8",
+      "size": 3723
     },
     "rock/thunder_struck.lfx": {
       "relPath": "rock/thunder_struck.lfx",
-      "checksum": "069f447696c33130",
-      "size": 3946
+      "checksum": "13b8bff407a29872",
+      "size": 3930
     },
     "techno/abyssal_rise.lfx": {
       "relPath": "techno/abyssal_rise.lfx",
-      "checksum": "9df17899a7ade61a",
-      "size": 4112
+      "checksum": "6b27e02e189647b5",
+      "size": 4234
     },
     "techno/acid_sweep.lfx": {
       "relPath": "techno/acid_sweep.lfx",
-      "checksum": "cb80b3becb07cae2",
-      "size": 8105
+      "checksum": "49d72b92111e1386",
+      "size": 8092
     },
     "techno/ambient_strobe.lfx": {
       "relPath": "techno/ambient_strobe.lfx",
-      "checksum": "e53575af4e61ed06",
-      "size": 4552
+      "checksum": "fbde7467cc05e206",
+      "size": 4680
     },
     "techno/binary_glitch.lfx": {
       "relPath": "techno/binary_glitch.lfx",
-      "checksum": "945d30aadf72214e",
-      "size": 7536
+      "checksum": "66f7eef0bcadcbd0",
+      "size": 6848
     },
     "techno/cascade_strike.lfx": {
       "relPath": "techno/cascade_strike.lfx",
-      "checksum": "ebdfea812a97c95b",
-      "size": 5307
+      "checksum": "650cae519bbad12a",
+      "size": 6392
     },
     "techno/core_meltdown.lfx": {
       "relPath": "techno/core_meltdown.lfx",
-      "checksum": "1a37a7d8aca32601",
-      "size": 4491
+      "checksum": "4d5ca3f4cf8909ff",
+      "size": 5082
     },
     "techno/cyber_dualism.lfx": {
       "relPath": "techno/cyber_dualism.lfx",
-      "checksum": "34bdde47b80cc779",
-      "size": 4907
+      "checksum": "dd07f5b4416782f5",
+      "size": 4891
     },
     "techno/cyber_scanner.lfx": {
       "relPath": "techno/cyber_scanner.lfx",
@@ -141,78 +141,78 @@
     },
     "techno/deep_breath.lfx": {
       "relPath": "techno/deep_breath.lfx",
-      "checksum": "a58e7d80b5ad1feb",
-      "size": 4066
+      "checksum": "783a4e5897c89ec3",
+      "size": 4050
     },
     "techno/gatling_raid.lfx": {
       "relPath": "techno/gatling_raid.lfx",
-      "checksum": "2c64071a010126e2",
-      "size": 5047
+      "checksum": "dfee864bd3c90635",
+      "size": 5691
     },
     "techno/ghost_chase.lfx": {
       "relPath": "techno/ghost_chase.lfx",
-      "checksum": "bf7c4ebbcf83fab3",
-      "size": 3840
+      "checksum": "742144570ebe576f",
+      "size": 3824
     },
     "techno/industrial_strobe.lfx": {
       "relPath": "techno/industrial_strobe.lfx",
-      "checksum": "cb1d11252146c459",
-      "size": 4795
+      "checksum": "50d1ff603e61810f",
+      "size": 4800
     },
     "techno/lateral_frag.lfx": {
       "relPath": "techno/lateral_frag.lfx",
-      "checksum": "228f1265ac63597a",
-      "size": 5510
+      "checksum": "d413168f5c85e7b9",
+      "size": 5504
     },
     "techno/machine_gun.lfx": {
       "relPath": "techno/machine_gun.lfx",
-      "checksum": "c3a7b84e3801b0a8",
-      "size": 4434
+      "checksum": "6db4b476b52b6c74",
+      "size": 4472
     },
     "techno/neon_blinder.lfx": {
       "relPath": "techno/neon_blinder.lfx",
-      "checksum": "05bb9f5a7b732db0",
-      "size": 5168
+      "checksum": "ea937e3a9cb46787",
+      "size": 5173
     },
     "techno/red_surge.lfx": {
       "relPath": "techno/red_surge.lfx",
-      "checksum": "e668d702b53e5f72",
-      "size": 4659
+      "checksum": "d04ebd9fd740a986",
+      "size": 4799
     },
     "techno/seismic_snap.lfx": {
       "relPath": "techno/seismic_snap.lfx",
-      "checksum": "7f567f19dc9df2ad",
-      "size": 6533
+      "checksum": "52b420acfeef9a4b",
+      "size": 6229
     },
     "techno/static_pulse.lfx": {
       "relPath": "techno/static_pulse.lfx",
-      "checksum": "6335283dceffa36f",
-      "size": 5078
+      "checksum": "2ff1f0845e6f06b1",
+      "size": 4396
     },
     "techno/strobe_burst.lfx": {
       "relPath": "techno/strobe_burst.lfx",
-      "checksum": "f757dce04b4ad979",
-      "size": 3829
+      "checksum": "ebb42f65e194b9de",
+      "size": 4916
     },
     "techno/strobe_ping_pong.lfx": {
       "relPath": "techno/strobe_ping_pong.lfx",
-      "checksum": "feda47a8f8f90930",
-      "size": 2734
+      "checksum": "d9c82fbed9b8aa94",
+      "size": 7413
     },
     "techno/strobe_storm.lfx": {
       "relPath": "techno/strobe_storm.lfx",
-      "checksum": "c7820f2d99d525e0",
-      "size": 4079
+      "checksum": "85fbef9eff45e588",
+      "size": 5574
     },
     "techno/void_mist.lfx": {
       "relPath": "techno/void_mist.lfx",
-      "checksum": "1d56e0a2b231029d",
-      "size": 4034
+      "checksum": "bf48bff42a5d5d40",
+      "size": 4048
     },
     "techno/wraht_of_the_titans.lfx": {
       "relPath": "techno/wraht_of_the_titans.lfx",
-      "checksum": "471a678d9cf98a4f",
-      "size": 4934
+      "checksum": "190524d01472bfdb",
+      "size": 5091
     }
   }
 }

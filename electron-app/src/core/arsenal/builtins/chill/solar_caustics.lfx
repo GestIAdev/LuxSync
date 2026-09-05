@@ -3,7 +3,7 @@
   "clip": {
     "id": "solar_caustics",
     "name": "Solar Caustics",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "author": "LuxSync Factory",
     "category": "chill-lounge",
     "tags": [
       "atmospheric",
@@ -267,5 +267,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:38d146063e745230264750aa094d38a04929b79431273f9a55e906b8356eeba6"
+  "checksum": "sha256:b1688d03373ab0fed6523e68809680d5a74cc7075df91cbc00df1bb7f8b7cb54"
 }

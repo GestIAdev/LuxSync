@@ -22,7 +22,7 @@
       "all-movers",
       "air"
     ],
-    "durationMs": 800,
+    "durationMs": 2500,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -83,7 +83,7 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 800,
+              "timeMs": 2500,
               "value": 0.991,
               "interpolation": "linear"
             }
@@ -139,7 +139,7 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 800,
+              "timeMs": 2500,
               "value": 0.95,
               "interpolation": "hold"
             }
@@ -151,12 +151,13 @@
     ],
     "staticParams": {},
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 1,
         "chaos": 0.9,
-        "organicity": 0
+        "organicity": 0.045
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
         "techno-club"
       ],
@@ -165,15 +166,15 @@
         "peak"
       ],
       "energyZone": {
-        "min": "intense",
+        "min": "peak",
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 1,
+        "min": 0,
         "max": 1
       },
       "pressureRange": {
-        "min": 0.65,
+        "min": 0.83,
         "max": 1
       },
       "spatialBehavior": "static"
@@ -204,5 +205,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:fc655d714d669080c3db90d47f606a95a0c18dc222d0991e00ee47c29d2ecd21"
+  "checksum": "sha256:651093fa60f9e6654474003f5d23b5159133a609792b4989b8e194de2847b9ab"
 }

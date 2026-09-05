@@ -3,7 +3,7 @@
   "clip": {
     "id": "seismic_snap",
     "name": "Seismic Snap",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "seismic",
@@ -12,23 +12,26 @@
       "techno"
     ],
     "vibeCompat": [
+      "fiesta-latina",
       "techno-club"
     ],
     "spatialZones": [
       "all-pars",
+      "ambient",
       "all-movers",
       "all"
     ],
     "mixBus": "global",
     "priority": 82,
-    "durationMs": 2500,
+    "durationMs": 3500,
     "effectType": "heph_custom",
     "tracks": [
       {
         "id": "fb383e3d-cca2-41b4-8e5c-6872f3fe42ec",
         "paramId": "intensity",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient"
         ],
         "curve": {
           "paramId": "intensity",
@@ -41,22 +44,12 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.994,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 0,
               "value": 0,
               "interpolation": "linear"
             },
             {
-              "timeMs": 500,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 500,
-              "value": 0.988,
+              "timeMs": 744,
+              "value": 0.994,
               "interpolation": "linear",
               "bezierHandles": [
                 0,
@@ -66,17 +59,12 @@
               ]
             },
             {
-              "timeMs": 1500,
-              "value": 0.994,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 1500,
+              "timeMs": 2333,
               "value": 0,
               "interpolation": "linear"
             },
             {
-              "timeMs": 2500,
+              "timeMs": 3500,
               "value": 0.0075,
               "interpolation": "linear"
             }
@@ -106,13 +94,13 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 500,
-              "value": 1,
-              "interpolation": "hold"
+              "timeMs": 766,
+              "value": 0.249,
+              "interpolation": "linear"
             },
             {
-              "timeMs": 500,
-              "value": 0,
+              "timeMs": 1146,
+              "value": 1,
               "interpolation": "linear",
               "bezierHandles": [
                 0,
@@ -122,17 +110,17 @@
               ]
             },
             {
-              "timeMs": 1500,
-              "value": 0,
+              "timeMs": 1750,
+              "value": 0.2624,
               "interpolation": "linear"
             },
             {
-              "timeMs": 1500,
+              "timeMs": 2044,
               "value": 1,
               "interpolation": "linear"
             },
             {
-              "timeMs": 2500,
+              "timeMs": 3500,
               "value": 1,
               "interpolation": "linear"
             }
@@ -145,7 +133,7 @@
         "id": "612d4134-4c3d-4139-902f-8f1c5515615b",
         "paramId": "color",
         "zones": [
-          "all-pars"
+          "all"
         ],
         "curve": {
           "paramId": "color",
@@ -163,18 +151,18 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 0,
+                "h": 199,
                 "s": 90,
                 "l": 55
               },
               "interpolation": "linear"
             },
             {
-              "timeMs": 2500,
+              "timeMs": 3500,
               "value": {
-                "h": 0,
-                "s": 0,
-                "l": 100
+                "h": 113,
+                "s": 100,
+                "l": 50
               },
               "interpolation": "hold"
             }
@@ -200,12 +188,12 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 2500,
-              "value": 0.95,
+              "timeMs": 3500,
+              "value": 1,
               "interpolation": "hold"
             }
           ],
@@ -236,7 +224,8 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "fiesta-latina"
+        "fiesta-latina",
+        "techno-club"
       ],
       "validSections": [
         "build",
@@ -248,8 +237,8 @@
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.87,
-        "max": 0.87
+        "min": 0.72,
+        "max": 1
       },
       "pressureRange": {
         "min": 0.79,
@@ -283,5 +272,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:19744656033daeb731a892f9918acba8547c1465a7936f374624db67c62d2165"
+  "checksum": "sha256:d248e601892b184fcd4fc454c168bab1879c1c6505fbfc99993f406a0430d4fc"
 }

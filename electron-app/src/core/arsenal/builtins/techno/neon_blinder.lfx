@@ -3,7 +3,7 @@
   "clip": {
     "id": "neon_blinder",
     "name": "Neon Blinder",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "blinder",
@@ -20,7 +20,7 @@
     ],
     "mixBus": "global",
     "priority": 93,
-    "durationMs": 1000,
+    "durationMs": 3000,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -29,7 +29,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -45,12 +44,12 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 50,
+              "timeMs": 150,
               "value": 0,
               "interpolation": "hold"
             },
             {
-              "timeMs": 51,
+              "timeMs": 153,
               "value": 1,
               "interpolation": "linear",
               "bezierHandles": [
@@ -61,12 +60,12 @@
               ]
             },
             {
-              "timeMs": 316,
+              "timeMs": 948,
               "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 1000,
+              "timeMs": 3000,
               "value": 0,
               "interpolation": "linear",
               "bezierHandles": [
@@ -78,7 +77,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "3b438e2a-62d5-4abf-8eed-4d7f8f3f1dcb",
@@ -86,7 +86,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -110,7 +109,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 500,
+              "timeMs": 1500,
               "value": {
                 "h": 300,
                 "s": 100,
@@ -119,7 +118,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 1000,
+              "timeMs": 3000,
               "value": {
                 "h": 0,
                 "s": 100,
@@ -129,7 +128,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "b66d2831-e56f-4b1c-92ae-a70cd77e9cd6",
@@ -152,7 +152,7 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 1000,
+              "timeMs": 3000,
               "value": 0.95,
               "interpolation": "hold"
             }
@@ -174,12 +174,13 @@
       "strobeHz": 15
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
-        "aggression": 0.9800000000000001,
+        "aggression": 0.932,
         "chaos": 0.75,
         "organicity": 0.1
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
         "techno-club"
       ],
@@ -188,18 +189,18 @@
         "peak"
       ],
       "energyZone": {
-        "min": "intense",
+        "min": "peak",
         "max": "peak"
       },
       "aggressionRange": {
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0.5,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -220,12 +221,12 @@
         "minimumEnergy": 0.7
       }
     },
-    "schemaVersion": "3.0",
     "safetyDeclaration": {
       "maxStrobeFreqHz": 25,
       "containsRapidFlash": true,
       "communityTrusted": false
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "sha256:d3065b61a2bd46c6910a64dc05f831e964cfe9f7701a4715248c33e3dfce96d3"
+  "checksum": "sha256:7e7caa02e79f31708d2c456bd747f87de38702d34737473c899e577c76d00660"
 }

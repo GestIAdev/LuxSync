@@ -3,7 +3,7 @@
   "clip": {
     "id": "strobe_burst",
     "name": "Strobe Burst",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "strobe",
@@ -17,11 +17,12 @@
     ],
     "spatialZones": [
       "all-pars",
+      "all-movers",
       "all"
     ],
     "mixBus": "global",
     "priority": 85,
-    "durationMs": 1500,
+    "durationMs": 2500,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -56,7 +57,54 @@
               ]
             },
             {
-              "timeMs": 1500,
+              "timeMs": 2500,
+              "value": 1,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "3dc137ae-10c6-476f-846c-a15be16e8a4a",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1,
+              "value": 1,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
               "value": 1,
               "interpolation": "linear",
               "bezierHandles": [
@@ -88,12 +136,12 @@
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 0.95,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 1500,
-              "value": 0.95,
+              "timeMs": 2500,
+              "value": 1,
               "interpolation": "hold"
             }
           ],
@@ -114,6 +162,7 @@
       "gapDurationMs": 33
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.9,
         "chaos": 0.75,
@@ -130,18 +179,18 @@
         "breakdown"
       ],
       "energyZone": {
-        "min": "active",
-        "max": "intense"
+        "min": "intense",
+        "max": "peak"
       },
       "aggressionRange": {
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0.5,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -169,5 +218,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:6638b7245416faf1e6a1ad9dd262e6311679d893f776b2a0ca5b3716a20af8d3"
+  "checksum": "sha256:beee1c28b0d529cfb0d2e7bd4e992bf6c55b08b8caac8f43e19bded724430806"
 }

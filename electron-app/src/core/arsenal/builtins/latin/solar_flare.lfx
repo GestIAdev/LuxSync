@@ -3,7 +3,7 @@
   "clip": {
     "id": "solar_flare",
     "name": "Solar Flare",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "author": "LuxSync Factory",
     "category": "physical",
     "tags": [
       "flare",
@@ -12,15 +12,14 @@
       "fiesta-latina"
     ],
     "vibeCompat": [
-      "fiesta-latina",
-      "techno-club"
+      "fiesta-latina"
     ],
     "spatialZones": [
       "all"
     ],
     "mixBus": "global",
     "priority": 90,
-    "durationMs": 2500,
+    "durationMs": 4000,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -50,7 +49,7 @@
               ]
             },
             {
-              "timeMs": 500,
+              "timeMs": 800,
               "value": 1,
               "interpolation": "bezier",
               "bezierHandles": [
@@ -61,7 +60,7 @@
               ]
             },
             {
-              "timeMs": 2500,
+              "timeMs": 4000,
               "value": 0,
               "interpolation": "bezier",
               "bezierHandles": [
@@ -105,7 +104,7 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 2500,
+              "timeMs": 4000,
               "value": {
                 "h": 30,
                 "s": 100,
@@ -147,12 +146,12 @@
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.842,
-        "max": 0.842
+        "min": 0.692,
+        "max": 0.992
       },
       "pressureRange": {
         "min": 0,
-        "max": 0.61
+        "max": 1
       },
       "spatialBehavior": "static"
     },
@@ -167,8 +166,8 @@
       "minDurationMs": 1000,
       "cooldownMs": 15000,
       "isStrobe": false,
-      "isDivineCandidate": true,
-      "isHeavyCandidate": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
       "zScoreGuards": {
         "requireRising": false,
         "minimumZ": null,
@@ -177,5 +176,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:e5fe46551ad2ec23fb2f586a9731a1908012c3a760ccd95e5b89d6618d074de6"
+  "checksum": "sha256:903528ecfe95515fe4308c239022916705468624056a83ce841a1372ea67b4a8"
 }

@@ -16,81 +16,29 @@
       "techno-club"
     ],
     "spatialZones": [
-      "all-pars",
+      "all",
       "all-movers",
+      "front",
       "ambient",
       "air",
-      "flash",
-      "movers-left",
-      "front",
-      "floor",
-      "back",
-      "movers-right"
+      "back"
     ],
     "durationMs": 4000,
     "effectType": "heph_custom",
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 0.45,
-        "chaos": 0.25,
-        "organicity": 0.25
-      },
-      "textureAffinity": "clean",
-      "compatibleVibes": [
-        "techno-club"
-      ],
-      "validSections": [
-        "build",
-        "drop"
-      ],
-      "energyZone": {
-        "min": "active",
-        "max": "intense"
-      },
-      "aggressionRange": {
-        "min": 0.3,
-        "max": 0.7
-      },
-      "spatialBehavior": "absolute",
-      "pressureRange": {
-        "min": 0,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.72,
-        "energyMultiplier": 1,
-        "vibeBonus": 0.1
-      },
-      "gpuCost": 0.35,
-      "fatigueImpact": 0.15,
-      "minDurationMs": 4000,
-      "cooldownMs": 7000,
-      "isStrobe": false,
-      "isDivineCandidate": false,
-      "isHeavyCandidate": false,
-      "zScoreGuards": {
-        "requireRising": false,
-        "minimumZ": null,
-        "minimumEnergy": null
-      }
-    },
     "tracks": [
       {
         "id": "acid-master-color",
         "paramId": "color",
         "zones": [
-          "all-pars",
-          "all-movers",
-          "ambient",
-          "air",
-          "flash"
+          "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
           "defaultValue": {
             "h": 90,
             "s": 100,
@@ -107,22 +55,23 @@
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            360
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "acid-left",
         "paramId": "intensity",
         "zones": [
-          "movers-left"
+          "all-movers"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 0,
           "keyframes": [
             {
@@ -158,23 +107,23 @@
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "acid-front-floor",
         "paramId": "intensity",
         "zones": [
-          "front",
-          "floor"
+          "front"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 0,
           "keyframes": [
             {
@@ -232,11 +181,9 @@
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "acid-ambient-air",
@@ -245,10 +192,13 @@
           "ambient",
           "air"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 0,
           "keyframes": [
             {
@@ -306,23 +256,23 @@
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "acid-back-right",
         "paramId": "intensity",
         "zones": [
-          "back",
-          "movers-right"
+          "back"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
           "defaultValue": 0,
           "keyframes": [
             {
@@ -358,14 +308,61 @@
               "interpolation": "hold"
             }
           ],
-          "range": [
-            0,
-            1
-          ]
-        }
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       }
     ],
+    "staticParams": {},
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.45,
+        "chaos": 0.25,
+        "organicity": 0.25
+      },
+      "textureAffinity": "clean",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "build",
+        "drop"
+      ],
+      "energyZone": {
+        "min": "gentle",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.72,
+        "energyMultiplier": 1,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.35,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 4000,
+      "cooldownMs": 7000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:0142204f69807171a33371faaaad5abeb1ab0639e9fe445e007ba05694fd3a78"
+  "checksum": "sha256:41b730eeae2cbb19d116a326e798ad36c39fc48875015ce02657f12e83d93503"
 }

@@ -982,7 +982,17 @@ export class LiquidEngineBase {
                 //   Opus (gH=0.0): ghost=1.0 → full rescue → no change
                 //   Brejcha (gH=0.8): ghost=0.2 → mostly suppressed → cleaner
                 const ghostGateFactor = 1.0 - gateHealth;
-                const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult * ghostGateFactor;
+                // ⚒️ WAVE 7749.99: GHOST UNG GATE — in dead-gate tracks (gH≈0), the ghost
+                // fires on any hhDlt spike, including synth stabs. missedsnare.md showed
+                // 9/30 onsets were synth FPs with UnG 0.32-0.48 (real snares: 0.41-0.86).
+                // The ghost was designed for Tiesto synthetic snares (UnG > 0.5) and Opus
+                // (UnG > 0.5), not minimal synth bass stabs (UnG 0.3-0.5).
+                // Fix: soft-gate ghost by UnG. Ramps 0→1 as UnG goes 0.30→0.50.
+                //   Synth stab (UnG=0.35): gate=0.25 → ghost reduced 75%
+                //   Tiesto snare (UnG=0.60): gate=1.0 → full ghost
+                //   Real snare (UnG=0.45): gate=0.75 → mostly preserved
+                const ghostUnGGate = Math.max(0, Math.min(1, (ungatedSnare - 0.30) / 0.20));
+                const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult * ghostGateFactor * ghostUnGGate;
                 const snareDrive = Math.max(crackDrive, trebleGhost);
                 // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
                 // snareDrive is per-frame and raw. The MACD does its own smoothing;

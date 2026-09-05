@@ -269,7 +269,7 @@ export const TECHNO_PROFILE = {
     //   fBL=0.03 (Brejcha hats): floor=0.08 (strict, hats blocked)
     //   fBL=0.05 (Techhouse):    floor=0.04 (relaxed, roll recovered)
     //   fBL=0.085 (Opus peak):   floor=0.005 (max relaxation, snares recovered)
-    snareMomentumFloorMin: 0.005,
+    snareMomentumFloorMin: 0.020,
     // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
     // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
     ambientAttackMs: 30,

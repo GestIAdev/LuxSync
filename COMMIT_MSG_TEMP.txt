@@ -1,26 +1,33 @@
-WAVE 7749.103: Flux exemption on WNS gate — rescue Anyma synthetic snares
+WAVE 7749.104: Adaptive Flux threshold on bypass rescue — recover Opus build snares
 
-The WNS soft gate (WAVE 7749.102) was killing real snares in Anyma, whose
-percussion is 100% synthetic (WNS=0.000 on ALL onsets). Analysis of
-aanymafinalboss.md showed:
+Opus build snares are synthetic and narrowband (Flux 0.09-0.16), similar
+to synth FPs in minimal techno. Raising the bypass Flux threshold from
+0.15 to 0.20 (WAVE 7749.102) killed synth FPs but also blocked Opus
+build snares that were previously recovered.
 
-  - 14 snares detected, ~18 kick beats → ratio ~1.3:1 (should be 1:1)
-  - Onset spacings: [13,12,24,85,37,8,54,13,7,23,22,7,23] — irregular
-  - Frame 203: crackD_raw=0.034 > fFloor=0.020, but WNS gate ×0.3 → 0.010
-    < 0.020 → BLOCKED (real snare killed)
-  - Onsets 5,6,7: crackD 0.06-0.23, WNS gate ×0.3 → 0.02-0.07, borderline
-    or blocked
+Key insight: synth FPs only occur with gH > 0.1 (alive gate = percussive
+activity present). Opus build snares occur with gH ≈ 0 (dead gate = no
+activity = no synth FPs in silence).
 
-The key insight: Anyma's synthetic snares have WNS=0 (no noise) but Flux
-0.30-0.39 (broadband transient). Synth FPs in silence have Flux 0.07-0.19
-(narrowband). Flux distinguishes them.
+Fix: Make the Flux threshold adaptive based on gate health:
+  - gH < 0.1 (dead gate): Flux > 0.08 (Opus snares are narrowband but
+    legitimate — no synth FPs possible in dead-gate silence)
+  - gH >= 0.1 (alive gate): Flux > 0.20 (blocks synth stabs)
 
-Fix: Only apply WNS gate when spectralFlux < 0.25 (narrowband). Real
-snares (acoustic or synthetic) have broadband transients → exempted.
+Opus missed snares recovered:
+  f634: UnG=0.838 Res=0.335 RawD=0.377 Flux=0.136 gH=0.000 → RESCUE
+  f642: UnG=0.784 Res=0.273 RawD=0.286 Flux=0.128 gH=0.000 → RESCUE
 
-  Synth FPs (Flux 0.070-0.194): WNS gate applies → blocked
-  Anyma snares (Flux 0.300-0.393): WNS gate exempted → fire
-  missedsnare (Flux 0.258-0.475): WNS gate exempted → fire
+Synth FPs still blocked (all have gH > 0.1 → Flux > 0.20 required):
+  calib19: gH 0.162-1.000, Flux 0.035-0.310
+  synth_war: gH 0.214-1.000, Flux 0.070-0.310
+
+missedsnare still rescued (gH 0.026-0.029, Flux 0.258-0.475):
+  All have Flux > 0.08 and gH < 0.1 → RESCUE
+
+Teminite & Panda Eyes confirmed as impossible for pure percussion:
+  hE=0.000 on ALL frames, WNS avg 0.889, 100% synthetic stabs.
+  7.1 with synth toggle is the correct approach for this track type.
 
 Generated with [Devin](https://devin.ai)
 

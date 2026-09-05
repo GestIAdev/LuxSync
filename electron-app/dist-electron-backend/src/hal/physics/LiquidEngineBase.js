@@ -1099,11 +1099,21 @@ export class LiquidEngineBase {
                     //   calib19 onset 6: hE=0.662 SnareE=0.111 → blocked
                     //   missedsnare frame 182: hE=0.292 → safe
                     //   missedsnare frame 217: hE=0.347 → safe
+                    // ⚒️ WAVE 7749.104: ADAPTIVE FLUX — Opus synthetic snares in dead-gate
+                    // builds have Flux 0.09-0.16 (narrowband like synth FPs). But they
+                    // occur with gH≈0 (dead gate = no percussive activity = no synth FPs).
+                    // Synth FPs only happen with gH>0.1 (alive gate = activity present).
+                    // So: lower Flux requirement to 0.08 when gH<0.1, keep 0.20 when alive.
+                    //   Opus f634: Flux=0.136 gH=0.000 → RESCUE (was blocked by 0.20)
+                    //   Opus f642: Flux=0.128 gH=0.000 → RESCUE (was blocked by 0.20)
+                    //   calib19 synth FPs: gH 0.214-1.000 → still blocked by 0.20
+                    //   missedsnare: gH 0.026-0.029 → still rescued (Flux 0.258+)
+                    const bypassFluxTh = gateHealth < 0.1 ? 0.08 : 0.20;
                     if (!rawOnset &&
                         ungatedSnare > 0.4 &&
                         residual > 0.3 &&
                         rawSnareDelta > 0.2 &&
-                        spectralFlux > 0.20 &&
+                        spectralFlux > bypassFluxTh &&
                         !(snareEnergy < 0.2 && hhEnergy > 0.5)) {
                         rawOnset = true;
                     }

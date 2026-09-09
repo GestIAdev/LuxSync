@@ -214,7 +214,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
   {
     id: 'creation-labs',
     header: 'CREATION LABS',
-    tabs: ['hephaestus', 'vibe-lab', 'constructor', 'forge'],
+    tabs: ['hephaestus', 'constructor', 'forge'],
   },
   {
     id: 'rigging-system',
@@ -224,7 +224,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
   {
     id: 'experimental',
     header: 'EXPERIMENTAL',
-    tabs: ['theia'],
+    tabs: ['theia', 'vibe-lab'],
   },
 ] as const
 
@@ -253,7 +253,7 @@ export const SIDEBAR_LABELS: Partial<Record<TabId, string>> = {
  * Tabs that are locked as "ALPHA" — visually disabled in the sidebar
  * with a glowing badge. The user cannot navigate to them by clicking.
  */
-export const ALPHA_LOCKED_TABS: readonly TabId[] = ['theia'] as const
+export const ALPHA_LOCKED_TABS: readonly TabId[] = ['theia', 'vibe-lab'] as const
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

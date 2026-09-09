@@ -77,7 +77,7 @@ export const MeasureLayer3D: React.FC<MeasureLayer3DProps> = ({ toolMode }) => {
       if (hit) {
         const clamped = clampToCrystalBox(
           { x: hit.x, y: hit.y, z: hit.z },
-          stageDims ?? { width: 50, depth: 25, height: 15, gridSize: 0.25 },
+          stageDims ?? { width: 25, depth: 12, height: 8, gridSize: 0.25 },
         )
         setHoverPos(new THREE.Vector3(clamped.x, clamped.y, clamped.z))
       }

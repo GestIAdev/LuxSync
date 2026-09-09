@@ -99,11 +99,12 @@ function fuseProfileFor41(base) {
 // ═══════════════════════════════════════════════════════════════════════════
 // ABSTRACT BASE
 // ═══════════════════════════════════════════════════════════════════════════
-// 🩸 WAVE GARBAGE-ZERO: FINESSE_AUDIT gated behind an env flag (default ON).
+// 🩸 WAVE GARBAGE-ZERO: FINESSE_AUDIT gated behind an env flag (default OFF).
 // The audit log fires on kick/snare frames (~40fps in techno), allocating
-// ~46 ephemeral strings per log. Set LUX_FINESSE_AUDIT=0 to silence it
-// if GC pressure becomes problematic during long sessions.
-const FINESSE_AUDIT_ENABLED = (typeof process !== 'undefined' && process.env && process.env.LUX_FINESSE_AUDIT !== '0');
+// ~46 ephemeral strings per log. Set LUX_FINESSE_AUDIT=1 to re-enable it
+// for future debugging. Disabled by default since WAVE 7754 to stop the
+// 3-day diagnostic spam.
+const FINESSE_AUDIT_ENABLED = (typeof process !== 'undefined' && process.env && process.env.LUX_FINESSE_AUDIT === '1');
 export class LiquidEngineBase {
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 9001: PASSIVE TELEMETRY ACCESSORS — read-only probes for observers.
@@ -1729,7 +1730,14 @@ export class LiquidEngineBase {
         // gate + fast decay. A sustained bassline has bassDelta ≈ 0 after the
         // first frame → envFloor decays to 0 → no strobe. A kick or note onset
         // has a sharp bassDelta spike → envFloor fires → floor laser pulses.
-        const _floorInput = Math.max(0, bassDelta) * 2.0; // amplify the small delta
+        //
+        // ⚒️ WAVE 7750: EL TERREMOTO HÍBRIDO — el Floor ya no es solo bassDelta
+        // (seco). Se inyecta el subgrave continuo (bands.subBass × floorSubWeight)
+        // para dar un baño de luz de suelo masivo. La compuerta del envFloor
+        // (gateOn + squelch + decay) sigue cortando a negro total entre bombos
+        // y cuando el DJ corta la mezcla. Default floorSubWeight=0 = legacy.
+        const _floorSubWeight = p.floorSubWeight ?? 0;
+        const _floorInput = Math.max(0, bassDelta) * 2.0 + (bands.subBass * _floorSubWeight);
         const floorIntensity = this.envFloor.process(_floorInput, morphFactor, now, isBreakdown);
         // ambient: slow EMA of subBass, no morphGain baseline — NOT gated by recoveryFactor.
         // WAVE 4812 M2: gain=1.0 — el ambient no tiene onda estática; solo brilla cuando
@@ -1763,7 +1771,14 @@ export class LiquidEngineBase {
         // envAir gives zero-attack (riseRate=1.0), fast decay (0.08, ~45-65ms),
         // high gate (0.35), high crush (2.5). Spectrally isolated above the snare
         // body (2-6kHz). Ideal for aerial laser stabs and sharp beams.
-        const _airInput = bands.treble * 0.60 + bands.highMid * 0.40;
+        //
+        // ⚒️ WAVE 7750: PARAMETRIZACIÓN ESPECTRAL — la mezcla treble/highMid ya
+        // no está hardcodeada. airTrebleWeight / airHighMidWeight vienen del
+        // perfil (defaults 0.6/0.4 = retrocompatibilidad). Techno usa 1.0/0.0
+        // para haces centrales de puro ruido blanco (sin highMid del snare body).
+        const _airTrebleW = p.airTrebleWeight ?? 0.6;
+        const _airHighMidW = p.airHighMidWeight ?? 0.4;
+        const _airInput = bands.treble * _airTrebleW + bands.highMid * _airHighMidW;
         const airIntensity = this.envAir.process(_airInput, morphFactor, now, isBreakdown);
         const frame = {
             bands,

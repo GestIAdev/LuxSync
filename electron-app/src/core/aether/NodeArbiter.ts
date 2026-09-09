@@ -223,6 +223,15 @@ export class NodeArbiter implements INodeArbiter {
   private readonly _manualChannelLocks = new Map<NodeId, Record<string, number>>()
 
   /**
+   * WAVE 7790: Mapa nodeId → fixtureId (deviceId).
+   * Poblado en patch-time por FixtureHydrationEngine via setNodeFixtureMap().
+   * Permite que _manualDimmerFixtureIds reconozca Cell Node IDs modernos
+   * (ej: "impact-20") que no siguen el formato legacy "<fixtureId>:<family>".
+   * Sin este mapa, los nodeIds cell sin ':' se saltan el escudo WAVE 4713.
+   */
+  private readonly _nodeFixtureMap = new Map<NodeId, string>()
+
+  /**
    * Inhibit limits (L2.5 — post-arbitraje, pre-retorno):
    * nodeId → cap 0-1 aplicado al canal `dimmer` del nodo.
    * Semánticamente: Grand Master per-fixture. No afecta L4 (blackout).
@@ -442,6 +451,20 @@ export class NodeArbiter implements INodeArbiter {
     this._moverShieldNodeIds.clear()
     for (let i = 0; i < nodeIds.length; i++) {
       this._moverShieldNodeIds.add(nodeIds[i])
+    }
+  }
+
+  /**
+   * WAVE 7790: Inyecta el mapa nodeId → fixtureId (deviceId).
+   * Calculado en patch time por FixtureHydrationEngine iterando el NodeGraph.
+   * Permite que el escudo WAVE 4713 (_manualDimmerFixtureIds) reconozca
+   * Cell Node IDs modernos (ej: "impact-20") que no contienen ':'.
+   * Costo 0 en hot-path — solo se consulta en arbitrate() via Map.get().
+   */
+  setNodeFixtureMap(entries: ReadonlyMap<NodeId, string>): void {
+    this._nodeFixtureMap.clear()
+    for (const [nodeId, fixtureId] of entries) {
+      this._nodeFixtureMap.set(nodeId, fixtureId)
     }
   }
 
@@ -787,15 +810,28 @@ export class NodeArbiter implements INodeArbiter {
 
     // WAVE 4713 COMPAT: dimmer fixture tracking sigue activo para bloquear
     // intents de familia completa (kinetic/atmosphere pasan igual).
+    // WAVE 7790: Soporte para Cell Node IDs modernos (sin ':').
+    //   Ruta 1 (legacy): nodeId = "<fixtureId>:<family>" → extraer por ':'.
+    //   Ruta 2 (cell): nodeId = "impact-20" → lookup en _nodeFixtureMap.
     this._manualDimmerFixtureIds.clear()
     for (const [nodeId, channels] of this._manualOverrides) {
       const manualDimmer = (channels as Record<string, number>)['dimmer']
       if (!isFiniteChannelValue(manualDimmer)) continue
+
+      // Ruta 1: nodeId legacy con ':' — extraer fixtureId y family.
       const sep = nodeId.lastIndexOf(':')
-      if (sep <= 0) continue
-      const family = nodeId.slice(sep + 1)
-      if (FIXTURE_DIMMER_LOCK_EXEMPT_FAMILIES.has(family)) continue
-      this._manualDimmerFixtureIds.add(nodeId.slice(0, sep))
+      if (sep > 0) {
+        const family = nodeId.slice(sep + 1)
+        if (FIXTURE_DIMMER_LOCK_EXEMPT_FAMILIES.has(family)) continue
+        this._manualDimmerFixtureIds.add(nodeId.slice(0, sep))
+        continue
+      }
+
+      // Ruta 2: Cell Node ID sin ':' — usar _nodeFixtureMap para derivar fixtureId.
+      const fixtureId = this._nodeFixtureMap.get(nodeId)
+      if (fixtureId) {
+        this._manualDimmerFixtureIds.add(fixtureId)
+      }
     }
 
     // ⚡ WAVE 4917: L3 DOMINANCE PRE-PASS.

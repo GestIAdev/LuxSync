@@ -57,9 +57,9 @@ import {
 import type { TacticalFixture, RenderMetrics, QualityMode } from '../components/hyperion/views/tactical/types'
 import type { CanonicalZone } from '../components/hyperion/shared/ZoneLayoutEngine'
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // WORKER STATE
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 
 let canvas: OffscreenCanvas | null = null
 let ctx: OffscreenCanvasRenderingContext2D | null = null
@@ -702,11 +702,20 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
       }
       glassPort = typedMsg.port
       const port = glassPort
+      // 🔍 SONDA FORENSE: Confirmar que el puerto Glass llegó al worker.
+      // Visible en DevTools (F12) → Console del renderer en PROD.
+      console.log('[Worker] GLASS_PORT recibido y configurado.')
       port.onmessage = (e: MessageEvent) => {
         const { frameData, fixtureCount, onBeat } = e.data as {
           frameData: Float32Array
           fixtureCount: number
           onBeat: boolean
+        }
+
+        // 🔍 SONDA FORENSE: Detectar frames anómalos con 0 fixtures.
+        // Si esto aparece repetidamente, el gate del host no está funcionando.
+        if (fixtureCount === 0) {
+          console.warn('[Worker] Frame recibido con 0 fixtures.')
         }
 
         // 🏓 OOM-FIX: Return the PREVIOUS frame's buffer to the main thread.

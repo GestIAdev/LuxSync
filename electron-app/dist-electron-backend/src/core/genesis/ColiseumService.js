@@ -41,7 +41,13 @@ const OPERATOR_WEIGHTS_ROULETTE = Object.freeze([
     ['color_hue_shift', 0.08],
 ]);
 function pickWeightedOperator(rng) {
-    const r = rng();
+    // 🩸 WAVE 7756 ROULETTE FIX: Normalize r by total weight.
+    // Previously, raw weights were used with r ∈ [0, 1), so any operator
+    // whose cumulative weight pushed acc ≥ 1.0 was unreachable.
+    // color_hue_shift (weight 0.08, acc=1.00) was NEVER selected.
+    // Now r is scaled to [0, totalWeight) so all operators are reachable.
+    const totalWeight = OPERATOR_WEIGHTS_ROULETTE.reduce((s, [, w]) => s + w, 0);
+    const r = rng() * totalWeight;
     let acc = 0;
     for (const [op, weight] of OPERATOR_WEIGHTS_ROULETTE) {
         acc += weight;
@@ -568,9 +574,14 @@ export class ColiseumService {
      * No arbitrary cap — only abundance begets abundance.
      */
     _mitosis(db) {
+        // 🩸 WAVE 7756 CHAMPION FIX: Include champions in mitosis.
+        // Previously, only status='alive' could reproduce asexually. Champions
+        // (fitness > speciesAvg × 1.30) were excluded from mitosis despite
+        // having surplus vitality. Now consistent with sexual reproduction,
+        // SpeciesQuotaSelector, LifecycleManager, and EffectManager.
         const candidates = db.prepare(`SELECT organism_id, blueprint_id, fitness_score, generation
        FROM lfx_organisms
-       WHERE status = 'alive'
+       WHERE status IN ('alive', 'champion')
          AND fitness_score >= ${MITOSIS_THRESHOLD}
          AND trials_count >= ${MITOSIS_MIN_TRIALS}
          AND generation < 16`).all();

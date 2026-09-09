@@ -30,9 +30,9 @@
 import { FLOATS_PER_FIXTURE, FIXTURE_FIELD, } from './hyperion-render.types';
 import { renderGridLayer, renderZoneLayer, renderFixtureLayer, renderSelectionLayer, renderHUDLayer, FIXTURE_CONFIG, disposeFixtureLayerSprites, } from '../components/hyperion/views/tactical/layers';
 import { hitTestFixtures, hitTestLasso, } from '../components/hyperion/views/tactical/HitTestEngine';
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // WORKER STATE
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 let canvas = null;
 let ctx = null;
 let animFrameId = 0;
@@ -602,8 +602,16 @@ self.onmessage = (e) => {
             }
             glassPort = typedMsg.port;
             const port = glassPort;
+            // 🔍 SONDA FORENSE: Confirmar que el puerto Glass llegó al worker.
+            // Visible en DevTools (F12) → Console del renderer en PROD.
+            console.log('[Worker] GLASS_PORT recibido y configurado.');
             port.onmessage = (e) => {
                 const { frameData, fixtureCount, onBeat } = e.data;
+                // 🔍 SONDA FORENSE: Detectar frames anómalos con 0 fixtures.
+                // Si esto aparece repetidamente, el gate del host no está funcionando.
+                if (fixtureCount === 0) {
+                    console.warn('[Worker] Frame recibido con 0 fixtures.');
+                }
                 // 🏓 OOM-FIX: Return the PREVIOUS frame's buffer to the main thread.
                 // The render loop (60fps) has already consumed it at least once since
                 // the last frame arrived (44Hz < 60fps), so it's safe to transfer back.

@@ -52,6 +52,27 @@ import type {
 import './TacticalCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WORKER INSTANTIATION — Vite ?worker&inline (OPERACIÓN LÁZARO, WAVE 2520/7790)
+// ═══════════════════════════════════════════════════════════════════════════
+// 🩸 WAVE 7790: file:// FIX — use `?worker&inline` instead of
+// `new Worker(new URL(..., import.meta.url))`. Vite bundles the worker as a
+// self-contained IIFE (see vite.config.ts `worker.format: 'iife'`) and embeds
+// it as a Blob URL at runtime via `URL.createObjectURL(blob)`. Blob URLs are
+// same-origin and work under ANY protocol — including Electron's file://.
+//
+// The previous `new URL(..., import.meta.url)` pattern emitted a separate
+// worker .js file in dist/assets/. Under file:// with webSecurity:true
+// (Electron default), Chromium blocks fetching worker scripts from file://
+// (opaque origin, no CORS/MIME headers) → onerror fires with undefined
+// message → worker never executes → stuck on "INITIALIZING...".
+//
+// `?worker&inline` sidesteps the file:// fetch entirely: the worker code
+// lives inside the main bundle as a string, becomes a Blob at runtime, and
+// the Worker constructor loads from the blob: URL. No file:// fetch, no
+// CORS, no asar path issues.
+import HyperionRenderWorker from '../../../../workers/hyperion-render.worker.ts?worker&inline'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -73,12 +94,8 @@ export interface TacticalCanvasProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WORKER INSTANTIATION — Vite ?worker suffix (OPERACIÓN LÁZARO, WAVE 2520)
-// Using the ?worker import syntax instead of new URL() — Vite bundles the
-// worker correctly for Electron's renderer process with this pattern.
+// WORKER CONSTRUCTOR — uses the ?worker&inline import above
 // ═══════════════════════════════════════════════════════════════════════════
-
-import RenderWorkerConstructor from '../../../../workers/hyperion-render.worker?worker&inline'
 
 interface RulerTick {
   value: number
@@ -99,7 +116,18 @@ function buildRulerTicks(sizeMeters: number): RulerTick[] {
 }
 
 function createRenderWorker(): Worker {
-  return new RenderWorkerConstructor()
+  // 🩸 WAVE 7790: file:// FIX — use the ?worker&inline constructor (Blob URL).
+  // No `{ type: 'module' }` — Vite bundles the worker as IIFE (see
+  // vite.config.ts `worker.format: 'iife'`) and inlines it as a Blob URL at
+  // runtime. Blob URLs are same-origin and load under file://. The previous
+  // `new Worker(new URL(..., import.meta.url))` pattern emitted a separate
+  // .js file that Chromium refused to fetch from file:// (opaque origin).
+  const w = new HyperionRenderWorker({ name: 'hyperion-render' })
+
+  w.onerror = (err) => console.error('🩸 [WORKER FATAL CRASH]:', err?.message, err)
+  w.onmessageerror = (err) => console.error('🩸 [WORKER IPC ERROR]:', err)
+
+  return w
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -310,6 +338,15 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     if (workerRef.current) return
 
     const rect = container.getBoundingClientRect()
+
+    // 🛡️ WAVE 7779: STRICT SIZE GUARD — Abort if container has no measurable size
+    // If width or height is <= 0, the window/panel is not yet visible.
+    // ResizeObserver will retry when the DOM gets real dimensions.
+    if (rect.width <= 0 || rect.height <= 0) {
+      console.warn('[Hyperion] Skipping worker INIT — container has no measurable size yet', { width: rect.width, height: rect.height })
+      return
+    }
+
     const dpr = Math.min(window.devicePixelRatio, DEFAULT_TACTICAL_OPTIONS.maxDPR)
 
     // Set CSS display size (worker controls physical pixels)
@@ -573,6 +610,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     }
 
     let glassUnsub: (() => void) | null = null
+    // 🔍 SONDA FORENSE: Flag one-shot para loguear solo el primer frame válido.
+    let hasLoggedFirstFrame = false
 
     const startGlassPipeline = () => {
       const g = (window as any).glass
@@ -580,10 +619,13 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       glassUnsub = g.onFrame((view: Float32Array) => {
         const count = fixturesRef.current.length
 
-        // WAVE 6061 FIX: Always post to worker, even with count===0.
-        // If we return early, the worker's currentFixtureCount stays stale
-        // (e.g. at 0 from bootstrap). When fixtures load later, the canvas
-        // stays blank because Math.min(scaffoldFixtures.length, 0) = 0.
+        // 🛡️ GATE ESTRICTO: Ignorar frames hasta que el show esté cargado.
+        // En PROD el worker inline Blob arranca en ~1-5ms, antes de que
+        // lux.stage.loadActive() resuelva. Enviar frames con count===0
+        // corrompe el MessagePort. Con este gate, el primer frame que llega
+        // al worker SIEMPRE tiene fixtures reales.
+        if (count === 0) return
+
         const needed = count * FLOATS_PER_FIXTURE
 
         // 🏓 Ping-Pong: take the current slot from the pool.
@@ -593,10 +635,9 @@ export const TacticalCanvas = memo(function TacticalCanvas({
           buf = new Float32Array(needed)
         }
 
-        if (count > 0) {
-          // Translate Glass 16-float layout → Worker 10-float layout
-          packGlassFrameInto(buf, view, count)
-        }
+        // Translate Glass 16-float layout → Worker 10-float layout
+        packGlassFrameInto(buf, view, count)
+
         const onBeat = view.length > 4 && view[4] > 0.5
 
         // 🏓 Transfer the buffer to the worker (zero-copy).
@@ -605,6 +646,13 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         channel.port1.postMessage({ frameData: buf, fixtureCount: count, onBeat }, [buf.buffer])
         bufferPool.current[poolIdx.current] = null
         poolIdx.current = (poolIdx.current + 1) % 2
+
+        // 🔍 SONDA FORENSE: Loguear solo el primer frame válido enviado al worker.
+        // Visible en DevTools (F12) → Console del renderer en PROD.
+        if (!hasLoggedFirstFrame) {
+          console.log('[Host] Enviando primer frame válido Glass al Worker', { count, onBeat })
+          hasLoggedFirstFrame = true
+        }
       })
     }
 

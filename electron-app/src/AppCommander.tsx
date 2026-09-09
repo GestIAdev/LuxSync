@@ -20,7 +20,7 @@ import { useKeyboardCortex } from './hooks/useKeyboardCortex' // ⌨ WAVE 4800: 
 import { useSeleneStore, selectAppCommanderActions } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { usePerformanceHydration } from './hooks/usePerformanceHydration' // 🚀 WAVE 7580: Vanguard Launcher hydration
-import { usePerformanceStore, selectIsBlurDisabled } from './stores/performanceStore' // 🌿 WAVE 7582: Blur Killer
+import { usePerformanceStore, selectIsBlurDisabled, selectIsHydrated } from './stores/performanceStore' // 🌿 WAVE 7582: Blur Killer
 import { setupStageStoreListeners } from './stores/stageStore'
 import { initializeLogIPC } from './stores/logStore' // 📜 WAVE 1198: THE WARLOG HEARTBEAT
 import { useLicenseStore } from './stores/licenseStore' // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL
@@ -40,6 +40,16 @@ function AppContent() {
   // briefly sees FULL_SUITE components (Chronos/Hephaestus) before the tier arrives.
   // MainLayout is not rendered until the license tier has been hydrated from main process.
   const [licenseReady, setLicenseReady] = useState(false)
+
+  // 🩸 WAVE 7790: PERFORMANCE HYDRATION GATE — prevents the HQ→ECO race condition.
+  // usePerformanceStore defaults to 'hq' (isCanvasWorkerDisabled=false) until the
+  // launcher:getProfile IPC resolves. If MainLayout mounts before that, HyperionView
+  // sees HQ and mounts <TacticalCanvas>, which runs transferControlToOffscreen()
+  // (irreversible) + creates the render worker. When the real 'eco' tier arrives a
+  // tick later, TacticalCanvas unmounts → worker orphaned, OffscreenCanvas transferred
+  // to a destroyed node → GPU Context Lost. Gating on isHydrated guarantees we know
+  // the real tier before any canvas/worker is instantiated.
+  const isPerformanceHydrated = usePerformanceStore(selectIsHydrated)
 
   // Connect to Universal Truth Protocol (SeleneBroadcast @ 30fps)
   useSeleneTruth()
@@ -158,11 +168,17 @@ function AppContent() {
       <TitanSyncBridge />
       <GlassCanvas />
 
-      {/* 🔒 V-06 FIX: Gate MainLayout behind license hydration.
-          Prevents DJ_FOUNDER from briefly seeing FULL_SUITE tabs (Chronos/Hephaestus)
-          before the real tier arrives from the main process via IPC.
-          GlassCanvas + TitanSyncBridge run regardless — they don't render tier-gated UI. */}
-      {licenseReady ? (
+      {/* 🔒 V-06 FIX + 🩸 WAVE 7790: Gate MainLayout behind BOTH license AND
+          performance hydration.
+          - licenseReady: prevents DJ_FOUNDER from briefly seeing FULL_SUITE tabs
+            (Chronos/Hephaestus) before the real license tier arrives via IPC.
+          - isPerformanceHydrated: prevents the HQ→ECO race where TacticalCanvas
+            mounts as HQ (default), runs transferControlToOffscreen() + creates
+            the render worker, then unmounts when the real 'eco' tier arrives a
+            tick later → orphaned worker + GPU Context Lost.
+          GlassCanvas + TitanSyncBridge run regardless — they don't render
+          tier-gated UI nor instantiate the Hyperion worker. */}
+      {licenseReady && isPerformanceHydrated ? (
         <MainLayout />
       ) : null}
     </>

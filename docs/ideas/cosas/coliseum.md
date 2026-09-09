@@ -1,0 +1,2 @@
+DNA_ANALYZER] 📊 Diversity: Strobe Burst usado 2x - Factor: 0.35x
+[Coliseum 🧬] Prenatal abort for strobe_burst via proportional_stretch: G8 (PARAM_ID): Invalid paramId(s): track "a61859d9-849f-4e24-972a-07797959b8bf": paramId="strobeRate"; track "a61859d9-849f-4e24-972a-07797959b8bf": curve.paramId="strobeRate". Must be one of: intensity, color, white, amber, speed, pan, tilt, zoom, focus, iris, gobo1, gobo2, prism, strobe, globalComp, width, direction, scale_x, scale_y, rot_x, rot_y, gobo_rotation, smoke_pump, smoke_density, fan_speed

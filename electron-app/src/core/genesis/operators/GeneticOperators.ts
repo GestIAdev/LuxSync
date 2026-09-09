@@ -894,7 +894,10 @@ export function geneAugmentation(
   // Number of keyframes scales with chaos: 2 (conservative) to 8 (frenzy)
   // 🩸 WAVE 7757 CHAOS FIX: Minimum 3 keyframes (was 2), max 12 (was 8).
   // More keyframes = richer curves = more visible structural variation.
-  const numKfs = Math.max(3, Math.min(12, 3 + Math.floor(effectiveChaos * rng() * 9)))
+  let numKfs = Math.max(3, Math.min(12, 3 + Math.floor(effectiveChaos * rng() * 9)))
+
+  // WAVE 7762 DEADLOCK FIX: Garantizar que no intentamos meter más keyframes que huecos en el grid
+  numKfs = Math.min(numKfs, divisions + 1)
 
   // Generate keyframes snapped to grid points
   const keyframes: HephKeyframe[] = []
@@ -920,8 +923,11 @@ export function geneAugmentation(
     if (usedGridIndices.has(gridIndex)) {
       // All grid points exhausted — nudge by +1 ms to break the tie
       gridIndex = (gridIndex + 1) % (divisions + 1)
+      // WAVE 7762 DEADLOCK FIX: Blindar el bucle circular con failsafe
+      let failsafe = 0
       while (usedGridIndices.has(gridIndex)) {
         gridIndex = (gridIndex + 1) % (divisions + 1)
+        if (failsafe++ > 100) break // Cortacircuitos
       }
     }
     usedGridIndices.add(gridIndex)
@@ -1664,8 +1670,11 @@ export function macroSplice(
     // Insert keyframes maintaining ascending timeMs order
     // Find insertion index for kfStart
     let insertIdxStart = gapIdx + 1
+    // WAVE 7762 DEADLOCK FIX: Blindar bucle con failsafe contra keyframes corruptos
+    let failsafeStart = 0
     while (insertIdxStart < kfs.length && kfs[insertIdxStart].timeMs < kfStart.timeMs) {
       insertIdxStart++
+      if (failsafeStart++ > 1000) break // Cortacircuitos
     }
     kfs.splice(insertIdxStart, 0, kfStart)
     delta.push({
@@ -1676,8 +1685,11 @@ export function macroSplice(
 
     // Find insertion index for kfEnd (after kfStart)
     let insertIdxEnd = insertIdxStart + 1
+    // WAVE 7762 DEADLOCK FIX: Blindar bucle con failsafe contra keyframes corruptos
+    let failsafeEnd = 0
     while (insertIdxEnd < kfs.length && kfs[insertIdxEnd].timeMs < kfEnd.timeMs) {
       insertIdxEnd++
+      if (failsafeEnd++ > 1000) break // Cortacircuitos
     }
     kfs.splice(insertIdxEnd, 0, kfEnd)
     delta.push({

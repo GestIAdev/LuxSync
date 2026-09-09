@@ -434,6 +434,57 @@ function createWindow() {
             callback({ video: undefined, audio: undefined });
         }
     });
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🩸 WAVE 7790: RACE FIX — Registrar did-finish-load y render-process-gone
+    // ANTES de loadFile/loadURL. Antes estos handlers estaban dentro del
+    // callback 'ready-to-show', pero en Electron con file:// la página carga
+    // casi instantáneamente. did-finish-load puede firear ANTES que
+    // ready-to-show, y si el handler aún no está registrado, el evento se
+    // pierde → rendererAlive nunca se setea a true → el TickEngine corre pero
+    // el broadcast callback nunca envía truth al renderer → el minioscilloscope
+    // no se mueve, Glass frames se descartan, el worker queda sordo.
+    // Registrar los handlers aquí garantiza que estén listos antes de que
+    // cualquier evento de carga firee, sin importar el orden.
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Evita que un drop de archivo navegue el BrowserWindow fuera de la app.
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+        if (url.startsWith('file://')) {
+            event.preventDefault();
+        }
+    });
+    mainWindow.webContents.on('did-finish-load', () => {
+        if (!mainWindow)
+            return;
+        // 🚀 WAVE 7581: BOOT GUARD — the main app renderer is up. The launcher →
+        // main window handoff is complete; `window-all-closed` is now safe to act
+        // on a future empty window set. Flipping here (rather than at createWindow
+        // call time) means a crash during load still leaves the guard armed, so
+        // Electron's own crash handling can tear things down without us racing it.
+        isBooting = false;
+        // 🩸 WAVE 7567: Renderer is alive — re-enable broadcast callbacks
+        rendererAlive = true;
+        const { port1, port2 } = new MessageChannelMain();
+        glassPoolManager.attach(port1);
+        mainWindow.webContents.postMessage('glass:port', null, [port2]);
+        // WAVE 7120: Calibration SAB is created in setupCalibrationHandlers (IPCHandlers.ts)
+        // Broadcast fixtures if loaded
+        if (patchedFixtures.length > 0 && mainWindow) {
+            mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
+        }
+    });
+    // 🩸 WAVE 7567: Kill broadcast flood at the source. When the renderer process
+    // crashes or the render frame is disposed (e.g. HMR hot reload in dev), the
+    // webContents.isDestroyed() check still returns false — but .send() throws
+    // "Render frame was disposed before WebFrameMain could be accessed". Electron
+    // logs this to stderr BEFORE the try-catch can swallow it, and the TickEngine
+    // keeps firing at 44Hz → infinite error flood. This handler flips rendererAlive
+    // to false so all broadcast callbacks skip .send() entirely until the renderer
+    // comes back (did-finish-load re-enables it). The TickEngine keeps running,
+    // lights stay on — only the UI broadcast is paused.
+    mainWindow.webContents.on('render-process-gone', (_event, details) => {
+        rendererAlive = false;
+        console.error(`[Main] 🩸 WAVE 7567: Renderer process gone (reason=${details.reason}). Broadcast callbacks paused — lights keep running.`);
+    });
     mainWindow.once('ready-to-show', () => {
         mainWindow?.show();
         if (isDev) {
@@ -445,46 +496,7 @@ function createWindow() {
                 mainWindow?.webContents.toggleDevTools();
             }
         });
-        // Evita que un drop de archivo navegue el BrowserWindow fuera de la app.
-        mainWindow.webContents.on('will-navigate', (event, url) => {
-            if (url.startsWith('file://')) {
-                event.preventDefault();
-            }
-        });
-        mainWindow.webContents.on('did-finish-load', () => {
-            if (!mainWindow)
-                return;
-            // 🚀 WAVE 7581: BOOT GUARD — the main app renderer is up. The launcher →
-            // main window handoff is complete; `window-all-closed` is now safe to act
-            // on a future empty window set. Flipping here (rather than at createWindow
-            // call time) means a crash during load still leaves the guard armed, so
-            // Electron's own crash handling can tear things down without us racing it.
-            isBooting = false;
-            // 🩸 WAVE 7567: Renderer is alive — re-enable broadcast callbacks
-            rendererAlive = true;
-            const { port1, port2 } = new MessageChannelMain();
-            glassPoolManager.attach(port1);
-            mainWindow.webContents.postMessage('glass:port', null, [port2]);
-            // WAVE 7120: Calibration SAB is created in setupCalibrationHandlers (IPCHandlers.ts)
-            // Broadcast fixtures if loaded
-            if (patchedFixtures.length > 0 && mainWindow) {
-                mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
-            }
-        });
-        // 🩸 WAVE 7567: Kill broadcast flood at the source. When the renderer process
-        // crashes or the render frame is disposed (e.g. HMR hot reload in dev), the
-        // webContents.isDestroyed() check still returns false — but .send() throws
-        // "Render frame was disposed before WebFrameMain could be accessed". Electron
-        // logs this to stderr BEFORE the try-catch can swallow it, and the TickEngine
-        // keeps firing at 44Hz → infinite error flood. This handler flips rendererAlive
-        // to false so all broadcast callbacks skip .send() entirely until the renderer
-        // comes back (did-finish-load re-enables it). The TickEngine keeps running,
-        // lights stay on — only the UI broadcast is paused.
-        mainWindow.webContents.on('render-process-gone', (_event, details) => {
-            rendererAlive = false;
-            console.error(`[Main] 🩸 WAVE 7567: Renderer process gone (reason=${details.reason}). Broadcast callbacks paused — lights keep running.`);
-        });
-    }); // close ready-to-show
+    });
     if (isDev) {
         mainWindow.loadURL('http://localhost:5173');
     }

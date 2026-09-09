@@ -410,9 +410,9 @@ export function createEmptyShowFile(name = 'New Show') {
         modifiedAt: now,
         createdWith: '1.0.0',
         stage: {
-            width: 50, // WAVE 7609: Warehouse-scale default (was 12)
-            depth: 25, // WAVE 7609: Warehouse-scale default (was 8)
-            height: 15, // WAVE 7609: Warehouse-scale default (was 6)
+            width: 25, // WAVE 7609: Warehouse-scale default (was 12)
+            depth: 12, // WAVE 7609: Warehouse-scale default (was 8)
+            height: 8, // WAVE 7609: Warehouse-scale default (was 6)
             gridSize: 0.25
         },
         visuals: {

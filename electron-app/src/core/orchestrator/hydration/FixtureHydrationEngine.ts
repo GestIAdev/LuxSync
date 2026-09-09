@@ -207,6 +207,7 @@ export class FixtureHydrationEngine {
     }
 
     this._refreshAetherMoverShieldMap()
+    this._refreshAetherNodeFixtureMap()
   }
 
   /**
@@ -215,6 +216,7 @@ export class FixtureHydrationEngine {
   public unregisterAetherDevice(deviceId: string): void {
     this.ctx.aetherGraph.unregisterDevice(deviceId as import('../../aether/types').DeviceId)
     this._refreshAetherMoverShieldMap()
+    this._refreshAetherNodeFixtureMap()
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -305,6 +307,37 @@ export class FixtureHydrationEngine {
     if (ctx.colorAdapter) {
       ctx.colorAdapter.setMoverNodeIds(moverColorNodeIds)
     }
+  }
+
+  /**
+   * WAVE 7790: Reconstruye el mapa nodeId → fixtureId (deviceId) para el NodeArbiter.
+   * Iterera todas las familias del NodeGraph y registra cada nodo.
+   * Permite que el escudo WAVE 4713 (_manualDimmerFixtureIds) reconozca
+   * Cell Node IDs modernos (ej: "impact-20") que no contienen ':'.
+   * Patch-time only — costo 0 en hot-path.
+   */
+  private _refreshAetherNodeFixtureMap(): void {
+    const ctx = this.ctx
+    const arbiter = ctx.aetherArbiter
+    if (!arbiter || !ctx.aetherGraph) {
+      return
+    }
+
+    const nodeFixtureMap = new Map<string, string>()
+    const families: NodeFamily[] = [
+      NodeFamily.IMPACT,
+      NodeFamily.COLOR,
+      NodeFamily.KINETIC,
+      NodeFamily.BEAM,
+      NodeFamily.ATMOSPHERE,
+    ]
+    for (let fi = 0; fi < families.length; fi++) {
+      const view = ctx.aetherGraph.getView(families[fi])
+      view.forEach((node) => {
+        nodeFixtureMap.set(node.nodeId, node.deviceId)
+      })
+    }
+    arbiter.setNodeFixtureMap(nodeFixtureMap)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

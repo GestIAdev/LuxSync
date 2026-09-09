@@ -14,8 +14,20 @@ const nodeBuiltins = [
   'electron',
 ]
 
+// 🩸 WAVE 7790: HYPERION WORKER file:// FIX — bundle Web Workers as classic
+// IIFE scripts instead of ESM modules. Chromium cannot load ESM worker
+// modules from file:// (opaque origin, no CORS/MIME headers). In DEV the
+// Vite dev server serves them over HTTP so ESM works; in PROD (Electron
+// loadFile → file://) the ESM worker never executes its top-level script,
+// leaving TacticalCanvas stuck on "INITIALIZING..." or crashing the GPU
+// process. IIFE workers are self-contained single files with no static
+// imports, so they load fine under file://.
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  worker: {
+    format: 'iife',
+  },
   plugins: [
     react(),
     electron([

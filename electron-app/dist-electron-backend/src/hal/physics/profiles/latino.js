@@ -261,6 +261,12 @@ export const LATINO_PROFILE = {
     // 🌊 WAVE 4826.1: Release 600→280ms — decay rápido para Tungsten en Ambient, cortes suaves sin negro abrupto
     ambientAttackMs: 65,
     ambientReleaseMs: 135,
+    // ⚒️ WAVE 7750: FLOOR TERREMOTO HÍBRIDO — inyecta subgrave continuo del
+    // dembow en el envFloor. El TÚN sostenido del reggaetón baña el suelo de
+    // luz entre golpes, mientras la compuerta del envelope corta a negro total
+    // cuando el DJ corta la mezcla. floorSubWeight 0.4 (subBass latino típico
+    // 0.20-0.35 → aporta 0.08-0.14 al input, justo sobre el gate 0.08).
+    floorSubWeight: 0.4,
     // ═══════════════════════════════════════════════════════════════
     // WAVE 7573: AMBIENT INTENSITY BOOST — Washer Tungsten necesita LUZ
     //

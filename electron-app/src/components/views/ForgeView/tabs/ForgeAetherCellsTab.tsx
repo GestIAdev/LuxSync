@@ -18,6 +18,20 @@ import { canAdmit } from '../../../../core/forge/cellTypeAdmittance'
 import { type FixtureChannel, type ChannelType } from '../../../../types/FixtureDefinition'
 import { HARD_SAFETY_CHANNEL_TYPES } from '../../../../core/aether/ingestion/NodeExtractionPipeline'
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// WAVE 7790: Zona canónicas del dropdown de Aether Cells.
+// Usado para detectar valores guardados que NO están en la lista canónica
+// y renderizar un <option> fallback dinámico para evitar que el <select>
+// revierta silenciosamente a "" (perdiendo el valor guardado en el JSON).
+// ═══════════════════════════════════════════════════════════════════════════════
+const ZONE_OPTIONS = new Set<string>([
+  '', 'ambient', 'air', 'floor', 'strobe', 'flash',
+  'front', 'front-left', 'front-right',
+  'back', 'back-left', 'back-right',
+  'movers-left', 'movers-right',
+  'left', 'right', 'movement', 'dimmer', 'unassigned',
+])
+
 export interface ForgeAetherCellsTabProps {
   cells: readonly IForgeCellBuilder[]
   channels: readonly FixtureChannel[]
@@ -237,11 +251,26 @@ function DroppableCellBox({
           <option value="air">air</option>
           <option value="floor">floor</option>
           <option value="strobe">strobe</option>
+          <option value="flash">flash</option>
           <option value="front">front</option>
+          <option value="front-left">front-left</option>
+          <option value="front-right">front-right</option>
           <option value="back">back</option>
+          <option value="back-left">back-left</option>
+          <option value="back-right">back-right</option>
+          <option value="movers-left">movers-left</option>
+          <option value="movers-right">movers-right</option>
+          <option value="left">left</option>
+          <option value="right">right</option>
           <option value="movement">movement</option>
           <option value="dimmer">dimmer</option>
           <option value="unassigned">unassigned</option>
+          {/* WAVE 7790: Fallback para zonas guardadas en perfiles legacy que no
+              coinciden con ninguna opción canónica. Sin este option, el <select>
+              revierte silenciosamente a "" y el valor guardado se pierde. */}
+          {cell.aetherZone && !ZONE_OPTIONS.has(cell.aetherZone) && (
+            <option value={cell.aetherZone}>{cell.aetherZone}</option>
+          )}
         </select>
       </div>
 

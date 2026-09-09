@@ -482,8 +482,11 @@ export class CurveEvaluator {
       // El while avanza como máximo 1-2 posiciones por frame en playback normal.
       // Solo en fast-forward podría avanzar más, pero sigue siendo O(n) amortizado
       // sobre la vida del clip (cada keyframe se cruza exactamente una vez).
+      // WAVE 7762 DEADLOCK FIX: Blindar bucle con failsafe contra keyframes corruptos
+      let failsafe = 0
       while (cursor < kfs.length - 2 && t >= kfs[cursor + 1].timeMs) {
         cursor++
+        if (failsafe++ > 1000) break // Cortacircuitos
       }
     } else {
       // SEEK HACIA ATRÁS → Binary search (O(log n))

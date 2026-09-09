@@ -96,8 +96,8 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   // WAVE 7647: Read actual stage dimensions from the store. Falls back to
   // props (for tests/transitions) or the warehouse-scale default (50×25).
   const storeStage = useStageStore(s => s.showFile?.stage)
-  const stageWidth = stageWidthProp ?? storeStage?.width ?? 50
-  const stageDepth = stageDepthProp ?? storeStage?.depth ?? 25
+  const stageWidth = stageWidthProp ?? storeStage?.width ?? 25
+  const stageDepth = stageDepthProp ?? storeStage?.depth ?? 12
 
   // ── FASE 7: Interaction state ─────────────────────────────────────────────
   const [dragState, setDragState] = useState<DragState2D | null>(null)

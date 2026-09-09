@@ -97,9 +97,9 @@ interface SceneV1 {
  * Stage reference dimensions for position generation
  */
 const STAGE_REF = {
-  width: 50,   // WAVE 7609: Warehouse-scale (was 12)
-  depth: 25,   // WAVE 7609: Warehouse-scale (was 8)
-  height: 15   // WAVE 7609: Warehouse-scale (was 6)
+  width: 25,   // WAVE 7609: Warehouse-scale (was 12)
+  depth: 12,   // WAVE 7609: Warehouse-scale (was 8)
+  height: 8    // WAVE 7609: Warehouse-scale (was 6)
 }
 
 /**

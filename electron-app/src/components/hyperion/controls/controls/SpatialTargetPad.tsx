@@ -130,16 +130,22 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
   //   Left   = X-  (stage right from audience)
   //   Right  = X+  (stage left from audience)
 
-  const halfW = stage.width / 2
-  const halfD = stage.depth / 2
+  // 1. Extraemos con fallback seguro a 25x12x7.5
+  const safeW = (stage && stage.width && !isNaN(stage.width)) ? stage.width : 25
+  const safeD = (stage && stage.depth && !isNaN(stage.depth)) ? stage.depth : 12
+  const safeH = (stage && stage.height && !isNaN(stage.height)) ? stage.height : 7.5
+
+  // 2. Dividimos con total seguridad matemática
+  const halfW = safeW / 2
+  const halfD = safeD / 2
 
   /** Convert world X/Z to percentage position on the grid element */
   const worldToGrid = useCallback(
     (x: number, z: number): { pctX: number; pctZ: number } => ({
-      pctX: ((x + halfW) / stage.width) * 100,
-      pctZ: ((z + halfD) / stage.depth) * 100, // Z- is top
+      pctX: ((x + halfW) / safeW) * 100,
+      pctZ: ((z + halfD) / safeD) * 100, // Z- is top
     }),
-    [halfW, halfD, stage.width, stage.depth]
+    [halfW, halfD, safeW, safeD]
   )
 
   /** Convert pixel position on the grid element to world X/Z */
@@ -151,11 +157,11 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
       const normX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
       const normZ = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
       return {
-        x: normX * stage.width - halfW,
-        z: normZ * stage.depth - halfD, // screen top → Z- (back), bottom → Z+ (front)
+        x: normX * safeW - halfW,
+        z: normZ * safeD - halfD, // screen top → Z- (back), bottom → Z+ (front)
       }
     },
-    [stage.width, stage.depth, halfW, halfD]
+    [safeW, safeD, halfW, halfD]
   )
 
   /** Convert pixel Y on the slider to world height Y */
@@ -166,9 +172,9 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
       const rect = el.getBoundingClientRect()
       // Top of slider = stage.height, bottom = 0
       const norm = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
-      return (1 - norm) * stage.height
+      return (1 - norm) * safeH
     },
-    [stage.height]
+    [safeH]
   )
 
   // ── GRID DRAG HANDLERS ──
@@ -365,7 +371,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
 
     // Vertical lines (X axis)
     for (let x = -halfW; x <= halfW; x += gridStep) {
-      const pct = ((x + halfW) / stage.width) * 100
+      const pct = ((x + halfW) / safeW) * 100
       const isCenter = Math.abs(x) < 0.01
       lines.push(
         <div
@@ -378,7 +384,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
 
     // Horizontal lines (Z axis)
     for (let z = -halfD; z <= halfD; z += gridStep) {
-      const pct = ((z + halfD) / stage.depth) * 100
+      const pct = ((z + halfD) / safeD) * 100
       const isCenter = Math.abs(z) < 0.01
       lines.push(
         <div
@@ -390,7 +396,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
     }
 
     return lines
-  }, [stage.width, stage.depth, stage.gridSize, halfW, halfD])
+  }, [safeW, safeD, stage.gridSize, halfW, halfD])
 
   // ── FIXTURE GHOSTS (memoized) ──
 
@@ -474,7 +480,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
 
   // ── HEIGHT SLIDER POSITION ──
   // Top of slider = max height, bottom = 0
-  const heightPct = stage.height > 0 ? (target.y / stage.height) * 100 : 0
+  const heightPct = safeH > 0 ? (target.y / safeH) * 100 : 0
   const heightFillPct = Math.max(0, Math.min(100, heightPct))
   // Thumb position: top = 100% height → 0% from top. bottom = 0% height → 100% from top.
   const thumbTopPct = 100 - heightFillPct

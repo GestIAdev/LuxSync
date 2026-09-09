@@ -295,6 +295,12 @@ export class FixtureMapper {
             case 'strobe':
                 // Strobe speed: 0 = no strobe, higher = faster
                 // phantomChannels tiene prioridad (viene del Arbiter/manual override)
+                // ⚒️ WAVE 7751: TRUTH ENGINE — única conversión float→8-bit del strobe.
+                // strobeNorm (HTP-merged en TickEngine) tiene prioridad sobre el
+                // strobe entero legacy. Math.round es la cuantización final única.
+                if (state.strobeNorm !== undefined) {
+                    return Math.round(state.strobeNorm * 255);
+                }
                 return state.phantomChannels?.['strobe'] ?? state.strobe ?? (channel.defaultValue ?? 0);
             // ═══════════════════════════════════════════════════════════════════
             // COLOR CHANNELS

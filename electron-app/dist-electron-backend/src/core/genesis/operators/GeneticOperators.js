@@ -413,21 +413,33 @@ export function makeFatTailedRng(baseRng) {
 // OPERATOR 1: FOCAL MUTATION (Context-aware — replaces point_mutation)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * 🔬 KINETIC SECURITY PARAMETER LIST (WAVE 7531)
+ * 🚫 WAVE 7758: KINETIC BLACKLIST — TOTAL EXCLUSION.
  *
- * Mechanical channels (pan, tilt) control physical moving heads with inertia,
- * servo motors, and mechanical wear limits. A Cauchy jump of 0.80·span on a
- * pan track ∈ [0,255] would command a 204° instantaneous rotation — this can
- * damage servo gears, snap belts, or trip safety cutouts. These channels are
- * strictly isolated from fat-tailed distributions and use conservative uniform
- * magnitudes only.
+ * Mechanical channels (pan, tilt, rot_x, rot_y) control physical moving heads
+ * with inertia, servo motors, and mechanical wear limits. A randomly generated
+ * pan/tilt curve could command a 204° instantaneous rotation, snap belts, trip
+ * safety cutouts, or point lasers at the audience.
  *
- * Optical channels (intensity, color, strobe, zoom) control LEDs, dimmers, and
- * color wheels — solid-state or low-inertia systems that can tolerate abrupt
- * full-range jumps without mechanical damage. These channels are eligible for
- * Cauchy-sampled magnitudes to enable punctuated equilibrium.
+ * Movement is HUMAN-ONLY domain. The genetic engine must NEVER mutate, inject,
+ * splice, or otherwise alter kinetic tracks. The operator can always disable
+ * Genesis from the UI or delete a champion with a bad color, but a champion
+ * with a randomly generated pan curve that swings a 5W laser into the crowd
+ * is a liability.
+ *
+ * This blacklist replaces the old KINETIC_SECURE_PARAMS (which only softened
+ * Cauchy magnitudes on pan/tilt but still allowed mutations). Now: ZERO
+ * kinetic mutations, period.
+ *
+ * All operators MUST filter tracks against this set before touching them.
  */
-const KINETIC_SECURE_PARAMS = new Set(['pan', 'tilt']);
+const KINETIC_BLACKLIST = new Set(['pan', 'tilt', 'rot_x', 'rot_y']);
+/**
+ * Returns true if a paramId is kinetic (mechanical movement) and must be
+ * excluded from ALL genetic operations.
+ */
+function isKineticParam(paramId) {
+    return KINETIC_BLACKLIST.has(paramId);
+}
 /**
  * Shifts keyframe values by perceptible amounts on DNA-selected tracks.
  * Aggression favors intensity/strobe; organicity favors color/zoom/pan/tilt.
@@ -468,16 +480,21 @@ export function focalMutation(parent, seed) {
         targetParamIds = ['intensity', 'strobe'];
     }
     else if (organicity > 0.5) {
-        targetParamIds = ['color', 'zoom', 'pan', 'tilt'];
+        // 🚫 WAVE 7758: pan/tilt REMOVED from organicity targets — kinetic blacklist.
+        // Movement is human-only. Organic organisms mutate color/zoom instead.
+        targetParamIds = ['color', 'zoom'];
     }
     // 🎨 WAVE 7546: Include color tracks (valueType: 'color') alongside numeric
     // tracks. Previously, color tracks were excluded by the `valueType === 'number'`
     // filter, preventing focal_mutation from ever mutating color keyframes even
     // when `organicity > 0.5` selected 'color' as a target paramId.
+    // 🚫 WAVE 7758: EXCLUDE kinetic tracks entirely — no pan/tilt/rot mutations.
     let numericTracks = child.tracks
         .map((t, i) => ({ track: t, index: i }))
         .filter((t) => (t.track.curve.valueType === 'number' || t.track.curve.valueType === 'color')
-        && t.track.curve.keyframes.length > 0);
+        && t.track.curve.keyframes.length > 0
+        && !isKineticParam(t.track.paramId) // 🚫 NO kinetic mutations
+    );
     if (targetParamIds) {
         const filtered = numericTracks.filter((t) => targetParamIds.includes(t.track.paramId));
         if (filtered.length > 0) {
@@ -488,13 +505,14 @@ export function focalMutation(parent, seed) {
         return { clip: child, delta, operator: 'focal_mutation', l2Distance: 0 };
     }
     // 🔬 WAVE 7536: PLEIOTROPY — number of simultaneous mutations scaled by chaos.
-    // Amplifier: chaos=0.66 already maps to 1.0, so mid-chaos organisms enter
-    // the full pleiotropy regime earlier. Low-chaos organisms remain conservative.
-    //   effectiveChaos=0.0 → always 1 mutation (conservative)
-    //   effectiveChaos=0.5 → 1-2 mutations (moderate pleiotropy)
-    //   effectiveChaos=1.0 → 1-3 mutations (frenzy — complex structural variation)
+    // 🩸 WAVE 7757 CHAOS FIX: Aggressive pleiotropy — 2-6 mutations, not 1-3.
+    // Previously, chaos < 0.5 → always 1 mutation. Too conservative — operators
+    // were "light", barely changing the clip. Now:
+    //   effectiveChaos=0.0 → 2 mutations (baseline aggression)
+    //   effectiveChaos=0.5 → 2-5 mutations (moderate)
+    //   effectiveChaos=1.0 → 2-8 mutations (frenzy — real structural variation)
     const effectiveChaos = Math.min(1.0, chaos * 1.5);
-    const numMutations = 1 + Math.floor(effectiveChaos * rng() * 3);
+    const numMutations = 2 + Math.floor(effectiveChaos * rng() * 6);
     for (let m = 0; m < numMutations; m++) {
         const pick = numericTracks[Math.floor(rng() * numericTracks.length)];
         const track = pick.track;
@@ -528,19 +546,13 @@ export function focalMutation(parent, seed) {
         const range = track.curve.range;
         const span = range[1] - range[0];
         const oldVal = kf.value;
-        // 🔬 KINETIC SECURITY (re-evaluated per track inside the loop):
-        //    pan/tilt use conservative uniform magnitude.
-        //    Optical channels use Cauchy-sampled magnitude for punctuated equilibrium.
-        let shiftMagnitude;
-        if (KINETIC_SECURE_PARAMS.has(track.paramId)) {
-            // Mechanical fixture — uniform [0.20, 0.40), safe for servo/motor systems
-            shiftMagnitude = 0.20 + rng() * 0.20;
-        }
-        else {
-            // Optical channel — Cauchy(scale=0.15, maxAbs=0.60)
-            //    Median |shift| ≈ 0.15, but heavy tails allow rare jumps up to 0.60·span
-            shiftMagnitude = Math.min(0.60, Math.abs(fatRng.sampleCauchy(0.15, 0.60)));
-        }
+        // 🚫 WAVE 7758: Kinetic tracks are already filtered out before this loop.
+        //    All remaining tracks are optical (intensity/color/strobe/zoom/etc.)
+        //    and safe for Cauchy-sampled magnitudes.
+        // 🩸 WAVE 7757 CHAOS FIX: Cauchy scale 0.25, maxAbs 0.80.
+        //    Median shift = 0.25·span — visible, not imperceptible.
+        //    Rare jumps up to 0.80·span cross aptitude valleys.
+        const shiftMagnitude = Math.min(0.80, Math.abs(fatRng.sampleCauchy(0.25, 0.80)));
         const sign = rng() < 0.5 ? -1 : 1;
         const newVal = clamp(oldVal + sign * shiftMagnitude * span, range[0], range[1]);
         kf.value = newVal;
@@ -594,7 +606,15 @@ export function focalMutation(parent, seed) {
 // OPERATOR 2: GENE AUGMENTATION (Lamarckian — replaces gene_duplication)
 // ═══════════════════════════════════════════════════════════════════════════
 /** Hardware parameters that gene_augmentation can inject. */
-const AUGMENTABLE_PARAMS = ['intensity', 'color', 'strobe', 'pan', 'tilt', 'zoom'];
+// 🩸 WAVE 7757 CHAOS FIX: Expanded from 6 → 18 params.
+// 🚫 WAVE 7758 KINETIC BLACKLIST: pan/tilt/rot_x/rot_y REMOVED.
+// Movement is human-only — no randomly generated kinetic curves.
+const AUGMENTABLE_PARAMS = [
+    'intensity', 'color', 'strobe', 'zoom',
+    'white', 'amber', 'speed', 'focus', 'iris',
+    'gobo1', 'gobo2', 'prism', 'direction', 'width',
+    'smoke_density', 'fan_speed',
+];
 /** Canonical ranges per paramId for curve generation. */
 const PARAM_RANGES = {
     intensity: [0, 1],
@@ -603,6 +623,20 @@ const PARAM_RANGES = {
     pan: [0, 255],
     tilt: [0, 255],
     zoom: [0, 1],
+    white: [0, 1],
+    amber: [0, 1],
+    speed: [0, 1],
+    focus: [0, 1],
+    iris: [0, 1],
+    gobo1: [0, 1],
+    gobo2: [0, 1],
+    prism: [0, 1],
+    direction: [0, 1],
+    width: [0, 1],
+    rot_x: [0, 360],
+    rot_y: [0, 360],
+    smoke_density: [0, 1],
+    fan_speed: [0, 1],
 };
 /** 3-decimal precision clamp. */
 function clamp3(v, lo, hi) {
@@ -729,7 +763,11 @@ export function geneAugmentation(parent, seed) {
     }
     const gridStep = duration / divisions;
     // Number of keyframes scales with chaos: 2 (conservative) to 8 (frenzy)
-    const numKfs = Math.max(2, Math.min(8, 2 + Math.floor(effectiveChaos * rng() * 6)));
+    // 🩸 WAVE 7757 CHAOS FIX: Minimum 3 keyframes (was 2), max 12 (was 8).
+    // More keyframes = richer curves = more visible structural variation.
+    let numKfs = Math.max(3, Math.min(12, 3 + Math.floor(effectiveChaos * rng() * 9)));
+    // WAVE 7762 DEADLOCK FIX: Garantizar que no intentamos meter más keyframes que huecos en el grid
+    numKfs = Math.min(numKfs, divisions + 1);
     // Generate keyframes snapped to grid points
     const keyframes = [];
     const usedGridIndices = new Set();
@@ -752,8 +790,12 @@ export function geneAugmentation(parent, seed) {
         if (usedGridIndices.has(gridIndex)) {
             // All grid points exhausted — nudge by +1 ms to break the tie
             gridIndex = (gridIndex + 1) % (divisions + 1);
+            // WAVE 7762 DEADLOCK FIX: Blindar el bucle circular con failsafe
+            let failsafe = 0;
             while (usedGridIndices.has(gridIndex)) {
                 gridIndex = (gridIndex + 1) % (divisions + 1);
+                if (failsafe++ > 100)
+                    break; // Cortacircuitos
             }
         }
         usedGridIndices.add(gridIndex);
@@ -962,10 +1004,11 @@ export function spatialResonance(parent, seed) {
     const fatRng = makeFatTailedRng(rng);
     const child = deepClone(parent);
     const delta = [];
-    // Step A: Democratic Target Selection — exclude color tracks
+    // Step A: Democratic Target Selection — exclude color tracks AND kinetic tracks
+    // 🚫 WAVE 7758: No phase mutations on pan/tilt/rot — movement is human-only.
     const candidates = child.tracks
         .map((t, i) => ({ track: t, index: i }))
-        .filter((t) => t.track.paramId !== 'color');
+        .filter((t) => t.track.paramId !== 'color' && !isKineticParam(t.track.paramId));
     if (candidates.length === 0) {
         return { clip: child, delta, operator: 'spatial_resonance', l2Distance: 0 };
     }
@@ -1283,9 +1326,13 @@ export function macroSplice(parent, seed) {
     const delta = [];
     // Step A: Find numeric tracks with ≥2 keyframes and a gap > 150ms
     // 🔬 WAVE 7531: Reduced from 300ms → 150ms for more insertion opportunities.
+    // 🚫 WAVE 7758: EXCLUDE kinetic tracks — no splicing into pan/tilt/rot curves.
     const numericTracks = child.tracks
         .map((t, i) => ({ track: t, index: i }))
-        .filter((t) => t.track.curve.valueType === 'number' && t.track.curve.keyframes.length >= 2);
+        .filter((t) => t.track.curve.valueType === 'number'
+        && t.track.curve.keyframes.length >= 2
+        && !isKineticParam(t.track.paramId) // 🚫 NO kinetic splicing
+    );
     if (numericTracks.length === 0) {
         return { clip: child, delta, operator: 'macro_splice', l2Distance: 0 };
     }
@@ -1311,11 +1358,12 @@ export function macroSplice(parent, seed) {
     const organicity = genome?.organicity ?? 0.5;
     // 🔬 WAVE 7536: PLEIOTROPY — number of simultaneous splices scaled by chaos.
     // Amplifier: chaos=0.66 already maps to 1.0 (same as focal_mutation).
-    //   effectiveChaos=0.0 → always 1 splice (conservative)
-    //   effectiveChaos=0.5 → 1-2 splices (moderate)
-    //   effectiveChaos=1.0 → 1-2 splices (high-chaos organisms insert multiple blocks)
+    // 🩸 WAVE 7757 CHAOS FIX: 2-5 splices (was 1-3). More structural insertion.
+    //   effectiveChaos=0.0 → 2 splices (baseline)
+    //   effectiveChaos=0.5 → 2-4 splices (moderate)
+    //   effectiveChaos=1.0 → 2-7 splices (high-chaos organisms insert multiple blocks)
     const effectiveChaos = Math.min(1.0, chaos * 1.5);
-    const maxSplices = 1 + Math.floor(effectiveChaos * rng() * 2);
+    const maxSplices = 2 + Math.floor(effectiveChaos * rng() * 5);
     // Deterministic Fisher-Yates shuffle of the gap list using our rng.
     // This ensures reproducible offspring from the same seed while allowing
     // multiple distinct gaps to be selected in a single invocation.
@@ -1361,11 +1409,8 @@ export function macroSplice(parent, seed) {
             const roll = rng();
             archetype = roll < 0.33 ? 'stutter' : roll < 0.66 ? 'peak' : 'breath';
         }
-        // 🔬 KINETIC SECURITY (re-evaluated per track inside the loop):
-        //    Each splice checks whether the current track is mechanical (pan/tilt).
-        //    Even during a multi-splice frenzy, physical fixtures are never subjected
-        //    to Cauchy/Pareto bounds.
-        const isKinetic = KINETIC_SECURE_PARAMS.has(track.paramId);
+        // 🚫 WAVE 7758: Kinetic tracks are already filtered out before this loop.
+        //    All remaining tracks are optical — safe for Cauchy/Pareto chaos.
         // Step C: Injection — create 2 keyframes (start and end of macro block)
         const gapStart = kfA.timeMs;
         const gapEnd = kfB.timeMs;
@@ -1377,68 +1422,36 @@ export function macroSplice(parent, seed) {
         let blockInterp;
         if (archetype === 'stutter') {
             // Tight block dropping value, hold interpolation
-            if (isKinetic) {
-                // 🔬 KINETIC SECURITY: conservative uniform, drop by 0.20·span (NOT to 0)
-                const blockWidth = 80 + Math.floor(rng() * 41); // 80-120ms
-                blockStartMs = gapMid - Math.round(blockWidth / 2);
-                blockEndMs = blockStartMs + blockWidth;
-                blockValue = clamp((typeof valA === 'number' ? valA : range[0]) - 0.20 * span, range[0], range[1]);
-                blockInterp = 'hold';
-            }
-            else {
-                // 🔬 OPTICAL CHAOS: Pareto width (occasionally 200ms+), Cauchy drop magnitude
-                const blockWidth = Math.min(gapMs - 2, Math.floor(fatRng.samplePareto(80, 2.5)));
-                blockStartMs = gapMid - Math.round(blockWidth / 2);
-                blockEndMs = blockStartMs + blockWidth;
-                // Cauchy drop: median ~0.30·span, but occasionally drops to absolute 0
-                const dropMag = Math.min(1.0, Math.abs(fatRng.sampleCauchy(0.30, 1.0)));
-                blockValue = clamp((typeof valA === 'number' ? valA : range[0]) - dropMag * span, range[0], range[1]);
-                blockInterp = 'hold';
-            }
+            // 🔬 OPTICAL CHAOS: Pareto width (occasionally 200ms+), Cauchy drop magnitude
+            const blockWidth = Math.min(gapMs - 2, Math.floor(fatRng.samplePareto(80, 2.5)));
+            blockStartMs = gapMid - Math.round(blockWidth / 2);
+            blockEndMs = blockStartMs + blockWidth;
+            // Cauchy drop: median ~0.30·span, but occasionally drops to absolute 0
+            const dropMag = Math.min(1.0, Math.abs(fatRng.sampleCauchy(0.30, 1.0)));
+            blockValue = clamp((typeof valA === 'number' ? valA : range[0]) - dropMag * span, range[0], range[1]);
+            blockInterp = 'hold';
         }
         else if (archetype === 'peak') {
             // Spike block
-            if (isKinetic) {
-                // 🔬 KINETIC SECURITY: conservative uniform +0.40·span
-                const blockWidth = 150 + Math.floor(rng() * 51); // 150-200ms
-                blockStartMs = gapMid - Math.round(blockWidth / 2);
-                blockEndMs = blockStartMs + blockWidth;
-                const peakVal = (typeof valA === 'number' ? valA : range[0]) + 0.40 * span;
-                blockValue = clamp(peakVal, range[0], range[1]);
-                blockInterp = rng() < 0.5 ? 'linear' : 'hold';
-            }
-            else {
-                // 🔬 OPTICAL CHAOS: Cauchy spike magnitude (occasionally hits range[1])
-                const blockWidth = 150 + Math.floor(rng() * 101); // 150-250ms (widened)
-                blockStartMs = gapMid - Math.round(blockWidth / 2);
-                blockEndMs = blockStartMs + blockWidth;
-                const peakMag = Math.min(1.0, Math.abs(fatRng.sampleCauchy(0.35, 0.90)));
-                const peakVal = (typeof valA === 'number' ? valA : range[0]) + peakMag * span;
-                blockValue = clamp(peakVal, range[0], range[1]);
-                blockInterp = rng() < 0.5 ? 'linear' : 'hold';
-            }
+            // 🔬 OPTICAL CHAOS: Cauchy spike magnitude (occasionally hits range[1])
+            const blockWidth = 150 + Math.floor(rng() * 101); // 150-250ms
+            blockStartMs = gapMid - Math.round(blockWidth / 2);
+            blockEndMs = blockStartMs + blockWidth;
+            const peakMag = Math.min(1.0, Math.abs(fatRng.sampleCauchy(0.35, 0.90)));
+            const peakVal = (typeof valA === 'number' ? valA : range[0]) + peakMag * span;
+            blockValue = clamp(peakVal, range[0], range[1]);
+            blockInterp = rng() < 0.5 ? 'linear' : 'hold';
         }
         else {
             // Breath: smooth dip
-            if (isKinetic) {
-                // 🔬 KINETIC SECURITY: conservative uniform -0.30·span
-                const blockWidth = 300 + Math.floor(rng() * 200); // 300-500ms
-                blockStartMs = gapMid - Math.round(blockWidth / 2);
-                blockEndMs = blockStartMs + blockWidth;
-                const breathVal = (typeof valA === 'number' ? valA : range[1]) - 0.30 * span;
-                blockValue = clamp(breathVal, range[0], range[1]);
-                blockInterp = 'bezier';
-            }
-            else {
-                // 🔬 OPTICAL CHAOS: Cauchy dip (occasionally to absolute 0), Pareto width
-                const blockWidth = Math.min(gapMs - 2, Math.floor(fatRng.samplePareto(250, 2.0)));
-                blockStartMs = gapMid - Math.round(blockWidth / 2);
-                blockEndMs = blockStartMs + blockWidth;
-                const dipMag = Math.min(1.0, Math.abs(fatRng.sampleCauchy(0.30, 0.90)));
-                const breathVal = (typeof valA === 'number' ? valA : range[1]) - dipMag * span;
-                blockValue = clamp(breathVal, range[0], range[1]);
-                blockInterp = 'bezier';
-            }
+            // 🔬 OPTICAL CHAOS: Cauchy dip (occasionally to absolute 0), Pareto width
+            const blockWidth = Math.min(gapMs - 2, Math.floor(fatRng.samplePareto(250, 2.0)));
+            blockStartMs = gapMid - Math.round(blockWidth / 2);
+            blockEndMs = blockStartMs + blockWidth;
+            const dipMag = Math.min(1.0, Math.abs(fatRng.sampleCauchy(0.30, 0.90)));
+            const breathVal = (typeof valA === 'number' ? valA : range[1]) - dipMag * span;
+            blockValue = clamp(breathVal, range[0], range[1]);
+            blockInterp = 'bezier';
         }
         // Clamp block times within the gap
         blockStartMs = Math.max(blockStartMs, gapStart + 1);
@@ -1468,8 +1481,12 @@ export function macroSplice(parent, seed) {
         // Insert keyframes maintaining ascending timeMs order
         // Find insertion index for kfStart
         let insertIdxStart = gapIdx + 1;
+        // WAVE 7762 DEADLOCK FIX: Blindar bucle con failsafe contra keyframes corruptos
+        let failsafeStart = 0;
         while (insertIdxStart < kfs.length && kfs[insertIdxStart].timeMs < kfStart.timeMs) {
             insertIdxStart++;
+            if (failsafeStart++ > 1000)
+                break; // Cortacircuitos
         }
         kfs.splice(insertIdxStart, 0, kfStart);
         delta.push({
@@ -1479,8 +1496,12 @@ export function macroSplice(parent, seed) {
         });
         // Find insertion index for kfEnd (after kfStart)
         let insertIdxEnd = insertIdxStart + 1;
+        // WAVE 7762 DEADLOCK FIX: Blindar bucle con failsafe contra keyframes corruptos
+        let failsafeEnd = 0;
         while (insertIdxEnd < kfs.length && kfs[insertIdxEnd].timeMs < kfEnd.timeMs) {
             insertIdxEnd++;
+            if (failsafeEnd++ > 1000)
+                break; // Cortacircuitos
         }
         kfs.splice(insertIdxEnd, 0, kfEnd);
         delta.push({
@@ -1702,71 +1723,105 @@ export function curveAdaptation(parent, seed) {
     if (eligibleTracks.length === 0) {
         return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 };
     }
-    const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)];
-    const track = pick.track;
-    const trackIdx = pick.index;
-    const kfs = track.curve.keyframes;
-    // Exclude last keyframe (interpolation defines transition TO next)
-    const kfIdx = Math.floor(rng() * (kfs.length - 1));
-    const kf = kfs[kfIdx];
-    const currentInterp = kf.interpolation;
-    // DNA-driven target interpolation
+    // 🩸 WAVE 7757 CHAOS FIX: Mutate MULTIPLE tracks, not just one.
+    // Previously, curve_adaptation picked ONE keyframe on ONE track and
+    // changed its interpolation. If the interpolation already matched the
+    // DNA-preferred type, it was a no-op (l2Distance=0). Now we mutate
+    // 2-4 tracks and FORCE a change even if the interp already matches
+    // (by picking a different interpolation from the DNA-preferred set).
     const dna = child.cognitiveDNA;
     const genome = dna?.genome;
     const aggression = genome?.aggression ?? 0.5;
     const chaos = genome?.chaos ?? 0.5;
     const organicity = genome?.organicity ?? 0.5;
-    let newInterp;
-    if (organicity > 0.5) {
-        newInterp = 'bezier';
+    const effectiveChaos = Math.min(1.0, chaos * 1.5);
+    const numTracksToMutate = Math.min(eligibleTracks.length, 2 + Math.floor(effectiveChaos * rng() * 3));
+    // Fisher-Yates shuffle for random selection
+    const shuffled = [...eligibleTracks];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    else if (aggression > 0.5 || chaos > 0.5) {
-        newInterp = 'hold';
-    }
-    else {
-        newInterp = 'linear';
-    }
-    if (newInterp === currentInterp) {
-        return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 };
-    }
-    kf.interpolation = newInterp;
-    delta.push({
-        op: 'replace',
-        path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/interpolation`,
-        value: newInterp,
-    });
-    if (newInterp === 'bezier') {
-        // Generate default bezier handles from preset
-        const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)];
-        const handles = [...BEZIER_PRESETS[presetKey]];
-        kf.bezierHandles = handles;
-        delta.push({
-            op: 'replace',
-            path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
-            value: handles,
-        });
-    }
-    else {
-        // Leaving bezier — remove handles if present
-        if (kf.bezierHandles) {
-            delete kf.bezierHandles;
+    let mutationsApplied = 0;
+    for (let t = 0; t < numTracksToMutate; t++) {
+        const pick = shuffled[t];
+        const track = pick.track;
+        const trackIdx = pick.index;
+        const kfs = track.curve.keyframes;
+        // Mutate 1-3 keyframes per track
+        const numKfsToMutate = Math.min(kfs.length - 1, 1 + Math.floor(rng() * 3));
+        for (let k = 0; k < numKfsToMutate; k++) {
+            // Exclude last keyframe (interpolation defines transition TO next)
+            const kfIdx = Math.floor(rng() * (kfs.length - 1));
+            const kf = kfs[kfIdx];
+            const currentInterp = kf.interpolation;
+            // DNA-driven target interpolation
+            let newInterp;
+            if (organicity > 0.5) {
+                newInterp = 'bezier';
+            }
+            else if (aggression > 0.5 || chaos > 0.5) {
+                newInterp = 'hold';
+            }
+            else {
+                newInterp = 'linear';
+            }
+            // 🩸 WAVE 7757: If interp already matches, FORCE a different one.
+            // This prevents the no-op case where curve_adaptation returns
+            // l2Distance=0 because the keyframe already has the "right" interp.
+            // We cycle to the next interpolation type instead of giving up.
+            if (newInterp === currentInterp) {
+                const allInterps = ['linear', 'bezier', 'hold'];
+                const alternatives = allInterps.filter((i) => i !== currentInterp);
+                newInterp = alternatives[Math.floor(rng() * alternatives.length)];
+            }
+            kf.interpolation = newInterp;
             delta.push({
-                op: 'remove',
-                path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+                op: 'replace',
+                path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/interpolation`,
+                value: newInterp,
             });
+            if (newInterp === 'bezier') {
+                // Generate default bezier handles from preset
+                const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)];
+                const handles = [...BEZIER_PRESETS[presetKey]];
+                kf.bezierHandles = handles;
+                delta.push({
+                    op: 'replace',
+                    path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+                    value: handles,
+                });
+            }
+            else {
+                // Leaving bezier — remove handles if present
+                if (kf.bezierHandles) {
+                    delete kf.bezierHandles;
+                    delta.push({
+                        op: 'remove',
+                        path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+                    });
+                }
+            }
+            mutationsApplied++;
         }
+    }
+    // If no mutations were applied (edge case), return with l2=0
+    if (mutationsApplied === 0) {
+        return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 };
     }
     // DNA Drift
     if (dna && genome) {
         let newAggression = genome.aggression;
         let newChaos = genome.chaos;
         let newOrganicity = genome.organicity;
-        if (newInterp === 'bezier') {
-            newOrganicity = clamp3(newOrganicity + driftScaled(0.040, genome.chaos), 0, 1);
+        // Scale drift by number of mutations applied
+        const driftScale = Math.min(1, mutationsApplied * 0.5);
+        if (organicity > 0.5) {
+            newOrganicity = clamp3(newOrganicity + driftScaled(0.040 * driftScale, genome.chaos), 0, 1);
         }
-        else if (newInterp === 'hold') {
-            newChaos = clamp3(newChaos + driftScaled(0.030, genome.chaos), 0, 1);
-            newAggression = clamp3(newAggression + driftScaled(0.020, genome.chaos), 0, 1);
+        else if (aggression > 0.5 || chaos > 0.5) {
+            newChaos = clamp3(newChaos + driftScaled(0.030 * driftScale, genome.chaos), 0, 1);
+            newAggression = clamp3(newAggression + driftScaled(0.020 * driftScale, genome.chaos), 0, 1);
         }
         child.cognitiveDNA = {
             ...dna,
@@ -1927,8 +1982,13 @@ export function crossover(parentA, parentB, fitnessA, fitnessB, seed) {
     for (const domTrack of dominantClip.tracks) {
         const key = `${domTrack.paramId}::${domTrack.zones.join(',')}`;
         const subTrack = submissiveByKey.get(key);
-        if (subTrack && domTrack.curve.valueType === 'number' && subTrack.curve.valueType === 'number') {
+        if (subTrack && domTrack.curve.valueType === 'number' && subTrack.curve.valueType === 'number'
+            && !isKineticParam(domTrack.paramId)) {
             // 🔬 WAVE 7537: KEYFRAME-LEVEL CROSSOVER on matching numeric tracks.
+            // 🚫 WAVE 7758: Kinetic tracks EXCLUDED from crossover — a pan/tilt
+            // recombination could create a 170° instantaneous jump at the crossover
+            // point (parent A at 30°, parent B at 200°). Kinetic tracks inherit the
+            // whole dominant track only — no recombination.
             // Dominant half: keyframes with relativeTime <= crossoverPoint
             // Recessive half: keyframes with relativeTime > crossoverPoint
             const hybridTrack = crossoverKeyframes(domTrack, subTrack, crossoverPoint, childDurationMs, rng);
@@ -2156,8 +2216,9 @@ export function colorHueShift(parent, seed) {
     const organicity = genome?.organicity ?? 0.5;
     const chaos = genome?.chaos ?? 0.5;
     // Pleiotropy: high-chaos organisms mutate multiple keyframes
+    // 🩸 WAVE 7757 CHAOS FIX: 2-6 mutations (was 1-3). More visible color evolution.
     const effectiveChaos = Math.min(1.0, chaos * 1.5);
-    const numMutations = 1 + Math.floor(effectiveChaos * rng() * 3);
+    const numMutations = 2 + Math.floor(effectiveChaos * rng() * 4);
     for (let m = 0; m < numMutations; m++) {
         const pick = colorTracks[Math.floor(rng() * colorTracks.length)];
         const track = pick.track;

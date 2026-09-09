@@ -35,8 +35,8 @@ import './styles/globals.css'
         return stage
       },
       resetStage: () => {
-        useStageStore.getState().updateStageDimensions({ width: 50, depth: 25, height: 15, gridSize: 0.25 })
-        console.log('[WAVE 7609] Stage dimensions reset to 50×25×15m (warehouse-scale)')
+        useStageStore.getState().updateStageDimensions({ width: 25, depth: 12, height: 8, gridSize: 0.25 })
+        console.log('[WAVE 7609] Stage dimensions reset to 25×12×8m (warehouse-scale)')
       },
     }
     ;(window as any).__lux = api

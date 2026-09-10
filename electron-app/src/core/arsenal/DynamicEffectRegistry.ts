@@ -239,6 +239,18 @@ export class DynamicEffectRegistry {
         `(status: ${result.candidates.map(c => c.status).join(', ')})`,
       )
 
+      // 🧬 [CHAMPION_TRACK] P1: Arena pool composition by organism status.
+      // Breadcrumb for the silent-champions investigation — shows whether
+      // champions survive SpeciesQuotaSelector selection and materialization.
+      const statusCount: Record<string, number> = {}
+      for (const c of result.candidates) {
+        statusCount[c.status] = (statusCount[c.status] ?? 0) + 1
+      }
+      console.log(
+        `[CHAMPION_TRACK] 🧬 Arena cycle: injected=${injected} rejected=${rejected} ` +
+        `poolByStatus=${JSON.stringify(statusCount)}`,
+      )
+
       return injected
     } catch (err) {
       console.error('[ArenaInject 🧬] 💥 FATAL — refreshEvolutionaryCandidates failed:', err)

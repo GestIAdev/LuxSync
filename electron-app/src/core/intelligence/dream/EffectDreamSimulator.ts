@@ -216,6 +216,9 @@ interface PreBufferedEffect {
 export class EffectDreamSimulator {
   private simulationCount: number = 0
   private _lastFilterAuditTs: number = 0
+  // 🧬 [CHAMPION_TRACK] P2: Throttle for the funnel composition log (30s).
+  // Same pattern as _lastFilterAuditTs above.
+  private _lastChampionTrackTs: number = 0
   
   // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer system
   private preBuffer: PreBufferedEffect | null = null
@@ -324,6 +327,29 @@ export class EffectDreamSimulator {
     
     // 4. Seleccionar mejor escenario — from live candidates only
     const bestScenario = liveCandidates[0] || null
+
+    // 🧬 [CHAMPION_TRACK] P2: Funnel composition (throttled 30s).
+    // Diagnostic key for the silent-champions investigation:
+    //   - live=0 with champions in rankedByStatus → bug is UPSTREAM (registration/indices)
+    //   - live>0 but best≠champion → bug is in the RANKING (calculateScenarioScore)
+    //   - best=champion but never fired → bug is DOWNSTREAM (Puntos 3-5)
+    if (!this._lastChampionTrackTs || Date.now() - this._lastChampionTrackTs > 30_000) {
+      this._lastChampionTrackTs = Date.now()
+      const rankedByStatus: Record<string, number> = {}
+      for (const s of rankedScenarios) {
+        const st = registry.getEntry(s.effect.effect)?.organismStatus ?? 'builtin'
+        rankedByStatus[st] = (rankedByStatus[st] ?? 0) + 1
+      }
+      const bestStatus = bestScenario
+        ? (registry.getEntry(bestScenario.effect.effect)?.organismStatus ?? 'builtin')
+        : 'null'
+      console.log(
+        `[CHAMPION_TRACK] 🧬 Funnel: ranked=${rankedScenarios.length} ` +
+        `(${JSON.stringify(rankedByStatus)}) → live=${liveCandidates.length} | ` +
+        `best=${bestStatus}` +
+        (bestScenario ? ` (${bestScenario.effect.effect})` : ''),
+      )
+    }
     
     // ═══════════════════════════════════════════════════════════════
     // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer Storage
@@ -355,9 +381,14 @@ export class EffectDreamSimulator {
     }) ?? null
 
     if (preBufferScenario && preBufferScenario !== bestScenario) {
+      // 🧬 [CHAMPION_TRACK] P3: vibe-aware swap with organism status — shows
+      // whether a champion was demoted from the pre-buffer by vibe incompatibility.
       console.log(
-        `[DREAM_SIMULATOR] 🔮🛡️ VIBE-AWARE PRE-BUFFER: #1 "${effectDisplayName(bestScenario?.effect.effectName ?? bestScenario?.effect.effect ?? '?')}" was vibe-incompatible, ` +
-        `selected "${effectDisplayName(preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect)}" instead (vibe=${currentVibe})`
+        `[CHAMPION_TRACK] 🔮🛡️ VIBE-AWARE PRE-BUFFER: #1 ` +
+        `"${effectDisplayName(bestScenario?.effect.effectName ?? bestScenario?.effect.effect ?? '?')}" ` +
+        `(status=${registry.getEntry(bestScenario?.effect.effect ?? '')?.organismStatus ?? 'builtin'}) was vibe-incompatible, ` +
+        `selected "${effectDisplayName(preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect)}" ` +
+        `(status=${registry.getEntry(preBufferScenario.effect.effect)?.organismStatus ?? 'builtin'}) instead (vibe=${currentVibe})`
       )
     }
 

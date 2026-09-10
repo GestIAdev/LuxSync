@@ -32,6 +32,13 @@ export interface MaterializedOrganism {
 
 const LRU_MAX_SIZE = 256
 
+// 🛡️ WAVE 7770: Maximum lineage depth for materialization recursion.
+// Matches the MITOSIS generation cap (ColiseumService `generation < 16`).
+// Guards against circular parent_organism_id references corrupting the DB —
+// without it, a cycle (A→B→A) causes unbounded recursion → stack overflow →
+// dead Event Loop in the main process.
+const MAX_LINEAGE_DEPTH = 16
+
 class LruCache<K, V> {
   private _map = new Map<K, V>()
   private readonly _max: number
@@ -115,7 +122,7 @@ export class OrganismMaterializer {
    *
    * Fallback defensivo: on ANY error, returns the granite ancestor's clipV3.
    */
-  materialize(organismId: string): MaterializedOrganism {
+  materialize(organismId: string, _depth: number = 0): MaterializedOrganism {
     // Cache hit
     const hit = this._cache.get(organismId)
     if (hit) return hit
@@ -130,9 +137,28 @@ export class OrganismMaterializer {
       let parentClip: HephAutomationClipV3
 
       if (org.parent_organism_id) {
-        // Recursively materialize parent (bounded by generation ≤ 16)
-        const parentMat = this.materialize(org.parent_organism_id)
-        parentClip = parentMat.clip
+        // 🛡️ WAVE 7770: Depth cap — guard against circular lineage references.
+        // The old comment claimed "bounded by generation ≤ 16" but no bound
+        // existed here (the generation cap only limits mitosis reproduction).
+        // A circular parent_organism_id would recurse until stack overflow.
+        // At the cap, fall back to the granite ancestor — same contract as
+        // the FALLBACK SAGRADO below, but BEFORE the crash instead of after.
+        if (_depth >= MAX_LINEAGE_DEPTH) {
+          console.warn(
+            `[OrganismMaterializer ⚠️] Lineage depth ${_depth} ≥ ${MAX_LINEAGE_DEPTH} ` +
+            `for ${organismId} — possible circular parent reference. ` +
+            `Falling back to granite ancestor.`,
+          )
+          const blueprint = this._vault.getBlueprint(org.blueprint_id)
+          if (!blueprint) {
+            throw new Error(`Blueprint not found: ${org.blueprint_id}`)
+          }
+          parentClip = blueprint.clipV3
+        } else {
+          // Recursively materialize parent (depth-capped by MAX_LINEAGE_DEPTH)
+          const parentMat = this.materialize(org.parent_organism_id, _depth + 1)
+          parentClip = parentMat.clip
+        }
       } else {
         // Direct descendant of granite ancestor
         const blueprint = this._vault.getBlueprint(org.blueprint_id)

@@ -935,7 +935,7 @@ export function geneAugmentation(
     const timeMs = Math.round(gridIndex * gridStep)
     const tFraction = divisions > 0 ? gridIndex / divisions : 0
 
-    let value: number
+    let value: number | HSL
     let interpolation: HephInterpolation
 
     if (chosenParam === 'strobe') {
@@ -949,8 +949,21 @@ export function geneAugmentation(
         interpolation = 'linear'
       }
     } else if (chosenParam === 'color') {
-      // Color: spread across the hue range
-      value = range[0] + span * tFraction
+      // 🎨 WAVE 7770 FIX: Color keyframes MUST be HSL objects, not numbers.
+      // The old code wrote `value = range[0] + span * tFraction` (a bare number)
+      // into a track declared valueType:'color'. colorHueShift skipped these
+      // keyframes (typeof value === 'number' → continue), focalMutation never
+      // entered its color branch (typeof value !== 'object'), and
+      // CurveEvaluator.getColorValue fell to writeSafeDefault (gray). L2 was
+      // also blind to the mutation (numeric distance only saw numbers).
+      // Construct a proper HSL now: hue keeps the linear grid spread intent,
+      // S/L are sampled for a living palette (never washed-out, never extreme).
+      const hue = range[0] + span * tFraction
+      value = {
+        h: Math.round(hue * 10) / 10,
+        s: 70 + Math.round(rng() * 30),   // 70-100: vivid, avoids the gray safe-default basin
+        l: 40 + Math.round(rng() * 20),   // 40-60: mid range, avoids black/white extremes
+      }
       interpolation = useBezierInterp ? 'bezier' : 'linear'
     } else if (chosenParam === 'pan' || chosenParam === 'tilt') {
       if (isAggressive) {
@@ -973,7 +986,20 @@ export function geneAugmentation(
       interpolation = useHoldInterp ? 'hold' : (useBezierInterp ? 'bezier' : 'linear')
     }
 
-    value = Math.round(value * 1000) / 1000
+    // 🎨 WAVE 7770: Only round numeric values — Math.round on an HSL object
+    // produces NaN and corrupts the keyframe.
+    if (typeof value === 'number') {
+      value = Math.round(value * 1000) / 1000
+    } else {
+      // 🎨 WAVE 7770: Sanity clamp — defend against ancestors with out-of-domain
+      // HSL values (e.g. a hand-edited .lfx with s=120). Hue wraps mod 360,
+      // S/L clamp to [0, 100]. Defense in depth before the keyframe is frozen.
+      value = {
+        h: ((value.h % 360) + 360) % 360,
+        s: Math.max(0, Math.min(100, value.s)),
+        l: Math.max(0, Math.min(100, value.l)),
+      }
+    }
     const kf: HephKeyframe = { timeMs, value, interpolation }
 
     if (interpolation === 'bezier') {
@@ -1017,7 +1043,12 @@ export function geneAugmentation(
       paramId: chosenParam as HephParamId,
       valueType: chosenParam === 'color' ? 'color' : 'number',
       range: [range[0], range[1]] as [number, number],
-      defaultValue: range[0],
+      // 🎨 WAVE 7770: Color tracks need an HSL default. A bare number makes
+      // CurveEvaluator.getColorValue fall to its gray safe-default
+      // (h=0, s=0, l=50) when no keyframe is active.
+      defaultValue: chosenParam === 'color'
+        ? { h: range[0], s: 85, l: 50 }
+        : range[0],
       keyframes,
       mode: 'absolute',
     },

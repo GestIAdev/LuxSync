@@ -546,6 +546,13 @@ export interface HephAutomationClipV3 {
   simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
   safetyDeclaration?: import('../arsenal/lfxTypes').SafetyDeclaration
 
+  // ── Ejecución declarada por el autor (V3 Scaling, opcional) ──
+  /**
+   * Overrides de ejecución del clip. Los campos ausentes caen a
+   * `_DEFAULT_EXECUTION_HINTS` en el registry. Ausente ⇒ todos default.
+   */
+  executionHints?: import('../arsenal/lfxTypes').ClipExecutionOverrides
+
   /** Discriminador para LfxFileLoader. Literal exacto '3.0'. */
   schemaVersion: '3.0'
 }
@@ -686,6 +693,7 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
     cognitiveDNA: clip.cognitiveDNA ? JSON.parse(JSON.stringify(clip.cognitiveDNA)) : undefined,
     simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
     safetyDeclaration: clip.safetyDeclaration ? JSON.parse(JSON.stringify(clip.safetyDeclaration)) : undefined,
+    executionHints: clip.executionHints ? JSON.parse(JSON.stringify(clip.executionHints)) : undefined,
     schemaVersion: '3.0',
   };
 }

@@ -35,6 +35,7 @@ import type {
   CognitiveDNA,
   SimulationMeta,
   SpatialBehavior,
+  ClipExecutionOverrides,
 } from '../../../../core/arsenal/lfxTypes'
 import type { PhaseConfigPro } from '../../../../core/hephaestus/phase/PhaseConfigPro'
 import type { PhaseOverride } from '../../../../core/hephaestus/phase/PhaseOverride'
@@ -161,6 +162,10 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
 
   const handleSimMetaChange = useCallback((meta: SimulationMeta) => {
     setClip(prev => ({ ...prev, simulationMeta: meta }))
+  }, [setClip])
+
+  const handleExecHintsChange = useCallback((hints: ClipExecutionOverrides) => {
+    setClip(prev => ({ ...prev, executionHints: hints }))
   }, [setClip])
 
   const handleEnableDna = useCallback(() => {
@@ -325,8 +330,10 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
         <DnaRail
           dna={clip?.cognitiveDNA}
           simMeta={clip?.simulationMeta}
+          execHints={clip?.executionHints}
           onDnaChange={handleDnaChange}
           onSimMetaChange={handleSimMetaChange}
+          onExecHintsChange={handleExecHintsChange}
           onEnableDna={handleEnableDna}
         />
       </div>

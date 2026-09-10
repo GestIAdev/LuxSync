@@ -174,6 +174,7 @@ export function serializeHephClip(clip) {
         cognitiveDNA: clip.cognitiveDNA ? JSON.parse(JSON.stringify(clip.cognitiveDNA)) : undefined,
         simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
         safetyDeclaration: clip.safetyDeclaration ? JSON.parse(JSON.stringify(clip.safetyDeclaration)) : undefined,
+        executionHints: clip.executionHints ? JSON.parse(JSON.stringify(clip.executionHints)) : undefined,
         schemaVersion: '3.0',
     };
 }

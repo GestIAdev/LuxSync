@@ -381,6 +381,17 @@ export class HephaestusRuntime {
       return null
     }
 
+    // 🛡️ V3 SCALING: autoridad del clip sobre cualquier disparador.
+    // Si el .lfx declara intensityScaling='fixed', la curva de Bezier es la
+    // única autoridad — ningún caller (Selene, Chronos, timeline, MIDI)
+    // puede atenuarla con un multiplicador de energía acústica. Esto ciega
+    // las tres rutas que bypassan el SeleneHephBridge (chronos:triggerHeph,
+    // chronos:triggerFX heph-custom, TimelineEngine.triggerHephClip).
+    // Ver Scaling_v3_blueprint.md §6.2.
+    const effectiveIntensity = clip.executionHints?.intensityScaling === 'fixed'
+      ? 1.0
+      : (options.intensity ?? 1.0)
+
     const activeClip: ActiveHephClip = {
       instanceId,
       filePath,
@@ -388,7 +399,7 @@ export class HephaestusRuntime {
       tracks,
       startTimeMs: now,
       durationMs,
-      intensity: options.intensity ?? 1.0,
+      intensity: effectiveIntensity,
       loop: options.loop ?? false,
       phaseConfig,
       silenceSpatial: options.silenceSpatial ?? false,
@@ -442,6 +453,13 @@ export class HephaestusRuntime {
       options.fixtureIds,
     )
 
+    // 🛡️ V3 SCALING: autoridad del clip (Diamond path). Mismo clamp que
+    // play() — el .lfx con intensityScaling='fixed' es inviolable para
+    // cualquier disparador. Ver Scaling_v3_blueprint.md §6.2.
+    const effectiveIntensity = clip.executionHints?.intensityScaling === 'fixed'
+      ? 1.0
+      : (options.intensity ?? 1.0)
+
     const activeClip: ActiveHephClip = {
       instanceId,
       filePath: '<diamond-inline>',  // No file — curves came inline
@@ -449,7 +467,7 @@ export class HephaestusRuntime {
       tracks,
       startTimeMs: now,
       durationMs,
-      intensity: options.intensity ?? 1.0,
+      intensity: effectiveIntensity,
       loop: options.loop ?? false,
       phaseConfig,
       silenceSpatial: options.silenceSpatial ?? false,

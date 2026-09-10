@@ -715,7 +715,17 @@ export class NodeResolver {
                     continue;
                 const sourceBufIdx = baseAddr + ch.dmxOffset;
                 for (const dep of ch.ignitionDeps) {
-                    const target = allChannels.find(c => c.type === dep.targetChannelType);
+                    // WAVE 7790: Respetar targetDmxOffset (WAVE 4722) con precedencia
+                    // sobre targetChannelType. Sin esto, Array.find() por tipo siempre
+                    // resuelve al primer canal coincidente, rompiendo fixtures con
+                    // múltiples canales del mismo tipo (ej: Tungsten con 5 dimmers).
+                    let target;
+                    if (typeof dep.targetDmxOffset === 'number') {
+                        target = allChannels.find(c => c.dmxOffset === dep.targetDmxOffset);
+                    }
+                    if (!target) {
+                        target = allChannels.find(c => c.type === dep.targetChannelType);
+                    }
                     if (!target) {
                         console.warn(`[NodeResolver] ⚠️ WAVE 4720: Ignition dep target "${dep.targetChannelType}" ` +
                             `not found in device ${String(deviceId)} for source channel "${ch.type}"`);

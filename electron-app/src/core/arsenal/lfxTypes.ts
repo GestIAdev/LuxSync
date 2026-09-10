@@ -71,6 +71,17 @@ export type FixtureTargeting =
   | 'zone-left'
   | 'zone-right'
 
+/**
+ * Visibilidad del efecto ante el motor autónomo de Selene (V3 Scaling).
+ *
+ *   - 'all'         (default) → el efecto compite en los pools autónomos.
+ *   - 'manual_only' → Selene NUNCA lo auto-selecciona. Sigue disparable
+ *                     por MIDI, KeyForge, timeline Chronos y ForceStrike.
+ *
+ * Retrocompat: ausente ⇒ 'all'.
+ */
+export type EffectVisibility = 'all' | 'manual_only'
+
 // ─── BLOQUES DEL .LFX V2.1 ──────────────────────────────────────────────────
 
 /** Coordenadas inmutables del cubo unitario (A, C, O). */
@@ -166,6 +177,15 @@ export interface CognitiveDNA {
   readonly executionDomain?: ExecutionDomain
   /** Solo si `executionDomain ∈ {pixel, hybrid}`. */
   readonly pixelHints?: PixelExecutionHints
+
+  // ── V3 SCALING: directiva de auto-selección ──
+  /**
+   * Si 'manual_only', el registry excluye este efecto de los pools
+   * autónomos (getEffectsForVibe / getDivineArsenal / getHeavyArsenal).
+   * Los lookups directos (getEntry / getEffectCatalog) NO se filtran.
+   * Ausente ⇒ 'all'.
+   */
+  readonly visibility?: EffectVisibility
 }
 
 /** Metadata para el EffectDreamSimulator (beauty, GPU cost, fatigue). */
@@ -195,6 +215,21 @@ export interface ExecutionHints {
   readonly phaseConfig: PhaseConfig
   readonly intensityScaling: IntensityScaling
   readonly fixtureTargeting: FixtureTargeting
+}
+
+/**
+ * Overrides de ejecución declarables por el `.lfx` v3 (V3 Scaling).
+ *
+ * Subconjunto PARCIAL de `ExecutionHints`. Todos los campos son opcionales:
+ * los ausentes caen al `_DEFAULT_EXECUTION_HINTS` del registry.
+ *
+ * `phaseConfig` se excluye deliberadamente — en V3 la fase vive per-track
+ * (`HephTrack.phaseConfig: PhaseConfigPro`), no a nivel de clip.
+ */
+export interface ClipExecutionOverrides {
+  readonly overlayMode?: OverlayMode
+  readonly intensityScaling?: IntensityScaling
+  readonly fixtureTargeting?: FixtureTargeting
 }
 
 /** Declaración auto-firmada de safety (cross-checked en ingesta — gate G6). */
@@ -242,6 +277,9 @@ export interface RegistryEntry {
   readonly pressureRange: Range
   readonly spatialBehavior: SpatialBehavior
   readonly ikCompatibility: IKCompatibility | null
+
+  /** Alias plano de `dna.visibility`. Default 'all' si el DNA no lo declara. */
+  readonly visibility: EffectVisibility
 
   /** Bloques anidados (read-only). */
   readonly simMeta: SimulationMeta

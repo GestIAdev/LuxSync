@@ -20,7 +20,7 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react'
-import type { CognitiveDNA, SimulationMeta, TextureAffinity } from '../../../../core/arsenal/lfxTypes'
+import type { CognitiveDNA, SimulationMeta, TextureAffinity, ClipExecutionOverrides, EffectVisibility, IntensityScaling } from '../../../../core/arsenal/lfxTypes'
 import {
   LfxClipInstance,
   ARCHETYPE_BIAS_MAP,
@@ -173,6 +173,9 @@ interface DnaFormState {
   maxStrobeFreqHz: number
   pressureRange: { min: number; max: number }
   textureAffinity: TextureAffinity
+  // ── V3 SCALING & VISIBILITY ──
+  visibility: EffectVisibility
+  intensityScaling: IntensityScaling
 }
 
 function buildInstance(state: DnaFormState, clipId: string): LfxClipInstance {
@@ -208,8 +211,10 @@ const SEV_ICON: Record<string, string> = {
 interface DnaRailProps {
   dna: CognitiveDNA | undefined
   simMeta: SimulationMeta | undefined
+  execHints: ClipExecutionOverrides | undefined
   onDnaChange: (dna: CognitiveDNA) => void
   onSimMetaChange: (meta: SimulationMeta) => void
+  onExecHintsChange: (hints: ClipExecutionOverrides) => void
   onEnableDna: () => void
 }
 
@@ -218,8 +223,10 @@ interface DnaRailProps {
 export const DnaRail: React.FC<DnaRailProps> = ({
   dna,
   simMeta,
+  execHints,
   onDnaChange,
   onSimMetaChange,
+  onExecHintsChange,
   onEnableDna,
 }) => {
   // Stable clip id for the session (re-mounts = new id, but that's fine)
@@ -270,6 +277,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       maxStrobeFreqHz: 0,
       pressureRange: { min: 0, max: 0 },
       textureAffinity: 'universal',
+      visibility: 'all',
+      intensityScaling: execHints?.intensityScaling ?? 'proportional',
     }
     // Read archetype from dna if present (WAVE 7177 fix: archetype was not being saved)
     const dnaArchetype = dna.archetype ?? 'utility'
@@ -295,6 +304,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       maxStrobeFreqHz: 0,
       pressureRange: dna.pressureRange ? { ...dna.pressureRange } : { min: 0, max: 0 },
       textureAffinity: dna.textureAffinity ?? 'universal',
+      visibility: dna.visibility ?? 'all',
+      intensityScaling: execHints?.intensityScaling ?? 'proportional',
     }
   })
 
@@ -314,6 +325,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
         maxStrobeFreqHz: 0,
         pressureRange: { min: 0, max: 0 },
         textureAffinity: 'universal',
+        visibility: 'all',
+        intensityScaling: execHints?.intensityScaling ?? 'proportional',
       })
       return
     }
@@ -339,8 +352,28 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       maxStrobeFreqHz: prev.maxStrobeFreqHz,
       pressureRange: dna.pressureRange ? { ...dna.pressureRange } : { min: 0, max: 0 },
       textureAffinity: dna.textureAffinity ?? 'universal',
+      visibility: dna.visibility ?? 'all',
+      intensityScaling: execHints?.intensityScaling ?? 'proportional',
     }))
   }, [dna])
+
+  // ── V3 SCALING: propagación anti-ciclo de execHints (mismo patrón que meta) ──
+  const lastExecHintsPropagatedRef = useRef<string>(
+    JSON.stringify({ ...execHints, intensityScaling: execHints?.intensityScaling ?? 'proportional' }),
+  )
+  const isSyncingFromExecHints = useRef(false)
+  useEffect(() => {
+    if (isSyncingFromExecHints.current) {
+      isSyncingFromExecHints.current = false
+      return
+    }
+    const next = { ...execHints, intensityScaling: form.intensityScaling }
+    const serialized = JSON.stringify(next)
+    if (serialized === lastExecHintsPropagatedRef.current) return
+    lastExecHintsPropagatedRef.current = serialized
+    onExecHintsChange(next)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.intensityScaling])
 
   // ── Derive LfxClipInstance + lint on every form change ──
   const instance = useMemo(
@@ -384,6 +417,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       textureAffinity: form.textureAffinity,
       validSections: dna.validSections,
       ikCompatibility: dna.ikCompatibility,
+      visibility: form.visibility,
     })
     onDnaChange({
       archetype: reality.archetype,
@@ -396,6 +430,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       pressureRange: { ...reality.pressureRange },
       spatialBehavior: reality.spatialBehavior,
       ikCompatibility: reality.ikCompatibility,
+      visibility: reality.visibility ?? form.visibility,
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance])
@@ -503,15 +538,23 @@ export const DnaRail: React.FC<DnaRailProps> = ({
     setForm(prev => ({ ...prev, textureAffinity: affinity }))
   }, [])
 
+  // ── V3 SCALING handlers ──
+
+  const handleVisibilityToggle = useCallback(() => {
+    setForm(prev => ({
+      ...prev,
+      visibility: prev.visibility === 'manual_only' ? 'all' : 'manual_only',
+    }))
+  }, [])
+
+  const handleIntensityScaling = useCallback((mode: IntensityScaling) => {
+    setForm(prev => ({ ...prev, intensityScaling: mode }))
+  }, [])
+
   // ── SIM GUARDS handlers (manual override of auto-synced flags) ──
 
   const handleMetaToggle = useCallback((key: 'isStrobe' | 'isDivineCandidate' | 'isHeavyCandidate') => {
     setMeta(prev => ({ ...prev, [key]: !prev[key] }))
-  }, [])
-
-  const handleCooldownChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Math.max(0, Math.min(60000, parseInt(e.target.value) || 0))
-    setMeta(prev => ({ ...prev, cooldownMs: val }))
   }, [])
 
   const handleFatigueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -635,19 +678,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
               <span className="dna-rail__meta-toggle-label">Divine</span>
             </label>
           </div>
-          {/* Row 2: Numeric inputs */}
+          {/* Row 2: Numeric inputs (Cooldown removed — Selene uses dynamic vapor pressure) */}
           <div className="dna-rail__meta-numerics">
-            <div className="dna-rail__meta-numeric-row">
-              <span className="dna-rail__meta-numeric-label">Cooldown</span>
-              <input
-                type="number"
-                className="dna-rail__meta-numeric-input"
-                min={0} max={60000} step={500}
-                value={meta.cooldownMs}
-                onChange={handleCooldownChange}
-              />
-              <span className="dna-rail__meta-numeric-unit">ms</span>
-            </div>
             <div className="dna-rail__meta-numeric-row">
               <span className="dna-rail__meta-numeric-label">Fatigue</span>
               <input
@@ -659,6 +691,49 @@ export const DnaRail: React.FC<DnaRailProps> = ({
               />
             </div>
           </div>
+          {/* V3 SCALING: AI Auto-Play toggle */}
+          <div className="dna-rail__visibility-row">
+            <label className={`dna-rail__meta-toggle ${form.visibility === 'all' ? 'dna-rail__meta-toggle--on' : ''}`}>
+              <input
+                type="checkbox"
+                checked={form.visibility === 'all'}
+                onChange={handleVisibilityToggle}
+              />
+              <span className="dna-rail__meta-toggle-dot" />
+              <span className="dna-rail__meta-toggle-label">AI Auto-Play</span>
+            </label>
+            {form.visibility === 'manual_only' && (
+              <p className="dna-rail__visibility-hint">
+                Manual only — Selene will not auto-fire this. MIDI, KeyForge and timeline still work.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* ══ SECTION 2.6: EXECUTION (V3 SCALING) ══ */}
+        <section className="dna-rail__section dna-rail__section--execution">
+          <div className="dna-rail__section-label">STROBE SCALING</div>
+          <div className="dna-rail__radio-group">
+            <button
+              type="button"
+              className={`dna-rail__radio-btn ${form.intensityScaling === 'proportional' ? 'dna-rail__radio-btn--active' : ''}`}
+              onClick={() => handleIntensityScaling('proportional')}
+            >
+              Dynamic
+            </button>
+            <button
+              type="button"
+              className={`dna-rail__radio-btn ${form.intensityScaling === 'fixed' ? 'dna-rail__radio-btn--active' : ''}`}
+              onClick={() => handleIntensityScaling('fixed')}
+            >
+              Fixed
+            </button>
+          </div>
+          {form.intensityScaling === 'fixed' && (
+            <p className="dna-rail__execution-hint">
+              Curve is authoritative — audio energy will not scale this clip.
+            </p>
+          )}
         </section>
 
         {/* ══ SECTION 3: ACO SLIDERS ══ */}

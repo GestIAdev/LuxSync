@@ -443,6 +443,7 @@ export class LfxClipInstance {
             pressureRange,
             spatialBehavior: overrides?.spatialBehavior ?? spatialBehavior,
             ikCompatibility: overrides?.ikCompatibility,
+            visibility: overrides?.visibility,
         });
     }
     // FASE 3: fromLegacyLfx (V2.1 compat bridge) demolished.

@@ -34,6 +34,45 @@ const USER_SAFETY_POLICY = Object.freeze({
 });
 /** Valores válidos de textureAffinity en CognitiveDNA. */
 const VALID_TEXTURE_AFFINITIES = new Set(['clean', 'dirty', 'universal']);
+// ── V3 SCALING: enums canónicos de validación (fail-open) ──────────────────
+/** Valores válidos de `cognitiveDNA.visibility`. */
+const VALID_VISIBILITIES = new Set(['all', 'manual_only']);
+/** Valores válidos de `executionHints.intensityScaling`. */
+const VALID_INTENSITY_SCALINGS = new Set(['proportional', 'fixed', 'energyDriven']);
+/** Valores válidos de `executionHints.overlayMode`. */
+const VALID_OVERLAY_MODES = new Set(['absolute', 'relative', 'additive']);
+/** Valores válidos de `executionHints.fixtureTargeting`. */
+const VALID_FIXTURE_TARGETINGS = new Set([
+    'all', 'movers', 'pars', 'strobes',
+    'zone-front', 'zone-back', 'zone-left', 'zone-right',
+]);
+/**
+ * V3 SCALING: sanea un bloque `ClipExecutionOverrides` recién parseado.
+ *
+ * Fail-open por CAMPO: los valores de enum no reconocidos se descartan
+ * (caen al default del registry) con un warning. El clip NO se rechaza.
+ *
+ * Debe llamarse DESPUÉS de la verificación del checksum G2 — muta el
+ * objeto en memoria (mismo patrón que `_normalizeClipCurves` en
+ * HephaestusClipIndex: la integridad se verifica sobre el payload crudo
+ * en disco, la sanización ocurre después).
+ */
+function _sanitizeExecutionHints(raw, filePath) {
+    if (!raw || typeof raw !== 'object')
+        return;
+    if (raw.intensityScaling !== undefined && !VALID_INTENSITY_SCALINGS.has(raw.intensityScaling)) {
+        console.warn(`[LfxFileLoader ⚠️] V3 executionHints: invalid intensityScaling '${raw.intensityScaling}' at ${filePath} — falling back to default`);
+        delete raw.intensityScaling;
+    }
+    if (raw.overlayMode !== undefined && !VALID_OVERLAY_MODES.has(raw.overlayMode)) {
+        console.warn(`[LfxFileLoader ⚠️] V3 executionHints: invalid overlayMode '${raw.overlayMode}' at ${filePath} — falling back to default`);
+        delete raw.overlayMode;
+    }
+    if (raw.fixtureTargeting !== undefined && !VALID_FIXTURE_TARGETINGS.has(raw.fixtureTargeting)) {
+        console.warn(`[LfxFileLoader ⚠️] V3 executionHints: invalid fixtureTargeting '${raw.fixtureTargeting}' at ${filePath} — falling back to default`);
+        delete raw.fixtureTargeting;
+    }
+}
 // ─── LOADER ─────────────────────────────────────────────────────────────────
 export class LfxFileLoader {
     constructor(registry) {
@@ -323,6 +362,16 @@ export class LfxFileLoader {
                 return null;
             }
         }
+        // ── V3 SCALING: sanización post-checksum (fail-open) ──────────────────
+        // La integridad G2 se verificó sobre el payload crudo en disco. A partir
+        // de aquí podemos degradar campos de enum corruptos en memoria sin
+        // invalidar la firma — mismo patrón que `_normalizeClipCurves` en
+        // HephaestusClipIndex. Se degrada el CAMPO, nunca se rechaza el archivo.
+        if (rawDna && rawDna.visibility !== undefined && !VALID_VISIBILITIES.has(rawDna.visibility)) {
+            console.warn(`[LfxFileLoader ⚠️] V3 DNA: invalid visibility '${rawDna.visibility}' at ${filePath} — falling back to 'all'`);
+            delete rawDna.visibility;
+        }
+        _sanitizeExecutionHints(clip.executionHints, filePath);
         // ── Ensamblar LFXFileV3 tipado ────────────────────────────────────────
         const v3File = {
             $schema: 'luxsync.lfx/3.0',
@@ -340,6 +389,7 @@ export class LfxFileLoader {
                 cognitiveDNA: clip.cognitiveDNA || undefined,
                 simulationMeta: clip.simulationMeta || undefined,
                 safetyDeclaration: clip.safetyDeclaration || undefined,
+                executionHints: clip.executionHints || undefined,
                 schemaVersion: '3.0',
                 staticParams: clip.staticParams ?? {},
                 spatialZones: clip.spatialZones ?? [],

@@ -360,6 +360,17 @@ export class DynamicEffectRegistry {
   // ─────────────────────────────────────────────────────────────────────────
 
   private _appendToIndices(entry: RegistryEntry): void {
+    // 🚪 V3 SCALING: VISIBILITY WALL — los efectos 'manual_only' no entran a
+    // los pools autónomos. Selene (DecisionMaker, DreamSimulator, HuntEngine,
+    // SovereignClock, VisualConscience) queda ciego a este clip de un solo
+    // golpe. Los lookups directos (getEntry / getEffectCatalog) NO se filtran
+    // — MIDI Learn, KeyForge y ForceStrike siguen resolviendo. La escritura
+    // en _byId ocurre en registerEffectV3 ANTES de esta llamada, así que el
+    // efecto sigue registrado; simplemente no compite.
+    // Fail-open por construcción: un valor de visibility corrupto no es
+    // 'manual_only' → el efecto se indexa (más visible = más seguro).
+    if (entry.visibility === 'manual_only') return
+
     // 🎯 WAVE 4865: Deduplicar por canonical vibe.
     // Un efecto puede declarar ['latin', 'fiesta-latina'] — ambos mapean al mismo canonical.
     // Sin este Set, el entry se insertaría DOS VECES en el mismo bucket → candidatos clonados.
@@ -475,15 +486,21 @@ function _buildEntryFromV3(
     }),
     spatialBehavior: dna.spatialBehavior,
     ikCompatibility: Object.freeze({ ...ikCompat }),
+    visibility: dna.visibility ?? 'all',
 
     simMeta: Object.freeze({
       ...simMeta,
       beautyWeights: Object.freeze({ ...simMeta.beautyWeights }),
       zScoreGuards: Object.freeze({ ...simMeta.zScoreGuards }),
     }) as SimulationMeta,
-    // V3 no declara executionHints → usar default
+    // V3 SCALING: merge de los overrides declarados por el clip sobre los
+    // defaults. `phaseConfig` SIEMPRE proviene del default — es un campo
+    // requerido de ExecutionHints pero legacy-muerto a nivel de clip en V3
+    // (la fase vive per-track: HephTrack.phaseConfig). ClipExecutionOverrides
+    // no lo declara; la línea final lo garantiza por construcción.
     execHints: Object.freeze({
       ..._DEFAULT_EXECUTION_HINTS,
+      ...(clip.executionHints ?? {}),
       phaseConfig: Object.freeze({ ..._DEFAULT_EXECUTION_HINTS.phaseConfig }),
     }) as ExecutionHints,
     // V3 no declara safetyDeclaration → usar default

@@ -1071,3 +1071,38 @@
   color: rgba(255, 255, 255, 0.25);
   font-family: var(--font-mono, monospace);
 }
+
+/* ── V3 SCALING: AI Auto-Play toggle + visibility hint ── */
+
+.dna-rail__visibility-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 107, 43, 0.08);
+}
+
+.dna-rail__visibility-hint {
+  margin: 6px 0 0;
+  font-size: 0.55rem;
+  color: rgba(255, 200, 140, 0.55);
+  font-style: italic;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+}
+
+/* ── V3 SCALING: EXECUTION section (Strobe Scaling) ── */
+
+.dna-rail__section--execution {
+  padding: 8px 14px 10px;
+  margin-top: 4px;
+}
+
+.dna-rail__execution-hint {
+  margin: 6px 0 0;
+  font-size: 0.55rem;
+  color: rgba(255, 200, 140, 0.55);
+  font-style: italic;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+}

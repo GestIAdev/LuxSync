@@ -4,3 +4,4 @@ node_modules
 scripts/keys/luxsync-private.pem
 *.luxlicense
 licenses/
+electron-app/test-data/live_audio_dump.json

@@ -63,6 +63,9 @@ export class EffectDreamSimulator {
     constructor() {
         this.simulationCount = 0;
         this._lastFilterAuditTs = 0;
+        // 🧬 [CHAMPION_TRACK] P2: Throttle for the funnel composition log (30s).
+        // Same pattern as _lastFilterAuditTs above.
+        this._lastChampionTrackTs = 0;
         // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer system
         this.preBuffer = null;
         this.PRE_BUFFER_MIN_PROBABILITY = 0.65; // Solo buffer si Oráculo > 65% seguro
@@ -147,6 +150,26 @@ export class EffectDreamSimulator {
         });
         // 4. Seleccionar mejor escenario — from live candidates only
         const bestScenario = liveCandidates[0] || null;
+        // 🧬 [CHAMPION_TRACK] P2: Funnel composition (throttled 30s).
+        // Diagnostic key for the silent-champions investigation:
+        //   - live=0 with champions in rankedByStatus → bug is UPSTREAM (registration/indices)
+        //   - live>0 but best≠champion → bug is in the RANKING (calculateScenarioScore)
+        //   - best=champion but never fired → bug is DOWNSTREAM (Puntos 3-5)
+        if (!this._lastChampionTrackTs || Date.now() - this._lastChampionTrackTs > 30000) {
+            this._lastChampionTrackTs = Date.now();
+            const rankedByStatus = {};
+            for (const s of rankedScenarios) {
+                const st = registry.getEntry(s.effect.effect)?.organismStatus ?? 'builtin';
+                rankedByStatus[st] = (rankedByStatus[st] ?? 0) + 1;
+            }
+            const bestStatus = bestScenario
+                ? (registry.getEntry(bestScenario.effect.effect)?.organismStatus ?? 'builtin')
+                : 'null';
+            console.log(`[CHAMPION_TRACK] 🧬 Funnel: ranked=${rankedScenarios.length} ` +
+                `(${JSON.stringify(rankedByStatus)}) → live=${liveCandidates.length} | ` +
+                `best=${bestStatus}` +
+                (bestScenario ? ` (${bestScenario.effect.effect})` : ''));
+        }
         // ═══════════════════════════════════════════════════════════════
         // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer Storage
         // Si alta confianza y tiempo suficiente, guardar el mejor para después
@@ -177,8 +200,13 @@ export class EffectDreamSimulator {
             return vibeMatches(entry.compatibleVibes, currentVibe);
         }) ?? null;
         if (preBufferScenario && preBufferScenario !== bestScenario) {
-            console.log(`[DREAM_SIMULATOR] 🔮🛡️ VIBE-AWARE PRE-BUFFER: #1 "${effectDisplayName(bestScenario?.effect.effectName ?? bestScenario?.effect.effect ?? '?')}" was vibe-incompatible, ` +
-                `selected "${effectDisplayName(preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect)}" instead (vibe=${currentVibe})`);
+            // 🧬 [CHAMPION_TRACK] P3: vibe-aware swap with organism status — shows
+            // whether a champion was demoted from the pre-buffer by vibe incompatibility.
+            console.log(`[CHAMPION_TRACK] 🔮🛡️ VIBE-AWARE PRE-BUFFER: #1 ` +
+                `"${effectDisplayName(bestScenario?.effect.effectName ?? bestScenario?.effect.effect ?? '?')}" ` +
+                `(status=${registry.getEntry(bestScenario?.effect.effect ?? '')?.organismStatus ?? 'builtin'}) was vibe-incompatible, ` +
+                `selected "${effectDisplayName(preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect)}" ` +
+                `(status=${registry.getEntry(preBufferScenario.effect.effect)?.organismStatus ?? 'builtin'}) instead (vibe=${currentVibe})`);
         }
         if (preBufferScenario &&
             oracleProbability >= this.PRE_BUFFER_MIN_PROBABILITY &&

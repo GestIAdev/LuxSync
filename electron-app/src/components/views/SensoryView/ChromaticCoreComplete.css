@@ -228,7 +228,7 @@
 
 .chromatic-core-complete__palette {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);  /* 🪗 WAVE 7773: 5 swatches (PRI, SEC, ACC, AMB, CON) */
   gap: 6px;
   padding: 8px 12px 10px;
   margin-top: auto;

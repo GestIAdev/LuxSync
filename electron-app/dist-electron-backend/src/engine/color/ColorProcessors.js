@@ -95,6 +95,7 @@ const _colorPaletteScratch = {
     secondary: { h: 0, s: 0, l: 0 },
     accent: { h: 0, s: 0, l: 0 },
     ambient: { h: 0, s: 0, l: 0 },
+    contrast: { h: 0, s: 0, l: 0 }, // 🪗 WAVE 7773: 5º color — zona floor
     strategy: 'analogous',
 };
 // ─────────────────────────────────────────────────────────────────────────
@@ -130,6 +131,12 @@ export function selenePaletteToColorPaletteMutate(selene) {
     out.ambient.s = selene.ambient.s / 100;
     out.ambient.l = selene.ambient.l / 100;
     out.ambient.hex = hslToHexCached(3, out.ambient.h, out.ambient.s, out.ambient.l);
+    // 🪗 WAVE 7773: contrast — 5º color (zona floor, opuesto al ambient)
+    if (out.contrast) {
+        out.contrast.h = selene.contrast.h / 360;
+        out.contrast.s = selene.contrast.s / 100;
+        out.contrast.l = selene.contrast.l / 100;
+    }
     // strategy
     out.strategy = selene.meta.strategy;
     return out;
@@ -156,6 +163,7 @@ export function selenePaletteToColorPalette(selene) {
         secondary: normalizeHSL(selene.secondary),
         accent: normalizeHSL(selene.accent),
         ambient: normalizeHSL(selene.ambient),
+        contrast: normalizeHSL(selene.contrast), // 🪗 WAVE 7773
         strategy: selene.meta.strategy,
     };
 }

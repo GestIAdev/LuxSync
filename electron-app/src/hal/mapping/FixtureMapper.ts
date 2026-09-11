@@ -187,6 +187,7 @@ export interface RGBPalette {
   secondary: { r: number; g: number; b: number }
   accent: { r: number; g: number; b: number }
   ambient: { r: number; g: number; b: number }
+  contrast: { r: number; g: number; b: number }  // 🪗 WAVE 7773: 5º color — zona floor
 }
 
 /** Movement state for movers */
@@ -777,6 +778,7 @@ export class FixtureMapper {
       secondary: hslToRgb(intent.palette.secondary),
       accent: hslToRgb(intent.palette.accent),
       ambient: hslToRgb(intent.palette.ambient),
+      contrast: hslToRgb(intent.palette.contrast ?? { h: 0, s: 0, l: 0 }),  // 🪗 WAVE 7773
     }
   }
   
@@ -788,7 +790,7 @@ export class FixtureMapper {
       'MOVING_RIGHT': 'ambient',
       'STROBES': 'accent',
       'AMBIENT': 'ambient',
-      'FLOOR': 'primary',
+      'FLOOR': 'contrast',  // 🪗 WAVE 7773: floor consume el 5º color (opuesto al ambient)
       'AIR': 'secondary',
       'CENTER': 'primary',
       'UNASSIGNED': 'primary',

@@ -246,7 +246,7 @@ export function selectZoneIntensityXZ(result, nodeX, nodeZ) {
  * Función pura, determinista, zero-alloc.
  *
  * @param zoneId - ZoneId semántico del nodo (e.g. 'frontLeft', 'ambient')
- * @returns Rol cromático: 'primary' | 'secondary' | 'accent' | 'ambient'
+ * @returns Rol cromático: 'primary' | 'secondary' | 'accent' | 'ambient' | 'contrast'
  */
 export function selectColorRoleFromZone(zoneId) {
     switch (normalizeZoneId(zoneId)) {
@@ -269,8 +269,11 @@ export function selectColorRoleFromZone(zoneId) {
             return 'accent';
         case 'strobe':
             return 'accent';
-        case 'ambient':
+        // 🪗 WAVE 7773: floor consume el 5º color (contrast), opuesto al ambient.
+        // Antes parasitaba 'ambient' — ahora tiene rol cromático propio.
         case 'floor':
+            return 'contrast';
+        case 'ambient':
         default:
             return 'ambient';
     }

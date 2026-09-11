@@ -6,7 +6,7 @@
  * - Temperatura de color (Kelvin)
  * - Acorde detectado (si disponible)
  * - Harmony Engine settings
- * - Paleta de 4 colores con detalles HSL
+ * - Paleta de 5 colores con detalles HSL 🪗 WAVE 7773: +contrast (zona floor)
  */
 
 import React, { memo, useMemo } from 'react'
@@ -20,7 +20,7 @@ import './ChromaticCoreComplete.css'
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface PaletteRole {
-  key: 'primary' | 'secondary' | 'accent' | 'ambient'
+  key: 'primary' | 'secondary' | 'accent' | 'ambient' | 'contrast'
   label: string
   shortLabel: string
 }
@@ -30,6 +30,7 @@ const PALETTE_ROLES: PaletteRole[] = [
   { key: 'secondary', label: 'Secondary', shortLabel: 'SEC' },
   { key: 'accent', label: 'Accent', shortLabel: 'ACC' },
   { key: 'ambient', label: 'Ambient', shortLabel: 'AMB' },
+  { key: 'contrast', label: 'Contrast', shortLabel: 'CON' },  // 🪗 WAVE 7773: zona floor
 ]
 
 const STRATEGY_INFO: Record<string, { label: string; icon: string; description: string }> = {
@@ -236,7 +237,9 @@ export const ChromaticCoreComplete: React.FC = memo(() => {
       {/* Palette Grid */}
       <div className="chromatic-core-complete__palette">
         {PALETTE_ROLES.map((role) => {
-          const safeColor = getSafeColor(palette[role.key])
+          const rawColor = palette[role.key]  // 🪗 WAVE 7773: contrast puede ser undefined
+          if (!rawColor) return null  // No renderizar si el color no existe aún
+          const safeColor = getSafeColor(rawColor)
           const cssColor = hslToCSS(safeColor)
           const h = Math.round(safeColor.h * 360)
           const isDark = isDarkColor(safeColor)

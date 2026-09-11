@@ -58,8 +58,9 @@ export const TECHNO_CONSTITUTION = {
     //             9° está cerca del polo cálido, pero forbiddenHueRanges no lo atrapa
     //             PERO el hueRemapping [25-85] → frío con variación lo sanitiza
     thermalGravityStrength: 0.22,
-    // 🌐 WAVE 285.5: Solo el núcleo naranja/amarillo es problemático
-    forbiddenHueRanges: [[25, 80]],
+    // 🌐 WAVE 7773: ANTI-NARANJA BLINDADO — floor bajado de 25 a 5.
+    // El corredor [0, 25] dejaba pasar hue 10° que en LED se ve naranja, no rojo puro.
+    forbiddenHueRanges: [[5, 80]],
     // 🌈 WAVE 285.5: Permitir todo, la gravedad + remapping hacen el trabajo
     allowedHueRanges: [[0, 360]],
     // Elastic Rotation de 15° para escapar zonas prohibidas
@@ -100,7 +101,7 @@ export const TECHNO_CONSTITUTION = {
     // ═══════════════════════════════════════════════════════════════════════
     neonProtocol: {
         enabled: true,
-        dangerZone: [15, 80], // Naranjas (15°) hasta Amarillo-Verde (80°)
+        dangerZone: [5, 80], // WAVE 7773: Bajado de 15 a 5 — cierra el corredor naranja
         minSaturation: 90, // Saturación mínima para neón
         minLightness: 75, // Luminosidad mínima para evitar barro
         fallbackToWhite: true, // Si no puede ser neón → blanco hielo

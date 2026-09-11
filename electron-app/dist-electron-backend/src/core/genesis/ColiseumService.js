@@ -134,7 +134,18 @@ function estimateRarity(db, l2Distance, operator, newSignature) {
  */
 function computeBezierSignature(clip) {
     const values = [];
-    for (const track of clip.tracks) {
+    // 🔬 WAVE 7770: Canonical track order — sort by paramId before extraction.
+    // Two structurally identical clips with different track insertion order
+    // produced different signatures → phantom species in K-Means. The sort is
+    // on a shallow copy ([...]) — the original clip is cached and shared by
+    // the materializer, it must NOT be mutated. Secondary sort by zones for
+    // deterministic order when a clip has two tracks with the same paramId
+    // (legitimate: same param targeted at different fixture zones).
+    const canonicalTracks = [...clip.tracks].sort((a, b) => {
+        const byParam = a.curve.paramId.localeCompare(b.curve.paramId);
+        return byParam !== 0 ? byParam : a.zones.join(',').localeCompare(b.zones.join(','));
+    });
+    for (const track of canonicalTracks) {
         const range = track.curve.range;
         const span = range[1] - range[0];
         const safeSpan = span !== 0 ? span : 1;

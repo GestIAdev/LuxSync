@@ -30,7 +30,9 @@ export interface HSLColor {
 }
 
 /**
- * Paleta de 4 colores para iluminación
+ * Paleta de 5 colores para iluminación
+ * 🪗 WAVE 7773: contrast añadido — opuesto a la masa principal (ambient),
+ * consumido exclusivamente por la zona floor.
  */
 export interface ColorPalette {
   /** Color principal - el protagonista */
@@ -41,6 +43,8 @@ export interface ColorPalette {
   accent: HSLColor
   /** Color ambiente - fondos y rellenos */
   ambient: HSLColor
+  /** 🪗 WAVE 7773: Color de contraste - zona floor (opuesto al ambient) */
+  contrast?: HSLColor
   /** Strategy used to generate this palette (for debug/display) */
   strategy?: string
 }

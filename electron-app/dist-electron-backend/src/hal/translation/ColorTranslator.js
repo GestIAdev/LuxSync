@@ -171,6 +171,16 @@ export function rgbToCmy(rgb) {
 // COLOR TRANSLATOR CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 export class ColorTranslator {
+    /**
+     * ⚒️ WAVE 7753: Detecta si un slot es un filtro de corrección de temperatura
+     * (CTO, CTB, CTC, Warm, Cool, etc.) por su nombre. Match case-insensitive.
+     * Estos filtros tienen C* alto en CIE Lab (son cromáticamente saturados)
+     * pero conceptualmente no son colores puros — son gels de corrección.
+     */
+    _isTemperatureFilter(name) {
+        const lower = (name || '').toLowerCase();
+        return ColorTranslator.TEMP_FILTER_PATTERNS.some(p => lower.includes(p));
+    }
     constructor() {
         // Cache de traducciones (LRU)
         this.translationCache = new Map();
@@ -377,34 +387,58 @@ export class ColorTranslator {
         let secondNearestIndex = -1;
         let smallestHueDiff = Infinity;
         let secondSmallestHueDiff = Infinity;
-        for (let i = 0; i < wheel.colors.length; i++) {
-            const slotHsl = rgbToHsl(wheel.colors[i].rgb);
-            const slotIsChromatic = slotHsl.s > 0.15;
-            // ⚒️ WAVE 7752: VETO DE CHROMA perceptual.
-            // Calcular CIE chroma del slot para detectar blancos teñidos.
-            // HSL saturation clasifica CTB (s=1.0) como cromático, pero CIE
-            // chroma (C*≈13) revela que es un blanco teñido. El veto asegura
-            // que CTB/CTO nunca ganen contra targets saturados.
-            const slotLab = rgbToLab(wheel.colors[i].rgb);
-            const slotChroma = Math.sqrt(slotLab.a * slotLab.a + slotLab.b * slotLab.b);
-            const slotIsTintedWhite = slotChroma < this.SLOT_CHROMA_THRESHOLD;
-            // Slots neutros (White, Open) Y blancos teñidos (CTB, CTO):
-            // veto total cuando el target es cromático.
-            const hueDiff = (targetIsChromatic && (!slotIsChromatic || slotIsTintedWhite))
-                ? 180
-                : slotIsChromatic
-                    ? circularHueDiff(targetHsl.h, slotHsl.h)
-                    : 180;
-            if (hueDiff < smallestHueDiff) {
-                secondSmallestHueDiff = smallestHueDiff;
-                secondNearestIndex = nearestIndex;
-                smallestHueDiff = hueDiff;
-                nearestIndex = i;
+        // ⚒️ WAVE 7753: Veto híbrido con fallback.
+        // Pasada 1: veto completo (chroma C*<30 OR nombre de filtro de temperatura).
+        // Si TODOS los slots quedan vetados (smallestHueDiff=180), pasada 2: veto
+        // solo por chroma (ignora nombres), para no devolver error fatal.
+        for (let pass = 0; pass < 2; pass++) {
+            const useNameVeto = pass === 0;
+            nearestIndex = 0;
+            secondNearestIndex = -1;
+            smallestHueDiff = Infinity;
+            secondSmallestHueDiff = Infinity;
+            for (let i = 0; i < wheel.colors.length; i++) {
+                const slotHsl = rgbToHsl(wheel.colors[i].rgb);
+                const slotIsChromatic = slotHsl.s > 0.15;
+                // ⚒️ WAVE 7752: VETO DE CHROMA perceptual.
+                // Calcular CIE chroma del slot para detectar blancos teñidos.
+                // HSL saturation clasifica CTB (s=1.0) como cromático, pero CIE
+                // chroma (C*≈13) revela que es un blanco teñido. El veto asegura
+                // que CTB/CTO nunca ganen contra targets saturados.
+                const slotLab = rgbToLab(wheel.colors[i].rgb);
+                const slotChroma = Math.sqrt(slotLab.a * slotLab.a + slotLab.b * slotLab.b);
+                const slotIsTintedWhite = slotChroma < this.SLOT_CHROMA_THRESHOLD;
+                // ⚒️ WAVE 7753: VETO POR NOMBRE — filtros de corrección de temperatura.
+                // CTO tiene C*≈57.5 (above chroma threshold 30), así que el veto de
+                // chroma no lo pilla. Pero su nombre "CTO (Warm)" contiene "cto" →
+                // interceptado por el diccionario TEMP_FILTER_PATTERNS.
+                // Solo activo en pasada 1 (useNameVeto=true). La pasada 2 (fallback)
+                // ignora nombres para garantizar que siempre haya un ganador.
+                const slotIsTempFilter = useNameVeto && this._isTemperatureFilter(wheel.colors[i].name);
+                // Slots neutros (White, Open), blancos teñidos (CTB C*<30), Y filtros
+                // de temperatura (CTO, CTB por nombre): veto total cuando el target
+                // es cromático.
+                const hueDiff = (targetIsChromatic && (!slotIsChromatic || slotIsTintedWhite || slotIsTempFilter))
+                    ? 180
+                    : slotIsChromatic
+                        ? circularHueDiff(targetHsl.h, slotHsl.h)
+                        : 180;
+                if (hueDiff < smallestHueDiff) {
+                    secondSmallestHueDiff = smallestHueDiff;
+                    secondNearestIndex = nearestIndex;
+                    smallestHueDiff = hueDiff;
+                    nearestIndex = i;
+                }
+                else if (hueDiff < secondSmallestHueDiff) {
+                    secondSmallestHueDiff = hueDiff;
+                    secondNearestIndex = i;
+                }
             }
-            else if (hueDiff < secondSmallestHueDiff) {
-                secondSmallestHueDiff = hueDiff;
-                secondNearestIndex = i;
-            }
+            // ⚒️ WAVE 7753: Fallback — si la pasada 1 vetó todo (smallestHueDiff=180),
+            // la pasada 2 (sin veto de nombres) encontrará el hue más cercano.
+            // Si la pasada 1 encontró un ganador válido (hueDiff<180), salir del loop.
+            if (smallestHueDiff < 180)
+                break;
         }
         let finalColor = wheel.colors[nearestIndex];
         const poorMatch = smallestHueDiff > 45; // > 45° de diferencia de hue = match pobre
@@ -580,6 +614,16 @@ export class ColorTranslator {
 }
 // WAVE 2073: Log-once guard — evita spam por frame cuando la rueda no tiene colores mapeados
 ColorTranslator.warnedProfiles = new Set();
+// ⚒️ WAVE 7753: TEMPERATURE FILTER VETO — Detección por nombre.
+// CTO/CTB tienen C* alto (CTO C*≈57.5) porque son filtros naranja/azul
+// saturados en RGB, pero conceptualmente son filtros de corrección de
+// temperatura, no colores puros. El veto por chroma (C*<30) no los pilla.
+// Esta lista de nombres intercepta los filtros de temperatura físicos
+// que aparecen en los JSON de fixtures como "CTO (Warm)", "CTB (Cool)".
+// Match case-insensitive sobre el nombre del slot.
+ColorTranslator.TEMP_FILTER_PATTERNS = [
+    'cto', 'ctb', 'ctc', 'warm', 'cool', 'ww', 'cw', 'temp', 'filter',
+];
 // ═══════════════════════════════════════════════════════════════════════════
 // SINGLETON EXPORT
 // ═══════════════════════════════════════════════════════════════════════════

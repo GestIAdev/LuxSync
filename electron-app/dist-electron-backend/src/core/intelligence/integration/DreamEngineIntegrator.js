@@ -17,7 +17,7 @@
  * @revision WAVE 900.3.1 - Fixed type casting, cache key, execution tracking
  */
 import { effectDreamSimulator } from '../dream/EffectDreamSimulator';
-import { effectDisplayName } from '../../arsenal/DynamicEffectRegistry';
+import { effectDisplayName, getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
 import { visualConscienceEngine } from '../conscience/VisualConscienceEngine';
 import { effectBiasTracker } from '../dream/EffectBiasTracker';
 import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext';
@@ -49,6 +49,18 @@ export class DreamEngineIntegrator {
         MoodController.getInstance().onMoodChange(() => {
             this.dreamCache.clear();
         });
+    }
+    /**
+     * 🧬 [CHAMPION_TRACK] P4: Logs a candidate rejection with its organism status.
+     * Breadcrumb for the silent-champions investigation — reveals whether the
+     * Conscience Engine (HERESY, penalty=1.0) or the downstream gates are
+     * vetoing champions that survived the Dream Simulator ranking.
+     */
+    _logChampionReject(reason, effect) {
+        const entry = getDynamicEffectRegistry().getEntry(effect.effect);
+        console.warn(`[CHAMPION_TRACK] ⚖️ Ethics reject @ ${reason}: ` +
+            `"${effectDisplayName(effect.effect)}" ` +
+            `(id=${effect.effect}, status=${entry?.organismStatus ?? 'builtin'})`);
     }
     /**
      * Ejecuta pipeline COMPLETO: Hunt → Dream → Decide → Filter → Execute
@@ -154,6 +166,11 @@ export class DreamEngineIntegrator {
                     if (_now - _last >= 1000) {
                         console.log(`[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — ` +
                             `"${activeBuffer.effectId}" sealed, ${Math.ceil((activeBuffer.predictedEventAt - nowGuard) / 1000)}s remaining`);
+                        // 🧬 [CHAMPION_TRACK] P4: the sealed effect awaiting its moment —
+                        // shows whether a champion made it into the Cassandra buffer.
+                        this._logChampionReject('pre-buffer-guard (sealed, awaiting event)', {
+                            effect: activeBuffer.effectId,
+                        });
                         this._preBufferLogThrottle.set(_guardKey, _now);
                     }
                     return {
@@ -211,6 +228,14 @@ export class DreamEngineIntegrator {
                 ethicalVerdict = fallbackVerdict;
             }
         }
+        // 🧬 [CHAMPION_TRACK] P4: Ethics veto — the primary suspect for silent
+        // champions. Fires when the Conscience Engine rejects the candidate pool
+        // (HERESY, penalty=1.0, etc.). Logs the #1 ranked scenario's status to
+        // reveal whether a champion survived ranking only to be vetoed here.
+        if (ethicalVerdict.verdict === 'REJECTED' && dreamResult.bestScenario) {
+            this._logChampionReject(`ethics-veto (score=${ethicalVerdict.ethicalScore.toFixed(3)}, ` +
+                `violations=[${ethicalVerdict.violations.map(v => v.value).join(', ')}])`, dreamResult.bestScenario.effect);
+        }
         // ═════════════════════════════════════════════════════════════════════
         // STEP 4: DECIDE (APPROVED/REJECTED/DEFERRED)
         // ═════════════════════════════════════════════════════════════════════
@@ -246,6 +271,10 @@ export class DreamEngineIntegrator {
         if (decision.approved && decision.effect) {
             if (decision.effect.intensity < 0.30) {
                 console.log(`[INTEGRATOR] 🔇 LOW INTENSITY BLOCKED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} (min=0.30)`);
+                // 🧬 [CHAMPION_TRACK] P4: intensity gate — a champion that survived
+                // ranking AND ethics can still die here if the mood-adjusted intensity
+                // fell below the 0.30 floor.
+                this._logChampionReject(`intensity-gate (${decision.effect.intensity.toFixed(2)} < 0.30)`, decision.effect);
                 return {
                     ...decision,
                     approved: false,

@@ -126,6 +126,7 @@ export class SeleneLux {
                 secondary: { r: 100, g: 50, b: 50 },
                 ambient: { r: 80, g: 40, b: 40 },
                 accent: { r: 150, g: 75, b: 75 },
+                contrast: { r: 64, g: 128, b: 128 }, // 🪗 WAVE 7773: opuesto al ambient
             },
             // 🎚️ WAVE 275: Zone intensities por defecto
             zoneIntensities: {
@@ -1021,6 +1022,7 @@ export class SeleneLux {
             secondary: this.hslToRgb(palette.secondary.h, palette.secondary.s, palette.secondary.l),
             ambient: this.hslToRgb(palette.ambient.h, palette.ambient.s, palette.ambient.l),
             accent: this.hslToRgb(palette.accent.h, palette.accent.s, palette.accent.l),
+            contrast: this.hslToRgb(palette.contrast?.h ?? 0, palette.contrast?.s ?? 0, palette.contrast?.l ?? 0), // 🪗 WAVE 7773: 5º color — zona floor
         };
     }
     /**

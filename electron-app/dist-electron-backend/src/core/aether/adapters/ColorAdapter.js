@@ -58,6 +58,7 @@ const _FALLBACK_PALETTE = {
     secondary: { r: 0, g: 0, b: 0 },
     accent: { r: 0, g: 0, b: 0 },
     ambient: { r: 0, g: 0, b: 0 },
+    contrast: { r: 0, g: 0, b: 0 }, // 🪗 WAVE 7773
 };
 // ─────────────────────────────────────────────────────────────────────────────
 // COLOR ADAPTER

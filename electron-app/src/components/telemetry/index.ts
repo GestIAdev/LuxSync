@@ -5,7 +5,7 @@
  */
 
 // WAVE 1167: New Neural Command Components
+// 🧹 WAVE 7773: ChromaticCorePanel REMOVED — replaced by SensoryView/ChromaticCoreComplete
 export { AudioSpectrumPanel } from './AudioSpectrumPanel'
-export { ChromaticCorePanel } from './ChromaticCorePanel'
 export { ContextMatrixPanel } from './ContextMatrixPanel'
 export { NeuralStreamLog } from './NeuralStreamLog'

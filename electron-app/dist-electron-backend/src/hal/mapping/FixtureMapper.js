@@ -478,6 +478,7 @@ export class FixtureMapper {
             secondary: hslToRgb(intent.palette.secondary),
             accent: hslToRgb(intent.palette.accent),
             ambient: hslToRgb(intent.palette.ambient),
+            contrast: hslToRgb(intent.palette.contrast ?? { h: 0, s: 0, l: 0 }), // 🪗 WAVE 7773
         };
     }
     getColorRoleForZone(zone) {
@@ -488,7 +489,7 @@ export class FixtureMapper {
             'MOVING_RIGHT': 'ambient',
             'STROBES': 'accent',
             'AMBIENT': 'ambient',
-            'FLOOR': 'primary',
+            'FLOOR': 'contrast', // 🪗 WAVE 7773: floor consume el 5º color (opuesto al ambient)
             'AIR': 'secondary',
             'CENTER': 'primary',
             'UNASSIGNED': 'primary',

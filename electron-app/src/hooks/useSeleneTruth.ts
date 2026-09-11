@@ -140,12 +140,22 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
         // 🛡️ WAVE 6018: Sincronización de Censo (Defensa contra shows fantasma)
         // WAVE 7718: Back-off — only fire when the truth count CHANGES, not while
         // it stays the same. Prevents repeated Map/Set/array allocations every 2Hz.
+        // 🩸 WAVE 7774 (BUGFIX DESTRUCTOR DE SHOWS): el truth del backend SOLO
+        // reporta fixtures PATCHED (dmxAddress !== 0, TickEngine WAVE 7731 —
+        // las unpatched se saltan en el censo). Comparar el TOTAL del stage
+        // contra el censo patched producía un falso mismatch al asignar la
+        // primera dirección DMX de un show nuevo → el censo borraba todas
+        // las unpatched. Ahora: PATCHED vs PATCHED. El truth además viaja
+        // sparse (agujeros undefined en índices unpatched) → filter(Boolean).
         const stageStoreState = useStageStore.getState()
         const stageFixtures = stageStoreState.fixtures || []
-        const truthFixtures = data.hardware?.fixtures || []
+        const truthFixtures = ((data.hardware?.fixtures || []).filter(Boolean)) as any[]
         const truthCount = truthFixtures.length
+        const stagePatchedCount = stageFixtures.filter(
+          (f: any) => (f.address ?? f.dmxAddress ?? 0) !== 0
+        ).length
 
-        if (stageFixtures.length !== truthCount && lastSyncedTruthCountRef.current !== truthCount) {
+        if (stagePatchedCount !== truthCount && lastSyncedTruthCountRef.current !== truthCount) {
           lastSyncedTruthCountRef.current = truthCount
           stageStoreState.syncFixturesFromTruth(truthFixtures)
         }

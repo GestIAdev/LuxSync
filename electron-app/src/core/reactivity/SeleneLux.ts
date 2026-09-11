@@ -174,6 +174,7 @@ export interface SeleneLuxOutput {
     secondary: RGB;
     ambient: RGB;
     accent: RGB;
+    contrast: RGB;  // 🪗 WAVE 7773: 5º color — zona floor
   };
   /** 🎚️ WAVE 275: Intensidades por zona basadas en frecuencias */
   /** 🌊 WAVE 1035: Añadido soporte para Front/Back L/R stereo */
@@ -465,6 +466,7 @@ export class SeleneLux {
         secondary: { r: 100, g: 50, b: 50 },
         ambient: { r: 80, g: 40, b: 40 },
         accent: { r: 150, g: 75, b: 75 },
+        contrast: { r: 64, g: 128, b: 128 },  // 🪗 WAVE 7773: opuesto al ambient
       },
       // 🎚️ WAVE 275: Zone intensities por defecto
       zoneIntensities: {
@@ -1437,8 +1439,10 @@ export class SeleneLux {
       // ⚒️ WAVE 7749.69: Ungated snare energy — clamped to [0,1]
       snare_energy_ungated: clamp01(src.snare_energy_ungated, 0),
       snare_crack_flux: clamp01(src.snare_crack_flux, 0),
-      // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.1, 2.0] (not [0,1])
-      snare_body_factor: Math.max(0.1, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
+      // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.3, 2.0] (not [0,1])
+      // ⚒️ WAVE 7749.77b: Floor 0.1→0.3 — synthetic snares (EDM/Big Room) had
+      // bFct=0.1, collapsing Drive to 0.006. 0.3 gives 3× headroom.
+      snare_body_factor: Math.max(0.3, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
       // ⚒️ WAVE 7749.80: Treble-ghost delta — half-wave rectified (>=0), NOT clamped to [0,1]
       raw_hh_delta: Math.max(0, safeNumber(src.raw_hh_delta, 0)),
       photon: src.photon,
@@ -1483,12 +1487,18 @@ export class SeleneLux {
     secondary: RGB;
     ambient: RGB;
     accent: RGB;
+    contrast: RGB;
   } {
     return {
       primary: this.hslToRgb(palette.primary.h, palette.primary.s, palette.primary.l),
       secondary: this.hslToRgb(palette.secondary.h, palette.secondary.s, palette.secondary.l),
       ambient: this.hslToRgb(palette.ambient.h, palette.ambient.s, palette.ambient.l),
       accent: this.hslToRgb(palette.accent.h, palette.accent.s, palette.accent.l),
+      contrast: this.hslToRgb(
+        palette.contrast?.h ?? 0,
+        palette.contrast?.s ?? 0,
+        palette.contrast?.l ?? 0,
+      ),  // 🪗 WAVE 7773: 5º color — zona floor
     };
   }
   

@@ -1354,7 +1354,7 @@ export const PredictionOrbIcon: React.FC<IconProps> = ({
 
 /**
  * 🎨 PALETTE CHROMATIC - Paleta cromática
- * Para: ChromaticCorePanel header
+ * Para: ChromaticCoreComplete header
  */
 export const PaletteChromaticIcon: React.FC<IconProps> = ({ 
   size = 20, 

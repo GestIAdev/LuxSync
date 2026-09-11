@@ -75,6 +75,7 @@ export interface IColorIngressPalette {
   readonly secondary: RgbColor
   readonly accent:    RgbColor
   readonly ambient:   RgbColor
+  readonly contrast:  RgbColor  // 🪗 WAVE 7773: 5º color — zona floor
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,6 +96,7 @@ const _FALLBACK_PALETTE: IColorIngressPalette = {
   secondary: { r: 0, g: 0, b: 0 },
   accent:    { r: 0, g: 0, b: 0 },
   ambient:   { r: 0, g: 0, b: 0 },
+  contrast:  { r: 0, g: 0, b: 0 },  // 🪗 WAVE 7773
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

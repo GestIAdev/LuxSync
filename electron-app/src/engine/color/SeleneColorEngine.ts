@@ -1598,37 +1598,15 @@ export class SeleneColorEngine {
           }
         }
         
-        // 🌌 WAVE 7719: FIBONACCI MACRO-CYCLE ROTATION — Apply the accumulated
-        // 137.5° × macroCycleCount shift to the base hue AFTER the slot snap.
-        // This ensures each full slot-array loop produces a different palette
-        // even if the slot ranges are identical. The shift is applied to finalHue
-        // (primary) — the secondary/accent/ambient derive from it automatically.
+        // 🌌 WAVE 7719 / WAVE 7773: FIBONACCI MACRO-CYCLE ROTATION —
+        // El shift se aplica DESPUÉS del snap del slot, SIN re-snap posterior.
+        // Antes, el re-snap anulaba el shift de 137.5° — el hue volvía al
+        // centro del slot sin importar el macro-ciclo. Ahora el shift sobrevive
+        // y las derivaciones (SEC/ACC/AMB) heredan la rotación astronómica.
+        // El forbiddenHueRanges + NeonProtocol downstream sanitizan cualquier
+        // hue que caiga en zona prohibida tras el shift.
         if (macroCycleHueShift > 0) {
           finalHue = normalizeHue(finalHue + macroCycleHueShift);
-          // 🌌 WAVE 7753 ANTI-MOSTAZA: RE-SNAP al slot después del macroCycleHueShift.
-          // El desplazamiento macro-cycle puede sacar el finalHue del rango del slot
-          // cromático activo. Sin re-snap, las derivaciones (SEC/ACC/AMB) heredan
-          // un hue fuera del slot, rompiendo la coherencia constitucional.
-          if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
-            const isFullCircleMc = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
-            if (!isFullCircleMc) {
-              let isAllowedMc = false;
-              let closestCenterMc = finalHue;
-              let minDistMc = Infinity;
-              for (const [mn, mx] of slot.allowedHueRanges) {
-                const inRangeMc = mn <= mx
-                  ? (finalHue >= mn && finalHue <= mx)
-                  : (finalHue >= mn || finalHue <= mx);
-                if (inRangeMc) { isAllowedMc = true; break; }
-                const centerMc = mn <= mx
-                  ? (mn + mx) / 2
-                  : normalizeHue((mn + mx + 360) / 2);
-                const dMc = Math.min(Math.abs(finalHue - centerMc), 360 - Math.abs(finalHue - centerMc));
-                if (dMc < minDistMc) { minDistMc = dMc; closestCenterMc = centerMc; }
-              }
-              if (!isAllowedMc) finalHue = normalizeHue(closestCenterMc);
-            }
-          }
         }
       }
     }
@@ -1759,6 +1737,12 @@ export class SeleneColorEngine {
     }
     
     // 🎨 WAVE 7753: Secondary derivado de la estrategia, no de Fibonacci ciego.
+    // 🪗 WAVE 7773: EFECTO ACORDEÓN — multiplicador de elasticidad derivado de
+    // _cycleDelta. Oscila entre 0.5 y 1.5, estable dentro de un slot, varía
+    // entre macro-ciclos. Aplicado a los offsets de SEC/ACC/AMB para que las
+    // paletas "respiren" — se estiren y compriman sin Math.random().
+    const elasticity = 1 + (_cycleDelta / 30);  // _cycleDelta ∈ [-15, 15] → [0.5, 1.5]
+
     let secondaryHue: number;
     if (options?.forceStrategy === 'prism') {
       // 🔮 PRISM: Secondary a +60° del primary (tetraédrico)
@@ -1766,8 +1750,8 @@ export class SeleneColorEngine {
     } else {
       switch (strategy) {
         case 'analogous':
-          // Vecino inferior: -30° del primary (armonía estricta)
-          secondaryHue = normalizeHue(finalHue - 30 + saltRotation + _cycleDelta);
+          // 🪗 WAVE 7773: -25° × elasticity (antes -30° fijo → colisionaba con AMB)
+          secondaryHue = normalizeHue(finalHue - (25 * elasticity) + saltRotation + _cycleDelta);
           break;
         case 'triadic':
           // 2do punto del triángulo: +120° del primary
@@ -1817,16 +1801,19 @@ export class SeleneColorEngine {
     } else {
       switch (strategy) {
         case 'analogous':
-          accentHue = finalHue + 30 + _cycleDelta;
+          // 🪗 WAVE 7773: +25° × elasticity (antes +30° fijo → colisionaba con AMB)
+          accentHue = finalHue + (25 * elasticity) + _cycleDelta;
           break;
         case 'triadic':
-          accentHue = finalHue + 120 + _cycleDelta;
+          // 🪗 WAVE 7773: +120° + 15° × elasticity (antes +120° fijo = SEC)
+          accentHue = finalHue + 120 + (15 * elasticity) + _cycleDelta;
           break;
         case 'complementary':
-          accentHue = finalHue + 180 + _cycleDelta;
+          // 🪗 WAVE 7773: 180° - 20° × elasticity (antes +180° fijo = SEC)
+          accentHue = finalHue + 180 - (20 * elasticity) + _cycleDelta;
           break;
         default:
-          accentHue = finalHue + 30 + _cycleDelta;
+          accentHue = finalHue + (25 * elasticity) + _cycleDelta;
       }
     }
     
@@ -1861,13 +1848,15 @@ export class SeleneColorEngine {
         ambientHue = normalizeHue(finalHue + 240 + _cycleDelta);
         break;
       case 'complementary':
-        // Split-Complementary: Secondary +30°
-        ambientHue = normalizeHue(secondaryHue + 30 + _cycleDelta);
+        // 🪗 WAVE 7773: 180° + 20° × elasticity (antes SEC+30° → colisionaba con SEC)
+        // Crea un racimo de matices opuesto al primario, no un solo punto.
+        ambientHue = normalizeHue(finalHue + 180 + (20 * elasticity) + _cycleDelta);
         break;
       case 'analogous':
       default:
-        // Vecino opuesto: -30° del primary
-        ambientHue = normalizeHue(finalHue - 30 + _cycleDelta);
+        // 🪗 WAVE 7773: -45° × elasticity (antes -30° fijo = SEC → colisionaba)
+        // Más lejos del SEC (-25° × elasticity) para crear separación real.
+        ambientHue = normalizeHue(finalHue - (45 * elasticity) + _cycleDelta);
         break;
     }
     
@@ -1960,11 +1949,15 @@ export class SeleneColorEngine {
       pal.ambient.h = normalizeHue(pal.ambient.h + 45);
     }
     
-    // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
+    // === I. COLOR CONTRASTE (El Eslabón Perdido) ===
+    // 🪗 WAVE 7773: Contrast ahora es opuesto a la MASA PRINCIPAL (ambient),
+    // no al primary. Esto garantiza que el 5º color sea siempre el complemento
+    // visual del color más extendido en el escenario (ambient = wash/floor).
+    // S=95, L=50: color puro y visible, no silueta oscura.
     // WAVE 0-ALLOC: Mutate scratch palette
-    pal.contrast.h = normalizeHue(finalHue + 180);
-    pal.contrast.s = 30;
-    pal.contrast.l = 10;
+    pal.contrast.h = normalizeHue(pal.ambient.h + 180);
+    pal.contrast.s = 95;
+    pal.contrast.l = 50;
     
     // === J. DETERMINAR TEMPERATURA VISUAL ===
     // 🌡️ WAVE 68.5: Temperatura PURA basada solo en HUE
@@ -2023,6 +2016,8 @@ export class SeleneColorEngine {
         // 🛡️ WAVE 7724: BUG FIX — accent was missing from the Mud Guard list.
         // The +30° analogous offset can land accent in the 45-75° swamp zone.
         fixDirtyColor(pal.accent);
+        // 🪗 WAVE 7773: contrast también obedece al Mud Guard constitucional.
+        fixDirtyColor(pal.contrast);
       }
       
       // 🪞 2. TROPICAL MIRROR — solo si tropicalMirror: true
@@ -2102,6 +2097,7 @@ export class SeleneColorEngine {
       this._enforceForbiddenHue(pal.secondary, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
       this._enforceForbiddenHue(pal.ambient, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
       this._enforceForbiddenHue(pal.accent, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.contrast, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);  // 🪗 WAVE 7773
       
       // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
       // Si Ambient está demasiado cerca de Secondary (< 30°), separarlos
@@ -2127,7 +2123,17 @@ export class SeleneColorEngine {
     // SOLUCIÓN: Si hay allowedHueRanges, todo lo que esté FUERA es ilegal.
     // Empujar hacia el borde más cercano del rango permitido.
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7753: Usar effectiveOptions.allowedHueRanges (slot-aware).
+    // 🪗 WAVE 7773: LIBERACIÓN DE ARMONÍAS — El allowedHueRanges del slot
+    // astronómico (effectiveOptions.allowedHueRanges) SOLO aplica al PRIMARY.
+    // SEC/ACC/AMB/CONTRA ya no son aplastados hacia el rango del slot —
+    // eso colapsaba la paleta (PRI 210, SEC 217, ACC 217, AMB 217).
+    // Los derivados se evalúan EXCLUSIVAMENTE contra las reglas globales:
+    //   1. forbiddenHueRanges (constitución — anti-naranja)
+    //   2. hueRemapping (constitución)
+    //   3. thermalGravity (constitución)
+    //   4. Universal Swamp-Check (anti-barro)
+    // La matemática del acordeón (±25×elasticity, ±45×elasticity, etc.)
+    // fluye hacia la salida sin ser aplastada por la celda del primario.
     if (effectiveOptions?.allowedHueRanges && effectiveOptions.allowedHueRanges.length > 0) {
       const isInAllowedRange = (hue: number): boolean => {
         for (const [min, max] of effectiveOptions.allowedHueRanges!) {
@@ -2167,11 +2173,10 @@ export class SeleneColorEngine {
         return normalizeHue(nearestHue);
       };
       
-      // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
+      // 🪗 WAVE 7773: Solo el PRIMARY obedece al slot astronómico.
+      // SEC/ACC/AMB/CONTRA quedan libres — sus únicos policías son las
+      // reglas globales de la Constitución (ver bloque anterior y Swamp-Check).
       if (!isInAllowedRange(pal.primary.h))   pal.primary.h   = findNearestAllowedHue(pal.primary.h);
-      if (!isInAllowedRange(pal.secondary.h)) pal.secondary.h = findNearestAllowedHue(pal.secondary.h);
-      if (!isInAllowedRange(pal.ambient.h))   pal.ambient.h   = findNearestAllowedHue(pal.ambient.h);
-      if (!isInAllowedRange(pal.accent.h))    pal.accent.h    = findNearestAllowedHue(pal.accent.h);
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -2187,6 +2192,7 @@ export class SeleneColorEngine {
       this._applyHueRemap(pal.secondary, effectiveOptions.hueRemapping);
       this._applyHueRemap(pal.ambient, effectiveOptions.hueRemapping);
       this._applyHueRemap(pal.accent, effectiveOptions.hueRemapping);
+      this._applyHueRemap(pal.contrast, effectiveOptions.hueRemapping);  // 🪗 WAVE 7773
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -2205,6 +2211,7 @@ export class SeleneColorEngine {
       pal.secondary.h = applyThermalGravity(pal.secondary.h, effectiveOptions.atmosphericTemp, gravityStrength);
       pal.ambient.h   = applyThermalGravity(pal.ambient.h,   effectiveOptions.atmosphericTemp, gravityStrength);
       pal.accent.h    = applyThermalGravity(pal.accent.h,    effectiveOptions.atmosphericTemp, gravityStrength);
+      pal.contrast.h  = applyThermalGravity(pal.contrast.h,  effectiveOptions.atmosphericTemp, gravityStrength);  // 🪗 WAVE 7773
     }
     // ═══════════════════════════════════════════════════════════════════════
     
@@ -2220,8 +2227,9 @@ export class SeleneColorEngine {
     // ═══════════════════════════════════════════════════════════════════════
     {
       const _universalSwamp = (c: HSLColor): void => {
-        // Universal brown zone: 45-90° (yellow/ochre/mud)
-        if (c.h >= 45 && c.h <= 90) {
+        // WAVE 7773: Ampliado de [45, 90] a [25, 90] — atrapa mostazas y ocres
+        // que se escapan del forbiddenHueRanges base (naranja 25-45°).
+        if (c.h >= 25 && c.h <= 90) {
           // If saturation is low or lightness is low → brown/mud appearance
           // Push to safe vibrancy: S >= 75, L >= 45
           if (c.s < 75) c.s = 75;
@@ -2232,6 +2240,7 @@ export class SeleneColorEngine {
       _universalSwamp(pal.secondary);
       _universalSwamp(pal.accent);
       _universalSwamp(pal.ambient);
+      _universalSwamp(pal.contrast);  // 🪗 WAVE 7773
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -2248,6 +2257,7 @@ export class SeleneColorEngine {
     applyNeonProtocol(pal.secondary, effectiveOptions);
     applyNeonProtocol(pal.ambient, effectiveOptions);
     applyNeonProtocol(pal.accent, effectiveOptions);
+    applyNeonProtocol(pal.contrast, effectiveOptions);  // 🪗 WAVE 7773
     // ═══════════════════════════════════════════════════════════════════════
     
     // === M. RETORNAR PALETA COMPLETA ===

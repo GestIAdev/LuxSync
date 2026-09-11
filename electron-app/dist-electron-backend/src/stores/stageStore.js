@@ -698,36 +698,49 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             // syncFixturesFromTruth overwrites it back to 4 (the backend's stale
             // value from load time).
             //
-            // Now we MERGE: for fixtures that exist in BOTH frontend and backend,
-            // keep the FRONTEND version (it has the user's edits). Only add
-            // fixtures that exist in the backend but not the frontend, and remove
-            // fixtures that exist in the frontend but not the backend.
-            const existingMap = new Map(showFile.fixtures.map(f => [f.id, f]));
-            const truthIds = new Set(truthFixtures.map(f => f.id));
-            const merged = truthFixtures.map(f => {
-                const existing = existingMap.get(f.id);
-                if (existing) {
-                    // Keep frontend version — it has the user's position edits.
-                    // Only update fields the backend is authoritative for (e.g. live
-                    // physics state if needed in the future).
-                    return existing;
-                }
-                // New fixture from backend — use backend data
-                return {
-                    ...f,
-                    id: f.id,
-                    name: f.name || 'Backend Fixture',
-                    position: f.position || { x: 0, y: 0, z: 0 }
-                };
+            // 🩸 WAVE 7774 (BUGFIX DESTRUCTOR DE SHOWS): el censo del truth SOLO
+            // reporta fixtures PATCHED (dmxAddress !== 0 — TickEngine WAVE 7731
+            // salta las unpatched). El merge anterior construía el array con
+            // truthFixtures.map() desde el truth solito: al asignar la PRIMERA
+            // dirección DMX de un show nuevo, el truth reportaba 1 fixture y el
+            // censo BORRABA todas las unpatched del show (y del disco al guardar).
+            //
+            // Reglas del merge NO destructivo:
+            //   1. Las UNPATCHED (address=0) SIEMPRE sobreviven — jamás están en
+            //      el truth por diseño (el backend no las reporta).
+            //   2. Las PATCHED solo sobreviven si el backend aún las conoce
+            //      (defensa anti-shows-fantasma de WAVE 6018 intacta).
+            //   3. Las fixtures del backend desconocidas para el frontend se
+            //      añaden (adiciones reales del backend).
+            // El truth puede viajar sparse (agujeros undefined en los índices
+            // unpatched) → filter(Boolean) antes de iterarlo.
+            const realTruth = truthFixtures.filter(Boolean);
+            const truthIds = new Set(realTruth.map(f => f.id));
+            const merged = showFile.fixtures.filter(f => {
+                // Un foco sin dirección DMX nunca está en el censo del backend — vive.
+                if ((f.address ?? f.dmxAddress ?? 0) === 0)
+                    return true;
+                // Un foco parcheado sobrevive solo si el backend lo conoce.
+                return truthIds.has(f.id);
             });
-            // Note: fixtures that exist in frontend but NOT in backend are dropped
-            // by this merge. This is intentional — the backend is the source of
-            // truth for fixture COUNT. But their positions are preserved for the
-            // ones that survive.
+            // Añadir fixtures del backend que el frontend no tiene:
+            const mergedIds = new Set(merged.map(f => f.id));
+            for (const tf of realTruth) {
+                if (mergedIds.has(tf.id))
+                    continue;
+                merged.push({
+                    ...tf,
+                    id: tf.id,
+                    address: tf.dmxAddress ?? 0,
+                    name: tf.name || 'Backend Fixture',
+                    position: tf.position || { x: 0, y: 0, z: 0 },
+                });
+                mergedIds.add(tf.id);
+            }
             showFile.fixtures = merged;
             set({ fixtures: [...showFile.fixtures] });
             get()._syncDerivedState();
-            console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend (MERGE): ${truthFixtures.length} fixtures.`);
+            console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend (merge NO destructivo): ${merged.length} fixtures.`);
         }
     },
     // ═══════════════════════════════════════════════════════════════════════

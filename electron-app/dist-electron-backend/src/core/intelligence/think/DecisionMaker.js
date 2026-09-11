@@ -99,6 +99,15 @@ export function makeDecision(inputs, config = {}) {
     // If DNA approved with high ethics, the effect should proceed regardless.
     const dnaApproved = inputs.dreamIntegration?.approved && inputs.dreamIntegration.effect?.effect;
     if (!dnaApproved && combinedConfidence < cfg.minConfidenceThreshold) {
+        // 🧬 [CHAMPION_TRACK] P5: confidence gate block — a champion that survived
+        // ranking AND ethics can still die here when combined confidence falls
+        // below the threshold without the DNA-approved bypass. Throttled 5s
+        // (this gate can fire every frame during low-confidence stretches).
+        const _ctEffectId = inputs.dreamIntegration?.effect?.effect ?? '';
+        const _ctEntry = _ctEffectId ? getDynamicEffectRegistry().getEntry(_ctEffectId) : undefined;
+        throttledLog('champion-track-confidence-gate', `[CHAMPION_TRACK] 🚪 Confidence gate BLOCK: conf=${combinedConfidence.toFixed(3)} < ` +
+            `${cfg.minConfidenceThreshold} | effect=${_ctEffectId || 'null'} ` +
+            `(status=${_ctEntry?.organismStatus ?? 'n/a'})`, 5000);
         output.confidence = combinedConfidence;
         output.debugInfo.huntState = inputs.huntDecision.suggestedPhase;
         output.debugInfo.reasoning = `Low Confidence Matrix: ${combinedConfidence.toFixed(2)} < ${cfg.minConfidenceThreshold}`;

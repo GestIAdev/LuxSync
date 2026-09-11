@@ -1764,6 +1764,17 @@ export class LiquidEngineBase {
             if (ambientIntensity < 0.001)
                 ambientIntensity = 0;
         }
+        // ⚒️ WAVE 7751: SIDECHAIN BREATHER — Bombeo rítmico anti-saturación.
+        // En Techno el subBass es continuo → _ambientEMA satura → ambient plano.
+        // recoveryFactor cae en los transitorios (AGC rebound) y sube después,
+        // así que modular por él crea un pump/ducking natural en cada bombo:
+        //   breather = 0.75 + 0.25 × recoveryFactor
+        //   recoveryFactor=1 (post-transitorio) → breather=1.00 (sin ducking)
+        //   recoveryFactor=0 (transitorio puro)  → breather=0.75 (−25% ducking)
+        // El clamp a 1.0 protege el techo. No afecta a Latino/Chill porque
+        // su subBass no satura el EMA y recoveryFactor oscila cerca de 1.
+        const _breather = 0.75 + (0.25 * recoveryFactor);
+        ambientIntensity = Math.min(1.0, ambientIntensity * _breather);
         // ⚒️ WAVE 7749.52: Air — envAir processed (zero-attack, fast decay).
         // The old _airEMA soft-follower is replaced by envAir (LiquidEnvelope).
         // Input: treble × 0.6 + highMid × 0.4 (same spectral source as before,
@@ -2003,9 +2014,21 @@ LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR = {
     name: 'Floor',
     gateOn: 0.08, // low — bassDelta transients are small but sharp
     boost: 3.0, // amplify the small delta signal
-    crushExponent: 2.0, // selective — suppresses sub-threshold noise
-    decayBase: 0.12, // fast decay (~65ms) — floor lasers respond to hits, not sustain
-    decayRange: 0.05, // minimal morph influence
+    // ⚒️ WAVE 7751.2: RECALIBRADO LÍQUIDO — De saturación a pulso rodante.
+    // decayBase 0.88→0.75: el 0.88 era demasiado lento para el tempo de los
+    //   géneros. En techno 130BPM hay ~20 frames entre bombos; con 0.88 la
+    //   intensidad solo caía a 8% → el siguiente bombo la volvía a saturar
+    //   a 100% → sostenido perpetuo, nunca oscuro. Con 0.75: frame 15
+    //   (~340ms) llega a blackout → 5 frames de oscuridad antes del siguiente
+    //   bombo. Es un PULSO que rueda y se apaga, no un sostenido.
+    // decayRange 0.10→0.15: morph modula el tail con más rango (0.75-0.90).
+    //   Techno (morph≈0): decay 0.75 (pulso seco). Latino (morph≈0.5): decay
+    //   0.825 (pulso con más estela, respeta el tempo más lento 95BPM).
+    // crushExponent 2.0→1.5: menos agresivo → el subgrave fluye sin ser
+    //   aplastado por la curva convexa. Mantiene el gate + squelch anti-ruido.
+    crushExponent: 1.5, // menos agresivo — el subgrave fluye
+    decayBase: 0.75, // PULSO RODANTE — blackout en ~15 frames (~340ms)
+    decayRange: 0.15, // morph influye: 0.75 (techno) → 0.90 (melódico)
     maxIntensity: 1.0,
     squelchBase: 0.30,
     squelchSlope: 0.20,

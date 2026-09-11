@@ -162,13 +162,17 @@ function fuseProfileFor41(base: ILiquidProfile): ILiquidProfile {
 // ABSTRACT BASE
 // ═══════════════════════════════════════════════════════════════════════════
 
-// 🩸 WAVE GARBAGE-ZERO: FINESSE_AUDIT gated behind an env flag (default OFF).
-// The audit log fires on kick/snare frames (~40fps in techno), allocating
-// ~46 ephemeral strings per log. Set LUX_FINESSE_AUDIT=1 to re-enable it
-// for future debugging. Disabled by default since WAVE 7754 to stop the
-// 3-day diagnostic spam.
-const FINESSE_AUDIT_ENABLED =
-  (typeof process !== 'undefined' && process.env && process.env.LUX_FINESSE_AUDIT === '1')
+// ⚒️ WAVE 7754-DIAG: UNCONDITIONAL FRAME-BY-FRAME DUMP for ghost snare hunting.
+// The original survival-biased filter (onset || kick || hybridSnare > 0.1)
+// only logged frames where the detector SUCCEEDED. Missed snares killed by
+// shields/vetos/floors left NO trace → impossible to diagnose false negatives.
+// This diagnostic mode logs EVERY frame unconditionally so we can see Gate,
+// Veto, cFx, Drive, dynTh, fFloor at the exact frame a snare is heard but
+// killed. EXPLICITLY violates WAVE GARBAGE-ZERO — accepted GC pressure /
+// potential DMX watchdog trips during profiling sessions only.
+// REVERT: when profiling is complete, restore the gated condition:
+//   if (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)
+//   and re-add the LUX_FINESSE_AUDIT env gate.
 
 export abstract class LiquidEngineBase {
 
@@ -231,9 +235,21 @@ export abstract class LiquidEngineBase {
     name: 'Floor',
     gateOn: 0.08,           // low — bassDelta transients are small but sharp
     boost: 3.0,             // amplify the small delta signal
-    crushExponent: 2.0,     // selective — suppresses sub-threshold noise
-    decayBase: 0.12,        // fast decay (~65ms) — floor lasers respond to hits, not sustain
-    decayRange: 0.05,       // minimal morph influence
+    // ⚒️ WAVE 7751.2: RECALIBRADO LÍQUIDO — De saturación a pulso rodante.
+    // decayBase 0.88→0.75: el 0.88 era demasiado lento para el tempo de los
+    //   géneros. En techno 130BPM hay ~20 frames entre bombos; con 0.88 la
+    //   intensidad solo caía a 8% → el siguiente bombo la volvía a saturar
+    //   a 100% → sostenido perpetuo, nunca oscuro. Con 0.75: frame 15
+    //   (~340ms) llega a blackout → 5 frames de oscuridad antes del siguiente
+    //   bombo. Es un PULSO que rueda y se apaga, no un sostenido.
+    // decayRange 0.10→0.15: morph modula el tail con más rango (0.75-0.90).
+    //   Techno (morph≈0): decay 0.75 (pulso seco). Latino (morph≈0.5): decay
+    //   0.825 (pulso con más estela, respeta el tempo más lento 95BPM).
+    // crushExponent 2.0→1.5: menos agresivo → el subgrave fluye sin ser
+    //   aplastado por la curva convexa. Mantiene el gate + squelch anti-ruido.
+    crushExponent: 1.5,     // menos agresivo — el subgrave fluye
+    decayBase: 0.75,       // PULSO RODANTE — blackout en ~15 frames (~340ms)
+    decayRange: 0.15,       // morph influye: 0.75 (techno) → 0.90 (melódico)
     maxIntensity: 1.0,
     squelchBase: 0.30,
     squelchSlope: 0.20,
@@ -361,11 +377,14 @@ export abstract class LiquidEngineBase {
   // Simulation (calib6): Brejcha 17→3 doubles, Techhouse 20→4 doubles.
   // All killed onsets were ghost re-fires with SnareE dropping + high hhDlt.
   private _ghostRefractoryFrames: number = 0
-  // ⚒️ WAVE 7749.91: 10→7 frames. calib10 Opus showed 59/73 misses blocked by
+  // ⚒️ WAVE 7749.91: 10→7→4 frames. calib10 Opus showed 59/73 misses blocked by
   // gRefr=10 (227ms). At 120 BPM 16th rolls = 125ms = 5.5 frames, so 10 frames
   // blocks every other roll snare. 7 frames (159ms) still kills reverb tails
-  // (200-400ms) while letting 16th rolls breathe.
-  private static readonly GHOST_REFRACTORY_FRAMES = 7
+  // but forensic audit (2538 frames, 4 tracks) showed 130 misses (26.9% of all
+  // missed snares) killed by gRefr=5-7, including Drive=0.220 snares. 4 frames
+  // (91ms) still suppresses reverb-tail re-fires (hhDlt decays in 2-3 frames
+  // post-snare) while letting 16th rolls at >130 BPM breathe (5.5 frames gap).
+  private static readonly GHOST_REFRACTORY_FRAMES = 4
   // ⚒️ WAVE 7749.85: GATE HEALTH EMA — hyper-slow envelope (~2.3s @ 44fps)
   // that tracks the structural viability of the GodEarFFT crack-band gate.
   // When the gate is alive (TechHouse, Minimal), snareEnergy EMA sits at
@@ -1821,7 +1840,18 @@ export abstract class LiquidEngineBase {
     // 🩸 WAVE GARBAGE-ZERO: gated behind LUX_FINESSE_AUDIT=1 env flag.
     // Was firing ~40fps in techno, allocating ~46 strings/log + blocking
     // console I/O → GC pressure → Event Loop freezes → DMX watchdog trips.
-    if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)) {
+    //
+    // ⚒️ WAVE 7754-DIAG: UNCONDITIONAL FRAME-BY-FRAME DUMP for ghost snare hunting.
+    // The original survival-biased filter (onset || kick || hybridSnare > 0.1)
+    // only logged frames where the detector SUCCEEDED. Missed snares killed by
+    // shields/vetos/floors left NO trace → impossible to diagnose false negatives.
+    // This temporary diagnostic mode logs EVERY frame unconditionally so we can
+    // see Gate, Veto, cFx, Drive, dynTh, fFloor at the exact frame a snare is
+    // heard but killed. EXPLICITLY violates WAVE GARBAGE-ZERO — accepted GC
+    // pressure / potential DMX watchdog trips during profiling sessions only.
+    // Revert to the gated condition below when profiling is complete:
+    //   if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1))
+    if (true) {
       console.log(
         `[FINESSE_AUDIT] ` +
         `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
@@ -2049,6 +2079,17 @@ export abstract class LiquidEngineBase {
       ambientIntensity *= 0.85
       if (ambientIntensity < 0.001) ambientIntensity = 0
     }
+    // ⚒️ WAVE 7751: SIDECHAIN BREATHER — Bombeo rítmico anti-saturación.
+    // En Techno el subBass es continuo → _ambientEMA satura → ambient plano.
+    // recoveryFactor cae en los transitorios (AGC rebound) y sube después,
+    // así que modular por él crea un pump/ducking natural en cada bombo:
+    //   breather = 0.75 + 0.25 × recoveryFactor
+    //   recoveryFactor=1 (post-transitorio) → breather=1.00 (sin ducking)
+    //   recoveryFactor=0 (transitorio puro)  → breather=0.75 (−25% ducking)
+    // El clamp a 1.0 protege el techo. No afecta a Latino/Chill porque
+    // su subBass no satura el EMA y recoveryFactor oscila cerca de 1.
+    const _breather = 0.75 + (0.25 * recoveryFactor)
+    ambientIntensity = Math.min(1.0, ambientIntensity * _breather)
     // ⚒️ WAVE 7749.52: Air — envAir processed (zero-attack, fast decay).
     // The old _airEMA soft-follower is replaced by envAir (LiquidEnvelope).
     // Input: treble × 0.6 + highMid × 0.4 (same spectral source as before,

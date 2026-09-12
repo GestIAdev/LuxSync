@@ -99,12 +99,17 @@ function fuseProfileFor41(base) {
 // ═══════════════════════════════════════════════════════════════════════════
 // ABSTRACT BASE
 // ═══════════════════════════════════════════════════════════════════════════
-// 🩸 WAVE GARBAGE-ZERO: FINESSE_AUDIT gated behind an env flag (default OFF).
-// The audit log fires on kick/snare frames (~40fps in techno), allocating
-// ~46 ephemeral strings per log. Set LUX_FINESSE_AUDIT=1 to re-enable it
-// for future debugging. Disabled by default since WAVE 7754 to stop the
-// 3-day diagnostic spam.
-const FINESSE_AUDIT_ENABLED = (typeof process !== 'undefined' && process.env && process.env.LUX_FINESSE_AUDIT === '1');
+// ⚒️ WAVE 7754-DIAG: UNCONDITIONAL FRAME-BY-FRAME DUMP for ghost snare hunting.
+// The original survival-biased filter (onset || kick || hybridSnare > 0.1)
+// only logged frames where the detector SUCCEEDED. Missed snares killed by
+// shields/vetos/floors left NO trace → impossible to diagnose false negatives.
+// This diagnostic mode logs EVERY frame unconditionally so we can see Gate,
+// Veto, cFx, Drive, dynTh, fFloor at the exact frame a snare is heard but
+// killed. EXPLICITLY violates WAVE GARBAGE-ZERO — accepted GC pressure /
+// potential DMX watchdog trips during profiling sessions only.
+// REVERT: when profiling is complete, restore the gated condition:
+//   if (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)
+//   and re-add the LUX_FINESSE_AUDIT env gate.
 export class LiquidEngineBase {
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 9001: PASSIVE TELEMETRY ACCESSORS — read-only probes for observers.
@@ -1559,7 +1564,18 @@ export class LiquidEngineBase {
         // 🩸 WAVE GARBAGE-ZERO: gated behind LUX_FINESSE_AUDIT=1 env flag.
         // Was firing ~40fps in techno, allocating ~46 strings/log + blocking
         // console I/O → GC pressure → Event Loop freezes → DMX watchdog trips.
-        if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)) {
+        //
+        // ⚒️ WAVE 7754-DIAG: UNCONDITIONAL FRAME-BY-FRAME DUMP for ghost snare hunting.
+        // The original survival-biased filter (onset || kick || hybridSnare > 0.1)
+        // only logged frames where the detector SUCCEEDED. Missed snares killed by
+        // shields/vetos/floors left NO trace → impossible to diagnose false negatives.
+        // This temporary diagnostic mode logs EVERY frame unconditionally so we can
+        // see Gate, Veto, cFx, Drive, dynTh, fFloor at the exact frame a snare is
+        // heard but killed. EXPLICITLY violates WAVE GARBAGE-ZERO — accepted GC
+        // pressure / potential DMX watchdog trips during profiling sessions only.
+        // Revert to the gated condition below when profiling is complete:
+        //   if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1))
+        if (true) {
             console.log(`[FINESSE_AUDIT] ` +
                 `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
                 `UnG:${this._diagSnareEnergyUngated.toFixed(3)} ` +
@@ -2051,11 +2067,23 @@ LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
     attackSlopeMin: 0.0,
 };
 LiquidEngineBase.SNARE_REFRACTORY_FRAMES = 4;
-// ⚒️ WAVE 7749.91: 10→7 frames. calib10 Opus showed 59/73 misses blocked by
+// ⚒️ WAVE 7749.91: 10→7→4 frames. calib10 Opus showed 59/73 misses blocked by
 // gRefr=10 (227ms). At 120 BPM 16th rolls = 125ms = 5.5 frames, so 10 frames
 // blocks every other roll snare. 7 frames (159ms) still kills reverb tails
-// (200-400ms) while letting 16th rolls breathe.
-LiquidEngineBase.GHOST_REFRACTORY_FRAMES = 7;
+// but forensic audit (2538 frames, 4 tracks) showed 130 misses (26.9% of all
+// missed snares) killed by gRefr=5-7, including Drive=0.220 snares. 4 frames
+// (91ms) still suppresses reverb-tail re-fires (hhDlt decays in 2-3 frames
+// post-snare) while letting 16th rolls at >130 BPM breathe (5.5 frames gap).
+// ⚒️ WAVE 7775: 4→6 after Monte Carlo over 12704 frames. The earlier forensic
+// pass blamed gRefr for kills it did not cause: the ghost is multiplied by
+// (1 - gateHealth), so in gate-ALIVE tracks (Carl Cox, Minimal, Brejcha) the
+// ghost contributes nothing and gRefr is inert — those misses belonged to the
+// crack path and SNARE_REFRACTORY_FRAMES. Simulating the real mechanism,
+// 6 frames costs zero percussive recall (0.866 either way) and removes 6
+// evidence-free onsets from the dead-gate EDM logs. SNARE_REFRACTORY_FRAMES
+// deliberately stays at 4: at 130 BPM a 16th is 115ms and 5 frames = 114ms,
+// which would sit exactly on top of genuine semiquaver rolls.
+LiquidEngineBase.GHOST_REFRACTORY_FRAMES = 6;
 LiquidEngineBase.GATE_HEALTH_ALPHA = 0.01;
 LiquidEngineBase.GATE_HEALTH_THRESHOLD = 0.15;
 // ⚒️ WAVE 7749.86: RHYTHM GATE — discipline the treble-ghost with musical phase.

@@ -302,7 +302,15 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // but real snares with bFct 0.5-2.0 produce 0.05-0.35). 0.045 blocks weak
   // synth melody bleed (Drive < 0.02 with WNS=0, Flux<0.05) while letting
   // real snares through.
-  snareMomentumFloor: 0.045,
+  // ⚒️ WAVE 7775: MONTE CARLO — 0.045→0.040. Swept over 12704 frames the floor
+  // is a clean recall/precision dial and a WEAK one (fitness spread 0.0087):
+  //   0.020 -> recall 0.829, 101 evidence-free onsets
+  //   0.045 -> recall 0.802,  90 evidence-free onsets
+  //   0.070 -> recall 0.757,  83 evidence-free onsets
+  // 0.040 buys back the dry impacts "The Business" was dropping (track recall
+  // 0.809→0.944) for 3 extra weak onsets corpus-wide. It is NOT the knob that
+  // controls synth bleed — that myth is refuted by the path attribution below.
+  snareMomentumFloor: 0.040,
   // ⚒️ WAVE 7749.89: DYNAMIC FLOOR MIN — the floor breathes with fBL.
   // calib8b showed the static 0.08 floor killed genuine snares in dense
   // buildups: Opus Prytdz lost ALL snares (Drive 0.01-0.03, fBL 0.06-0.085),
@@ -418,10 +426,17 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     // (passes), but marginal cases with WNS~0.20 were killed. 0.25 gives more
     // margin for kick collisions while still vetoing tonal synth sweeps.
     snareVetoWnsKnee: 0.25,
-    snareVetoFluxFloor: 0.05,
-    // ⚒️ WAVE 7749.102b: Knee 0.20→0.25. Same rationale as WnsKnee — kick
-    // collisions can depress spectral flux if the kick dominates the frame.
-    snareVetoFluxKnee: 0.25,
+    // ⚒️ WAVE 7775: MONTE CARLO — floor 0.05→0.02, knee 0.25→0.15.
+    // 12704 frames / 12 logs / 375 independently-labelled impacts. The flux
+    // axis is the single most identifiable coefficient in the whole veto
+    // (fitness spread 0.087 vs 0.003 for the WNS axis) because in dense club
+    // material flatness and WNS are crushed by sub-bass, leaving spectralFlux
+    // as the only surviving discriminator — and the 0.05/0.25 ramp was
+    // dimming REAL snares to 96% while leaving garbage at 80%. At 0.02/0.15
+    // genuine impacts deliver 99.8% brightness. Verified on both halves of a
+    // split-half protocol (+0.0166 / +0.0202).
+    snareVetoFluxFloor: 0.02,
+    snareVetoFluxKnee: 0.15,
     snareChokeFrames: 15,
     snareChokeRate: 0.85,
     // ⚒️ WAVE 7749.60: Techno decay 0.50→0.65. The 0.50 decay produced a

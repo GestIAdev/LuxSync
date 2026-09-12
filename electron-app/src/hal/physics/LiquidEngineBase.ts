@@ -384,7 +384,16 @@ export abstract class LiquidEngineBase {
   // missed snares) killed by gRefr=5-7, including Drive=0.220 snares. 4 frames
   // (91ms) still suppresses reverb-tail re-fires (hhDlt decays in 2-3 frames
   // post-snare) while letting 16th rolls at >130 BPM breathe (5.5 frames gap).
-  private static readonly GHOST_REFRACTORY_FRAMES = 4
+  // ⚒️ WAVE 7775: 4→6 after Monte Carlo over 12704 frames. The earlier forensic
+  // pass blamed gRefr for kills it did not cause: the ghost is multiplied by
+  // (1 - gateHealth), so in gate-ALIVE tracks (Carl Cox, Minimal, Brejcha) the
+  // ghost contributes nothing and gRefr is inert — those misses belonged to the
+  // crack path and SNARE_REFRACTORY_FRAMES. Simulating the real mechanism,
+  // 6 frames costs zero percussive recall (0.866 either way) and removes 6
+  // evidence-free onsets from the dead-gate EDM logs. SNARE_REFRACTORY_FRAMES
+  // deliberately stays at 4: at 130 BPM a 16th is 115ms and 5 frames = 114ms,
+  // which would sit exactly on top of genuine semiquaver rolls.
+  private static readonly GHOST_REFRACTORY_FRAMES = 6
   // ⚒️ WAVE 7749.85: GATE HEALTH EMA — hyper-slow envelope (~2.3s @ 44fps)
   // that tracks the structural viability of the GodEarFFT crack-band gate.
   // When the gate is alive (TechHouse, Minimal), snareEnergy EMA sits at

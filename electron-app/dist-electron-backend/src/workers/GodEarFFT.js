@@ -1596,10 +1596,14 @@ class RhythmicPercussionTracker {
         // membrane → body >> EMA → ratio > 1.5 → bodyFactor boosts the drive.
         // A clap/rimshot has crack energy but no body resonance → body ≈ EMA →
         // ratio ≈ 1.0 → bodyFactor = 0.5 (penalty). The -0.5 offset centers the
-        // neutral point at ratio=1.0 (body = EMA) → factor=0.5. Clamped to [0.1, 2.0]
+        // neutral point at ratio=1.0 (body = EMA) → factor=0.5. Clamped to [0.3, 2.0]
         // to prevent division-by-zero collapse and MACD overflow.
+        // ⚒️ WAVE 7749.77b: Floor raised 0.1→0.3. Forensic audit showed 28 misses
+        // (5.8%) with bFct=0.100 in EDM/Big Room (Tiesto) where synthetic snares have
+        // no body resonance. Drive = Res×cFx×bFct×sEF with bFct=0.1 collapses to
+        // 0.006, structurally below any floor. 0.3 gives 3× more drive headroom.
         const bodyRatio = snareBody / (this._snareBodyEMA + 1e-6);
-        const bodyFactor = Math.max(0.1, Math.min(2.0, bodyRatio - 0.5));
+        const bodyFactor = Math.max(0.3, Math.min(2.0, bodyRatio - 0.5));
         // ── 3. Snare detection: requires BOTH body AND crack above threshold ──
         const snareBodyThresh = Math.max(this._snareBodyEMA * RhythmicPercussionTracker.SNARE_BODY_MULT, RhythmicPercussionTracker.SNARE_FLOOR);
         const snareCrackThresh = Math.max(this._snareCrackEMA * RhythmicPercussionTracker.SNARE_CRACK_MULT, RhythmicPercussionTracker.SNARE_FLOOR);

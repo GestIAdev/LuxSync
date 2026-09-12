@@ -259,7 +259,25 @@ export const TECHNO_PROFILE = {
     // onsets are imperceptible hi-hats/cymbals. At 0.08: Brejcha 6->3/s,
     // Techhouse 4.7->3.7/s, Tiesto 4.5->2.8/s. Real snares have Drive 0.15+
     // (SnareE 0.7+), well above this floor.
-    snareMomentumFloor: 0.07,
+    // ⚒️ WAVE 7749.88b: Floor 0.07→0.020→0.045. Forensic audit (2538 frames, 4 tracks)
+    // showed 294 misses (60.7%) killed by Drive < fFloor=0.070. Drive is a product
+    // of 4 factors [0,1]: Res×cFx×bFct×sEF. Typical snare: 0.3×0.2×1.0×1.0=0.06.
+    // Synthetic snare: 0.4×0.2×0.3×0.8=0.019. Floor 0.070 was mathematically
+    // unreachable. 0.020 let typical snares pass but also let weak synth bleeds
+    // through. Now that bodyFactor is floored at 0.300, legitimate snares generate
+    // Drive > 0.045 (Res 0.3 × cFx 0.2 × bFct 0.3 × sEF 0.8 = 0.014 minimum,
+    // but real snares with bFct 0.5-2.0 produce 0.05-0.35). 0.045 blocks weak
+    // synth melody bleed (Drive < 0.02 with WNS=0, Flux<0.05) while letting
+    // real snares through.
+    // ⚒️ WAVE 7775: MONTE CARLO — 0.045→0.040. Swept over 12704 frames the floor
+    // is a clean recall/precision dial and a WEAK one (fitness spread 0.0087):
+    //   0.020 -> recall 0.829, 101 evidence-free onsets
+    //   0.045 -> recall 0.802,  90 evidence-free onsets
+    //   0.070 -> recall 0.757,  83 evidence-free onsets
+    // 0.040 buys back the dry impacts "The Business" was dropping (track recall
+    // 0.809→0.944) for 3 extra weak onsets corpus-wide. It is NOT the knob that
+    // controls synth bleed — that myth is refuted by the path attribution below.
+    snareMomentumFloor: 0.040,
     // ⚒️ WAVE 7749.89: DYNAMIC FLOOR MIN — the floor breathes with fBL.
     // calib8b showed the static 0.08 floor killed genuine snares in dense
     // buildups: Opus Prytdz lost ALL snares (Drive 0.01-0.03, fBL 0.06-0.085),
@@ -274,7 +292,12 @@ export const TECHNO_PROFILE = {
     // ghost gate (WAVE 7749.99 Fix 1) already filters synth FPs by soft-gating
     // ghost contribution when UnG < 0.50. The floorMin raise was redundant
     // protection that cost the Opus roll. Back to 0.005.
-    snareMomentumFloorMin: 0.005,
+    // ⚒️ WAVE 7749.105b: FloorMin 0.005→0.002. Forensic audit showed tiestomissed
+    // with fFloor relaxed to 0.008 still killed 99 snares (56.2%). In dense EDM
+    // builds with AGC compression, Drive can drop to 0.001-0.005. 0.002 lets the
+    // dense-path rescue fire when gH<0.05 && fBL>0.09, while the UnG ghost gate
+    // (WAVE 7749.99) still filters hi-hat FPs.
+    snareMomentumFloorMin: 0.002,
     // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
     // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
     ambientAttackMs: 30,
@@ -347,12 +370,32 @@ export const TECHNO_PROFILE = {
         // (not max(crackDelta, bodyDelta)), the raw delta is clean. The 0.02 floors
         // were letting hi-hat bleed and synth tails through. 0.04 requires real
         // broadband noise content, vetoing weak tonal bleed.
-        snareVetoFlatnessFloor: 0.04,
+        // ⚒️ WAVE 7749.102c: Floors 0.04→0.10. Tiesto/KarolG log showed synth melody
+        // bleed generating Drive 0.001-0.026 with WNS=0.000 and Flux<0.05 — tonal
+        // signals with no noise dispersion. Raising both WnsFloor and FlatnessFloor
+        // to 0.10 ensures that only signals with real broadband noise content
+        // (snares, claps) survive the veto. Synth melodies (voces, leads) have
+        // flatness < 0.10 and WNS < 0.10 → vetoed before they can generate FPs.
+        snareVetoFlatnessFloor: 0.10,
         snareVetoFlatnessKnee: 0.10,
-        snareVetoWnsFloor: 0.04,
-        snareVetoWnsKnee: 0.20,
-        snareVetoFluxFloor: 0.05,
-        snareVetoFluxKnee: 0.20,
+        snareVetoWnsFloor: 0.10,
+        // ⚒️ WAVE 7749.102b: Knee 0.20→0.25. Forensic audit showed kick+snare
+        // collisions (Beat 1 EDM) dilute WNS because the kick's broadband content
+        // is sub-bass, not HF noise. The veto averaged 0.3-0.8 in kick frames
+        // (passes), but marginal cases with WNS~0.20 were killed. 0.25 gives more
+        // margin for kick collisions while still vetoing tonal synth sweeps.
+        snareVetoWnsKnee: 0.25,
+        // ⚒️ WAVE 7775: MONTE CARLO — floor 0.05→0.02, knee 0.25→0.15.
+        // 12704 frames / 12 logs / 375 independently-labelled impacts. The flux
+        // axis is the single most identifiable coefficient in the whole veto
+        // (fitness spread 0.087 vs 0.003 for the WNS axis) because in dense club
+        // material flatness and WNS are crushed by sub-bass, leaving spectralFlux
+        // as the only surviving discriminator — and the 0.05/0.25 ramp was
+        // dimming REAL snares to 96% while leaving garbage at 80%. At 0.02/0.15
+        // genuine impacts deliver 99.8% brightness. Verified on both halves of a
+        // split-half protocol (+0.0166 / +0.0202).
+        snareVetoFluxFloor: 0.02,
+        snareVetoFluxKnee: 0.15,
         snareChokeFrames: 15,
         snareChokeRate: 0.85,
         // ⚒️ WAVE 7749.60: Techno decay 0.50→0.65. The 0.50 decay produced a

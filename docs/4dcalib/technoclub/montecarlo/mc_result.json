@@ -1,0 +1,117 @@
+{
+  "fitness": 0.7794782434381998,
+  "baseline": 0.7482696769246187,
+  "params": {
+    "floor": 0.0603037432755615,
+    "floor_min": 0.001,
+    "bfct_floor": 0.3,
+    "s_refr": 6,
+    "g_refr": 6,
+    "wns_floor": 0.11852734002596188,
+    "wns_knee": 0.15,
+    "flat_floor": 0.1,
+    "flat_knee": 0.1,
+    "flux_floor": 0.02007841450358602,
+    "flux_knee": 0.15,
+    "crack_wns_th": 0.13815925494011963,
+    "crack_flux_th": 0.32957677096489874,
+    "crack_atten": 0.514460810506105
+  },
+  "runners_up": [
+    {
+      "fitness": 0.7794119832696488,
+      "params": {
+        "floor": 0.05974045724462408,
+        "floor_min": 0.001984492530463311,
+        "bfct_floor": 0.3,
+        "s_refr": 6,
+        "g_refr": 6,
+        "wns_floor": 0.11045953606459914,
+        "wns_knee": 0.15,
+        "flat_floor": 0.1,
+        "flat_knee": 0.1,
+        "flux_floor": 0.02,
+        "flux_knee": 0.15,
+        "crack_wns_th": 0.13341323802726243,
+        "crack_flux_th": 0.3613045554642564,
+        "crack_atten": 0.5171435367982576
+      }
+    },
+    {
+      "fitness": 0.7789590457075284,
+      "params": {
+        "floor": 0.06031487815119703,
+        "floor_min": 0.001,
+        "bfct_floor": 0.3,
+        "s_refr": 6,
+        "g_refr": 6,
+        "wns_floor": 0.13418984042525287,
+        "wns_knee": 0.15,
+        "flat_floor": 0.1,
+        "flat_knee": 0.1,
+        "flux_floor": 0.02,
+        "flux_knee": 0.15056576688053575,
+        "crack_wns_th": 0.142431275593872,
+        "crack_flux_th": 0.29858554964747525,
+        "crack_atten": 0.5177902760240182
+      }
+    },
+    {
+      "fitness": 0.778884948119838,
+      "params": {
+        "floor": 0.0596831102248338,
+        "floor_min": 0.001516290287556988,
+        "bfct_floor": 0.3,
+        "s_refr": 6,
+        "g_refr": 6,
+        "wns_floor": 0.13112658981234804,
+        "wns_knee": 0.15,
+        "flat_floor": 0.1,
+        "flat_knee": 0.1,
+        "flux_floor": 0.024145646252180505,
+        "flux_knee": 0.15,
+        "crack_wns_th": 0.1310546633870433,
+        "crack_flux_th": 0.3270286765140473,
+        "crack_atten": 0.5166543901789875
+      }
+    },
+    {
+      "fitness": 0.7788166065346657,
+      "params": {
+        "floor": 0.0579685800386851,
+        "floor_min": 0.0013114785890606848,
+        "bfct_floor": 0.3,
+        "s_refr": 6,
+        "g_refr": 6,
+        "wns_floor": 0.11281950905325525,
+        "wns_knee": 0.15,
+        "flat_floor": 0.1,
+        "flat_knee": 0.1,
+        "flux_floor": 0.02,
+        "flux_knee": 0.15,
+        "crack_wns_th": 0.13603539229814612,
+        "crack_flux_th": 0.3331831297667666,
+        "crack_atten": 0.5170344792241556
+      }
+    },
+    {
+      "fitness": 0.7787152865092235,
+      "params": {
+        "floor": 0.05905035306936956,
+        "floor_min": 0.001,
+        "bfct_floor": 0.3,
+        "s_refr": 6,
+        "g_refr": 6,
+        "wns_floor": 0.20046569704878558,
+        "wns_knee": 0.15620629989194026,
+        "flat_floor": 0.1,
+        "flat_knee": 0.1,
+        "flux_floor": 0.02,
+        "flux_knee": 0.15,
+        "crack_wns_th": 0.14600369268330501,
+        "crack_flux_th": 0.37606357597039763,
+        "crack_atten": 0.5173140500109116
+      }
+    }
+  ]
+}

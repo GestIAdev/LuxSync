@@ -1647,8 +1647,10 @@ export class TitanEngine extends EventEmitter {
             // ⚒️ WAVE 7749.69: Ungated snare energy — clamped to [0,1]
             snare_energy_ungated: clamp01(src.snare_energy_ungated, 0),
             snare_crack_flux: clamp01(src.snare_crack_flux, 0),
-            // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.1, 2.0] (not [0,1])
-            snare_body_factor: Math.max(0.1, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
+            // ⚒️ WAVE 7749.77: Body Factor — clamp to [0.3, 2.0] (not [0,1])
+            // ⚒️ WAVE 7749.77b: Floor 0.1→0.3 — synthetic snares (EDM/Big Room) had
+            // bFct=0.1, collapsing Drive to 0.006. 0.3 gives 3× headroom.
+            snare_body_factor: Math.max(0.3, Math.min(2.0, safeNumber(src.snare_body_factor, 1.0))),
             // ⚒️ WAVE 7749.80: Treble-ghost delta — half-wave rectified (>=0), NOT clamped to [0,1]
             raw_hh_delta: Math.max(0, safeNumber(src.raw_hh_delta, 0)),
             photon: src.photon,

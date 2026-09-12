@@ -292,13 +292,17 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // onsets are imperceptible hi-hats/cymbals. At 0.08: Brejcha 6->3/s,
   // Techhouse 4.7->3.7/s, Tiesto 4.5->2.8/s. Real snares have Drive 0.15+
   // (SnareE 0.7+), well above this floor.
-  // ⚒️ WAVE 7749.88b: Floor 0.07→0.020. Forensic audit (2538 frames, 4 tracks)
+  // ⚒️ WAVE 7749.88b: Floor 0.07→0.020→0.045. Forensic audit (2538 frames, 4 tracks)
   // showed 294 misses (60.7%) killed by Drive < fFloor=0.070. Drive is a product
   // of 4 factors [0,1]: Res×cFx×bFct×sEF. Typical snare: 0.3×0.2×1.0×1.0=0.06.
   // Synthetic snare: 0.4×0.2×0.3×0.8=0.019. Floor 0.070 was mathematically
-  // unreachable. 0.020 lets typical snares (Drive~0.06) pass while still
-  // blocking hi-hat bleed (Drive<0.005 with bFct now floored at 0.3).
-  snareMomentumFloor: 0.020,
+  // unreachable. 0.020 let typical snares pass but also let weak synth bleeds
+  // through. Now that bodyFactor is floored at 0.300, legitimate snares generate
+  // Drive > 0.045 (Res 0.3 × cFx 0.2 × bFct 0.3 × sEF 0.8 = 0.014 minimum,
+  // but real snares with bFct 0.5-2.0 produce 0.05-0.35). 0.045 blocks weak
+  // synth melody bleed (Drive < 0.02 with WNS=0, Flux<0.05) while letting
+  // real snares through.
+  snareMomentumFloor: 0.045,
   // ⚒️ WAVE 7749.89: DYNAMIC FLOOR MIN — the floor breathes with fBL.
   // calib8b showed the static 0.08 floor killed genuine snares in dense
   // buildups: Opus Prytdz lost ALL snares (Drive 0.01-0.03, fBL 0.06-0.085),
@@ -399,9 +403,15 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     // (not max(crackDelta, bodyDelta)), the raw delta is clean. The 0.02 floors
     // were letting hi-hat bleed and synth tails through. 0.04 requires real
     // broadband noise content, vetoing weak tonal bleed.
-    snareVetoFlatnessFloor: 0.04,
+    // ⚒️ WAVE 7749.102c: Floors 0.04→0.10. Tiesto/KarolG log showed synth melody
+    // bleed generating Drive 0.001-0.026 with WNS=0.000 and Flux<0.05 — tonal
+    // signals with no noise dispersion. Raising both WnsFloor and FlatnessFloor
+    // to 0.10 ensures that only signals with real broadband noise content
+    // (snares, claps) survive the veto. Synth melodies (voces, leads) have
+    // flatness < 0.10 and WNS < 0.10 → vetoed before they can generate FPs.
+    snareVetoFlatnessFloor: 0.10,
     snareVetoFlatnessKnee: 0.10,
-    snareVetoWnsFloor: 0.04,
+    snareVetoWnsFloor: 0.10,
     // ⚒️ WAVE 7749.102b: Knee 0.20→0.25. Forensic audit showed kick+snare
     // collisions (Beat 1 EDM) dilute WNS because the kick's broadband content
     // is sub-bass, not HF noise. The veto averaged 0.3-0.8 in kick frames

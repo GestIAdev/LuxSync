@@ -130,18 +130,28 @@ export const LATINO_PROFILE: ILiquidProfile = {
   //   El gateOn 0.35 ya era correcto. Solo eliminar el truco del treble negativo
   //   que generaba el mural de voz.
   envelopeHighMid: {
-    name: 'Back L (Latigazo Percusivo)',
-    gateOn: 0.20,          // REVIVIR 7.1: gate dinámico, deja pasar congas/palmas/claves
+    name: 'Back L (Tumbao Melaza)',
+    // ⚒️ WAVE 7776: LATIGO → MELAZA. Back L latino era un rayo (decayBase 0.14,
+    // guillotina WAVE 3491) — las congas/palmas se cortaban en 1 frame. El left
+    // debe ser groove melódico untado, no percusión seca. Transformación:
+    //   decayBase 0.14→0.58: half-life ~1f→~4f, la conga respira y decae suave.
+    //   decayRange 0.03→0.08: morph modula la untura.
+    //   squelchBase 0.20→0.12: deja resonar, no re-dispara agresivo.
+    //   gateOn 0.20→0.12: captura más cuerpo de conga/tumbao.
+    //   crushExponent 2.0→1.2: ataque suave, menos punzante, más ondulado.
+    //   attackSlopeMin 0.02→0.0: la señal sostenida pasa (melaza = sin cortes).
+    //   maxIntensity 0.95→0.80: melaza no ciega, es groove no flash.
+    gateOn: 0.12,          // WAVE 7776: 0.20→0.12 — captura más cuerpo de conga/tumbao
     boost: 3.0,
-    crushExponent: 2.0,
-    decayBase: 0.14,       // WAVE 3491: GUILLOTINA snap violento
-    decayRange: 0.03,
-    maxIntensity: 0.95,
-    squelchBase: 0.20,      // REVIVIR 7.1: deja pasar colas de conga, no asesino
+    crushExponent: 1.2,    // WAVE 7776: 2.0→1.2 — ataque suave, más ondulado
+    decayBase: 0.58,       // WAVE 7776: 0.14→0.58 — de guillotina a untado
+    decayRange: 0.08,      // WAVE 7776: 0.03→0.08 — morph modula la untura
+    maxIntensity: 0.80,    // WAVE 7776: 0.95→0.80 — melaza no ciega
+    squelchBase: 0.12,     // WAVE 7776: 0.20→0.12 — deja resonar
     squelchSlope: 0.10,
     ghostCap: 0.00,        // Negro absoluto
     gateMargin: 0.005,
-    attackSlopeMin: 0.02,  // WAVE 4693: voces suben más lento; el snare/hat pasa por ataque real
+    attackSlopeMin: 0.0,   // WAVE 7776: 0.02→0.0 — señal sostenida pasa, melaza sin cortes
   },
 
   // Mover L — "El Galán" (HighMid + Mid moderado — Congas, Acordeones, Melodías)

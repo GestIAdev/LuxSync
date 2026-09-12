@@ -35,13 +35,23 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.08,
     boost: 2.7054,
     crushExponent: 1.0,
-    decayBase: 0.30, // WAVE 7749.57: 0.40→0.30 — más pegada, menos meloso
+    // ⚒️ WAVE 7776: LEFT PUNCH — Front L menos pegajoso, valles oscuros entre kicks.
+    // decayBase 0.30→0.22: half-life ~1.3f→~0.9f, el sub cae al negro entre golpes.
+    // squelchBase 0.0613→0.08: sub sostenido débil no re-dispara, solo picos reales.
+    // Choke suave (startFrames 32 ≈ 730ms): deja respirar al sub un compás antes de
+    // asfixiar colchones de sub-synth sostenidos (EDM held basslines). maxBoost 0.12
+    // atenúa sin cortar — la nota se dima, no se guillotina.
+    decayBase: 0.22,
     decayRange: 0.166,
     maxIntensity: 0.5291,
-    squelchBase: 0.0613,
+    squelchBase: 0.08,
     squelchSlope: 0.5788,
     ghostCap: 0.00,         // WAVE 7749.57: 0.0357→0.00 — sin ghostcaps en ningún perfil
     gateMargin: 0.0288,
+    sustainedSquelchStartFrames: 32,
+    sustainedSquelchRisePerFrame: 0.004,
+    sustainedSquelchMaxBoost: 0.12,
+    sustainedFlatVelocityMax: 0.012,
   },
 
   // Front R — El Francotirador (WAVE 2437: Monte Carlo 15k iter, fitness=756, 100% kick, 0 FP)
@@ -121,15 +131,29 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.15,        // OPERACIÓN: Luz Líquida — baja la compuerta para capturar colas de voces
     boost: 1.5,
     crushExponent: 1.0,  // OPERACIÓN: Linealidad pura para suavizar el pulso atmosférico
-    decayBase: 0.50,       // WAVE 7749.22: 0.62→0.50 — colchón más ágil, libera entre acordes
+    // ⚒️ WAVE 7776: LEFT PUNCH — Back L menos pegajoso, ondas senoidales con contraste.
+    // decayBase 0.50→0.38: libera entre acordes, el valle baja al negro.
+    // squelchBase 0.25→0.28: synth sostenido débil no re-dispara.
+    // attackSlopeMin 0→0.012: una nota held (velocity≈0) ya no cuenta como ataque
+    //   — el gate cierra sobre synths planos. Vibrato real (±0.05) sigue pasando.
+    // Choke suave re-activado (startFrames 28 ≈ 640ms): tras medio compás sostenido,
+    // squelch escala +0.005/frame hasta +0.15 — la nota se dima gradualmente.
+    // adaptiveNoiseAlpha 0.0→0.015: avgSignal alcanza la nota held → dynamicGate
+    //   sube → el gate cierra sin cortes bruscos. Reemplaza el anti-freeze WAVE 8009.3
+    //   que mataba el choke por completo (maxBoost 0.0 + α 0.0).
+    decayBase: 0.38,
     decayRange: 0.25,      // WAVE 3492: 0.35->0.25 — morph menos determinante para la caída
     maxIntensity: 0.85,
-    squelchBase: 0.25,   // OPERACIÓN: Mantiene a raya el barro de los graves
+    squelchBase: 0.28,   // OPERACIÓN: Mantiene a raya el barro de los graves
     squelchSlope: 0.10,
     ghostCap: 0.00,        // WAVE 3492: 0.05->0.00 — negro entre golpes
     gateMargin: 0.005,
-    adaptiveNoiseAlpha: 0.0,          // WAVE 8009.3: anti-freeze — sin deriva adaptativa de ruido
-    sustainedSquelchMaxBoost: 0.0,    // WAVE 8009.3: anti-freeze — sin escalada de squelch por synths sostenidos
+    attackSlopeMin: 0.012,
+    adaptiveNoiseAlpha: 0.015,         // WAVE 7776: catch-up lento sobre notas sostenidas
+    sustainedSquelchStartFrames: 28,
+    sustainedSquelchRisePerFrame: 0.005,
+    sustainedSquelchMaxBoost: 0.15,
+    sustainedFlatVelocityMax: 0.012,
   },
 
   // Mover L — Melodías tonales (WAVE 2417: MONTE CARLO RESURRECTION)

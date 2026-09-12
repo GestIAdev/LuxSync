@@ -131,18 +131,21 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.15,        // OPERACIÓN: Luz Líquida — baja la compuerta para capturar colas de voces
     boost: 1.5,
     crushExponent: 1.0,  // OPERACIÓN: Linealidad pura para suavizar el pulso atmosférico
-    // ⚒️ WAVE 7776: LEFT PUNCH — Back L menos pegajoso, ondas senoidales con contraste.
-    // decayBase 0.50→0.38: libera entre acordes, el valle baja al negro.
-    // squelchBase 0.25→0.28: synth sostenido débil no re-dispara.
-    // attackSlopeMin 0→0.012: una nota held (velocity≈0) ya no cuenta como ataque
-    //   — el gate cierra sobre synths planos. Vibrato real (±0.05) sigue pasando.
-    // Choke suave re-activado (startFrames 28 ≈ 640ms): tras medio compás sostenido,
-    // squelch escala +0.005/frame hasta +0.15 — la nota se dima gradualmente.
-    // adaptiveNoiseAlpha 0.0→0.015: avgSignal alcanza la nota held → dynamicGate
-    //   sube → el gate cierra sin cortes bruscos. Reemplaza el anti-freeze WAVE 8009.3
-    //   que mataba el choke por completo (maxBoost 0.0 + α 0.0).
-    decayBase: 0.38,
-    decayRange: 0.25,      // WAVE 3492: 0.35->0.25 — morph menos determinante para la caída
+    // ⚒️ WAVE 7777: RÍOS DE LUZ — Back L de "punch cortado" a stream continuo.
+    // El WAVE 7776 dio punch pero el synth se veía quebrado en cientos de pedacitos.
+    // Ahora subimos la viscosidad matemática sin romper la dinámica:
+    // decayBase 0.38→0.75: la luz decae mucho más lento, fundiendo micro-picos
+    //   en un río de luz. Half-life ~0.9f→~2.5f.
+    // decayRange 0.25→0.10: los transitorios rápidos no fuerzan apagado brusco,
+    //   el morph modula menos la caída → comportamiento uniforme.
+    // Choke relajado: risePerFrame 0.005→0.01 (la asfixia tarda más en llegar),
+    //   maxBoost 0.15→0.50 (nunca apaga del todo, deja brillar a la mitad).
+    //   Con startFrames 28 + rise 0.01: tras ~640ms sostenido, squelch sube
+    //   0.01/frame hasta cap 0.50 — la nota se dima a la mitad, no se guillotina.
+    // adaptiveNoiseAlpha 0.015: avgSignal alcanza la nota held → dynamicGate
+    //   sube → gate cierra sin corte brusco. Se mantiene del WAVE 7776.
+    decayBase: 0.75,
+    decayRange: 0.10,
     maxIntensity: 0.85,
     squelchBase: 0.28,   // OPERACIÓN: Mantiene a raya el barro de los graves
     squelchSlope: 0.10,
@@ -151,8 +154,8 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     attackSlopeMin: 0.012,
     adaptiveNoiseAlpha: 0.015,         // WAVE 7776: catch-up lento sobre notas sostenidas
     sustainedSquelchStartFrames: 28,
-    sustainedSquelchRisePerFrame: 0.005,
-    sustainedSquelchMaxBoost: 0.15,
+    sustainedSquelchRisePerFrame: 0.01,
+    sustainedSquelchMaxBoost: 0.50,
     sustainedFlatVelocityMax: 0.012,
   },
 

@@ -102,6 +102,11 @@ export interface StrategyArbiterInput {
   
   /** 🔫 WAVE 164: Vibe activo (para override de reglas por género) */
   vibeId?: string;
+
+  /** 🎆 WAVE 7757: Índice del slot del Sidereal Clock activo.
+   * Si se proporciona, la estrategia SOLO cambia cuando este índice avanza.
+   * Si es undefined (vibe sin reloj), se usa el comportamiento por defecto. */
+  siderealSlotIndex?: number;
 }
 
 /**
@@ -177,11 +182,20 @@ export class StrategyArbiter {
   private lastCommittedStrategy: ColorStrategy = 'analogous';
   
   // Histéresis state
-  private lastDecisionZone: 'low' | 'mid' | 'high' = 'mid';
+  // 🎆 WAVE 7757: FIX — inicializar a 'low' (coherente con stableStrategy='analogous').
+  // Antes era 'mid' (que mapea a 'triadic'), creando una inconsistencia que
+  // atrapaba el motor en 'analogous' para siempre porque checkHysteresis
+  // veía currentZone='mid' === lastDecisionZone='mid' → nunca aprobaba cambio.
+  private lastDecisionZone: 'low' | 'mid' | 'high' = 'low';
   
   // Contadores
   private frameCount = 0;
   private totalChanges = 0;
+
+  // 🎆 WAVE 7757: SIDEREAL CLOCK SYNC — Track del último slotIndex recibido.
+  // Cuando siderealSlotIndex cambia, la estrategia se re-evalúa. Entre slots,
+  // la estrategia queda congelada al valor decidido en el último cambio de slot.
+  private lastSiderealSlotIndex: number | undefined = undefined;
   
   // Callbacks para reset
   private onResetCallbacks: StrategyResetCallback[] = [];
@@ -212,76 +226,66 @@ export class StrategyArbiter {
    * 🎨 PROCESO PRINCIPAL
    * 
    * Recibe síncopa y sección, retorna estrategia estabilizada.
+   * 
+   * 🎆 WAVE 7757: SIDEREAL CLOCK SYNC — Si se proporciona siderealSlotIndex,
+   * la estrategia SOLO se re-evalúa cuando el slot avanza. Entre slots,
+   * la estrategia queda congelada. Si siderealSlotIndex es undefined
+   * (vibe sin reloj), se usa el commitment timer de 10s como fallback.
    */
   update(input: StrategyArbiterInput): StrategyArbiterOutput {
     this.frameCount++;
     
-    // � WAVE 1209 DEBUG: Log SIEMPRE para confirmar que se ejecuta
-    // if (this.frameCount % 600 === 0) {  // Cada 10 segundos
-    //   console.log(`[StrategyArbiter] 🔄 Running... frame=${this.frameCount} | current=${this.stableStrategy} | commitment=${this.strategyCommitmentFrames}`);
-    // }
-    
-    // �🔒 WAVE 1208.6: Decrementar strategy commitment timer
-    if (this.strategyCommitmentFrames > 0) {
-      this.strategyCommitmentFrames--;
-    }
-    
-    // 🔒 WAVE 1208.6: ULTRA-LOCK MODE
-    // NO BREAKS POR SECCIÓN/DROP/BREAKDOWN - Solo cambios naturales por síncopa
-    // Las secciones duran milisegundos y son ruidosas (no tenemos section tracker potente)
-    // Los drops ocurren 20 veces por canción (saturación de cambios)
-    // SOLO permitimos cambios cuando el commitment expira naturalmente (30 segundos)
-    if (this.strategyCommitmentFrames > 0) {
-      // 🐛 WAVE 1209 DEBUG: Log cada 5s para diagnosticar
-      if (this.frameCount % 300 === 0) {
-        console.log(`[StrategyArbiter] 🔒 LOCKED: ${this.lastCommittedStrategy} | Remaining: ${this.strategyCommitmentFrames} frames (${(this.strategyCommitmentFrames/60).toFixed(1)}s)`);
-      }
-      
-      // Actualizar rolling average aunque estemos comprometidos
-      const sync = Math.max(0, Math.min(1, input.syncopation));
-      this.syncBuffer[this.bufferIndex] = sync;
-      this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
-      const avgSync = this.calculateWeightedAverage();
-      
-      // MANTENER estrategia comprometida - NO EXCEPCIONES
-      return {
-        stableStrategy: this.lastCommittedStrategy,
-        instantStrategy: this.lastCommittedStrategy,
-        strategyChanged: false,
-        framesSinceChange: this.frameCount - this.lastChangeFrame,
-        isLocked: true,
-        sectionOverride: false,  // 🔒 WAVE 1208.6: NO overrides
-        overrideType: 'none',
-        averagedSyncopation: avgSync,
-        contrastLevel: this.calculateContrastLevel(this.lastCommittedStrategy, avgSync),
-      };
-    }
-    
-    // === PASO 1: Actualizar rolling average ===
+    // === PASO 0: Actualizar rolling average SIEMPRE ===
     const sync = Math.max(0, Math.min(1, input.syncopation));
     this.syncBuffer[this.bufferIndex] = sync;
     this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
-    
-    // Calcular promedio ponderado (más peso a valores recientes)
     const avgSync = this.calculateWeightedAverage();
     
-    // === PASO 2: Determinar estrategia instantánea basada en SÍNCOPA ===
-    const instantStrategy = this.syncToStrategy(avgSync);
+    // === PASO 1: Detectar cambio de slot del Sidereal Clock ===
+    const hasSiderealClock = input.siderealSlotIndex !== undefined;
+    const slotChanged = hasSiderealClock && input.siderealSlotIndex !== this.lastSiderealSlotIndex;
+    if (slotChanged) {
+      this.lastSiderealSlotIndex = input.siderealSlotIndex;
+    }
     
-    // 🔒 WAVE 1208.6: NO SECTION/DROP/BREAKDOWN OVERRIDES
-    // Estrategia basada SOLO en síncopa promediada (rolling 15s)
-    // Sin eventos externos ruidosos que fuercen cambios
+    // === PASO 2: Determinar si se permite re-evaluar la estrategia ===
+    // 🎆 WAVE 7757:
+    //   - Con Sidereal Clock: solo en cambio de slot (cada 4-6 min)
+    //   - Sin Sidereal Clock: commitment timer de 10s (WAVE 7719)
+    let canReevaluate: boolean;
+    if (hasSiderealClock) {
+      canReevaluate = slotChanged;
+    } else {
+      // Fallback: commitment timer (decrementar)
+      if (this.strategyCommitmentFrames > 0) {
+        this.strategyCommitmentFrames--;
+      }
+      const framesSinceChange = this.frameCount - this.lastChangeFrame;
+      canReevaluate = !this.isLocked || framesSinceChange >= this.config.lockingFrames;
+    }
+    
+    // === PASO 3: Si NO se puede re-evaluar, retornar estrategia actual ===
+    if (!canReevaluate) {
+      return {
+        stableStrategy: this.stableStrategy,
+        instantStrategy: this.syncToStrategy(avgSync),
+        strategyChanged: false,
+        framesSinceChange: this.frameCount - this.lastChangeFrame,
+        isLocked: true,
+        sectionOverride: false,
+        overrideType: 'none',
+        averagedSyncopation: avgSync,
+        contrastLevel: this.calculateContrastLevel(this.stableStrategy, avgSync),
+      };
+    }
+    
+    // === PASO 4: Re-evaluar estrategia (slot cambió O commitment expiró) ===
+    const instantStrategy = this.syncToStrategy(avgSync);
     const effectiveStrategy = instantStrategy;
     
-    // === PASO 3: Aplicar histéresis y bloqueo ===
     let strategyChanged = false;
-    const framesSinceChange = this.frameCount - this.lastChangeFrame;
     
-    // 🔒 WAVE 1208.6: ULTRA-SIMPLE GATE - Solo cambiar si NO estamos bloqueados
-    // No hay excepciones por DROP/BREAKDOWN/SECCIÓN
-    const canChange = !this.isLocked || framesSinceChange >= this.config.lockingFrames;
-    
-    if (canChange && effectiveStrategy !== this.stableStrategy) {
+    if (effectiveStrategy !== this.stableStrategy) {
       // Verificar histéresis (evitar oscilación en umbrales)
       const shouldChange = this.checkHysteresis(avgSync, effectiveStrategy);
       
@@ -293,33 +297,31 @@ export class StrategyArbiter {
         strategyChanged = true;
         this.isLocked = true;
         
-        // 🔒 WAVE 74: Iniciar commitment timer cuando cambia la estrategia
-        // Esto evita que el interpolador resetee constantemente su destino
-        this.strategyCommitmentFrames = this.STRATEGY_COMMITMENT_DURATION;
+        // 🎆 WAVE 7757: Con Sidereal Clock, no hay commitment timer — el slot
+        // es el timer. Sin clock, mantener el commitment de 10s.
+        if (!hasSiderealClock) {
+          this.strategyCommitmentFrames = this.STRATEGY_COMMITMENT_DURATION;
+        }
         this.lastCommittedStrategy = effectiveStrategy;
         
-        // 🐛 WAVE 1209 DEBUG: Log detallado de cambios
-        console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} | avgSync=${avgSync.toFixed(2)} | commitment=${this.strategyCommitmentFrames} frames (30s) | canChange=${canChange} | isLocked=${this.isLocked} | framesSinceChange=${framesSinceChange}`);
+        console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} | avgSync=${avgSync.toFixed(2)} | slot=${input.siderealSlotIndex ?? 'no-clock'} | canReevaluate=${canReevaluate}`);
       }
     }
     
-    // Desbloquear después de período completo
-    if (this.isLocked && framesSinceChange >= this.config.lockingFrames) {
+    // Desbloquear después de período completo (solo modo no-clock)
+    if (!hasSiderealClock && this.isLocked && (this.frameCount - this.lastChangeFrame) >= this.config.lockingFrames) {
       this.isLocked = false;
     }
     
-    // === PASO 4: Calcular nivel de contraste ===
-    // 0 = muy suave (analogous puro), 1 = extremo (complementary puro)
-    const contrastLevel = this.calculateContrastLevel(this.stableStrategy, avgSync);
-    
     // === PASO 5: Return output ===
+    const contrastLevel = this.calculateContrastLevel(this.stableStrategy, avgSync);
     return {
       stableStrategy: this.stableStrategy,
       instantStrategy,
       strategyChanged,
-      framesSinceChange,
+      framesSinceChange: this.frameCount - this.lastChangeFrame,
       isLocked: this.isLocked,
-      sectionOverride: false,  // 🔒 WAVE 1208.6: NO overrides
+      sectionOverride: false,
       overrideType: 'none',
       averagedSyncopation: avgSync,
       contrastLevel,
@@ -433,8 +435,9 @@ export class StrategyArbiter {
     this.stableStrategy = 'analogous';  // Default seguro
     this.lastChangeFrame = 0;
     this.isLocked = false;
-    this.lastDecisionZone = 'mid';
+    this.lastDecisionZone = 'low';  // 🎆 WAVE 7757: coherente con stableStrategy='analogous'
     this.frameCount = 0;
+    this.lastSiderealSlotIndex = undefined;  // 🎆 WAVE 7757
     
     console.log('[StrategyArbiter] 🧹 RESET: Strategy state cleared');
     

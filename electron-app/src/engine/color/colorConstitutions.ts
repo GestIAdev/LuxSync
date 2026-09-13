@@ -526,20 +526,13 @@ export const IDLE_CONSTITUTION: GenerationOptions = {
  * puro que el Techno ya explota con prism.
  */
 export const RAVE_CONSTITUTION: GenerationOptions = {
-  // 🏛️ CONSTITUCIÓN: forceStrategy: 'split-complementary'
-  // ⚠️ DESVIACIÓN: la directiva Fase 4 pide 'split-complementary', pero
-  // GenerationOptions.forceStrategy sólo acepta 'analogous' | 'triadic' |
-  // 'complementary' | 'prism' (SeleneColorEngine.ts:301). El motor no
-  // implementa split-complementary como estrategia distinta.
-  // SUSTITUCIÓN: 'complementary' — split-complementary es una variante de
-  // complementary donde el secundario se sitúa adyacente al complemento
-  // (±30° del opuesto) en lugar de exactamente opuesto. Los
-  // allowedHueRanges [[260,340],[100,160]] + hueRemapping ya fuerzan los
-  // dos arcos split-complementary, así que el resultado visual es
-  // split-complementary aunque el motor use el algoritmo 'complementary'.
-  // Para implementar split-complementary nativo, habría que extender el
-  // tipo forceStrategy en SeleneColorEngine.ts (fuera del scope Fase 4).
-  forceStrategy: 'complementary',
+  // � WAVE 7757: LIBERACIÓN — forceStrategy eliminado. RaveX ahora es libre
+  // para que el StrategyArbiter sincronizado con el Sidereal Clock decida su
+  // estrategia basándose en la energía musical del slot activo.
+  // Antes: forceStrategy: 'complementary' (dictadura que ignoraba la música).
+  // El split-complementary visual ya está garantizado por los allowedHueRanges
+  // [[260,340],[100,160]] — los dos arcos separados ~180°.
+  forceStrategy: undefined,
 
   // 🌡️ THERMAL GRAVITY — heredado de Techno (Polo Azul Masivo)
   // 9500K = Fuerza ~29% hacia 240° (Azul Rey). El rave es frío como el techno.

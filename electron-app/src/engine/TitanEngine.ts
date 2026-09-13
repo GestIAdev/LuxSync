@@ -693,6 +693,16 @@ export class TitanEngine extends EventEmitter {
     const moodOutput = this.moodArbiter.update(moodInput)
     
     // 4. STRATEGY ARBITER: Rolling 15s → Analogous/Complementary/Triadic
+    // 🎆 WAVE 7757: SIDEREAL CLOCK SYNC — Acoplar la decisión de estrategia
+    // al slot del reloj astronómico. La estrategia SOLO cambia cuando el slot
+    // avanza (cada 4-6 min). Si la vibra no tiene Sidereal Clock, se usa el
+    // commitment timer de 10s como fallback.
+    const _constitutionForSlot = getColorConstitution(vibeProfile.id)
+    let _siderealSlotIndex: number | undefined = undefined
+    if (_constitutionForSlot.siderealClock?.slots?.length) {
+      const _clock = _constitutionForSlot.siderealClock
+      _siderealSlotIndex = Math.floor(performance.now() / _clock.slotDurationMs) % _clock.slots.length
+    }
     const strategyInput: StrategyArbiterInput = {
       syncopation: processedContext.syncopation,
       sectionType: processedContext.section.type as any,
@@ -701,6 +711,7 @@ export class TitanEngine extends EventEmitter {
       isRelativeDrop: energyOutput.isRelativeDrop,
       isRelativeBreakdown: energyOutput.isRelativeBreakdown,
       vibeId: vibeProfile.id,
+      siderealSlotIndex: _siderealSlotIndex,  // 🎆 WAVE 7757
     }
     const strategyOutput = this.strategyArbiter.update(strategyInput)
     

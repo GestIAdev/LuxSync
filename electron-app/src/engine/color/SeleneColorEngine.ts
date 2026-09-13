@@ -2048,7 +2048,13 @@ export class SeleneColorEngine {
     // la misma estrategia ANTES de caer al centro de masa de la zona limpia.
     if (effectiveOptions?.forbiddenHueRanges) {
       const forbidden = effectiveOptions.forbiddenHueRanges;
-      const allowed = effectiveOptions.allowedHueRanges;
+      // 🎆 WAVE 7757: LIBERACIÓN ARMÓNICA — Solo el PRIMARY obedece al
+      // allowedHueRanges del slot astronómico. SEC/ACC/AMB/CON reciben
+      // `undefined` como allowed → solo se evalúan contra el forbiddenHueRanges
+      // global de la constitución. Esto restaura la filosofía WAVE 7773 que
+      // el WAVE 7755/7756 violó al atrapar los derivados en el slot.
+      const allowedSlot = effectiveOptions.allowedHueRanges;  // Solo PRIMARY
+      const allowedFree = undefined;                           // SEC/ACC/AMB/CON
       const priH = pal.primary.h;
 
       // Construir pivotes armónicos según estrategia activa.
@@ -2056,8 +2062,8 @@ export class SeleneColorEngine {
       const PHI_A = 137.5;
       const PHI_B = PHI_ROTATION; // ≈222.5°
 
-      // 1️⃣ PRIMARY — sin pivote armónico (es la raíz). Solo centro de masa si colisiona.
-      pal.primary.h = this._resolveHarmonicHue([priH], forbidden, allowed);
+      // 1️⃣ PRIMARY — único canal que obedece al allowedHueRanges del slot.
+      pal.primary.h = this._resolveHarmonicHue([priH], forbidden, allowedSlot);
 
       // 2️⃣ SECONDARY — pivote al vértice alternativo de la estrategia
       const secMain = pal.secondary.h;
@@ -2081,7 +2087,7 @@ export class SeleneColorEngine {
             break;
         }
       }
-      pal.secondary.h = this._resolveHarmonicHue(secPivots, forbidden, allowed);
+      pal.secondary.h = this._resolveHarmonicHue(secPivots, forbidden, allowedFree);
 
       // 3️⃣ ACCENT — pivote al vértice alternativo
       const accMain = pal.accent.h;
@@ -2104,7 +2110,7 @@ export class SeleneColorEngine {
             break;
         }
       }
-      pal.accent.h = this._resolveHarmonicHue(accPivots, forbidden, allowed);
+      pal.accent.h = this._resolveHarmonicHue(accPivots, forbidden, allowedFree);
 
       // 4️⃣ AMBIENT — pivote al vértice restante de la estrategia
       const ambMain = pal.ambient.h;
@@ -2128,16 +2134,17 @@ export class SeleneColorEngine {
             break;
         }
       }
-      pal.ambient.h = this._resolveHarmonicHue(ambPivots, forbidden, allowed);
+      pal.ambient.h = this._resolveHarmonicHue(ambPivots, forbidden, allowedFree);
 
-      // 5️⃣ CONTRAST — ancla matemática a +180° del PRIMARIO (WAVE 7756).
+      // 5️⃣ CONTRAST — ancla matemática a +180° del PRIMARIO (WAVE 7756/7757).
       // El CON es el complementario del Primario por definición. NUNCA debe
-      // ser arrastrado hacia el cuadrante del primario. El orden de candidatos
-      // prioriza el ancla +180° del PRI antes que cualquier derivación del
-      // ambient (que pudo haber sido empujada por el evasor).
+      // ser arrastrado hacia el cuadrante del primario ni depender del AMB.
+      // 🎆 WAVE 7757: Liberado del allowed del slot — solo obedece forbidden global.
+      // El orden de candidatos prioriza el ancla +180°/-180° del PRI antes que
+      // cualquier derivación del ambient (que pudo haber sido empujada por el evasor).
       pal.contrast.h = this._resolveHarmonicHue(
         [normalizeHue(priH + 180), normalizeHue(priH - 180), normalizeHue(pal.ambient.h + 180), normalizeHue(priH + PHI_B)],
-        forbidden, allowed,
+        forbidden, allowedFree,
       );
 
       // 6️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
@@ -2150,7 +2157,7 @@ export class SeleneColorEngine {
         // Pivotar Ambient ±60° y re-resolver con pivotes armónicos
         pal.ambient.h = this._resolveHarmonicHue(
           [normalizeHue(pal.ambient.h + 60), normalizeHue(pal.ambient.h - 60), normalizeHue(pal.secondary.h + 180)],
-          forbidden, allowed,
+          forbidden, allowedFree,
         );
       }
     }

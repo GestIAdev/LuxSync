@@ -30,8 +30,9 @@ import type { HephFixtureOutput } from '../hephaestus/runtime/HephaestusRuntime'
 // La cuantizaciÃ³n armÃ³nica vive ahora en HAL.translateColorToWheel()
 // (LA LEY UNIVERSAL DEL PÃ‰NDULO â€” WAVE 2720)
 
-// Use inline type to avoid import issues
-type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
+// 🎭 VIBE CANON FASE 1: la unión inline se eliminó. VibeCanon es un módulo
+// hoja sin imports, así que no hay riesgo de ciclo al importarlo desde aquí.
+import type { VibeId } from '../vibe/VibeCanon'
 
 // WAVE 686.10: Import IDMXDriver for external driver injection
 import type { IDMXDriver } from '../../hal/drivers'

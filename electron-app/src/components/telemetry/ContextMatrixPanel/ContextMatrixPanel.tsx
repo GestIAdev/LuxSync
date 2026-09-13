@@ -23,7 +23,10 @@ import {
   VibeAuraIcon 
 } from '../../icons/LuxIcons'
 import type { MusicalKey, MusicalMode, SectionType } from '../../../core/protocol/MusicalContext'
-import type { VibeId } from '../../../core/protocol/SeleneProtocol'
+// 🎭 VIBE CANON FASE 1: este panel pinta `cognitive.vibe.active`, que es una
+// superficie de transporte y puede valer 'custom'. Por eso usa ProtocolVibeId
+// y no el VibeId canónico (que ya no incluye 'custom').
+import type { ProtocolVibeId } from '../../../core/protocol/SeleneProtocol'
 import './ContextMatrixPanel.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,7 +79,7 @@ const ENERGY_ZONE_CONFIG: Record<string, { label: string; emoji: string; color: 
   'idle':    { label: 'IDLE',    emoji: '💤', color: '#64748b' },  // Gris - sin señal
 }
 
-const VIBE_CONFIG: Record<VibeId, { label: string; color: string }> = {
+const VIBE_CONFIG: Record<ProtocolVibeId, { label: string; color: string }> = {
   'techno-club': { label: 'Techno Club', color: '#ef4444' },
   'fiesta-latina': { label: 'Fiesta Latina', color: '#f97316' },
   'pop-rock': { label: 'Pop Rock', color: '#8b5cf6' },

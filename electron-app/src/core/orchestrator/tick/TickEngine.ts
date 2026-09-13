@@ -16,6 +16,8 @@ import { DmxUniverseWriter, getDmxSab } from '../../aether/glass/DmxSabHandlers'
 import type { CalibrationEntry } from '../../aether/glass/CalibrationSAB'
 import type { INodeIntent } from '../../aether/intent-bus'
 import { SeleneTruth, createDefaultCognitive } from '../../protocol/SeleneProtocol'
+// 🎭 VIBE CANON FASE 1: tipo de transporte de vibe (canónicas + 'custom')
+import type { ProtocolVibeId } from '../../protocol/SeleneProtocol'
 // WAVE 7718: Pre-allocated default cognitive — avoid allocating ~20 nested objects
 // + 4 arrays on every truth broadcast (11Hz / 44Hz Chronos). The spread below
 // only overrides top-level fields (stableEmotion, thermalTemperature, ai, vibe),
@@ -1917,7 +1919,9 @@ export class TickEngine {
           ai: this.engine.getConsciousnessTelemetry(),
           // ðŸ”Œ WAVE 1175: Vibe activo REAL (no el default 'idle')
           vibe: {
-            active: currentVibe as 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge' | 'idle' | 'custom',
+            // 🎭 VIBE CANON FASE 1: el cast inline enumeraba la unión a mano y
+            // se desincronizaba del protocolo. Ahora usa el tipo de transporte.
+            active: currentVibe as ProtocolVibeId,
             transitioning: false // TODO: implementar transiciÃ³n real
           }
         },

@@ -16,8 +16,13 @@ import { create } from 'zustand'
 // TYPES
 // ============================================================================
 
-export type VibeId = string  // 'idle' | canonical vibe IDs | 'custom:...' keys
-export type VibeVisualId = string  // canonical vibe IDs | 'custom:...' keys (never 'idle')
+// 🎭 VIBE CANON FASE 1: el `= string` anterior sombreaba el nombre canónico
+// con un tipo mucho más ancho. `AnyVibeKey` (VibeId | `custom:${string}`) es
+// exactamente lo que el comentario original describía.
+export type { AnyVibeKey as VibeId } from '../core/vibe/VibeCanon'
+import type { AnyVibeKey } from '../core/vibe/VibeCanon'
+type VibeId = AnyVibeKey
+export type VibeVisualId = AnyVibeKey  // canonical vibe IDs | 'custom:...' keys (never 'idle')
 
 interface VibeStoreState {
   // Current vibe (backend truth)

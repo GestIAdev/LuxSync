@@ -28,10 +28,17 @@ import { useVibeLabStore } from '../stores/vibeLabStore'
 // TYPES
 // ============================================================================
 
-// PROTEUS FIX 1: VibeId widened to string so custom:* keys are accepted.
+// PROTEUS FIX 1: VibeId widened so custom:* keys are accepted.
 // The canonical 4 vibes are still the "base" set; custom vibes are merged in
 // dynamically from the VibeLab vault at runtime.
-export type VibeId = string
+//
+// 🎭 VIBE CANON FASE 1: el ensanchamiento era `= string`, que sombreaba el
+// nombre canónico con un tipo arbitrario. `AnyVibeKey` expresa la misma
+// intención (canónicas + `custom:${string}`) sin perder seguridad de tipos.
+import type { AnyVibeKey } from '../core/vibe/VibeCanon'
+export type { AnyVibeKey as VibeId }
+type VibeId = AnyVibeKey
+/** `VibeId` ya incluye 'idle'; el alias se mantiene por legibilidad en la UI. */
 export type VibeIdWithIdle = VibeId | 'idle'
 
 export interface VibeInfo {

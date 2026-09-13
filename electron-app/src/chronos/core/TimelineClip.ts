@@ -14,6 +14,9 @@
  */
 
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
+// 🎭 VIBE CANON FASE 1: SSOT de identidad de vibe
+import { VIBE_IDS, VIBE_FALLBACK_ID, isVibeId } from '../../core/vibe/VibeCanon'
+import type { VibeId } from '../../core/vibe/VibeCanon'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLIP TYPES
@@ -23,14 +26,18 @@ export type ClipType = 'vibe' | 'fx'
 
 /**
  * 🎯 WAVE 2019.8: VibeType must match VibeId from engine/vibe/profiles/index.ts
- * Valid backend IDs: fiesta-latina, techno-club, chill-lounge, pop-rock, idle
+ *
+ * 🎭 VIBE CANON FASE 1: la unión local se eliminó. `VibeType` es ahora un
+ * alias del `VibeId` canónico, así que la correspondencia que el comentario
+ * de la WAVE 2019.8 pedía "a mano" queda garantizada por el compilador.
+ *
+ * El nombre `VibeType` se preserva porque lo consumen 4 módulos de Chronos
+ * (`ProjectTypes`, `useTimelineClips`, `ClipInspector`, `LuxFileV3.factories`).
+ *
+ * @deprecated Usar `VibeId` de `core/vibe/VibeCanon`. Alias por compatibilidad.
+ * @see core/vibe/VibeCanon.ts
  */
-export type VibeType = 
-  | 'fiesta-latina'  // 🎉 Fiesta Latina (default)
-  | 'techno-club'    // ⚡ Techno / Electronic / Build-ups
-  | 'chill-lounge'   // 🌊 Chillout / Ambient / Ballad
-  | 'pop-rock'       // 🎸 Rock / Hip-hop / Pop
-  | 'idle'           // 💤 Static / No movement
+export type VibeType = VibeId
 
 export type FXType = 
   | 'strobe' 
@@ -64,18 +71,24 @@ export function toFXType(value: string | undefined): FXType {
 
 /**
  * WAVE 2040.17 P11: Set of valid VibeType values for runtime validation.
+ *
+ * 🎭 VIBE CANON FASE 1: la lista literal se eliminó. Ahora se deriva de
+ * `VIBE_IDS`, de modo que añadir una vibra al Canon la habilita aquí
+ * automáticamente. Antes había que recordar actualizar este Set a mano — era
+ * la causa de que un vibe válido pudiera degradarse a 'idle' silenciosamente.
  */
-export const VALID_VIBE_TYPES: ReadonlySet<string> = new Set<string>([
-  'fiesta-latina', 'techno-club', 'chill-lounge', 'pop-rock', 'idle',
-])
+export const VALID_VIBE_TYPES: ReadonlySet<string> = new Set<string>(VIBE_IDS)
 
 /**
  * WAVE 2040.17 P11: Safely coerce an arbitrary string to VibeType.
- * Returns the string as VibeType if valid, otherwise 'idle' as fallback.
+ * Returns the string as VibeType if valid, otherwise the canonical fallback.
+ *
+ * 🎭 VIBE CANON FASE 1: delega en el type guard canónico `isVibeId`, lo que
+ * elimina el cast `as VibeType` (el guard ya estrecha el tipo).
  */
 export function toVibeType(value: string | undefined): VibeType {
-  if (value && VALID_VIBE_TYPES.has(value)) return value as VibeType
-  return 'idle'
+  if (value && isVibeId(value)) return value
+  return VIBE_FALLBACK_ID
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

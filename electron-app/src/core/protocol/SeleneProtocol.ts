@@ -46,14 +46,28 @@ export type SeleneMode =
 
 /**
  * IDs de Vibes predefinidos
+ *
+ * 🎭 VIBE CANON FASE 1: la unión local se eliminó. `VibeId` es ahora el
+ * canónico de `core/vibe/VibeCanon.ts` y se re-exporta para los consumidores
+ * que importan desde este módulo (y desde el barrel `core/protocol/index.ts`).
+ *
+ * @see core/vibe/VibeCanon.ts
  */
-export type VibeId = 
-  | 'techno-club'
-  | 'fiesta-latina'   // WAVE 248: renamed from 'latin-party'
-  | 'pop-rock'        // WAVE 248: renamed from 'rock-concert'
-  | 'chill-lounge'
-  | 'idle'            // WAVE 248: No vibe selected
-  | 'custom'
+import type { VibeId } from '../vibe/VibeCanon'
+export type { VibeId }
+
+/**
+ * Vibe tal y como viaja por el protocolo de broadcast.
+ *
+ * El protocolo admite un valor extra `'custom'` que NO es una vibra canónica:
+ * es el marcador que el truth usa cuando está activo un vibe injertado por
+ * VibeLab (`custom:<slug>-<hash>`). El id real de la custom no se propaga por
+ * este canal, sólo la señal de que hay una activa.
+ *
+ * Usar `ProtocolVibeId` únicamente en superficies de transporte/telemetría.
+ * La lógica de negocio debe trabajar con `VibeId` o `AnyVibeKey`.
+ */
+export type ProtocolVibeId = VibeId | 'custom'
 
 /**
  * Niveles de audio en tiempo real
@@ -284,8 +298,8 @@ export interface BeautyData {
  * Vibe state
  */
 export interface VibeState {
-  /** Current active vibe ID or 'idle' */
-  active: VibeId
+  /** Current active vibe ID, 'idle', o 'custom' si hay un injerto de VibeLab */
+  active: ProtocolVibeId
   /** Is transitioning between vibes */
   transitioning: boolean
 }
@@ -697,8 +711,8 @@ export interface SystemState {
   actualFPS: number
   /** Current operation mode */
   mode: SeleneMode
-  /** Current vibe */
-  vibe: VibeId
+  /** Current vibe (admite 'custom' para injertos de VibeLab) */
+  vibe: ProtocolVibeId
   /** Brain status (current mood) */
   brainStatus: SeleneMood
   /** Session uptime (seconds) */

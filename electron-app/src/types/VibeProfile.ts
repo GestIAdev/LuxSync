@@ -14,8 +14,15 @@
 /**
  * Identificadores únicos de Vibes disponibles
  * 🔌 WAVE 64: Añadido 'idle' como estado neutro de espera
+ *
+ * 🎭 VIBE CANON FASE 1: la unión local se eliminó. `VibeId` vive ahora en
+ * `core/vibe/VibeCanon.ts` (SSOT). Se importa para uso interno de este módulo
+ * y se re-exporta para no romper los ~30 imports existentes que apuntan aquí.
+ *
+ * @see core/vibe/VibeCanon.ts
  */
-export type VibeId = 'idle' | 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge';
+import type { VibeId } from '../core/vibe/VibeCanon';
+export type { VibeId };
 
 /**
  * Estados emocionales que Selene puede expresar

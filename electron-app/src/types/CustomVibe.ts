@@ -57,44 +57,20 @@ export const LUXVIBE_SCHEMA_VERSION = 1 as const
 export type LuxVibeSchemaVersion = typeof LUXVIBE_SCHEMA_VERSION
 
 /**
- * Clave sintética de un vibe custom.
+ * 🎭 VIBE CANON FASE 1: `CustomVibeKey`, `BaseDNA`, `BASE_DNA_IDS`,
+ * `isBaseDNA` e `isCustomVibeKey` se movieron a `core/vibe/VibeCanon.ts`
+ * (SSOT). Se re-exportan aquí para no romper los imports existentes.
  *
- * Formato: `custom:<slug>-<hash6>` — p.ej. `custom:dubstep-cathedral-a1b2c3`.
+ * Nota: el `isCustomVibeKey` estricto (exige contenido tras el prefijo) que
+ * vivía en este archivo se preservó como implementación canónica.
  *
- * El prefijo `custom:` es el discriminante que permite injertar la clave en
- * los registries de motor sin colisionar nunca con un `VibeId` canónico.
+ * @see core/vibe/VibeCanon.ts
  */
-export type CustomVibeKey = `custom:${string}`
+import type { CustomVibeKey, BaseDNA } from '../core/vibe/VibeCanon'
+import { BASE_DNA_IDS, isBaseDNA, isCustomVibeKey } from '../core/vibe/VibeCanon'
 
-/**
- * Los 4 donantes de ADN válidos.
- *
- * `idle` queda excluido deliberadamente: no es un género musical, es el estado
- * neutro de espera (panScale 0.15, 1 solo patrón `breath`, sin constitución
- * cromática real). Heredar de `idle` produciría vibes inertes.
- */
-export type BaseDNA = Extract<
-  VibeId,
-  'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge'
->
-
-/** Lista runtime de los ADN válidos (para validación y UI). */
-export const BASE_DNA_IDS: readonly BaseDNA[] = [
-  'techno-club',
-  'fiesta-latina',
-  'pop-rock',
-  'chill-lounge',
-] as const
-
-/** Type guard de `BaseDNA`. */
-export function isBaseDNA(value: string): value is BaseDNA {
-  return (BASE_DNA_IDS as readonly string[]).includes(value)
-}
-
-/** Type guard de `CustomVibeKey`. */
-export function isCustomVibeKey(value: string): value is CustomVibeKey {
-  return value.startsWith('custom:') && value.length > 'custom:'.length
-}
+export type { CustomVibeKey, BaseDNA }
+export { BASE_DNA_IDS, isBaseDNA, isCustomVibeKey }
 
 /** Metadatos de biblioteca de un vibe custom. */
 export interface CustomVibeMeta {

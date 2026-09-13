@@ -14,7 +14,8 @@ import { MoodController } from '../../mood/MoodController'
 import type { StateManager } from './StateManager'
 import type { TacticalLogManager } from '../logging/TacticalLogManager'
 
-type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
+// 🎭 VIBE CANON FASE 1: unión local eliminada — SSOT en core/vibe/VibeCanon.ts
+import type { VibeId } from '../../vibe/VibeCanon'
 
 export class VibeLifecycleManager {
   private engine: TitanEngine | null = null

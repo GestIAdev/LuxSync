@@ -40,6 +40,10 @@
  * @author PunkOpus
  */
 
+// 🎭 VIBE CANON FASE 2: SSOT de identidad de vibe + helper de acceso custom:*
+import type { VibeId, AnyVibeKey } from '../../core/vibe/VibeCanon'
+import { lookupVibeMap } from '../../core/vibe/VibeCanon'
+
 // TYPES
 
 /** Resultado de generacion de movimiento */
@@ -189,7 +193,10 @@ const TILT_OFFSET_CEILING = -0.325
 // 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
 // El tipo Readonly es sólo a nivel TS; el cast a Record<string, number> en el
 // graft registry es seguro porque el backup/restore garantiza la reversibilidad.
-export const TILT_OFFSET_BY_VIBE: Readonly<Record<string, number>> = {
+// 🎭 VIBE CANON FASE 2: Record<VibeId, number> — el compilador exige completitud
+// canónica (Fase 4: añadir un vibe aquí = error de compilación = checklist).
+// El acceso con claves custom:* en runtime va por `lookupVibeMap` del Canon.
+export const TILT_OFFSET_BY_VIBE: Readonly<Record<VibeId, number>> = {
   'techno-club': -0.35,
   'fiesta-latina': -0.15, // Subido de -0.35. Levanta la cabeza para hacer círculos amplios.
   'pop-rock': -0.30,
@@ -200,7 +207,10 @@ export const TILT_OFFSET_BY_VIBE: Readonly<Record<string, number>> = {
 // VIBE CONFIGURATIONS
 
 // 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
-export const VIBE_CONFIG: Record<string, VibeConfig> = {
+// 🎭 VIBE CANON FASE 2: Record<VibeId, VibeConfig> — completitud canónica exigida
+// por el compilador; las claves custom:* injertadas en runtime se acceden via
+// `lookupVibeMap` (helper del Canon que tolera AnyVibeKey).
+export const VIBE_CONFIG: Record<VibeId, VibeConfig> = {
   // TECHNO: Geometría dura, cortes precisos — CATEDRAL industrial
   //  WAVE 4730 TRÍADA: panScale 0.72→0.92, tiltScale 0.68→0.85, freq 0.22→0.10
   //   Barrido enorme (92% del pan = ~497°), frecuencia sostenible para hardware real.
@@ -372,7 +382,8 @@ interface StereoConfig {
 }
 
 // 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
-export const STEREO_CONFIG: Record<string, StereoConfig> = {
+// 🎭 VIBE CANON FASE 2: Record<VibeId, StereoConfig> — completitud canónica.
+export const STEREO_CONFIG: Record<VibeId, StereoConfig> = {
   'techno-club':    { offset: Math.PI,     type: 'mirror' },   // L/R espejos (puertas abren/cierran)
   'fiesta-latina':  { offset: Math.PI / 4, type: 'snake' },    // 45° cadena de caderas
   'pop-rock':       { offset: Math.PI / 3, type: 'snake' },    // 60° wall ondulante
@@ -1001,7 +1012,8 @@ export class VibeMovementManager {
     // Second call (R fixture): reuse same time/frameCount from first call
 
     // Obtener configuracion del vibe
-    const config = VIBE_CONFIG[vibeId] || VIBE_CONFIG['idle']
+    // 🎭 VIBE CANON FASE 2: acceso via helper (tolera custom:* injertadas)
+    const config = lookupVibeMap(VIBE_CONFIG, vibeId) ?? VIBE_CONFIG['idle']
 
     const beatCount = audio.beatCount ?? 0
     const beatPhase = audio.beatPhase ?? 0
@@ -1127,7 +1139,7 @@ export class VibeMovementManager {
     // clamp artifacts (jumping/freezing). Applying the snake offset as a phase
     // shift BEFORE the pattern function preserves the pattern shape and keeps
     // the output naturally within the safe range.
-    const stereoConfig = STEREO_CONFIG[vibeId] || STEREO_CONFIG['idle']
+    const stereoConfig = lookupVibeMap(STEREO_CONFIG, vibeId) ?? STEREO_CONFIG['idle']
     const snakePhaseOffset = stereoConfig.type === 'snake' && totalFixtures > 1
       ? fixtureIndex * stereoConfig.offset
       : 0
@@ -1211,7 +1223,7 @@ export class VibeMovementManager {
       ? TILT_OFFSET_CEILING
       : effectiveMount === 'totem'
         ? -0.45
-        : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0)
+        : (lookupVibeMap(TILT_OFFSET_BY_VIBE, vibeId) ?? 0)
     const position = this._tempPos
     position.x = Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude))
     position.y = Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset))
@@ -1468,7 +1480,7 @@ export class VibeMovementManager {
   // PUBLIC GETTERS
   
   getVibeConfig(vibeId: string): VibeConfig {
-    return VIBE_CONFIG[vibeId] || VIBE_CONFIG['idle']
+    return lookupVibeMap(VIBE_CONFIG, vibeId) ?? VIBE_CONFIG['idle']
   }
   
   getAvailablePatterns(): string[] {
@@ -1501,7 +1513,7 @@ export class VibeMovementManager {
   getCurrentPatternName(): string | null {
     if (this.manualPatternOverride !== null) return this.manualPatternOverride
     if (this.lastVibeId === null) return null
-    const config = VIBE_CONFIG[this.lastVibeId] || VIBE_CONFIG['idle']
+    const config = lookupVibeMap(VIBE_CONFIG, this.lastVibeId) ?? VIBE_CONFIG['idle']
     const patterns = config.patterns
     if (!patterns || patterns.length === 0) return null
     const safeIndex = this.schedulerState.patternIndex % patterns.length

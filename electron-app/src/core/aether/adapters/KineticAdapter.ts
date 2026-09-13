@@ -49,6 +49,8 @@ import {
 } from '../../../engine/movement/VibeMovementManager'
 import { aetherKineticEngine } from '../AetherKineticEngine'
 import { fnv1aChaosPhase } from '../../../engine/movement/ChaosHash'
+// 🎭 VIBE CANON FASE 2: resolución canónica de vibe (reemplaza VIBE_ID_MAP)
+import { resolveVibeId } from '../../vibe/VibeCanon'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -78,29 +80,24 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Mapa de VibeProfile.name → VMM vibeId.
- * Inmutable para garantizar lookup O(1) sin alloc en el hot-path.
+ * 🎭 VIBE CANON FASE 2: VIBE_ID_MAP ELIMINADO — la resolución vive en el Canon.
+ *
+ * ⚠️ CAMBIO CONSCIENTE DE COMPORTAMIENTO (blueprint §3.4, autorizado):
+ * El fallback para vibes no reconocidas era 'techno-club' — un disfraz
+ * silencioso: los movers bailaban como techno y el operador no podía
+ * distinguirlo de techno real en el escenario. Ahora el fallback es 'idle'
+ * (visiblemente neutro) + un único warning por key en consola. El fallo se
+ * vuelve diagnosticable (P3: fallar visible, no silencioso).
+ *
+ * BONUS FIX: las claves custom:* ya NO colapsan a techno-club. Antes
+ * VIBE_ID_MAP['custom:foo'] → undefined → fallback techno. Ahora la clave
+ * custom llega intacta al VMM, donde VibeGraftRegistry le ha injertado su
+ * VIBE_CONFIG — los vibes de VibeLab por fin se mueven con su propia
+ * coreografía en lugar de heredar la de techno.
+ *
+ * En la práctica este path solo se alcanza con un bug de propagación:
+ * VibeManager ya rechaza vibes inválidas antes de que lleguen aquí.
  */
-const VIBE_ID_MAP: Readonly<Record<string, string>> = {
-  'techno-club':    'techno-club',
-  'techno':         'techno-club',
-  'electro':        'techno-club',
-  'fiesta-latina':  'fiesta-latina',
-  'latino':         'fiesta-latina',
-  'salsa':          'fiesta-latina',
-  'reggaeton':      'fiesta-latina',
-  'pop-rock':       'pop-rock',
-  'rock':           'pop-rock',
-  'pop':            'pop-rock',
-  'chill-lounge':   'chill-lounge',
-  'chill':          'chill-lounge',
-  'lounge':         'chill-lounge',
-  'ambient':        'chill-lounge',
-  'jazz':           'chill-lounge',
-  'idle':           'idle',
-} as const
-
-const FALLBACK_VIBE_ID = 'techno-club'
 const CHILL_VIBE_ID = 'chill-lounge'
 const GLACIER_LERP_ALPHA = 0.0005
 
@@ -153,8 +150,8 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
   ): void {
     const { audio, vibe } = context
 
-    // ── 1. Resolver vibeId → VMM vibeId (lookup O(1), sin alloc)
-    const vibeId = VIBE_ID_MAP[vibe.name] ?? FALLBACK_VIBE_ID
+    // ── 1. Resolver vibeId (Canon: canonical / alias / custom / fallback→idle)
+    const vibeId = resolveVibeId(vibe.name).id
 
     const isChillVibe = vibeId === CHILL_VIBE_ID
 

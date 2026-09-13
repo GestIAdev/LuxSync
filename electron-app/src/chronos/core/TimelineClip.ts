@@ -15,7 +15,7 @@
 
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 // 🎭 VIBE CANON FASE 1: SSOT de identidad de vibe
-import { VIBE_IDS, VIBE_FALLBACK_ID, isVibeId } from '../../core/vibe/VibeCanon'
+import { VIBE_IDS, VIBE_FALLBACK_ID, isVibeId, resolveVibeId, lookupVibeMap } from '../../core/vibe/VibeCanon'
 import type { VibeId } from '../../core/vibe/VibeCanon'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -234,14 +234,15 @@ export type TimelineClip = VibeClip | FXClip
 
 /**
  * 🎨 WAVE 2019.8 + 2040.11: Vibe colors mapped to real VibeIds
- * 
- * WAVE 2040.11: Added 'techno' alias for 'techno-club' to fix EffectCategoryId mismatch.
- * The EffectRegistry uses 'techno' but VibeType uses 'techno-club', causing black clips.
+ *
+ * 🎭 VIBE CANON FASE 2: Record<VibeId, string> — completitud canónica exigida
+ * por el compilador. El alias 'techno' que vivía aquí como entrada extra se
+ * eliminó del mapa: `getVibeColor` lo resuelve via `resolveVibeId` (el EffectCategoryId
+ * 'techno' → alias → 'techno-club'), así el mapa sólo contiene claves canónicas.
  */
-export const VIBE_COLORS: Record<string, string> = {
+export const VIBE_COLORS: Record<VibeId, string> = {
   'fiesta-latina': '#f59e0b', // 🎉 Orange - Fiesta Latina
   'techno-club': '#a855f7',   // ⚡ Purple - Techno Club
-  'techno': '#a855f7',        // ⚡ Alias for 'techno-club' (EffectCategoryId compat)
   'chill-lounge': '#22d3ee',  // 🌊 Cyan - Chill Lounge
   'pop-rock': '#ef4444',      // 🎸 Red - Pop Rock
   'idle': '#6b7280',          // 💤 Gray - Idle
@@ -250,9 +251,13 @@ export const VIBE_COLORS: Record<string, string> = {
 /**
  * 🔧 WAVE 2040.11: Normalize vibe color lookup
  * Handles both VibeType ('techno-club') and EffectCategoryId ('techno') formats
+ *
+ * 🎭 VIBE CANON FASE 2: la normalización de formatos delega en resolveVibeId —
+ * cualquier alias del Canon ('techno', 'latino', ...) resuelve al color canónico.
  */
 export function getVibeColor(vibeKey: string): string {
-  return VIBE_COLORS[vibeKey] || VIBE_COLORS['idle'] // Fallback to idle gray
+  const { id } = resolveVibeId(vibeKey)
+  return lookupVibeMap(VIBE_COLORS, id) ?? VIBE_COLORS['idle'] // Fallback to idle gray
 }
 
 export const FX_COLORS: Record<FXType, string> = {

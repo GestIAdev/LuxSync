@@ -31,6 +31,7 @@
  */
 
 import { getByPath } from '../../engine/vibe/custom/pathUtils'
+import { lookupVibeMap } from '../../core/vibe/VibeCanon'
 import { PROFILE_REGISTRY } from '../../hal/physics/profiles/index'
 import { COLOR_CONSTITUTIONS } from '../../engine/color/colorConstitutions'
 import {
@@ -77,7 +78,7 @@ const PHYSICS_NAMESPACE_GROUPS = [
 ] as const
 
 function resolvePhysics(path: string, baseDNA: string): unknown {
-  const profile = PROFILE_REGISTRY[baseDNA]
+  const profile = lookupVibeMap(PROFILE_REGISTRY, baseDNA)
   if (!profile) return undefined
   const profileObj = profile as unknown as Record<string, unknown>
 
@@ -212,7 +213,7 @@ const MOVEMENT_HARDCODED_DEFAULTS: Record<string, number> = {
 function resolveMovement(path: string, baseDNA: string): unknown {
   // ── kinematics → VIBE_CONFIG (flat fields) ─────────────────────────
   if (path.startsWith('movement.kinematics.')) {
-    const vibeConfig = VIBE_CONFIG[baseDNA]
+    const vibeConfig = lookupVibeMap(VIBE_CONFIG, baseDNA)
     if (vibeConfig) {
       const subPath = path.replace(/^movement\.kinematics\./, '')
       const val = getByPath(vibeConfig as unknown as Record<string, unknown>, subPath)
@@ -223,7 +224,7 @@ function resolveMovement(path: string, baseDNA: string): unknown {
 
   // ── stereo → STEREO_CONFIG (flat fields) ───────────────────────────
   if (path.startsWith('movement.stereo.')) {
-    const stereo = STEREO_CONFIG[baseDNA]
+    const stereo = lookupVibeMap(STEREO_CONFIG, baseDNA)
     if (stereo) {
       const subPath = path.replace(/^movement\.stereo\./, '')
       const val = getByPath(stereo as unknown as Record<string, unknown>, subPath)
@@ -234,7 +235,7 @@ function resolveMovement(path: string, baseDNA: string): unknown {
 
   // ── tiltOffset → TILT_OFFSET_BY_VIBE (scalar) ──────────────────────
   if (path === 'movement.tiltOffset') {
-    return TILT_OFFSET_BY_VIBE[baseDNA]
+    return lookupVibeMap(TILT_OFFSET_BY_VIBE, baseDNA)
   }
 
   // ── physics / optics / behavior → MOVEMENT_PRESETS (nested) ────────
@@ -247,7 +248,7 @@ function resolveMovement(path: string, baseDNA: string): unknown {
     path.startsWith('movement.optics.') ||
     path.startsWith('movement.behavior.')
   ) {
-    const preset = MOVEMENT_PRESETS[baseDNA]
+    const preset = lookupVibeMap(MOVEMENT_PRESETS, baseDNA)
     if (preset) {
       const subPath = path.replace(/^movement\./, '')
       const val = getByPath(preset as unknown as Record<string, unknown>, subPath)

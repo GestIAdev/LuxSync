@@ -58,6 +58,8 @@ import {
   liquidTelemetryObserver,
 } from '../../hal/physics';
 import type { LiquidEngineBase } from '../../hal/physics/LiquidEngineBase'
+// 🎭 VIBE CANON FASE 2: resolución canónica de vibe (aliases + custom:*)
+import { resolveVibeId, lookupVibeMap } from '../vibe/VibeCanon'
 
 import type { GodEarBands, GodEarPhoton } from '../../workers/GodEarFFT';
 
@@ -549,13 +551,18 @@ export class SeleneLux {
    * Propaga el perfil a AMBOS motores para que el switch sea instantáneo.
    */
   public setActiveProfile(vibeKey: string): void {
-    const normalizedKey = vibeKey.toLowerCase();
-    const profile = PROFILE_REGISTRY[normalizedKey] ?? DEFAULT_LIQUID_PROFILE;
+    // 🎭 VIBE CANON FASE 2: los aliases ('techno', 'latino', 'reggaeton', ...)
+    // ya NO viven en PROFILE_REGISTRY — los resuelve el Canon ANTES del lookup.
+    // Las claves custom:* injertadas por VibeGraftRegistry siguen siendo
+    // válidas aquí: el graft muta PROFILE_REGISTRY en runtime, y el cast
+    // cubre el acceso (lookupVibeMap es la vía canónica para eso).
+    const resolution = resolveVibeId(vibeKey);
+    const profile = lookupVibeMap(PROFILE_REGISTRY, resolution.id) ?? DEFAULT_LIQUID_PROFILE;
     liquidEngine41.setProfile(profile);
     liquidEngine71.setProfile(profile);
     liquidTelemetryObserver.setProfile(profile);
     this._activeProfileId = profile.id;
-    console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile.id} (${profile.name})`);  
+    console.log(`[SeleneLux 🌊] Profile hot-swapped: ${vibeKey} → ${resolution.id} (${profile.id}: ${profile.name})`);  
   }
 
   /** WAVE 2436.2: ID del profile activo para diagnóstico per-frame */

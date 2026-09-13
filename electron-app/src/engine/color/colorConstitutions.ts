@@ -18,6 +18,7 @@
 
 import type { GenerationOptions } from './SeleneColorEngine';
 import type { VibeId } from '../../types/VibeProfile';
+import { lookupVibeMap } from '../../core/vibe/VibeCanon';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🏭 CONSTITUCIÓN TECHNO-CLUB: "Los Demonios de Neón"
@@ -518,7 +519,8 @@ export const COLOR_CONSTITUTIONS: Record<VibeId, GenerationOptions> = {
  * @returns GenerationOptions con las restricciones cromáticas
  */
 export function getColorConstitution(vibeId: VibeId | string): GenerationOptions {
-  return COLOR_CONSTITUTIONS[vibeId as VibeId] ?? IDLE_CONSTITUTION;
+  // 🎭 VIBE CANON FASE 2: lookupVibeMap tolera claves custom:* injertadas
+  return lookupVibeMap(COLOR_CONSTITUTIONS, vibeId) ?? IDLE_CONSTITUTION;
 }
 
 /**

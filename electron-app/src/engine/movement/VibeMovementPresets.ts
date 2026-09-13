@@ -80,7 +80,14 @@ export interface MovementPreset {
 // PRESETS POR VIBE
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
+// 🎭 VIBE CANON FASE 2: Record<VibeId, MovementPreset> — el compilador exige
+// completitud canónica (Fase 4: un vibe nuevo sin preset = error tsc = checklist).
+// Las claves custom:* injertadas por VibeGraftRegistry se acceden via
+// `lookupVibeMap` (mismo patrón que VibeMovementManager).
+import type { VibeId } from '../../core/vibe/VibeCanon'
+import { lookupVibeMap } from '../../core/vibe/VibeCanon'
+
+export const MOVEMENT_PRESETS: Record<VibeId, MovementPreset> = {
   
   // ───────────────────────────────────────────────────────────────
   // �️ TECHNO: Geometría dura, precisión industrial — CATEDRAL de neón
@@ -246,7 +253,8 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
  * Obtener preset de movimiento por vibe ID
  */
 export function getMovementPreset(vibeId: string): MovementPreset {
-  const preset = MOVEMENT_PRESETS[vibeId]
+  // 🎭 VIBE CANON FASE 2: acceso via helper (tolera custom:* injertadas)
+  const preset = lookupVibeMap(MOVEMENT_PRESETS, vibeId)
   
   // 🚨 WAVE 2040.3: EL CHIVATO - Detect fallback to idle
   if (!preset) {

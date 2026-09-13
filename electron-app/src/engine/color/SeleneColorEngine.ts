@@ -2130,9 +2130,13 @@ export class SeleneColorEngine {
       }
       pal.ambient.h = this._resolveHarmonicHue(ambPivots, forbidden, allowed);
 
-      // 5️⃣ CONTRAST — complementario del ambient; pivote al primary
+      // 5️⃣ CONTRAST — ancla matemática a +180° del PRIMARIO (WAVE 7756).
+      // El CON es el complementario del Primario por definición. NUNCA debe
+      // ser arrastrado hacia el cuadrante del primario. El orden de candidatos
+      // prioriza el ancla +180° del PRI antes que cualquier derivación del
+      // ambient (que pudo haber sido empujada por el evasor).
       pal.contrast.h = this._resolveHarmonicHue(
-        [pal.contrast.h, normalizeHue(pal.ambient.h + 180), normalizeHue(priH + 180), normalizeHue(priH + PHI_B)],
+        [normalizeHue(priH + 180), normalizeHue(priH - 180), normalizeHue(pal.ambient.h + 180), normalizeHue(priH + PHI_B)],
         forbidden, allowed,
       );
 
@@ -2396,39 +2400,65 @@ export class SeleneColorEngine {
       if (!_isForbidden(h) && _isAllowed(h)) return h;
     }
 
-    // 2️⃣ Todos colisionaron → centro de masa de la zona limpia más cercana
+    // 2️⃣ Todos colisionaron → desplazamiento mínimo al borde seguro más cercano.
+    // 🎆 WAVE 7756: Reemplaza el "centro de masa" que colapsaba SEC/ACC/AMB/CON
+    // al mismo grado exacto. Ahora preservamos la posición original del hue
+    // empujándolo el mínimo necesario para entrar en zona limpia → conserva
+    // la mayor distancia relativa respecto al Primario.
     const target = candidates.length > 0 ? normalizeHue(candidates[0]) : 0;
-    return this._findCleanCenter(target, forbidden, allowed);
+    return this._findNearestSafeHue(target, forbidden, allowed);
   }
 
   /**
-   * 🎆 WAVE 7755: Encuentra el CENTRO DE MASA de la zona limpia más cercana.
-   * En lugar de empujar el hue al +1° borde del forbidden (lodo), calcula el
-   * complemento de las zonas prohibidas y devuelve el centro de la zona
-   * limpia más cercana al hue objetivo → color puro y saturado.
+   * 🎆 WAVE 7756: Desplazamiento mínimo al borde seguro más cercano.
+   *
+   * Reemplaza al _findCleanCenter() que colapsaba todos los colores al mismo
+   * grado (centro de la zona limpia), destruyendo la separación armónica.
+   *
+   * NUEVA ESTRATEGIA:
+   *   - Calcula el complemento de las zonas prohibidas (zonas limpias).
+   *   - Encuentra el punto de la zona limpia más cercano al hue objetivo.
+   *   - Devuelve ese punto (borde seguro) — NO el centro de la zona.
+   *   - Esto preserva la mayor distancia relativa respecto al Primario.
+   *
+   * @param targetHue - Hue original que colisionó (preservar su posición).
+   * @param forbidden - Rangos prohibidos de la constitución.
+   * @param allowed  - Rangos permitidos (opcional, del slot/constitución).
+   * @returns Hue limpio más cercano al target, normalizado 0-360.
    */
-  private static _findCleanCenter(
+  private static _findNearestSafeHue(
     targetHue: number,
     forbidden: [number, number][] | undefined,
     allowed: [number, number][] | undefined,
   ): number {
-    // Si hay allowed explícito, usar sus centros (preferido)
+    const SAFE_MARGIN = 1; // 1° de margen para no aterrizar exactamente en el borde
+
+    // Si hay allowed explícito, buscar el punto permitido más cercano al target
     if (allowed && allowed.length > 0) {
       const isFullCircle = allowed.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
       if (isFullCircle) return normalizeHue(targetHue);
-      let bestCenter = normalizeHue(targetHue);
+
+      let bestHue = normalizeHue(targetHue);
       let bestDist = Infinity;
       for (const [min, max] of allowed) {
         const nMin = normalizeHue(min);
         const nMax = normalizeHue(max);
-        const center = nMin <= nMax
-          ? (nMin + nMax) / 2
-          : normalizeHue((nMin + nMax + 360) / 2);
-        let d = Math.abs(targetHue - center);
-        if (d > 180) d = 360 - d;
-        if (d < bestDist) { bestDist = d; bestCenter = center; }
+        // Si el target ya está dentro, devolverlo tal cual
+        const inRange = nMin <= nMax
+          ? (targetHue >= nMin && targetHue <= nMax)
+          : (targetHue >= nMin || targetHue <= nMax);
+        if (inRange) return normalizeHue(targetHue);
+        // Calcular distancia al borde más cercano de este rango
+        // (con margen de seguridad para no aterrizar en el filo)
+        let dMin = Math.abs(targetHue - nMin);
+        if (dMin > 180) dMin = 360 - dMin;
+        let dMax = Math.abs(targetHue - nMax);
+        if (dMax > 180) dMax = 360 - dMax;
+        // Probar empujar hacia nMin (entrando desde abajo) y hacia nMax (desde arriba)
+        if (dMin < bestDist) { bestDist = dMin; bestHue = normalizeHue(nMin + SAFE_MARGIN); }
+        if (dMax < bestDist) { bestDist = dMax; bestHue = normalizeHue(nMax - SAFE_MARGIN); }
       }
-      return normalizeHue(bestCenter);
+      return normalizeHue(bestHue);
     }
 
     // Sin allowed explícito → derivar zonas limpias del complemento de forbidden
@@ -2467,16 +2497,25 @@ export class SeleneColorEngine {
     if (prev < 360) cleanZones.push([prev, 360]);
     if (cleanZones.length === 0) return normalizeHue(targetHue);
 
-    // Centro de la zona limpia más cercana al target
-    let bestCenter = normalizeHue(targetHue);
+    // 🎆 WAVE 7756: Buscar el punto de la zona limpia más cercano al target.
+    // NO el centro de la zona — el borde más cercano al target, preservando
+    // su posición original y por tanto su delta respecto al Primario.
+    let bestHue = normalizeHue(targetHue);
     let bestDist = Infinity;
     for (const [zMin, zMax] of cleanZones) {
-      const center = (zMin + zMax) / 2;
-      let d = Math.abs(targetHue - center);
-      if (d > 180) d = 360 - d;
-      if (d < bestDist) { bestDist = d; bestCenter = center; }
+      // Si el target ya está dentro de esta zona limpia, devolverlo tal cual
+      if (targetHue >= zMin && targetHue <= zMax) return normalizeHue(targetHue);
+      // Distancia al borde inferior de la zona limpia (entrando desde arriba)
+      let dMin = Math.abs(targetHue - zMin);
+      if (dMin > 180) dMin = 360 - dMin;
+      // Distancia al borde superior (entrando desde abajo)
+      let dMax = Math.abs(targetHue - zMax);
+      if (dMax > 180) dMax = 360 - dMax;
+      // El punto seguro es justo dentro del borde, con margen
+      if (dMin < bestDist) { bestDist = dMin; bestHue = normalizeHue(zMin + SAFE_MARGIN); }
+      if (dMax < bestDist) { bestDist = dMax; bestHue = normalizeHue(zMax - SAFE_MARGIN); }
     }
-    return normalizeHue(bestCenter);
+    return normalizeHue(bestHue);
   }
 
   /** Apply hue remapping to a single color — mutates in place */

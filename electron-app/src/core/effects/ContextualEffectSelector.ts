@@ -790,6 +790,36 @@ export class ArsenalRepository {
       'ghost_breath',       // Respiro suave (breakdowns)
       'strobe_burst',       // Impacto puntual (drops menores)
     ],
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎆 FASE 4b: RAVEX ARSENAL — clon de techno-club
+    // EDM/Dubstep/Neurofunk comparte el arsenal industrial con techno.
+    // El motor de efectos V3 lee este mapa para filtrar efectos por vibe.
+    // Sin esta entrada, los efectos pre-renderizados no reconocen 'rave'.
+    // ═══════════════════════════════════════════════════════════════════════════
+    'rave': [
+      'ghost_breath',       // Respiro oscuro
+      'acid_sweep',         // Sweeps volumétricos
+      'cyber_dualism',      // Ping-pong L/R
+      'gatling_raid',       // Machine gun
+      'sky_saw',            // Cortes agresivos
+      'industrial_strobe',  // El martillo
+      'strobe_burst',       // Impacto puntual
+      'abyssal_rise',       // Transición épica
+      'tidal_wave',         // Ola industrial
+      'void_mist',          // Neblina púrpura con respiración
+      'digital_rain',       // Matrix flicker cyan/lime
+      'deep_breath',        // Respiración orgánica azul/púrpura
+      'ambient_strobe',     // Flashes dispersos tipo cámara
+      'sonar_ping',         // Ping submarino back→front
+      'binary_glitch',      // Digital stutter chaos
+      'seismic_snap',       // Mechanical impact snap
+      'fiber_optics',       // Ambient traveling colors
+      'core_meltdown',      // LA BESTIA - extreme strobe (peak only)
+      'neon_blinder',       // APEX flash wall (peak)
+      'surgical_strike',    // APEX mover strobe (peak)
+      'ghost_chase',        // Phantom dimmer chase (ambient)
+    ],
   }
   
   private calculateCooldown(lastEffectType: string | null): number {

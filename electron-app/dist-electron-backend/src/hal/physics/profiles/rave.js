@@ -1,22 +1,23 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * WAVE 2411: TECHNO INDUSTRIAL PROFILE
+ * 🎆 FASE 4: RAVE HIGHFREQ PROFILE
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Extraído 1:1 del motor LiquidStereoPhysics WAVE 2408M+2408N.
- * Cada valor está documentado con la WAVE de origen y el test de referencia.
+ * Clonado 1:1 de techno.ts (blueprint §5.6 — partir de techno, ajustar en sala).
+ * El único cambio en esta fase es el `id` ('rave-highfreq') para que coincida
+ * con `VIBE_TRAITS['rave'].liquidProfileId`. Todos los overrides41, decaimientos
+ * y parámetros se mantienen intactos para la prueba base. La calibración
+ * iterativa (§5.5 paso 4.5) ajustará valores tras prueba en sala.
  *
- * Perfil de referencia: Boris Brejcha, Charlotte de Witte, Amelie Lens.
- * Calibrado con Monte Carlo (WAVE 2407b) + logs de producción real.
+ * Perfil de referencia: EDM / Dubstep / Neurofunk / Hardstyle.
+ * Punto de partida = Techno (sub-bass continuo, kick enmascarado, metronómico).
  *
- * ESTE PERFIL ES EL DEFAULT. El singleton global lo usa si no se pasa nada.
- *
- * @module hal/physics/profiles/techno
- * @version WAVE 2411 — THE ARCHITECTURE FORGE
+ * @module hal/physics/profiles/rave
+ * @version FASE 4 — VIBE CANON
  */
-export const TECHNO_PROFILE = {
-    id: 'techno-industrial',
-    name: 'Techno Industrial',
+export const RAVE_PROFILE = {
+    id: 'rave-highfreq',
+    name: 'Rave Highfreq',
     // ═══════════════════════════════════════════════════════════════
     // ENVELOPE CONFIGS — Valores exactos de LiquidStereoPhysics pre-2411
     // ═══════════════════════════════════════════════════════════════

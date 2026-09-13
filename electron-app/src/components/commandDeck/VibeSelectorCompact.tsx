@@ -13,7 +13,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Zap, Flame, Mic2, Sofa, Loader2 } from 'lucide-react'
+import { Zap, Flame, Mic2, Sofa, Loader2, Bolt } from 'lucide-react'
 import { useSeleneVibe, VibeId, VibeInfo } from '../../hooks/useSeleneVibe'
 import { useSystemPower } from '../../hooks/useSystemPower'
 import { useNavigationStore } from '../../stores/navigationStore'
@@ -22,13 +22,15 @@ import './VibeSelectorCompact.css'
 
 // ============================================================================
 // ICON MAP — canonical vibes use Lucide (existing)
+// 🎆 FASE 4b: 'Bolt' añadido para RaveX (rayo = high-frequency strobe)
 // ============================================================================
 
 const ICON_MAP: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   'Zap': Zap,
   'Flame': Flame,
   'Mic2': Mic2,
-  'Armchair': Sofa
+  'Armchair': Sofa,
+  'Bolt': Bolt,
 }
 
 // ============================================================================

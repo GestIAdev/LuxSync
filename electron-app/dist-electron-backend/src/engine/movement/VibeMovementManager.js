@@ -39,6 +39,7 @@
  * @version WAVE 2213 FÉNIX — Operación Fénix: Motor Dorado Restaurado
  * @author PunkOpus
  */
+import { lookupVibeMap } from '../../core/vibe/VibeCanon';
 const TILT_CEILING = 0.15;
 // WAVE 4932.5: Límite inferior para ceiling. Sin este límite, intent.y muy negativo
 // genera DMX > 212 que en fixtures con tiltRange=270° envía el haz al horizonte trasero.
@@ -56,15 +57,22 @@ const TILT_OFFSET_CEILING = -0.325;
 // 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
 // El tipo Readonly es sólo a nivel TS; el cast a Record<string, number> en el
 // graft registry es seguro porque el backup/restore garantiza la reversibilidad.
+// 🎭 VIBE CANON FASE 2: Record<VibeId, number> — el compilador exige completitud
+// canónica (Fase 4: añadir un vibe aquí = error de compilación = checklist).
+// El acceso con claves custom:* en runtime va por `lookupVibeMap` del Canon.
 export const TILT_OFFSET_BY_VIBE = {
     'techno-club': -0.35,
     'fiesta-latina': -0.15, // Subido de -0.35. Levanta la cabeza para hacer círculos amplios.
     'pop-rock': -0.30,
     'chill-lounge': -0.25,
     'idle': -0.10,
+    'rave': -0.35, // FASE 4: heredado de techno — geometría industrial
 };
 // VIBE CONFIGURATIONS
 // 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
+// 🎭 VIBE CANON FASE 2: Record<VibeId, VibeConfig> — completitud canónica exigida
+// por el compilador; las claves custom:* injertadas en runtime se acceden via
+// `lookupVibeMap` (helper del Canon que tolera AnyVibeKey).
 export const VIBE_CONFIG = {
     // TECHNO: Geometría dura, cortes precisos — CATEDRAL industrial
     //  WAVE 4730 TRÍADA: panScale 0.72→0.92, tiltScale 0.68→0.85, freq 0.22→0.10
@@ -114,6 +122,19 @@ export const VIBE_CONFIG = {
         baseFrequency: 0.04,
         patterns: ['breath'],
         homeOnSilence: true,
+    },
+    // RAVE: Geometría dura + drops brutales — CATEDRAL de festival
+    //  FASE 4 — VIBE CANON. Clonado de techno-club con ajustes EDM:
+    //   panScale 0.92→0.95 (full stage, barridos láser de festival)
+    //   tiltScale 0.60→0.65 (tilt más abierto para drops verticales)
+    //   baseFrequency 0.15→0.18 (más rápido — EDM 128-150 BPM)
+    //   patterns: heredados de techno + laser_grid ya presente
+    'rave': {
+        panScale: 0.95,
+        tiltScale: 0.65,
+        baseFrequency: 0.18,
+        patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin', 'laser_grid', 'industrial_pendulum'],
+        homeOnSilence: false,
     },
 };
 // PATTERN PERIODS - Cuantos beats por ciclo completo
@@ -207,12 +228,14 @@ export const PATTERN_CONFIG = {
     chase_position: { cycleBeats: 8, phraseDuration: 16, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
 };
 // 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
+// 🎭 VIBE CANON FASE 2: Record<VibeId, StereoConfig> — completitud canónica.
 export const STEREO_CONFIG = {
     'techno-club': { offset: Math.PI, type: 'mirror' }, // L/R espejos (puertas abren/cierran)
     'fiesta-latina': { offset: Math.PI / 4, type: 'snake' }, // 45° cadena de caderas
     'pop-rock': { offset: Math.PI / 3, type: 'snake' }, // 60° wall ondulante
     'chill-lounge': { offset: Math.PI / 2, type: 'snake' }, // 90° ola de mar lenta
     'idle': { offset: 0, type: 'sync' }, // Sin movimiento
+    'rave': { offset: Math.PI, type: 'mirror' }, // FASE 4: heredado techno — L/R espejos
 };
 // THE GOLDEN DOZEN - Implementaciones Matematicas Puras
 // ─────────────────────────────────────────────────────────────────────────────
@@ -729,7 +752,8 @@ export class VibeMovementManager {
         }
         // Second call (R fixture): reuse same time/frameCount from first call
         // Obtener configuracion del vibe
-        const config = VIBE_CONFIG[vibeId] || VIBE_CONFIG['idle'];
+        // 🎭 VIBE CANON FASE 2: acceso via helper (tolera custom:* injertadas)
+        const config = lookupVibeMap(VIBE_CONFIG, vibeId) ?? VIBE_CONFIG['idle'];
         const beatCount = audio.beatCount ?? 0;
         const beatPhase = audio.beatPhase ?? 0;
         // ═══════════════════════════════════════════════════════════════════
@@ -840,7 +864,7 @@ export class VibeMovementManager {
         // clamp artifacts (jumping/freezing). Applying the snake offset as a phase
         // shift BEFORE the pattern function preserves the pattern shape and keeps
         // the output naturally within the safe range.
-        const stereoConfig = STEREO_CONFIG[vibeId] || STEREO_CONFIG['idle'];
+        const stereoConfig = lookupVibeMap(STEREO_CONFIG, vibeId) ?? STEREO_CONFIG['idle'];
         const snakePhaseOffset = stereoConfig.type === 'snake' && totalFixtures > 1
             ? fixtureIndex * stereoConfig.offset
             : 0;
@@ -904,7 +928,7 @@ export class VibeMovementManager {
             ? TILT_OFFSET_CEILING
             : effectiveMount === 'totem'
                 ? -0.45
-                : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0);
+                : (lookupVibeMap(TILT_OFFSET_BY_VIBE, vibeId) ?? 0);
         const position = this._tempPos;
         position.x = Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude));
         position.y = Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset));
@@ -1133,7 +1157,7 @@ export class VibeMovementManager {
     }
     // PUBLIC GETTERS
     getVibeConfig(vibeId) {
-        return VIBE_CONFIG[vibeId] || VIBE_CONFIG['idle'];
+        return lookupVibeMap(VIBE_CONFIG, vibeId) ?? VIBE_CONFIG['idle'];
     }
     getAvailablePatterns() {
         return Object.keys(PATTERNS);
@@ -1163,7 +1187,7 @@ export class VibeMovementManager {
             return this.manualPatternOverride;
         if (this.lastVibeId === null)
             return null;
-        const config = VIBE_CONFIG[this.lastVibeId] || VIBE_CONFIG['idle'];
+        const config = lookupVibeMap(VIBE_CONFIG, this.lastVibeId) ?? VIBE_CONFIG['idle'];
         const patterns = config.patterns;
         if (!patterns || patterns.length === 0)
             return null;

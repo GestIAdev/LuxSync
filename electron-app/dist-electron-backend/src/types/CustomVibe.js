@@ -45,21 +45,8 @@
  * nuevo ausente simplemente se hereda del ADN base.
  */
 export const LUXVIBE_SCHEMA_VERSION = 1;
-/** Lista runtime de los ADN válidos (para validación y UI). */
-export const BASE_DNA_IDS = [
-    'techno-club',
-    'fiesta-latina',
-    'pop-rock',
-    'chill-lounge',
-];
-/** Type guard de `BaseDNA`. */
-export function isBaseDNA(value) {
-    return BASE_DNA_IDS.includes(value);
-}
-/** Type guard de `CustomVibeKey`. */
-export function isCustomVibeKey(value) {
-    return value.startsWith('custom:') && value.length > 'custom:'.length;
-}
+import { BASE_DNA_IDS, isBaseDNA, isCustomVibeKey } from '../core/vibe/VibeCanon';
+export { BASE_DNA_IDS, isBaseDNA, isCustomVibeKey };
 /** Lista runtime de las 6 cámaras (orden de UI). */
 export const ENVELOPE_SLOTS = [
     'envelopeSubBass',

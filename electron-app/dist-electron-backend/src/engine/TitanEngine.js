@@ -26,6 +26,8 @@ import { createDefaultLightingIntent, } from '../core/protocol/LightingIntent';
 import { SeleneColorEngine, SeleneColorInterpolator } from './color/SeleneColorEngine';
 import { getColorConstitution } from './color/colorConstitutions';
 import { VibeManager } from './vibe/VibeManager';
+// 🎭 VIBE CANON FASE 3b: traits del vibe activo + PhysicsMode para el check de capacidad
+import { getVibeTraits } from '../core/vibe/VibeCanon';
 // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
 import { KeyStabilizer } from './color/KeyStabilizer';
 import { EnergyStabilizer } from './color/EnergyStabilizer';
@@ -563,10 +565,10 @@ export class TitanEngine extends EventEmitter {
         // lento dentro del espectro abisal [180°, 260°] (cyan → azul profundo).
         // morphFactor bajo (0.20 = abismo) → hueInfluence 260° (azul profundo/índigo)
         // morphFactor alto (0.80 = superficie) → hueInfluence 180° (cyan brillante)
-        const isChillVibe = vibeProfile.id.toLowerCase().includes('chill') ||
-            vibeProfile.id.toLowerCase().includes('lounge') ||
-            vibeProfile.id.toLowerCase().includes('ambient') ||
-            vibeProfile.id.toLowerCase().includes('jazz');
+        // 🎭 VIBE CANON FASE 3b: isChillVibe reemplazado por traits.usesChillAmbientEngine.
+        // vibeProfile.id es el VibeId canónico, getVibeTraits lo resuelve. Paridad:
+        // chill-lounge→true (era: id.includes('chill')||'lounge'||'ambient'||'jazz'), resto→false.
+        const isChillVibe = getVibeTraits(vibeProfile.id).usesChillAmbientEngine;
         if (isChillVibe) {
             // ⚒️ WAVE 7749.38: Sincronizar GrandMaster Speed del CommandDeck al
             // ChillAmbientEngine antes del tick. Así el slider controla la velocidad
@@ -699,11 +701,11 @@ export class TitanEngine extends EventEmitter {
         // 🎺 WAVE 1004.1: LATINO STEREO - Si Latino tiene L/R split, respetarlo
         // 🌊 WAVE 1035: CHILL 7-ZONE - Si Chill tiene Front/Back L/R, usarlos
         // 🌊 WAVE 2401: LIQUID STEREO - 7-Band per-zone envelopes
-        if (nervousOutput.physicsApplied === 'latino' ||
-            nervousOutput.physicsApplied === 'techno' ||
-            nervousOutput.physicsApplied === 'rock' ||
-            nervousOutput.physicsApplied === 'chill' ||
-            nervousOutput.physicsApplied === 'liquid-stereo') {
+        // 🎭 VIBE CANON FASE 3b: la enumeración de 5 géneros se reemplaza por
+        // una comprobación de capacidad: physicsMode !== 'none'. Esto hace que
+        // un vibe nuevo (rave) funcione sin tocar TitanEngine — el motor
+        // pregunta "¿hay física?", no "¿es de género X?".
+        if (nervousOutput.physicsMode !== 'none') {
             const ni = nervousOutput.zoneIntensities;
             // 🧪 WAVE 908 + 🎺 WAVE 1004.1: Si tenemos L/R separados (Techno/Latino), usarlos
             const moverL = ni.moverL ?? ni.mover; // Si no hay L, fallback a mono
@@ -715,8 +717,10 @@ export class TitanEngine extends EventEmitter {
             const backL = ni.backL ?? (ni.back ?? 0); // Fallback a mono back
             const backR = ni.backR ?? (ni.back ?? 0); // Fallback a mono back
             // 🌊 WAVE 1035 + WAVE 2401: Si tenemos valores stereo, construir zonas expandidas
-            const has7ZoneStereo = (nervousOutput.physicsApplied === 'chill' ||
-                nervousOutput.physicsApplied === 'liquid-stereo') &&
+            // 🎭 VIBE CANON FASE 3b: physicsApplied === 'chill'||'liquid-stereo' reemplazado
+            // por physicsMode === 'liquid-stereo' || 'chill-glacier'.
+            const has7ZoneStereo = (nervousOutput.physicsMode === 'liquid-stereo' ||
+                nervousOutput.physicsMode === 'chill-glacier') &&
                 (ni.frontL !== undefined || ni.frontR !== undefined);
             if (has7ZoneStereo) {
                 // 7-ZONE STEREO MODE: Todas las zonas stereo (Chill / Liquid Stereo)

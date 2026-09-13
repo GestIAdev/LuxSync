@@ -87,9 +87,14 @@ export class LiquidEngine71 extends LiquidEngineBase {
         //   moverLeft y moverRight son el resultado del bloque WAVE 911, no de
         //   envTreble/envVocal. El swap no afecta ese path.
         // ─────────────────────────────────────────────────────────────────
-        const profileId = this.profile.id;
-        const isLatino = profileId === LATINO_PROFILE_ID;
-        const isChill = profileId === CHILL_PROFILE_ID;
+        // 🎭 VIBE CANON FASE 3b: isLatino/isChill reemplazados por traits.
+        // Paridad verificada:
+        //   · isLatino: fiesta-latina→true (era: profileId==='latino-fiesta'), resto→false
+        //   · isChill:  chill-lounge→true (era: profileId==='chill-oceanic'), resto→false
+        // Las constantes LATINO_PROFILE_ID/CHILL_PROFILE_ID se mantienen por
+        // compatibilidad documental pero ya no se usan para branching.
+        const isLatino = this.traits.swapMovers;
+        const isChill = this.traits.neutralPayload;
         // ─────────────────────────────────────────────────────────────────
         // WAVE 2470 — BIFURCACIÓN GENERATIVA PARA CHILL
         //

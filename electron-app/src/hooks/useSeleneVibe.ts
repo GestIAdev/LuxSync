@@ -51,10 +51,14 @@ export interface VibeInfo {
 }
 
 // The 4 canonical presets — static, never changes.
+// 🎭 FASE 4b: 'techno-club' renombrado a "CLUB" en el Commanddeck.
+// 'custom' eliminado de los presets base (los custom vibes se inyectan
+// dinámicamente desde VibeLab). 'rave' añadido con label "RAVE-X".
+// Orden: Club, Latino, Pop/Rock, Chill/Lounge, Rave-X.
 export const VIBE_PRESETS: Record<string, VibeInfo> = {
   'techno-club': {
     id: 'techno-club',
-    name: 'Techno',
+    name: 'Club',
     icon: 'Zap',
     description: 'Underground, industrial, deep',
     accentColor: 'cyan',
@@ -83,6 +87,14 @@ export const VIBE_PRESETS: Record<string, VibeInfo> = {
     description: 'Ambient, smooth, relaxed',
     accentColor: 'teal',
     glowColor: 'rgba(45,212,191,0.6)'
+  },
+  'rave': {
+    id: 'rave',
+    name: 'Rave-X',
+    icon: 'Bolt',
+    description: 'EDM, dubstep, neurofunk, high-frequency strobe',
+    accentColor: 'lime',
+    glowColor: 'rgba(132,204,22,0.6)'
   }
 }
 

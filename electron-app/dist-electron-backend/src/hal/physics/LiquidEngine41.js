@@ -72,17 +72,9 @@ export class LiquidEngine41 extends LiquidEngineBase {
         const outMoverL = moverLeft;
         const outMoverR = moverRight;
         // ── [LAB-DATA] front/back — Telemetría táctica para calibración 4.1 (SILENCIADO)
-        if (this.profile.id === 'techno-industrial') {
-            const f = (n) => n.toFixed(3);
-            const fi = (n) => (isFinite(n) && n > 0 ? Math.round(n) : 0).toString().padStart(4, ' ');
-            // 🔇 WAVE 3441: Silenciado el log [LAB-DATA] — causaba spam en consola
-            // console.error(
-            //   `[LAB-DATA] cent:${fi(frame.spectralCentroid)} | ` +
-            //   `isK:${frame.isKick ? 1 : 0} bass:${f(frame.bands.bass)} | ` +
-            //   `trbD:${f(frame.rawTrebleDelta)} hmD:${f(frame.rawHighMidDelta)} midD:${f(frame.rawMidDelta)} harsh:${f(frame.harshness)} | ` +
-            //   `oF:${f(frontPar)} oB:${f(backPar)}`
-            // )
-        }
+        // 🎭 VIBE CANON FASE 3b: condicional profile.id === 'techno-industrial'
+        // eliminado (telemetría muerta — el console.error ya estaba comentado).
+        // El bloque no producía output, sólo evaluaba un string. Borrado.
         return {
             frontLeftIntensity: frontPar,
             frontRightIntensity: frontPar,

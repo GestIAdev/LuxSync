@@ -41,6 +41,9 @@ liquidEngine41, liquidEngine71,
 PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE, 
 // WAVE 9001: PASSIVE TELEMETRY OBSERVER — replaces LiquidEngine41Telemetry
 liquidTelemetryObserver, } from '../../hal/physics';
+// 🎭 VIBE CANON FASE 2: resolución canónica de vibe (aliases + custom:*)
+// 🎭 VIBE CANON FASE 3a: traits del vibe activo para inyectar a los engines
+import { resolveVibeId, lookupVibeMap, getVibeTraits, VIBE_TRAITS, VIBE_FALLBACK_ID } from '../vibe/VibeCanon';
 import { isEnergyOverrideActive, } from '../protocol/ConsciousnessOutput';
 // ═══════════════════════════════════════════════════════════════════════════
 // SELENE LUX CLASS
@@ -112,6 +115,13 @@ export class SeleneLux {
         this.liquidStereoOverrides = null;
         /** WAVE 2436.2: ID del profile activo para diagnóstico per-frame */
         this._activeProfileId = 'techno-industrial';
+        /**
+         * 🎭 VIBE CANON FASE 3a: Traits del vibe activo, almacenados para
+         * diagnóstico y para que updateFromTitan pueda consultarlos sin re-resolver.
+         * La Fase 3b usará estos traits para reemplazar los condicionales
+         * includes()/=== dispersos en este mismo archivo.
+         */
+        this._activeTraits = VIBE_TRAITS[VIBE_FALLBACK_ID];
         this.debug = config.debug ?? false;
         this.useLiquidStereo = true; // 🌊 WAVE 2432: Omni-Liquid siempre activo — legacy jubilado
         // Inicializar físicas stateful
@@ -141,6 +151,7 @@ export class SeleneLux {
             morphFactor: null,
             forceMovement: false,
             physicsApplied: 'none',
+            physicsMode: 'none',
             energyOverrideActive: false, // 🧠 WAVE 450
         };
         // WAVE 2098: Boot silence
@@ -203,13 +214,25 @@ export class SeleneLux {
      * Propaga el perfil a AMBOS motores para que el switch sea instantáneo.
      */
     setActiveProfile(vibeKey) {
-        const normalizedKey = vibeKey.toLowerCase();
-        const profile = PROFILE_REGISTRY[normalizedKey] ?? DEFAULT_LIQUID_PROFILE;
-        liquidEngine41.setProfile(profile);
-        liquidEngine71.setProfile(profile);
+        // 🎭 VIBE CANON FASE 2: los aliases ('techno', 'latino', 'reggaeton', ...)
+        // ya NO viven en PROFILE_REGISTRY — los resuelve el Canon ANTES del lookup.
+        // Las claves custom:* injertadas por VibeGraftRegistry siguen siendo
+        // válidas aquí: el graft muta PROFILE_REGISTRY en runtime, y el cast
+        // cubre el acceso (lookupVibeMap es la vía canónica para eso).
+        const resolution = resolveVibeId(vibeKey);
+        const profile = lookupVibeMap(PROFILE_REGISTRY, resolution.id) ?? DEFAULT_LIQUID_PROFILE;
+        // 🎭 VIBE CANON FASE 3a: extraer traits del vibe activo. getVibeTraits
+        // acepta AnyVibeKey (canónico o custom:*) — los custom caen a idle traits.
+        // Los traits se inyectan a AMBOS engines para que la Fase 3b pueda
+        // reemplazar los condicionales internos (isTechnoProfile, isLatino, etc.)
+        // por lookups a engine.traits sin tocar los condicionales aún.
+        const traits = getVibeTraits(resolution.id);
+        this._activeTraits = traits;
+        liquidEngine41.setProfile(profile, traits);
+        liquidEngine71.setProfile(profile, traits);
         liquidTelemetryObserver.setProfile(profile);
         this._activeProfileId = profile.id;
-        console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile.id} (${profile.name})`);
+        console.log(`[SeleneLux 🌊] Profile hot-swapped: ${vibeKey} → ${resolution.id} (${profile.id}: ${profile.name})`);
     }
     /**
      * 🧠 Recibe actualización desde TitanEngine y aplica física reactiva
@@ -234,6 +257,7 @@ export class SeleneLux {
         let morphFactor = null;
         let forceMovement = false;
         let physicsApplied = 'none';
+        let physicsMode = 'none';
         let outputPalette = { ...inputPalette };
         let debugInfo = {};
         // ─────────────────────────────────────────────────────────────────────
@@ -246,8 +270,10 @@ export class SeleneLux {
         if (this.useLiquidStereo) {
             // ═══════════════════════════════════════════════════════════════════
             // PALETTE EFFECTS PER-GENRE (visual only — no zone physics)
+            // 🎭 VIBE CANON FASE 3b: includes('techno')/'electro' reemplazado por
+            // this._activeTraits.palettePhysics === 'techno'. Paridad: techno-club→'techno'.
             // ═══════════════════════════════════════════════════════════════════
-            if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
+            if (this._activeTraits.palettePhysics === 'techno') {
                 const result = TechnoStereoPhysics.apply(inputPalette, {
                     normalizedTreble: audioMetrics.normalizedTreble,
                     normalizedBass: audioMetrics.normalizedBass,
@@ -256,9 +282,10 @@ export class SeleneLux {
                 // outputPalette.accent = result.palette.accent;
                 debugInfo = result.debugInfo;
             }
-            else if (vibeNormalized.includes('latin') || vibeNormalized.includes('fiesta') ||
-                vibeNormalized.includes('reggae') || vibeNormalized.includes('cumbia') ||
-                vibeNormalized.includes('salsa') || vibeNormalized.includes('bachata')) {
+            else if (
+            // 🎭 VIBE CANON FASE 3b: includes('latin')/'fiesta'/... reemplazado por
+            // this._activeTraits.palettePhysics === 'latino'. Paridad: fiesta-latina→'latino'.
+            this._activeTraits.palettePhysics === 'latino') {
                 const result = this.latinoPhysics.apply(inputPalette, {
                     normalizedBass: audioMetrics.normalizedBass,
                     normalizedMid: audioMetrics.normalizedMid,
@@ -301,8 +328,10 @@ export class SeleneLux {
             // ═══════════════════════════════════════════════════════════════════
             let chillMorphFactor = undefined;
             let chillFrame = undefined;
-            if (vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
-                vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')) {
+            // 🎭 VIBE CANON FASE 3b: includes('chill')/'lounge'/'ambient'/'jazz'
+            // reemplazado por this._activeTraits.usesChillAmbientEngine.
+            // Paridad: chill-lounge→true, resto→false.
+            if (this._activeTraits.usesChillAmbientEngine) {
                 chillFrame = chillAmbientEngine.tick();
                 chillMorphFactor = chillFrame.morphFactor;
                 dimmerOverride = chillFrame.dimmer;
@@ -347,8 +376,9 @@ export class SeleneLux {
             // transientes que en chill silencioso quedan en 0 → PARs apagados, sin pulso.
             // liquidEngine71 tiene Date.now() oscillators [0.05,0.65] que pulsean siempre.
             // El liquidLayout ('4.1'/'7.1') solo es relevante para los otros vibes.
-            const isChill = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
-                vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz');
+            // 🎭 VIBE CANON FASE 3b: isChill reemplazado por this._activeTraits.usesChillAmbientEngine.
+            // Paridad: chill-lounge→true, resto→false.
+            const isChill = this._activeTraits.usesChillAmbientEngine;
             // WAVE 9001: No telemetry swap. The real motor is always the sole DMX producer.
             const liquidEngine = (this.liquidLayout === '7.1' || isChill)
                 ? liquidEngine71
@@ -368,6 +398,7 @@ export class SeleneLux {
             liquidTelemetryObserver.capture(liquidInput, liquidResult);
             isStrobeActive = liquidResult.strobeActive;
             physicsApplied = 'liquid-stereo';
+            physicsMode = 'liquid-stereo';
             // 🛡️ NaN ANTIDOTE — No NaN reaches zones or hardware. Ever.
             this.liquidStereoOverrides = {
                 frontL: safe(liquidResult.frontLeftIntensity),
@@ -405,9 +436,10 @@ export class SeleneLux {
                 moverR: liquidResult.moverIntensityR,
             };
         }
-        else if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
+        else if (this._activeTraits.palettePhysics === 'techno') {
             // ═══════════════════════════════════════════════════════════════════
             // ⚡ LEGACY FALLBACK: TECHNO GOD MODE (useLiquidStereo === false)
+            // 🎭 VIBE CANON FASE 3b: includes('techno')/'electro' → traits.palettePhysics
             // ═══════════════════════════════════════════════════════════════════
             const result = TechnoStereoPhysics.apply(inputPalette, {
                 normalizedTreble: audioMetrics.normalizedTreble,
@@ -417,6 +449,7 @@ export class SeleneLux {
             // outputPalette.accent = result.palette.accent;
             isStrobeActive = result.isStrobeActive;
             physicsApplied = 'techno';
+            physicsMode = 'legacy-mono';
             debugInfo = result.debugInfo;
             const zonesResult = technoStereoPhysics.applyZones({
                 bass: audioMetrics.normalizedBass,
@@ -504,6 +537,7 @@ export class SeleneLux {
             // outputPalette permanece igual
             isFlashActive = false; // Rock no usa flash binario, usa física analógica
             physicsApplied = 'rock';
+            physicsMode = 'legacy-mono';
             // Debug info con el nuevo formato
             debugInfo = {
                 front: rockResult.front,
@@ -513,12 +547,9 @@ export class SeleneLux {
                 subgenre: rockResult.subgenre,
             };
         }
-        else if (vibeNormalized.includes('latin') ||
-            vibeNormalized.includes('fiesta') ||
-            vibeNormalized.includes('reggae') ||
-            vibeNormalized.includes('cumbia') ||
-            vibeNormalized.includes('salsa') ||
-            vibeNormalized.includes('bachata')) {
+        else if (
+        // 🎭 VIBE CANON FASE 3b: includes('latin')/'fiesta'/... → traits.palettePhysics
+        this._activeTraits.palettePhysics === 'latino') {
             // ☀️ LATINO: Solar Flare + Machine Gun Blackout + White Puncture
             const result = this.latinoPhysics.apply(inputPalette, {
                 normalizedBass: audioMetrics.normalizedBass,
@@ -537,6 +568,7 @@ export class SeleneLux {
                 dimmerOverride = result.dimmerOverride;
             }
             physicsApplied = 'latino';
+            physicsMode = 'legacy-mono';
             debugInfo = { flavor: result.flavor, ...result.debugInfo };
             // 🆕 WAVE 288.7: Guardar overrides del motor Latino para usar en AGC TRUST
             // 🎺 WAVE 1004.1: Incluir L/R split para movers
@@ -762,13 +794,14 @@ export class SeleneLux {
         else {
             // LÓGICA POR DEFECTO: Techno/Rock/Chill (treble en movers, etc.)
             // 1. FRONT PARS (Bass - El Empujón)
-            const isTechno = vibeContext.activeVibe.toLowerCase().includes('techno');
-            const frontCeiling = isTechno ? 0.80 : 0.95;
+            // 🎭 VIBE CANON FASE 3b: isTechno/frontCeiling/backGateThreshold reemplazados
+            // por this._activeTraits. Paridad: techno-club→0.80/0.10, resto→0.95/0.06.
+            const frontCeiling = this._activeTraits.frontCeiling;
             const compressedBass = Math.pow(bass, 1.2);
             frontIntensity = Math.min(frontCeiling, compressedBass * brightMod);
             // 2. BACK PARS (Mid/Snare - La Bofetada)
             const backRaw = Math.pow(mid, 1.5) * 1.8;
-            const backGateThreshold = isTechno ? 0.10 : 0.06;
+            const backGateThreshold = this._activeTraits.backGateThreshold;
             const backGated = backRaw < backGateThreshold ? 0 : backRaw;
             backIntensity = Math.min(0.95, backGated);
             // 3. MOVERS (Treble - El Alma) - Solo para Techno/Rock
@@ -854,9 +887,11 @@ export class SeleneLux {
         // dimmer on transients, fighting the static oceanic morph and causing
         // intermittent brightness jumps (latent flicker source).
         const photon = audioMetrics.photon;
-        const isChillVibeDimmer = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
-            vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz');
-        if (photon && photon.wallIntensity > 0 && dimmerOverride !== null && !isChillVibeDimmer) {
+        // 🎭 VIBE CANON FASE 3b: isChillVibeDimmer reemplazado por
+        // !this._activeTraits.photonDimmerOverride. Paridad: chill-lounge→false
+        // (no override), resto→true (override activo). El trait es el negado
+        // porque el condicional original niega isChillVibeDimmer.
+        if (photon && photon.wallIntensity > 0 && dimmerOverride !== null && this._activeTraits.photonDimmerOverride) {
             dimmerOverride = Math.max(dimmerOverride, photon.wallIntensity);
         }
         // 🌊 WAVE 8004: PHOTON STROBE — StrobeEngine output drives strobeOverride
@@ -867,9 +902,11 @@ export class SeleneLux {
         // Photon strobe override (dimmerOverride=1.0) was snapping movers to full
         // brightness on transient hits, producing intermittent blinking.
         let strobeOverride = null;
-        const isChillVibeStrobe = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
-            vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz');
-        if (photon?.strobe?.active && !isChillVibeStrobe) {
+        // 🎭 VIBE CANON FASE 3b: isChillVibeStrobe reemplazado por
+        // !this._activeTraits.strobeAllowed. Paridad: chill-lounge→false
+        // (no strobe), resto→true (strobe permitido). El trait es el negado
+        // porque el condicional original niega isChillVibeStrobe.
+        if (photon?.strobe?.active && this._activeTraits.strobeAllowed) {
             strobeOverride = {
                 rate: photon.strobe.rateHz,
                 duty: photon.strobe.duty,
@@ -893,6 +930,7 @@ export class SeleneLux {
             morphFactor,
             forceMovement,
             physicsApplied,
+            physicsMode,
             energyOverrideActive,
             // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Extended physics metadata
             laserPhysics: this.laserResult ? {

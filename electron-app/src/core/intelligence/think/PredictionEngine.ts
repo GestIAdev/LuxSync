@@ -926,6 +926,8 @@ const VIBE_THRESHOLD_PROFILES: Record<string, number> = {
   'pop-rock':           1.20,   // Dinámicas naturales, necesita más delta para spike
   'chill-lounge':       1.50,   // MUY conservador: jazz/lounge tiene dinámicas sutiles
   'ambient-organic':    1.60,   // Máxima conservación: ambient puro no tiene "spikes"
+  // 🎆 FASE 4b: RaveX — clon de techno-club (EDM comparte dinámica comprimida)
+  'rave':               1.0,    // Base — calibrado para EDM (igual que techno)
 }
 
 /** Obtiene el multiplicador de threshold para el vibe actual */

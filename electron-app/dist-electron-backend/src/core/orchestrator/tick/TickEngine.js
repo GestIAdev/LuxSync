@@ -1715,6 +1715,8 @@ export class TickEngine {
                     ai: this.engine.getConsciousnessTelemetry(),
                     // ðŸ”Œ WAVE 1175: Vibe activo REAL (no el default 'idle')
                     vibe: {
+                        // 🎭 VIBE CANON FASE 1: el cast inline enumeraba la unión a mano y
+                        // se desincronizaba del protocolo. Ahora usa el tipo de transporte.
                         active: currentVibe,
                         transitioning: false // TODO: implementar transiciÃ³n real
                     }

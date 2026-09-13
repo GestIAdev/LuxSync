@@ -78,6 +78,20 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     decaySpeed: 10,
     hardClipThreshold: 0.08,
   },
+  // 🎆 FASE 4b: RaveX — clon de techno-club (EDM comparte dinámica comprimida)
+  'rave': {
+    name: 'RaveX',
+    parGate: 0.05,
+    parGain: 6.0,
+    parMax: 0.78,
+    backParGate: 0.12,
+    backParGain: 5.0,
+    backParMax: 1.0,
+    moverFloor: 0.0,
+    melodyThreshold: 0.25,
+    decaySpeed: 2,
+    hardClipThreshold: 0.12,
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

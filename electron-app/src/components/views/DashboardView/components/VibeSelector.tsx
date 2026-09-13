@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Zap, Flame, Mic2, Sofa, Loader2, ChevronUp } from 'lucide-react'
+import { Zap, Flame, Mic2, Sofa, Loader2, ChevronUp, Bolt } from 'lucide-react'
 import { useSeleneVibe, VibeId, VibeInfo } from '../../../../hooks/useSeleneVibe'
 import { useSystemPower } from '../../../../hooks/useSystemPower'
 import { useNavigationStore } from '../../../../stores/navigationStore'
@@ -22,13 +22,15 @@ import { VibeAuraIcon } from '../../../icons/LuxIcons'
 
 // ============================================================================
 // ICON MAP — canonical vibes use Lucide (existing), Custom uses LuxIcon
+// 🎆 FASE 4b: 'Bolt' añadido para RaveX (rayo = high-frequency strobe)
 // ============================================================================
 
 const ICON_MAP: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   'Zap': Zap,
   'Flame': Flame,
   'Mic2': Mic2,
-  'Armchair': Sofa
+  'Armchair': Sofa,
+  'Bolt': Bolt,
 }
 
 // ============================================================================
@@ -64,6 +66,13 @@ const VIBE_STYLES: Record<string, {
     borderActive: '#14b8a6',                 // teal-500
     textActive: '#2dd4bf',                   // teal-400
     shadow: '0 0 30px rgba(45, 212, 191, 0.4)'
+  },
+  // 🎆 FASE 4b: RaveX — Lime Green neon (acid green láser)
+  lime: {
+    bgActive: 'rgba(31, 49, 8, 0.5)',        // lime-950/50
+    borderActive: '#84cc16',                  // lime-500
+    textActive: '#a3e635',                    // lime-400
+    shadow: '0 0 30px rgba(132, 204, 22, 0.4)'
   }
 }
 

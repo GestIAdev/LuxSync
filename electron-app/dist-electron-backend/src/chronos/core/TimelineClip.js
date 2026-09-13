@@ -12,6 +12,8 @@
  * @module chronos/core/TimelineClip
  * @version WAVE 2006 / WAVE 2030.4 (Hephaestus Integration)
  */
+// 🎭 VIBE CANON FASE 1: SSOT de identidad de vibe
+import { VIBE_IDS, VIBE_FALLBACK_ID, isVibeId, resolveVibeId, lookupVibeMap } from '../../core/vibe/VibeCanon';
 /**
  * WAVE 2040.17 P6: Set of valid FXType values for runtime validation.
  * Used to safely convert unknown strings (from Recorder, D&D, etc.)
@@ -32,18 +34,24 @@ export function toFXType(value) {
 }
 /**
  * WAVE 2040.17 P11: Set of valid VibeType values for runtime validation.
+ *
+ * 🎭 VIBE CANON FASE 1: la lista literal se eliminó. Ahora se deriva de
+ * `VIBE_IDS`, de modo que añadir una vibra al Canon la habilita aquí
+ * automáticamente. Antes había que recordar actualizar este Set a mano — era
+ * la causa de que un vibe válido pudiera degradarse a 'idle' silenciosamente.
  */
-export const VALID_VIBE_TYPES = new Set([
-    'fiesta-latina', 'techno-club', 'chill-lounge', 'pop-rock', 'idle',
-]);
+export const VALID_VIBE_TYPES = new Set(VIBE_IDS);
 /**
  * WAVE 2040.17 P11: Safely coerce an arbitrary string to VibeType.
- * Returns the string as VibeType if valid, otherwise 'idle' as fallback.
+ * Returns the string as VibeType if valid, otherwise the canonical fallback.
+ *
+ * 🎭 VIBE CANON FASE 1: delega en el type guard canónico `isVibeId`, lo que
+ * elimina el cast `as VibeType` (el guard ya estrecha el tipo).
  */
 export function toVibeType(value) {
-    if (value && VALID_VIBE_TYPES.has(value))
+    if (value && isVibeId(value))
         return value;
-    return 'idle';
+    return VIBE_FALLBACK_ID;
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // CLIP COLORS
@@ -51,23 +59,29 @@ export function toVibeType(value) {
 /**
  * 🎨 WAVE 2019.8 + 2040.11: Vibe colors mapped to real VibeIds
  *
- * WAVE 2040.11: Added 'techno' alias for 'techno-club' to fix EffectCategoryId mismatch.
- * The EffectRegistry uses 'techno' but VibeType uses 'techno-club', causing black clips.
+ * 🎭 VIBE CANON FASE 2: Record<VibeId, string> — completitud canónica exigida
+ * por el compilador. El alias 'techno' que vivía aquí como entrada extra se
+ * eliminó del mapa: `getVibeColor` lo resuelve via `resolveVibeId` (el EffectCategoryId
+ * 'techno' → alias → 'techno-club'), así el mapa sólo contiene claves canónicas.
  */
 export const VIBE_COLORS = {
     'fiesta-latina': '#f59e0b', // 🎉 Orange - Fiesta Latina
     'techno-club': '#a855f7', // ⚡ Purple - Techno Club
-    'techno': '#a855f7', // ⚡ Alias for 'techno-club' (EffectCategoryId compat)
     'chill-lounge': '#22d3ee', // 🌊 Cyan - Chill Lounge
     'pop-rock': '#ef4444', // 🎸 Red - Pop Rock
     'idle': '#6b7280', // 💤 Gray - Idle
+    'rave': '#84cc16', // 🎆 Lime Green - RaveX (FASE 4)
 };
 /**
  * 🔧 WAVE 2040.11: Normalize vibe color lookup
  * Handles both VibeType ('techno-club') and EffectCategoryId ('techno') formats
+ *
+ * 🎭 VIBE CANON FASE 2: la normalización de formatos delega en resolveVibeId —
+ * cualquier alias del Canon ('techno', 'latino', ...) resuelve al color canónico.
  */
 export function getVibeColor(vibeKey) {
-    return VIBE_COLORS[vibeKey] || VIBE_COLORS['idle']; // Fallback to idle gray
+    const { id } = resolveVibeId(vibeKey);
+    return lookupVibeMap(VIBE_COLORS, id) ?? VIBE_COLORS['idle']; // Fallback to idle gray
 }
 export const FX_COLORS = {
     'strobe': '#facc15', // ⚡ WAVE 2040.19: Vivid gold — strobe demands attention

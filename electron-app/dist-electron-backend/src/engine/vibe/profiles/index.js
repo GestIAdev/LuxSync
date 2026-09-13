@@ -14,6 +14,7 @@ export { VIBE_TECHNO_CLUB } from './TechnoClubProfile';
 export { VIBE_CHILL_LOUNGE } from './ChillLoungeProfile';
 export { VIBE_POP_ROCK } from './PopRockProfile';
 export { VIBE_IDLE } from './IdleProfile';
+export { VIBE_RAVE } from './RaveProfile';
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPORT ALL PROFILES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -22,6 +23,7 @@ import { VIBE_TECHNO_CLUB } from './TechnoClubProfile';
 import { VIBE_CHILL_LOUNGE } from './ChillLoungeProfile';
 import { VIBE_POP_ROCK } from './PopRockProfile';
 import { VIBE_IDLE } from './IdleProfile';
+import { VIBE_RAVE } from './RaveProfile';
 // ═══════════════════════════════════════════════════════════════════════════
 // VIBE REGISTRY
 // ═══════════════════════════════════════════════════════════════════════════
@@ -34,69 +36,49 @@ export const VIBE_REGISTRY = {
     'chill-lounge': VIBE_CHILL_LOUNGE,
     'pop-rock': VIBE_POP_ROCK,
     'idle': VIBE_IDLE,
+    'rave': VIBE_RAVE,
 };
 /**
  * 🔄 WAVE 2019.10: VIBE ALIAS MAP
  *
- * Maps legacy vibe IDs to current valid IDs.
- * This allows old clips/projects to work with the new system.
+ * 🎭 VIBE CANON FASE 2: la tabla se movió a `core/vibe/VibeCanon.ts`
+ * (VIBE_ALIASES) — consolidada con los aliases que antes vivían duplicados en
+ * PROFILE_REGISTRY (hal/physics), VIBE_ID_MAP (KineticAdapter) y
+ * VibeSectionProfiles. Se re-exporta bajo el nombre histórico para no romper
+ * los 3 consumidores existentes (DynamicEffectRegistry, EffectDreamSimulator,
+ * VisualEthicalValues).
+ *
+ * @see core/vibe/VibeCanon.ts — VIBE_ALIASES
  */
-export const VIBE_ALIAS_MAP = {
-    // Legacy Chronos IDs → Current backend IDs
-    'techno': 'techno-club',
-    'chillout': 'chill-lounge',
-    'rock': 'pop-rock',
-    'ambient': 'chill-lounge',
-    'electronic': 'techno-club',
-    'ballad': 'chill-lounge',
-    'hiphop': 'pop-rock',
-    'latin': 'fiesta-latina',
-    'fiesta': 'fiesta-latina',
-    // 🩸 WAVE 5018-C: Directiva → Registry bridge aliases
-    'latino-organic': 'fiesta-latina',
-    'techno-dark': 'techno-club',
-    // Latin sub-genres → fiesta-latina
-    'salsa': 'fiesta-latina',
-    'cumbia': 'fiesta-latina',
-    'tropical': 'fiesta-latina',
-    'bachata': 'fiesta-latina',
-    // Chill sub-genres → chill-lounge
-    'chill': 'chill-lounge',
-    'romantic': 'chill-lounge',
-    // Techno/Electronic sub-genres → techno-club
-    'acid': 'techno-club',
-    'minimal': 'techno-club',
-    'industrial': 'techno-club',
-    'dubstep': 'techno-club',
-    'neurofunk': 'techno-club',
-    'dark': 'techno-club',
-    'cyberpunk': 'techno-club',
-    // Rock sub-genres → pop-rock
-    'metal': 'pop-rock',
-    'blues': 'pop-rock',
-    'rock-anthem': 'pop-rock',
-    // Direct mappings (already valid)
-    'fiesta-latina': 'fiesta-latina',
-    'techno-club': 'techno-club',
-    'chill-lounge': 'chill-lounge',
-    'pop-rock': 'pop-rock',
-    'idle': 'idle',
-};
+export { VIBE_ALIASES as VIBE_ALIAS_MAP } from '../../../core/vibe/VibeCanon';
 /**
  * 🔄 WAVE 2019.10: Normalizes a vibe ID (handles aliases)
+ *
+ * 🎭 VIBE CANON FASE 2: delega en `resolveVibeId()` del Canon pero PRESERVA
+ * el contrato null-para-desconocido que VibeManager depende para su rechazo
+ * 404 (P3: fallar visible, blueprints §2.2). Detalles del contrato:
+ *
+ *   · Clave en VIBE_REGISTRY (incluye custom:* injertadas en runtime por
+ *     VibeGraftRegistry) → se devuelve tal cual. Esto es lo que hace que
+ *     `isKeyNormalized()` del graft registry siga funcionando.
+ *   · Alias ('techno' → 'techno-club') → canónico. Case-insensitive, igual
+ *     que la implementación anterior.
+ *   · Desconocido / custom:* no injertada → null (VibeManager rechaza 404).
+ *
+ * NOTA: el console.log por mapeo de alias se eliminó (disparaba en cada
+ * llamada; el Canon ya emite un único warning por key desconocida).
  */
+import { resolveVibeId } from '../../../core/vibe/VibeCanon';
 export function normalizeVibeId(vibeId) {
-    // Check direct registry first
+    // El check `in` incluye claves custom:* injertadas en runtime — el Canon
+    // no puede verlas porque VIBE_IDS es estático. Por eso este pre-check.
     if (vibeId in VIBE_REGISTRY) {
         return vibeId;
     }
-    // Check alias map
-    const mapped = VIBE_ALIAS_MAP[vibeId.toLowerCase()];
-    if (mapped) {
-        console.log(`[VibeManager] 🔄 Mapped legacy ID: '${vibeId}' → '${mapped}'`);
-        return mapped;
-    }
-    return null;
+    const resolution = resolveVibeId(vibeId);
+    // Cuando source === 'alias', resolution.id es siempre un VibeId (el target
+    // del alias). TS no puede inferir esta correlación, por eso el cast es seguro.
+    return resolution.source === 'alias' ? resolution.id : null;
 }
 /**
  * Vibe por defecto cuando no se ha seleccionado ninguno

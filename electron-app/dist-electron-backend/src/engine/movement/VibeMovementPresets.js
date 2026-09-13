@@ -14,9 +14,7 @@
  * @layer ENGINE/MOVEMENT
  * @version WAVE 338 - Core 2 Kickoff
  */
-// ═══════════════════════════════════════════════════════════════════════════
-// PRESETS POR VIBE
-// ═══════════════════════════════════════════════════════════════════════════
+import { lookupVibeMap } from '../../core/vibe/VibeCanon';
 export const MOVEMENT_PRESETS = {
     // ───────────────────────────────────────────────────────────────
     // �️ TECHNO: Geometría dura, precisión industrial — CATEDRAL de neón
@@ -168,6 +166,39 @@ export const MOVEMENT_PRESETS = {
             smoothFactor: 0.3,
         },
     },
+    // ───────────────────────────────────────────────────────────────
+    // 🎆 RAVE: Geometría dura + drops brutales — CATEDRAL de festival
+    // FASE 4 — VIBE CANON. Clonado de techno-club con ajustes EDM:
+    //   · maxAcceleration 500→600 — drops más violentos
+    //   · maxVelocity 300→340 — snaps más rápidos en build-ups
+    //   · snapFactor 0.85→0.90 — onda cuadrada más cruda
+    //   · revLimitPanPerSec 280→320 — barridos de láser más agresivos
+    //   · revLimitTiltPerSec 220→260 — tilt reactivo a drops
+    // ───────────────────────────────────────────────────────────────
+    'rave': {
+        physics: {
+            maxAcceleration: 600, // 🔥 500→600. Drops más violentos que techno
+            maxVelocity: 340, // 🔥 300→340. ~723°/s — snaps de build-up
+            friction: 0.07, // 🔥 0.08→0.07. Menos freno, más inercia visual
+            arrivalThreshold: 0.5, // Heredado de techno — impacto seco
+            physicsMode: 'snap', // Heredado de techno — corte limpio
+            snapFactor: 0.90, // 🔥 0.85→0.90. Onda cuadrada más cruda
+            revLimitPanPerSec: 320, // 🔥 280→320. ~680°/s — barridos láser
+            revLimitTiltPerSec: 260, // 🔥 220→260. ~552°/s — tilt reactivo a drops
+        },
+        optics: {
+            zoomDefault: 25, // 🔥 30→25. Beam más cerrado (láser festival)
+            zoomRange: { min: 0, max: 90 }, // 🔥 max 80→90. Más rango para wash en drops
+            focusDefault: 15, // 🔥 20→15. Foco más nítido (corte láser)
+            focusRange: { min: 0, max: 60 }, // 🔥 max 50→60. Más rango para wash
+        },
+        behavior: {
+            homeOnSilence: false, // Heredado de techno — mantener posición en breakdown
+            syncToBeat: true, // Heredado de techno — sincronizar con kick
+            allowRandomPos: false, // Heredado de techno — patrones predecibles
+            smoothFactor: 0.08, // 🔥 0.1→0.08. Movimiento aún más seco
+        },
+    },
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // API
@@ -176,7 +207,8 @@ export const MOVEMENT_PRESETS = {
  * Obtener preset de movimiento por vibe ID
  */
 export function getMovementPreset(vibeId) {
-    const preset = MOVEMENT_PRESETS[vibeId];
+    // 🎭 VIBE CANON FASE 2: acceso via helper (tolera custom:* injertadas)
+    const preset = lookupVibeMap(MOVEMENT_PRESETS, vibeId);
     // 🚨 WAVE 2040.3: EL CHIVATO - Detect fallback to idle
     if (!preset) {
         console.warn(`[VibeMovementPresets] ⚠️ ERROR 404: Preset for vibeId="${vibeId}" NOT FOUND!\n` +

@@ -91,6 +91,9 @@ const ARCHETYPE_UI: readonly ArchetypeUIDef[] = [
 ]
 
 // ─── VIBE UI CATALOG (real Selene vibes) ────────────────────────────────────
+// 🎭 FASE 4b: 'rave' añadido como CompatibleVibe. El DnaRail muestra
+// checkboxes de compatibilidad de clip — 'rave' permite marcar clips
+// compatibles con RaveX. 'pop-rock' sigue disabled (legacy).
 
 interface VibeUIDef {
   id: CompatibleVibe
@@ -103,6 +106,7 @@ const VIBE_UI: readonly VibeUIDef[] = [
   { id: 'latino-organic', label: 'latino-organic' },
   { id: 'pop-rock', label: 'pop-rock', disabled: true },
   { id: 'chill-lounge', label: 'chill-lounge' },
+  { id: 'rave-highfreq', label: 'rave-highfreq' },
 ]
 
 // ─── GENOME CUBE 3D (CSS transform-style: preserve-3d) ──────────────────────

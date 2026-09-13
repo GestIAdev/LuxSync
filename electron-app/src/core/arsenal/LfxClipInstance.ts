@@ -41,6 +41,7 @@ export type CompatibleVibe =
   | 'latino-organic'
   | 'pop-rock'
   | 'chill-lounge'
+  | 'rave-highfreq'  // 🎆 FASE 4b: RaveX compatible vibe
 
 /** 7 zonas energéticas reales de Selene (ver SELENE-REALITY-MAPPING.md). */
 export type EnergyZoneId =
@@ -78,6 +79,7 @@ export const COMPATIBLE_VIBES: readonly CompatibleVibe[] = Object.freeze([
   'latino-organic',
   'pop-rock',
   'chill-lounge',
+  'rave-highfreq',  // 🎆 FASE 4b: RaveX
 ] as const)
 
 /** Lista canónica de arquetipos. */
@@ -245,6 +247,7 @@ const VIBE_BRIDGE: Readonly<Record<CompatibleVibe, string>> = Object.freeze({
   'latino-organic': 'fiesta-latina',
   'pop-rock': 'pop-rock',
   'chill-lounge': 'chill-lounge',
+  'rave-highfreq': 'rave',  // 🎆 FASE 4b: RaveX → rave canónico
 })
 
 // ─── INPUT SHAPE ────────────────────────────────────────────────────────────

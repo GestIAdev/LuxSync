@@ -388,6 +388,14 @@ VIBE_SECTION_PROFILES['lofi'] = VIBE_SECTION_PROFILES['chill'];
 VIBE_SECTION_PROFILES['jazz'] = VIBE_SECTION_PROFILES['chill'];
 VIBE_SECTION_PROFILES['downtempo'] = VIBE_SECTION_PROFILES['chill'];
 
+// 🎆 FASE 4b: Rave variants — clon de techno (EDM comparte estructura 4x4)
+VIBE_SECTION_PROFILES['rave'] = VIBE_SECTION_PROFILES['techno'];
+VIBE_SECTION_PROFILES['rave-highfreq'] = VIBE_SECTION_PROFILES['techno'];
+VIBE_SECTION_PROFILES['edm'] = VIBE_SECTION_PROFILES['techno'];
+VIBE_SECTION_PROFILES['dubstep'] = VIBE_SECTION_PROFILES['techno'];
+VIBE_SECTION_PROFILES['neurofunk'] = VIBE_SECTION_PROFILES['techno'];
+VIBE_SECTION_PROFILES['hardstyle'] = VIBE_SECTION_PROFILES['techno'];
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════

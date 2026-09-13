@@ -59,7 +59,9 @@ import {
 } from '../../hal/physics';
 import type { LiquidEngineBase } from '../../hal/physics/LiquidEngineBase'
 // 🎭 VIBE CANON FASE 2: resolución canónica de vibe (aliases + custom:*)
-import { resolveVibeId, lookupVibeMap } from '../vibe/VibeCanon'
+// 🎭 VIBE CANON FASE 3a: traits del vibe activo para inyectar a los engines
+import { resolveVibeId, lookupVibeMap, getVibeTraits, VIBE_TRAITS, VIBE_FALLBACK_ID } from '../vibe/VibeCanon'
+import type { VibeTraits } from '../vibe/VibeCanon'
 
 import type { GodEarBands, GodEarPhoton } from '../../workers/GodEarFFT';
 
@@ -558,8 +560,15 @@ export class SeleneLux {
     // cubre el acceso (lookupVibeMap es la vía canónica para eso).
     const resolution = resolveVibeId(vibeKey);
     const profile = lookupVibeMap(PROFILE_REGISTRY, resolution.id) ?? DEFAULT_LIQUID_PROFILE;
-    liquidEngine41.setProfile(profile);
-    liquidEngine71.setProfile(profile);
+    // 🎭 VIBE CANON FASE 3a: extraer traits del vibe activo. getVibeTraits
+    // acepta AnyVibeKey (canónico o custom:*) — los custom caen a idle traits.
+    // Los traits se inyectan a AMBOS engines para que la Fase 3b pueda
+    // reemplazar los condicionales internos (isTechnoProfile, isLatino, etc.)
+    // por lookups a engine.traits sin tocar los condicionales aún.
+    const traits = getVibeTraits(resolution.id);
+    this._activeTraits = traits;
+    liquidEngine41.setProfile(profile, traits);
+    liquidEngine71.setProfile(profile, traits);
     liquidTelemetryObserver.setProfile(profile);
     this._activeProfileId = profile.id;
     console.log(`[SeleneLux 🌊] Profile hot-swapped: ${vibeKey} → ${resolution.id} (${profile.id}: ${profile.name})`);  
@@ -567,6 +576,14 @@ export class SeleneLux {
 
   /** WAVE 2436.2: ID del profile activo para diagnóstico per-frame */
   private _activeProfileId: string = 'techno-industrial';
+
+  /**
+   * 🎭 VIBE CANON FASE 3a: Traits del vibe activo, almacenados para
+   * diagnóstico y para que updateFromTitan pueda consultarlos sin re-resolver.
+   * La Fase 3b usará estos traits para reemplazar los condicionales
+   * includes()/=== dispersos en este mismo archivo.
+   */
+  private _activeTraits: VibeTraits = VIBE_TRAITS[VIBE_FALLBACK_ID];
 
   /**
    * 🧠 Recibe actualización desde TitanEngine y aplica física reactiva

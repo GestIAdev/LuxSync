@@ -29,6 +29,11 @@ import type { GodEarBands } from '../../workers/GodEarFFT'
 import type { ILiquidProfile } from './profiles/ILiquidProfile'
 import { TECHNO_PROFILE } from './profiles/techno'
 import type { LiquidStereoInput, LiquidStereoResult } from './LiquidStereoPhysics'
+// 🎭 VIBE CANON FASE 3a: traits del vibe activo. Import type-only (sin coste
+// runtime) + runtime import de VIBE_TRAITS para el default del constructor.
+// El Canon es módulo hoja (cero imports), así que no hay riesgo de ciclo.
+import type { VibeTraits } from '../../core/vibe/VibeCanon'
+import { VIBE_TRAITS, VIBE_FALLBACK_ID } from '../../core/vibe/VibeCanon'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROCESSED FRAME — Lo que la base entrega a routeZones()
@@ -178,6 +183,21 @@ export abstract class LiquidEngineBase {
 
   /** Perfil activo — define TODA la parametría del motor (post-fusión si 4.1) */
   profile: ILiquidProfile
+
+  /**
+   * 🎭 VIBE CANON FASE 3a: Traits del vibe activo.
+   *
+   * Inyectados por SeleneLux.setActiveProfile() via setProfile(profile, traits).
+   * Default: traits de `idle` (VIBE_FALLBACK_ID) — sensato y neutro.
+   *
+   * FASE 3a: SOLO se almacena. Los condicionales existentes (isTechnoProfile,
+   * isLatino, etc.) NO se reemplazan aún — la Fase 3b hará el swap condicional
+   * por condicional verificando paridad exacta (blueprint §4.2).
+   *
+   * Tests que llaman setProfile(profile) sin traits conservan el valor anterior
+   * (o el default idle del constructor) — no se rompe backward compat.
+   */
+  traits: VibeTraits = VIBE_TRAITS[VIBE_FALLBACK_ID]
 
   /** Layout físico del rig — inmutable para la vida del engine */
   readonly layout: LiquidLayout
@@ -535,10 +555,17 @@ export abstract class LiquidEngineBase {
    * La fusión con overrides41 ocurre aquí si el layout es 4.1.
    * Recrea las 6 envelopes con la configuración efectiva.
    * El estado interno (avgMid, silence, etc.) se preserva — el motor no "salta".
+   *
+   * 🎭 VIBE CANON FASE 3a: acepta `traits` opcional del vibe activo y los
+   * guarda en `this.traits`. Opcional para no romper tests existentes que
+   * llaman `setProfile(profile)` con un solo arg — en ese caso `this.traits`
+   * conserva su valor anterior (default: idle traits del constructor).
+   * SeleneLux SIEMPRE pasa traits en producción.
    */
-  setProfile(profile: ILiquidProfile): void {
+  setProfile(profile: ILiquidProfile, traits?: VibeTraits): void {
     const effective = this.layout === '4.1' ? fuseProfileFor41(profile) : profile
     this.profile = effective
+    if (traits) this.traits = traits
     this.envSubBass = new LiquidEnvelope(effective.envelopeSubBass)
     this.envKick = new LiquidEnvelope(effective.envelopeKick)
     this.envVocal = new LiquidEnvelope(effective.envelopeVocal)

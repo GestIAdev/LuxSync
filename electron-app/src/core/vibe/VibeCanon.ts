@@ -343,11 +343,189 @@ export function lookupVibeMap<T>(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ROADMAP — NO IMPLEMENTAR AÚN
+// FASE 3a — SISTEMA DE FAMILIAS Y TRAITS
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// FASE 3 (familias y lógica física) añadirá aquí:
-//   · VibeFamily
-//   · VibeTraits + VIBE_TRAITS + getVibeTraits()
+// Blueprint §4.1. Esta sección define la "genética" de cada vibe: una tabla
+// de datos (VIBE_TRAITS) que reemplazará los ~20 condicionales includes()/===
+// dispersos por el motor. En la Fase 3a SOLO se definen los contratos y se
+// inyectan las dependencias — los condicionales existentes NO se tocan aún.
+// La Fase 3b hará el reemplazo condicional por condicional (§4.2).
 //
-// Ver `docs/blueprints/Vibe_Canon_blueprint.md` §4.
+// ⚠️ CERO IMPORTS — este módulo sigue siendo hoja del grafo de dependencias.
+// VibeTraits es una interfaz pura (sin herencia, sin imports de tipos
+// externos), así que puede vivir aquí sin romper la regla de oro.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Familia musical de un vibe.
+ *
+ * NO es una etiqueta para reemplazar `includes('techno')` por
+ * `family === 'techno'` — eso seguiría siendo un condicional disperso.
+ * Su rol es clasificar para telemetría y para futura lógica de familia
+ * (p.ej. herencia de traits en VibeLab). Los parámetros reales que
+ * reemplazan los condicionales viven en `VibeTraits`.
+ *
+ * `rave` se incluye ya para que la Fase 4 no tenga que tocar este tipo.
+ * `neutral` es la familia de `idle` — no es un género musical.
+ */
+export type VibeFamily = 'techno' | 'latino' | 'rock' | 'chill' | 'rave' | 'neutral'
+
+/**
+ * Rasgos de comportamiento por vibe.
+ *
+ * Cada campo reemplaza un condicional hardcodeado identificado en la
+ * auditoría (`docs/forensics/auditoria_trazabilidad_vibe.md`). La
+ * referencia al origen (archivo:línea) es obligatoria en el comentario de
+ * cada campo para que la Fase 3b pueda verificar paridad exacta.
+ *
+ * Todos los campos son `readonly` — la tabla es inmutable post-declaración.
+ * Los valores se copian literalmente de los condicionales originales sin
+ * redondear ni "limpiar" (blueprint §4.2 paso 2).
+ */
+export interface VibeTraits {
+  readonly family: VibeFamily
+
+  // ── Física líquida ──────────────────────────────────────────
+  /** Reemplaza `isTechnoProfile` @ LiquidEngineBase.ts:1958 (vocalPenalty bypass) */
+  readonly bypassVocalPenalty: boolean
+  /** Reemplaza el ternario dmzFactor @ LiquidEngineBase.ts:1959 */
+  readonly dmzFactor: number
+  /** Reemplaza el ternario backLeftGain @ LiquidEngineBase.ts:1965 */
+  readonly backLeftGain: number
+  /** Reemplaza `isLatino` @ LiquidEngine71.ts:107,167-168 (swap de movers) */
+  readonly swapMovers: boolean
+  /** Reemplaza `isAbsoluteChillProfile()` @ LiquidEngineBase.ts:2257 */
+  readonly pureAmbient: boolean
+  /** Reemplaza `isChill` @ LiquidEngine71.ts:108,120 (payload neutro) */
+  readonly neutralPayload: boolean
+
+  // ── Techo de intensidad legacy ──────────────────────────────
+  /** Reemplaza `isTechno ? 0.80 : 0.95` @ SeleneLux.ts:1212 */
+  readonly frontCeiling: number
+  /** Reemplaza `isTechno ? 0.10 : 0.06` @ SeleneLux.ts:1218 */
+  readonly backGateThreshold: number
+
+  // ── Paleta y motores auxiliares ─────────────────────────────
+  /** Reemplaza el if/else de paleta @ SeleneLux.ts:610-626 */
+  readonly palettePhysics: 'techno' | 'latino' | 'none'
+  /** Reemplaza `includes('chill')` @ SeleneLux.ts:677, TitanEngine.ts:811 */
+  readonly usesChillAmbientEngine: boolean
+  /** Reemplaza `isChillVibeStrobe` @ SeleneLux.ts:1324 */
+  readonly strobeAllowed: boolean
+  /** Reemplaza `isChillVibeDimmer` @ SeleneLux.ts:1310 */
+  readonly photonDimmerOverride: boolean
+
+  // ── Identificador del perfil líquido ────────────────────────
+  /** El `ILiquidProfile.id` asociado. Rompe el acoplamiento por string. */
+  readonly liquidProfileId: string
+}
+
+/**
+ * Tabla de traits por vibe canónico.
+ *
+ * `Record<VibeId, VibeTraits>` exige completitud: si se añade un vibe
+ * nuevo (Fase 4: `rave`), el compilador produce un error hasta que la
+ * entrada exista — mismo mecanismo de guardia que los otros mapas.
+ *
+ * Los valores se copiaron literalmente de los condicionales originales
+ * (blueprint §4.2 paso 2). NO redondear ni "limpiar" — la Fase 3b
+ * verificará paridad exacta contra estos valores.
+ */
+export const VIBE_TRAITS: Record<VibeId, VibeTraits> = {
+  'techno-club': {
+    family: 'techno',
+    bypassVocalPenalty: true,      // era: id === 'techno-industrial'
+    dmzFactor: 0.55,
+    backLeftGain: 1.45,
+    swapMovers: false,
+    pureAmbient: false,
+    neutralPayload: false,
+    frontCeiling: 0.80,
+    backGateThreshold: 0.10,
+    palettePhysics: 'techno',
+    usesChillAmbientEngine: false,
+    strobeAllowed: true,
+    photonDimmerOverride: true,
+    liquidProfileId: 'techno-industrial',
+  },
+  'fiesta-latina': {
+    family: 'latino',
+    bypassVocalPenalty: false,
+    dmzFactor: 0.30,
+    backLeftGain: 1.75,
+    swapMovers: true,              // era: id === 'latino-fiesta'
+    pureAmbient: false,
+    neutralPayload: false,
+    frontCeiling: 0.95,
+    backGateThreshold: 0.06,
+    palettePhysics: 'latino',
+    usesChillAmbientEngine: false,
+    strobeAllowed: true,
+    photonDimmerOverride: true,
+    liquidProfileId: 'latino-fiesta',
+  },
+  'pop-rock': {
+    family: 'rock',
+    bypassVocalPenalty: false,
+    dmzFactor: 0.30,
+    backLeftGain: 1.75,
+    swapMovers: false,
+    pureAmbient: false,
+    neutralPayload: false,
+    frontCeiling: 0.95,
+    backGateThreshold: 0.06,
+    palettePhysics: 'none',
+    usesChillAmbientEngine: false,
+    strobeAllowed: true,
+    photonDimmerOverride: true,
+    liquidProfileId: 'poprock-live',
+  },
+  'chill-lounge': {
+    family: 'chill',
+    bypassVocalPenalty: false,
+    dmzFactor: 0.30,
+    backLeftGain: 1.75,
+    swapMovers: false,
+    pureAmbient: true,             // era: id.includes('chill')||includes('ambient')
+    neutralPayload: true,          // era: id === 'chill-oceanic'
+    frontCeiling: 0.95,
+    backGateThreshold: 0.06,
+    palettePhysics: 'none',
+    usesChillAmbientEngine: true,  // era: includes('chill')||'lounge'||'ambient'||'jazz'
+    strobeAllowed: false,
+    photonDimmerOverride: false,
+    liquidProfileId: 'chill-oceanic',
+  },
+  'idle': {
+    family: 'neutral',
+    bypassVocalPenalty: false,
+    dmzFactor: 0.30,
+    backLeftGain: 1.75,
+    swapMovers: false,
+    pureAmbient: false,
+    neutralPayload: false,
+    frontCeiling: 0.95,
+    backGateThreshold: 0.06,
+    palettePhysics: 'none',
+    usesChillAmbientEngine: false,
+    strobeAllowed: true,
+    photonDimmerOverride: true,
+    liquidProfileId: 'idle',
+  },
+}
+
+/**
+ * Helper de lookup de traits por clave arbitraria.
+ *
+ * Acepta `AnyVibeKey` (canónico o `custom:*`) para que los vibes injertados
+ * por VibeGraftRegistry no fallen. Los custom vibes aún no tienen traits
+ * propios — caen al fallback `idle`. La Fase 4 podría añadir traits
+ * sintéticos para custom vibes vía el graft bundle.
+ *
+ * @param key VibeId canónico o CustomVibeKey injertada
+ * @returns Los traits del vibe, o los traits de `idle` si no se encuentra
+ */
+export function getVibeTraits(key: AnyVibeKey): VibeTraits {
+  return (VIBE_TRAITS as Record<string, VibeTraits>)[key] ?? VIBE_TRAITS[VIBE_FALLBACK_ID]
+}

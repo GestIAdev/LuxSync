@@ -1920,7 +1920,9 @@ export abstract class LiquidEngineBase {
     // pressure / potential DMX watchdog trips during profiling sessions only.
     // Revert to the gated condition below when profiling is complete:
     //   if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1))
-    if (true) {
+    // 🎆 FASE 4b: FINESSE_AUDIT desactivado temporalmente. Cambiar `false` → `true`
+    // para reactivar el dump frame-by-frame, o restaurar la condición gated de arriba.
+    if (false) {
       console.log(
         `[FINESSE_AUDIT] ` +
         `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +

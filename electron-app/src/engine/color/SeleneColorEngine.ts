@@ -1350,36 +1350,15 @@ export class SeleneColorEngine {
       }
     }
     
-    // 2️⃣ FORBIDDEN HUE RANGES: Elastic Rotation
-    // Si el hue cae en zona prohibida, rotar hasta escapar
-    const elasticStep = options?.elasticRotation ?? 15;  // grados por iteración
-    const maxIterations = Math.ceil(360 / elasticStep);  // prevenir loop infinito
-    
+    // 2️⃣ FORBIDDEN HUE RANGES: Harmonic Resolution (WAVE 7755)
+    // 🎆 Reemplaza el empuje al borde del lodo. Si el hue cae en zona prohibida,
+    // se pivota al CENTRO DE MASA de la zona limpia más cercana → color puro.
     if (options?.forbiddenHueRanges) {
-      let iterations = 0;
-      let isInForbidden = true;
-      
-      while (isInForbidden && iterations < maxIterations) {
-        isInForbidden = false;
-        
-        for (const [min, max] of options.forbiddenHueRanges) {
-          const normalizedMin = normalizeHue(min);
-          const normalizedMax = normalizeHue(max);
-          
-          // Handle wrap-around (e.g., [330, 30] means 330-360 and 0-30)
-          const isInRange = normalizedMin <= normalizedMax
-            ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
-            : (finalHue >= normalizedMin || finalHue <= normalizedMax);
-          
-          if (isInRange) {
-            // Elastic Rotation: rotar +elasticStep grados
-            finalHue = normalizeHue(finalHue + elasticStep);
-            isInForbidden = true;
-            iterations++;
-            break;
-          }
-        }
-      }
+      finalHue = this._resolveHarmonicHue(
+        [finalHue],
+        options.forbiddenHueRanges,
+        options.allowedHueRanges,
+      );
     }
     
     // 3️⃣ ALLOWED HUE RANGES: Snap to nearest
@@ -1913,33 +1892,9 @@ export class SeleneColorEngine {
       pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60);  // Variación sutil
     }
     
-    // 4️⃣ ELASTIC ROTATION para Ambient (si hay zonas prohibidas)
-    if (options?.forbiddenHueRanges && !options?.ambientLock) {
-      const elasticStep = options.elasticRotation ?? 15;
-      const maxIterations = Math.ceil(360 / elasticStep);
-      let iterations = 0;
-      let isInForbidden = true;
-      
-      while (isInForbidden && iterations < maxIterations) {
-        isInForbidden = false;
-        
-        for (const [min, max] of options.forbiddenHueRanges) {
-          const normalizedMin = normalizeHue(min);
-          const normalizedMax = normalizeHue(max);
-          
-          const isInRange = normalizedMin <= normalizedMax
-            ? (pal.ambient.h >= normalizedMin && pal.ambient.h <= normalizedMax)
-            : (pal.ambient.h >= normalizedMin || pal.ambient.h <= normalizedMax);
-          
-          if (isInRange) {
-            pal.ambient.h = normalizeHue(pal.ambient.h + elasticStep);
-            isInForbidden = true;
-            iterations++;
-            break;
-          }
-        }
-      }
-    }
+    // 4️⃣ ELASTIC ROTATION para Ambient — ELIMINADO en WAVE 7755.
+    // El Pivote Dinámico (post-block más abajo) resuelve el ambient con
+    // vértices armónicos alternativos y centro de masa, no con empuje al borde.
     
     // 5️⃣ MINIMUM SEPARATION: Ambient debe estar a mínimo 30° del Secondary
     const hueDistance = Math.abs(pal.ambient.h - pal.secondary.h);
@@ -2087,30 +2042,112 @@ export class SeleneColorEngine {
     // 🌌 WAVE 7753 ANTI-MOSTAZA: Usar effectiveOptions (slot-aware) en vez de
     // options (plantilla en blanco). Esto garantiza que allowedHueRanges del
     // slot activo del Reloj Sideral se aplique a TODA la paleta, no solo al PRI.
+    // 🎆 WAVE 7755: PIVOTE DINÁMICO — reemplaza el empuje al borde del lodo.
+    // Cada color derivado aporta sus vértices armónicos alternativos como
+    // candidatos. Si el principal colisiona, se pivota al vértice opuesto de
+    // la misma estrategia ANTES de caer al centro de masa de la zona limpia.
     if (effectiveOptions?.forbiddenHueRanges) {
-      const elasticStep = effectiveOptions.elasticRotation ?? 15;
-      const maxIterations = Math.ceil(360 / elasticStep);
-      
-      // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
-      // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
-      this._enforceForbiddenHue(pal.primary, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.secondary, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.ambient, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.accent, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.contrast, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);  // 🪗 WAVE 7773
-      
-      // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
+      const forbidden = effectiveOptions.forbiddenHueRanges;
+      const allowed = effectiveOptions.allowedHueRanges;
+      const priH = pal.primary.h;
+
+      // Construir pivotes armónicos según estrategia activa.
+      // Cada lista: [intención principal, vértice alternativo, golden ratio fallback]
+      const PHI_A = 137.5;
+      const PHI_B = PHI_ROTATION; // ≈222.5°
+
+      // 1️⃣ PRIMARY — sin pivote armónico (es la raíz). Solo centro de masa si colisiona.
+      pal.primary.h = this._resolveHarmonicHue([priH], forbidden, allowed);
+
+      // 2️⃣ SECONDARY — pivote al vértice alternativo de la estrategia
+      const secMain = pal.secondary.h;
+      let secPivots: number[];
+      if (options?.forceStrategy === 'prism') {
+        secPivots = [secMain, normalizeHue(priH - 60), normalizeHue(priH + PHI_A)];
+      } else {
+        switch (strategy) {
+          case 'triadic':
+            // Vértices: +120° y -120°. Si +120° cae en lodo, pivotar a -120°.
+            secPivots = [secMain, normalizeHue(priH - 120), normalizeHue(priH + PHI_A), normalizeHue(priH + PHI_B)];
+            break;
+          case 'complementary':
+            // Complementario único (+180°); pivote a split-complementary ±150°
+            secPivots = [secMain, normalizeHue(priH + 150), normalizeHue(priH - 150), normalizeHue(priH + PHI_A)];
+            break;
+          case 'analogous':
+          default:
+            // Análogo -25°; pivote a +25° (otro vecino) antes de golden ratio
+            secPivots = [secMain, normalizeHue(priH + 25), normalizeHue(priH + PHI_A), normalizeHue(priH + PHI_B)];
+            break;
+        }
+      }
+      pal.secondary.h = this._resolveHarmonicHue(secPivots, forbidden, allowed);
+
+      // 3️⃣ ACCENT — pivote al vértice alternativo
+      const accMain = pal.accent.h;
+      let accPivots: number[];
+      if (options?.forceStrategy === 'prism') {
+        accPivots = [accMain, normalizeHue(priH + 120), normalizeHue(priH - 180), normalizeHue(priH + PHI_B)];
+      } else {
+        switch (strategy) {
+          case 'triadic':
+            // Accent era +120+15×el; pivote al tercer vértice (-120°) y a complementario
+            accPivots = [accMain, normalizeHue(priH - 120), normalizeHue(priH + 180), normalizeHue(priH + PHI_B)];
+            break;
+          case 'complementary':
+            // Accent era 180-20×el; pivote a split-complementary opuesto
+            accPivots = [accMain, normalizeHue(priH - 150), normalizeHue(priH + 150), normalizeHue(priH + PHI_A)];
+            break;
+          case 'analogous':
+          default:
+            accPivots = [accMain, normalizeHue(priH - 25), normalizeHue(priH + PHI_B), normalizeHue(priH + PHI_A)];
+            break;
+        }
+      }
+      pal.accent.h = this._resolveHarmonicHue(accPivots, forbidden, allowed);
+
+      // 4️⃣ AMBIENT — pivote al vértice restante de la estrategia
+      const ambMain = pal.ambient.h;
+      let ambPivots: number[];
+      if (options?.forceStrategy === 'prism') {
+        ambPivots = [ambMain, normalizeHue(priH + 270), normalizeHue(priH - 90), normalizeHue(priH + PHI_A)];
+      } else {
+        switch (strategy) {
+          case 'triadic':
+            // Ambient era +240°; pivote a los otros dos vértices
+            ambPivots = [ambMain, normalizeHue(priH + 120), normalizeHue(priH - 120), normalizeHue(priH + PHI_B)];
+            break;
+          case 'complementary':
+            // Ambient era 180+20×el; pivote a split opuesto
+            ambPivots = [ambMain, normalizeHue(priH - 150), normalizeHue(priH + 150), normalizeHue(priH + PHI_A)];
+            break;
+          case 'analogous':
+          default:
+            // Ambient era -45×el; pivote a +45° y a golden ratio
+            ambPivots = [ambMain, normalizeHue(priH + 45), normalizeHue(priH + PHI_A), normalizeHue(priH + PHI_B)];
+            break;
+        }
+      }
+      pal.ambient.h = this._resolveHarmonicHue(ambPivots, forbidden, allowed);
+
+      // 5️⃣ CONTRAST — complementario del ambient; pivote al primary
+      pal.contrast.h = this._resolveHarmonicHue(
+        [pal.contrast.h, normalizeHue(pal.ambient.h + 180), normalizeHue(priH + 180), normalizeHue(priH + PHI_B)],
+        forbidden, allowed,
+      );
+
+      // 6️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
       // Si Ambient está demasiado cerca de Secondary (< 30°), separarlos
       const minDistance = 30;
       let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
       if (ambientSecondaryDiff > 180) ambientSecondaryDiff = 360 - ambientSecondaryDiff;
-      
+
       if (ambientSecondaryDiff < minDistance) {
-        // Empujar Ambient +60° para crear contraste real
-        pal.ambient.h = normalizeHue(pal.ambient.h + 60);
-        
-        // Re-validar que no cayó en zona prohibida tras el empujón
-        this._enforceForbiddenHue(pal.ambient, effectiveOptions.forbiddenHueRanges, elasticStep, maxIterations);
+        // Pivotar Ambient ±60° y re-resolver con pivotes armónicos
+        pal.ambient.h = this._resolveHarmonicHue(
+          [normalizeHue(pal.ambient.h + 60), normalizeHue(pal.ambient.h - 60), normalizeHue(pal.secondary.h + 180)],
+          forbidden, allowed,
+        );
       }
     }
     
@@ -2290,34 +2327,156 @@ export class SeleneColorEngine {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // WAVE 0-ALLOC: Inline enforcement helpers (replace .forEach() arrays)
+  // 🎆 WAVE 7755: HARMONIC COLLISION RESOLVER
+  // ═══════════════════════════════════════════════════════════════════
+  // Replaces the crude "+elasticStep" edge-pusher that landed colors at the
+  // "borde del lodo" (just past the forbidden boundary = mustard/dirty).
+  //
+  // PROBLEMA ELIMINADO:
+  //   Triadic +120° cae en forbidden [20,60] → empuje +15° iterativo → 62°
+  //   (mostaza). El motor ignoraba que Triadic tiene DOS vértices: +120° y
+  //   -120°. 260-120=140° (verde-cian puro) era la solución armónica natural.
+  //
+  // NUEVA ESTRATEGIA (Pivote Dinámico + Centro de Masa):
+  //   1. Si el candidato armónico principal está limpio → usarlo tal cual.
+  //   2. Si cae en zona prohibida, PIVOTAR al vértice alternativo de la
+  //      misma estrategia (triadic -120°, complementary split ±150°, etc.)
+  //      antes de caer al Golden Ratio fallback (137.5° / 222.5°).
+  //   3. Si TODOS los candidatos colisionan, encontrar el CENTRO DE MASA
+  //      de la zona limpia más cercana — color puro y saturado, NUNCA el
+  //      borde del lodo.
   // ═══════════════════════════════════════════════════════════════════
 
-  /** Elastic rotation away from forbidden hue zones — mutates color in place */
-  private static _enforceForbiddenHue(
-    color: HSLColor,
-    forbiddenRanges: [number, number][],
-    elasticStep: number,
-    maxIterations: number,
-  ): void {
-    let iterations = 0;
-    let isInForbidden = true;
-    while (isInForbidden && iterations < maxIterations) {
-      isInForbidden = false;
-      for (const [min, max] of forbiddenRanges) {
-        const normalizedMin = normalizeHue(min);
-        const normalizedMax = normalizeHue(max);
-        const isInRange = normalizedMin <= normalizedMax
-          ? (color.h >= normalizedMin && color.h <= normalizedMax)
-          : (color.h >= normalizedMin || color.h <= normalizedMax);
-        if (isInRange) {
-          color.h = normalizeHue(color.h + elasticStep);
-          isInForbidden = true;
-          iterations++;
-          break;
-        }
+  /**
+   * Resuelve colisiones armónicas con forbiddenHueRanges.
+   * @param candidates - Lista ordenada de huees candidatos (ya normalizados+jittered).
+   *                     El primero es la intención armónica principal; los
+   *                     siguientes son pivotes alternativos de la misma estrategia.
+   * @param forbidden  - Rangos prohibidos de la constitución.
+   * @param allowed    - Rangos permitidos (opcional, del slot/constitución).
+   * @returns Hue limpio y armónico, normalizado 0-360.
+   */
+  private static _resolveHarmonicHue(
+    candidates: number[],
+    forbidden: [number, number][] | undefined,
+    allowed: [number, number][] | undefined,
+  ): number {
+    const _isForbidden = (h: number): boolean => {
+      if (!forbidden || forbidden.length === 0) return false;
+      for (const [min, max] of forbidden) {
+        const nMin = normalizeHue(min);
+        const nMax = normalizeHue(max);
+        const inRange = nMin <= nMax
+          ? (h >= nMin && h <= nMax)
+          : (h >= nMin || h <= nMax);
+        if (inRange) return true;
+      }
+      return false;
+    };
+
+    const _isAllowed = (h: number): boolean => {
+      if (!allowed || allowed.length === 0) return true;
+      // 🛡️ WAVE 286: [0, 360] = todo permitido
+      const isFullCircle = allowed.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
+      if (isFullCircle) return true;
+      for (const [min, max] of allowed) {
+        const nMin = normalizeHue(min);
+        const nMax = normalizeHue(max);
+        const inRange = nMin <= nMax
+          ? (h >= nMin && h <= nMax)
+          : (h >= nMin || h <= nMax);
+        if (inRange) return true;
+      }
+      return false;
+    };
+
+    // 1️⃣ Pivote armónico: probar cada candidato en orden
+    for (const cand of candidates) {
+      const h = normalizeHue(cand);
+      if (!_isForbidden(h) && _isAllowed(h)) return h;
+    }
+
+    // 2️⃣ Todos colisionaron → centro de masa de la zona limpia más cercana
+    const target = candidates.length > 0 ? normalizeHue(candidates[0]) : 0;
+    return this._findCleanCenter(target, forbidden, allowed);
+  }
+
+  /**
+   * 🎆 WAVE 7755: Encuentra el CENTRO DE MASA de la zona limpia más cercana.
+   * En lugar de empujar el hue al +1° borde del forbidden (lodo), calcula el
+   * complemento de las zonas prohibidas y devuelve el centro de la zona
+   * limpia más cercana al hue objetivo → color puro y saturado.
+   */
+  private static _findCleanCenter(
+    targetHue: number,
+    forbidden: [number, number][] | undefined,
+    allowed: [number, number][] | undefined,
+  ): number {
+    // Si hay allowed explícito, usar sus centros (preferido)
+    if (allowed && allowed.length > 0) {
+      const isFullCircle = allowed.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
+      if (isFullCircle) return normalizeHue(targetHue);
+      let bestCenter = normalizeHue(targetHue);
+      let bestDist = Infinity;
+      for (const [min, max] of allowed) {
+        const nMin = normalizeHue(min);
+        const nMax = normalizeHue(max);
+        const center = nMin <= nMax
+          ? (nMin + nMax) / 2
+          : normalizeHue((nMin + nMax + 360) / 2);
+        let d = Math.abs(targetHue - center);
+        if (d > 180) d = 360 - d;
+        if (d < bestDist) { bestDist = d; bestCenter = center; }
+      }
+      return normalizeHue(bestCenter);
+    }
+
+    // Sin allowed explícito → derivar zonas limpias del complemento de forbidden
+    if (!forbidden || forbidden.length === 0) return normalizeHue(targetHue);
+
+    // Construir segmentos prohibidos, normalizar, mergear overlaps
+    type Seg = [number, number];
+    const segs: Seg[] = [];
+    for (const [min, max] of forbidden) {
+      const nMin = normalizeHue(min);
+      const nMax = normalizeHue(max);
+      if (nMin <= nMax) {
+        segs.push([nMin, nMax]);
+      } else {
+        segs.push([nMin, 360]);
+        segs.push([0, nMax]);
       }
     }
+    segs.sort((a, b) => a[0] - b[0]);
+    const merged: Seg[] = [];
+    for (const s of segs) {
+      const last = merged[merged.length - 1];
+      if (last && s[0] <= last[1]) {
+        last[1] = Math.max(last[1], s[1]);
+      } else {
+        merged.push([s[0], s[1]]);
+      }
+    }
+    // Complemento = zonas limpias
+    const cleanZones: Seg[] = [];
+    let prev = 0;
+    for (const [fMin, fMax] of merged) {
+      if (fMin > prev) cleanZones.push([prev, fMin]);
+      prev = Math.max(prev, fMax);
+    }
+    if (prev < 360) cleanZones.push([prev, 360]);
+    if (cleanZones.length === 0) return normalizeHue(targetHue);
+
+    // Centro de la zona limpia más cercana al target
+    let bestCenter = normalizeHue(targetHue);
+    let bestDist = Infinity;
+    for (const [zMin, zMax] of cleanZones) {
+      const center = (zMin + zMax) / 2;
+      let d = Math.abs(targetHue - center);
+      if (d > 180) d = 360 - d;
+      if (d < bestDist) { bestDist = d; bestCenter = center; }
+    }
+    return normalizeHue(bestCenter);
   }
 
   /** Apply hue remapping to a single color — mutates in place */

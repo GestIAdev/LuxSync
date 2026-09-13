@@ -697,11 +697,16 @@ export class TitanEngine extends EventEmitter {
     // al slot del reloj astronómico. La estrategia SOLO cambia cuando el slot
     // avanza (cada 4-6 min). Si la vibra no tiene Sidereal Clock, se usa el
     // commitment timer de 10s como fallback.
+    // 🎆 WAVE 7758: SINCRONIZACIÓN DE ENTROPÍA — Usar la MISMA _sessionEntropy
+    // que SeleneColorEngine usa internamente para calcular el slotIndex. Sin
+    // esto, TitanEngine y ColorEngine cruzan la frontera del slot en instantes
+    // distintos, desincronizando la estrategia del rango cromático activo.
     const _constitutionForSlot = getColorConstitution(vibeProfile.id)
     let _siderealSlotIndex: number | undefined = undefined
     if (_constitutionForSlot.siderealClock?.slots?.length) {
       const _clock = _constitutionForSlot.siderealClock
-      _siderealSlotIndex = Math.floor(performance.now() / _clock.slotDurationMs) % _clock.slots.length
+      const _shiftedTime = performance.now() + SeleneColorEngine.getSessionEntropy()
+      _siderealSlotIndex = Math.floor(_shiftedTime / _clock.slotDurationMs) % _clock.slots.length
     }
     const strategyInput: StrategyArbiterInput = {
       syncopation: processedContext.syncopation,

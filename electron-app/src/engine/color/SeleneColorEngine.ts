@@ -2576,6 +2576,17 @@ export class SeleneColorEngine {
   }
 
   /**
+   * 🎆 WAVE 7758: Getter público para la entropía acústica de la sesión.
+   * TitanEngine lo usa para sincronizar el cálculo del slotIndex del Sidereal
+   * Clock con el que hace SeleneColorEngine internamente. Sin esto, los dos
+   * componentes cruzan la frontera del slot en instantes distintos y la
+   * estrategia se desincroniza del rango cromático activo.
+   */
+  static getSessionEntropy(): number {
+    return this._sessionEntropy;
+  }
+
+  /**
    * Obtiene el hue base para una key musical
    */
   static getKeyHue(key: string): number | undefined {

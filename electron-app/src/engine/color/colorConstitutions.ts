@@ -66,9 +66,11 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   //             PERO el hueRemapping [25-85] → frío con variación lo sanitiza
   thermalGravityStrength: 0.22,
   
-  // 🌐 WAVE 7773: ANTI-NARANJA BLINDADO — floor bajado de 25 a 5.
-  // El corredor [0, 25] dejaba pasar hue 10° que en LED se ve naranja, no rojo puro.
-  forbiddenHueRanges: [[5, 80]],
+  // 🌐 WAVE 7773 → 🧱 GRAN MURO ANTIMOSTAZA: forbiddenHueRanges ampliado a [10, 90].
+  // El hueco [60, 100] quedó expuesto al liberar los armónicos del slot, permitiendo
+  // el 67° (mostaza). Cerramos el muro de 10° a 90° para erradicar permanentemente
+  // cualquier rastro de naranja, ámbar, ocre, mostaza o amarillo verdoso del bunker.
+  forbiddenHueRanges: [[10, 90]],
   
   // 🌈 WAVE 285.5: Permitir todo, la gravedad + remapping hacen el trabajo
   allowedHueRanges: [[0, 360]],
@@ -115,7 +117,7 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // ═══════════════════════════════════════════════════════════════════════
   neonProtocol: {
     enabled: true,
-    dangerZone: [5, 80],        // WAVE 7773: Bajado de 15 a 5 — cierra el corredor naranja
+    dangerZone: [10, 90],        // 🧱 GRAN MURO: alineado con forbiddenHueRanges [10, 90]
     minSaturation: 90,          // Saturación mínima para neón
     minLightness: 75,           // Luminosidad mínima para evitar barro
     fallbackToWhite: true,      // Si no puede ser neón → blanco hielo
@@ -541,10 +543,11 @@ export const RAVE_CONSTITUTION: GenerationOptions = {
   // 🌬️ GRAVITATIONAL BALANCE — heredado de Techno
   thermalGravityStrength: 0.22,
 
-  // 🏛️ CONSTITUCIÓN: forbiddenHueRanges: [[20, 60]]
-  // Prohibir el núcleo naranja/amarillo cálido. El rave es frío + magenta +
-  // verde láser. La gravedad térmica empuja cualquier fuga hacia el frío.
-  forbiddenHueRanges: [[20, 60]],
+  // 🏛️ CONSTITUCIÓN → 🧱 GRAN MURO ANTIMOSTAZA: forbiddenHueRanges: [[10, 90]]
+  // Ampliado desde [20, 60] para cerrar el hueco [60, 100] que quedó expuesto al
+  // liberar los armónicos del slot. El 67° (mostaza) ya no tiene brecha: el muro
+  // erradica naranja, ámbar, ocre, mostaza y amarillo verdoso del main stage.
+  forbiddenHueRanges: [[10, 90]],
 
   // 🏛️ CONSTITUCIÓN: allowedHueRanges: [[260, 340], [100, 160]]
   // Dos arcos separados: Azul/Magenta frío + Verde Láser/Cyan.
@@ -572,7 +575,7 @@ export const RAVE_CONSTITUTION: GenerationOptions = {
   // 🔓 Neon Protocol — heredado de Techno
   neonProtocol: {
     enabled: true,
-    dangerZone: [20, 60],        // Coincide con forbiddenHueRanges
+    dangerZone: [10, 90],        // 🧱 GRAN MURO: alineado con forbiddenHueRanges [10, 90]
     minSaturation: 95,           // Saturación extrema
     minLightness: 75,
     fallbackToWhite: true,

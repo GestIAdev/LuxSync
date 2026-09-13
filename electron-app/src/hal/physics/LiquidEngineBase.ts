@@ -33,7 +33,7 @@ import type { LiquidStereoInput, LiquidStereoResult } from './LiquidStereoPhysic
 // runtime) + runtime import de VIBE_TRAITS para el default del constructor.
 // El Canon es módulo hoja (cero imports), así que no hay riesgo de ciclo.
 import type { VibeTraits } from '../../core/vibe/VibeCanon'
-import { VIBE_TRAITS, VIBE_FALLBACK_ID } from '../../core/vibe/VibeCanon'
+import { VIBE_TRAITS, VIBE_FALLBACK_ID, VIBE_IDS } from '../../core/vibe/VibeCanon'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROCESSED FRAME — Lo que la base entrega a routeZones()
@@ -535,6 +535,11 @@ export abstract class LiquidEngineBase {
     // Fusión condicional: si layout === '4.1' y el perfil tiene overrides, aplicar
     const effective = layout === '4.1' ? fuseProfileFor41(profile) : profile
     this.profile = effective
+    // 🎭 VIBE CANON FASE 3b: derivar traits del perfil para backward compat.
+    // SeleneLux siempre pasa traits explícitos via setProfile(profile, traits),
+    // pero tests y constructors directos no. El reverse lookup usa
+    // VIBE_TRAITS.liquidProfileId para encontrar los traits correctos.
+    this.traits = LiquidEngineBase.deriveTraitsFromProfile(effective)
     this.envSubBass = new LiquidEnvelope(effective.envelopeSubBass)
     this.envKick = new LiquidEnvelope(effective.envelopeKick)
     this.envVocal = new LiquidEnvelope(effective.envelopeVocal)
@@ -549,6 +554,31 @@ export abstract class LiquidEngineBase {
   // ─────────────────────────────────────────────────────────────────────
   // 🌊 WAVE 2435: HOT-SWAP PROFILE — Cambio de género sin destruir instancia
   // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * 🎭 VIBE CANON FASE 3b: Deriva traits de un ILiquidProfile.
+   *
+   * Usado por el constructor y setProfile() cuando no se pasan traits
+   * explícitos (tests, constructors directos). SeleneLux SIEMPRE pasa
+   * traits en producción via setProfile(profile, traits).
+   *
+   * Reverse lookup: busca el VibeId cuyo `liquidProfileId` coincide con
+   * el `profile.id` del liquid profile. Si no hay match (perfil custom),
+   * usa el flag `isPureAmbient` del perfil como fallback para chill, o
+   * idle traits en último término.
+   *
+   * O(5) — constante, sólo se llama en setProfile/constructor, NUNCA en hot-path.
+   */
+  private static deriveTraitsFromProfile(profile: ILiquidProfile): VibeTraits {
+    for (const vibeId of VIBE_IDS) {
+      if (VIBE_TRAITS[vibeId].liquidProfileId === profile.id) {
+        return VIBE_TRAITS[vibeId]
+      }
+    }
+    // Fallback: perfil custom con flag isPureAmbient → chill traits
+    if (profile.isPureAmbient) return VIBE_TRAITS['chill-lounge']
+    return VIBE_TRAITS[VIBE_FALLBACK_ID]
+  }
 
   /**
    * Inyecta un nuevo perfil de género al motor en caliente.
@@ -566,6 +596,7 @@ export abstract class LiquidEngineBase {
     const effective = this.layout === '4.1' ? fuseProfileFor41(profile) : profile
     this.profile = effective
     if (traits) this.traits = traits
+    else this.traits = LiquidEngineBase.deriveTraitsFromProfile(effective)
     this.envSubBass = new LiquidEnvelope(effective.envelopeSubBass)
     this.envKick = new LiquidEnvelope(effective.envelopeKick)
     this.envVocal = new LiquidEnvelope(effective.envelopeVocal)
@@ -669,8 +700,10 @@ export abstract class LiquidEngineBase {
     // WAVE 4845 — THE ABSOLUTE ZERO (CHILLOUT ISOLATION)
     // Modo chill/ambient: cortocircuito total del flujo audio-reactivo.
     // Nada de kick, transientes, strobe ni sidechain entra en L0.
+    // 🎭 VIBE CANON FASE 3b: isAbsoluteChillProfile() reemplazado por
+    // this.traits.pureAmbient. Paridad: chill-lounge→true, resto→false.
     // ═══════════════════════════════════════════════════════════════════
-    if (this.isAbsoluteChillProfile()) {
+    if (this.traits.pureAmbient) {
       this.clearAudioTransients()
       const glacierMorph = this.applyGlacierPalette(morphFactor)
       return this.renderPureGlacierPayload(glacierMorph, now)
@@ -1982,14 +2015,17 @@ export abstract class LiquidEngineBase {
 
     // WAVE 4812 M3: BACK L VOCAL GATE — vocalPenalty reubicado desde transient shaper legacy.
     // OPERACIÓN: Bypass para techno — no hay vocales dominantes, los sintes activan falsamente este mute.
-    const isTechnoProfile = this.profile.id === 'techno-industrial'
-    const vocalPenalty = isTechnoProfile ? 0 : Math.min(0.75, this._vocalSustainEMA * Math.max(0, 1.0 - midDelta / Math.max(0.001, this._vocalSustainEMA)))
+    // 🎭 VIBE CANON FASE 3b: isTechnoProfile reemplazado por this.traits.bypassVocalPenalty.
+    // Paridad verificada: techno-club→true (era: id==='techno-industrial'), resto→false.
+    const vocalPenalty = this.traits.bypassVocalPenalty ? 0 : Math.min(0.75, this._vocalSustainEMA * Math.max(0, 1.0 - midDelta / Math.max(0.001, this._vocalSustainEMA)))
     // --- BACK L (El Coro): WAVE 2417 RESURRECTION → WAVE 2430 PARAMETRIZADO ---
     // WAVE 4812 M3: BACK L VOCAL GATE — vocalPenalty suprime el componente mid
     // cuando hay vocal sostenida. El lowMid se conserva (instrumentos de armonia,
     // sintetizadores de cuerpo) pero el mid puro se atenúa junto con las vocales.
     // DMZ ACÚSTICA: sustracción espectral del bombo en medios antes de envHighMid
-    const dmzFactor = isTechnoProfile ? 0.55 : 0.30 // WAVE 6065: DMZ adaptativa — techno bombo seco (0.55), latino bombo con cuerpo (0.30)
+    // 🎭 VIBE CANON FASE 3b: dmzFactor reemplazado por this.traits.dmzFactor.
+    // Paridad: techno-club→0.55, resto→0.30.
+    const dmzFactor = this.traits.dmzFactor // WAVE 6065: DMZ adaptativa — techno bombo seco (0.55), latino bombo con cuerpo (0.30)
     const cleanMidL = Math.max(0, bands.mid - (bands.bass * dmzFactor))
     const midSynthInput = Math.max(0,
       bands.lowMid * p.backLLowMidWeight + cleanMidL * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
@@ -2025,7 +2061,9 @@ export abstract class LiquidEngineBase {
       // hhImpulse punches isolated hi-hat transients on top.
       hhBlendInput = Math.max(midSynthInput, this._hhImpulse * (p.hhBlendGain ?? 0.6))
     }
-    const backLeftGain = isTechnoProfile ? 1.45 : 1.75 // WAVE 6065: gain adaptativo — latino necesita más empuje para llegar a 1.0
+    // 🎭 VIBE CANON FASE 3b: backLeftGain reemplazado por this.traits.backLeftGain.
+    // Paridad: techno-club→1.45, resto→1.75.
+    const backLeftGain = this.traits.backLeftGain // WAVE 6065: gain adaptativo — latino necesita más empuje para llegar a 1.0
     let backLeft = Math.min(1.0, this.envHighMid.process(hhBlendInput, morphFactor, now, isBreakdown) * backLeftGain) // OPERACIÓN: Gain para cruzar el umbral hacia 1.0 en pico
 
     // moverLeft y moverRight calculados por envelopes cross-filter arriba
@@ -2281,11 +2319,10 @@ export abstract class LiquidEngineBase {
     return ambResult
   }
 
-  private isAbsoluteChillProfile(): boolean {
-    if (this.profile.isPureAmbient) return true
-    const id = this.profile.id.toLowerCase()
-    return id.includes('chill') || id.includes('ambient')
-  }
+  // 🎭 VIBE CANON FASE 3b: isAbsoluteChillProfile() eliminado.
+  // Reemplazado por this.traits.pureAmbient en el call site (línea ~673).
+  // El método contenía id.includes('chill')||id.includes('ambient') —
+  // exactamente el tipo de condicional por nombre que esta fase erradica.
 
   private clearAudioTransients(): void {
     this._kickVetoFrames = 0

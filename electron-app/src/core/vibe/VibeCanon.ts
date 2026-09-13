@@ -529,3 +529,26 @@ export const VIBE_TRAITS: Record<VibeId, VibeTraits> = {
 export function getVibeTraits(key: AnyVibeKey): VibeTraits {
   return (VIBE_TRAITS as Record<string, VibeTraits>)[key] ?? VIBE_TRAITS[VIBE_FALLBACK_ID]
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHYSICS MODE — Canal de capacidad entre SeleneLux y TitanEngine (§4.5)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Modo de física aplicado por SeleneLux en este frame.
+ *
+ * Reemplaza al canal por string `physicsApplied: string` que enumeraba
+ * géneros ('techno', 'latino', 'rock', 'chill', 'liquid-stereo', 'none').
+ * TitanEngine tenía que listar los 5 géneros para saber si había física
+ * activa — lo que hacía imposible añadir `rave` sin tocar TitanEngine.
+ *
+ * Con `PhysicsMode`, TitanEngine pregunta "¿hay física?" (`!== 'none'`),
+ * no "¿es de género X?". Un vibe nuevo (rave) funciona sin tocar TitanEngine.
+ *
+ * Mapeo desde los valores legacy de `physicsApplied`:
+ *   · 'liquid-stereo' → 'liquid-stereo' (path principal, useLiquidStereo=true)
+ *   · 'techno'/'latino'/'rock' → 'legacy-mono' (paths legacy, useLiquidStereo=false)
+ *   · 'chill' → 'chill-glacier' (path legacy chill, raramente activo)
+ *   · 'none' → 'none'
+ */
+export type PhysicsMode = 'liquid-stereo' | 'legacy-mono' | 'chill-glacier' | 'none'

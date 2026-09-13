@@ -85,6 +85,7 @@ const VIBE_CONFIG: Record<ProtocolVibeId, { label: string; color: string }> = {
   'pop-rock': { label: 'Pop Rock', color: '#8b5cf6' },
   'chill-lounge': { label: 'Chill Lounge', color: '#06b6d4' },
   'idle': { label: 'Idle', color: '#64748b' },
+  'rave': { label: 'RaveX', color: '#84cc16' },  // FASE 4: Lime Green
   'custom': { label: 'Custom', color: '#a855f7' },
 }
 

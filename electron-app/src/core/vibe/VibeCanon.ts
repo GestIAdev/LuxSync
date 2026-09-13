@@ -44,7 +44,7 @@ export type VibeId =
   | 'fiesta-latina'  // 🎉 Reggaetón / Salsa / Cumbia / Dembow
   | 'pop-rock'       // 🎸 Rock / Pop / Hip-hop / Metal
   | 'chill-lounge'   // 🌊 Chillout / Ambient / Jazz / Lo-fi
-  // FASE 4 añadirá: | 'rave'  (EDM / Dubstep / Neurofunk)
+  | 'rave'           // 🎆 FASE 4: EDM / Dubstep / Neurofunk / Hardstyle
 
 /**
  * Lista runtime de las vibes canónicas.
@@ -60,6 +60,7 @@ export const VIBE_IDS = [
   'fiesta-latina',
   'pop-rock',
   'chill-lounge',
+  'rave',
 ] as const satisfies readonly VibeId[]
 
 /**
@@ -119,6 +120,7 @@ export const BASE_DNA_IDS = [
   'fiesta-latina',
   'pop-rock',
   'chill-lounge',
+  'rave',
 ] as const satisfies readonly VibeId[]
 
 /**
@@ -219,10 +221,17 @@ export const VIBE_ALIASES: Readonly<Record<string, VibeId>> = {
   'minimal':     'techno-club',
   'industrial':  'techno-club',
   'techno-dark': 'techno-club',
-  'dubstep':     'techno-club',   // FASE 4: migra a 'rave'
-  'neurofunk':   'techno-club',   // FASE 4: migra a 'rave'
   'dark':        'techno-club',
   'cyberpunk':   'techno-club',
+  // ── familia rave (rave) — FASE 4 ─────────────────────────────────────────
+  // D4 (blueprint §5.4): migrar 'dubstep'/'neurofunk' de techno-club a rave.
+  'edm':         'rave',
+  'dubstep':     'rave',
+  'neurofunk':   'rave',
+  'hardstyle':   'rave',
+  'ravex':       'rave',
+  'trance':      'rave',
+  'bigroom':     'rave',
   // ── familia latina (fiesta-latina) ───────────────────────────────────────
   'latin':         'fiesta-latina',
   'latino':        'fiesta-latina',
@@ -512,6 +521,26 @@ export const VIBE_TRAITS: Record<VibeId, VibeTraits> = {
     strobeAllowed: true,
     photonDimmerOverride: true,
     liquidProfileId: 'idle',
+  },
+  'rave': {
+    // 🎆 FASE 4: clonado de techno-club (blueprint §5.6 — partir de techno).
+    // D2 (§5.4): bypassVocalPenalty=false — EDM tiene vocales prominentes,
+    //   respetarlas primero y ajustar en sala si los sintes disparan falsos.
+    // D1 (§5.4): family='rave' — identidad propia (familia ya en VibeFamily).
+    family: 'rave',
+    bypassVocalPenalty: false,    // D2=B: respeta vocales (EDM vocal-heavy)
+    dmzFactor: 0.55,              // heredado de techno — mismo bombo seco
+    backLeftGain: 1.45,           // heredado de techno
+    swapMovers: false,            // heredado de techno — strict-split
+    pureAmbient: false,
+    neutralPayload: false,
+    frontCeiling: 0.80,           // heredado de techno — techo comprimido
+    backGateThreshold: 0.10,     // heredado de techno
+    palettePhysics: 'techno',    // heredado de techno — usa TechnoStereoPhysics
+    usesChillAmbientEngine: false,
+    strobeAllowed: true,          // heredado de techno — strobe-ready
+    photonDimmerOverride: true,  // heredado de techno
+    liquidProfileId: 'rave-highfreq',
   },
 }
 

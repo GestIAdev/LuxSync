@@ -1,0 +1,477 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎆 FASE 4: RAVE HIGHFREQ PROFILE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Clonado 1:1 de techno.ts (blueprint §5.6 — partir de techno, ajustar en sala).
+ * El único cambio en esta fase es el `id` ('rave-highfreq') para que coincida
+ * con `VIBE_TRAITS['rave'].liquidProfileId`. Todos los overrides41, decaimientos
+ * y parámetros se mantienen intactos para la prueba base. La calibración
+ * iterativa (§5.5 paso 4.5) ajustará valores tras prueba en sala.
+ *
+ * Perfil de referencia: EDM / Dubstep / Neurofunk / Hardstyle.
+ * Punto de partida = Techno (sub-bass continuo, kick enmascarado, metronómico).
+ *
+ * @module hal/physics/profiles/rave
+ * @version FASE 4 — VIBE CANON
+ */
+
+import type { ILiquidProfile } from './ILiquidProfile'
+
+export const RAVE_PROFILE: ILiquidProfile = {
+  id: 'rave-highfreq',
+  name: 'Rave Highfreq',
+
+  // ═══════════════════════════════════════════════════════════════
+  // ENVELOPE CONFIGS — Valores exactos de LiquidStereoPhysics pre-2411
+  // ═══════════════════════════════════════════════════════════════
+
+  // Front L — El Océano de Subgraves (WAVE 2437: Monte Carlo co-optimizado con envelopeKick)
+  // gateOn 0.12→0.0656 — responde a subgraves más débiles, groove más lleno.
+  // boost 3.5→2.7 — menos agresivo, equilibrio con fR a maxI=1.0.
+  // maxIntensity 0.70→0.529 — fL cede protagonismo al kick (fR=1.0).
+  // squelchBase 0.04→0.0613 — squelch ligeramente más alto para limpiar el piso.
+  envelopeSubBass: {
+    name: 'Front L (SubBass Groove)',
+    gateOn: 0.08,
+    boost: 2.7054,
+    crushExponent: 1.0,
+    // ⚒️ WAVE 7776: LEFT PUNCH — Front L menos pegajoso, valles oscuros entre kicks.
+    // decayBase 0.30→0.22: half-life ~1.3f→~0.9f, el sub cae al negro entre golpes.
+    // squelchBase 0.0613→0.08: sub sostenido débil no re-dispara, solo picos reales.
+    // Choke suave (startFrames 32 ≈ 730ms): deja respirar al sub un compás antes de
+    // asfixiar colchones de sub-synth sostenidos (EDM held basslines). maxBoost 0.12
+    // atenúa sin cortar — la nota se dima, no se guillotina.
+    decayBase: 0.22,
+    decayRange: 0.166,
+    maxIntensity: 0.5291,
+    squelchBase: 0.08,
+    squelchSlope: 0.5788,
+    ghostCap: 0.00,         // WAVE 7749.57: 0.0357→0.00 — sin ghostcaps en ningún perfil
+    gateMargin: 0.0288,
+    sustainedSquelchStartFrames: 32,
+    sustainedSquelchRisePerFrame: 0.004,
+    sustainedSquelchMaxBoost: 0.12,
+    sustainedFlatVelocityMax: 0.012,
+  },
+
+  // Front R — El Francotirador (WAVE 2437: Monte Carlo 15k iter, fitness=756, 100% kick, 0 FP)
+  // WAVE 2520: ANTI-MICRO-STROBE — decayBase 0.0077→0.08.
+  //   0.0077 mataba la intensidad en 1 frame (0.77% residual) → parpadeo errático
+  //   ante micro-transitorientes. 0.08 da un corte limpio de 2-3 frames (~45-65ms):
+  //   chasquido seco sin melaza, pero el dimmer/LED digiere el pulso en lugar de
+  //   ver un flash de 1 frame + 19 frames de oscuridad.
+  // decayRange 0.10→0.0329 — rango estrecho, comportamiento uniforme.
+  // gateOn 0.15→0.1098 — gate más bajo, captura kicks débiles sin abrir en basura.
+  // maxIntensity 0.85→1.0 — hits al máximo, contraste máximo con el silencio.
+  // squelchSlope 0.10→0.0 — sin squelch dinámico, el gate fijo es suficiente.
+  // boost 3.0→3.3 — leve compensación por gate más bajo.
+  envelopeKick: {
+    name: 'Front R (Kick Sniper)',
+    gateOn: 0.28,
+    boost: 3.3013,
+    crushExponent: 1.0,
+    decayBase: 0.06, // WAVE 7749.57: 0.08→0.06 — más snap, más contraste techno
+    decayRange: 0.0329,
+    maxIntensity: 0.80,   // WAVE 2439.2 Cap de Dimmer — headroom para el slap del Snare
+    squelchBase: 0.0388,
+    squelchSlope: 0.0,
+    ghostCap: 0.00,
+    gateMargin: 0.0213,
+  },
+
+  // Mover R — El Coro / Voces (WAVE 2419 MONTE CARLO RIGHT HEMISPHERE)
+  // WAVE 3491: Bozal de Mover — solo picos afilados de synth/arpegio pasan.
+  // WAVE 2520: DESBOZALADO PARCIAL — crushExponent 3.5→1.8, squelchBase 0.30→0.15.
+  //   El Bozal original guillotinaba arpegios progresivos (Opus / Eric Prydz)
+  //   tratándolos como ruido. Curva más lineal + piso más bajo deja respirar
+  //   las progresiones tonales y sintetizadores envolventes disparando las
+  //   luces con naturalidad, sin perder la limpieza contra colchón de graves.
+  envelopeVocal: {
+    name: 'Mover R (Vocal & Synth Wash)',
+    gateOn: 0.25,          // WAVE 3491: 0.01→0.25 — mínimo obligatorio Bozal
+    boost: 1.5,
+    crushExponent: 1.8,    // WAVE 2520: 3.5→1.8 — curva menos convexa, arpegios respiran
+    decayBase: 0.70,
+    decayRange: 0.05,
+    maxIntensity: 0.80,
+    squelchBase: 0.15,     // WAVE 2520: 0.30→0.15 — piso relajado, progresiones pasan
+    squelchSlope: 0.10,
+    ghostCap: 0.00,
+    gateMargin: 0.01,
+  },
+
+  // Back R — El Látigo / Percussion Slap (WAVE 2427 TRANSIENT SHAPER)
+  // rawRight = trebleDelta×4: el ruido de fondo tiene delta≈0 (señal continua), los transitories arrancan.
+  // gateOn 0.15: cualquier salto brusco del treble lo activa
+  // gateOff 0.02: apagado inmediato tras el impacto
+  // WAVE 3311: gateOn 0.05→0.18 + boost 3.0→2.5 + percGate 0.01→0.06
+  //   Demasiado back-par con cualquier fuente (voces, fondo). Gate insuficiente.
+  //   Subimos gate+percGate para requerir un hit de percusión real.
+  envelopeSnare: {
+    name: 'Back R (Percussion Slap)',
+    gateOn: 0.28,   // BACK-PAR TUNE: 0.35→0.28 — re-disparar más fácil entre hits del redoble
+    boost: 2.5,     // WAVE 8009.3: 1.0→2.5 — igualar ganancia efectiva del Latino para cruce visual
+    crushExponent: 1.0,
+    decayBase: 0.32, // WAVE 7749.21: 0.40→0.32 — snap industrial más brutal. Cae a negro en ~90ms. Latino respira con 0.60.
+    decayRange: 0.40,      // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
+    maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
+    squelchBase: 0.20,     // WAVE 6066: 0.52→0.20 — limpieza se hará matemáticamente pre-envelope
+    squelchSlope: 0.10,
+    ghostCap: 0.00,
+    gateMargin: 0.01,
+  },
+
+  // Back L — Mid Synths / Atmósfera (WAVE 2417: MONTE CARLO RESURRECTION)
+  // gateOn 0.10→0.02 (señal ~0.14 pasa), boost 4.5→5.0, decay 0.60→0.75 (colchón)
+  // crush 1.2→1.0 (lineal), decayRange 0.15→0.03 (morph sutil)
+  // WAVE 2436.2: decay 0.75→0.60 — teclados/pads techno: cortantes, no colchón.
+  //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
+  envelopeHighMid: {
+    name: 'Back L (Mid Synths)',
+    gateOn: 0.15,        // OPERACIÓN: Luz Líquida — baja la compuerta para capturar colas de voces
+    boost: 1.5,
+    crushExponent: 1.0,  // OPERACIÓN: Linealidad pura para suavizar el pulso atmosférico
+    // ⚒️ WAVE 7777: RÍOS DE LUZ — Back L de "punch cortado" a stream continuo.
+    // El WAVE 7776 dio punch pero el synth se veía quebrado en cientos de pedacitos.
+    // Ahora subimos la viscosidad matemática sin romper la dinámica:
+    // decayBase 0.38→0.75: la luz decae mucho más lento, fundiendo micro-picos
+    //   en un río de luz. Half-life ~0.9f→~2.5f.
+    // decayRange 0.25→0.10: los transitorios rápidos no fuerzan apagado brusco,
+    //   el morph modula menos la caída → comportamiento uniforme.
+    // Choke relajado: risePerFrame 0.005→0.01 (la asfixia tarda más en llegar),
+    //   maxBoost 0.15→0.50 (nunca apaga del todo, deja brillar a la mitad).
+    //   Con startFrames 28 + rise 0.01: tras ~640ms sostenido, squelch sube
+    //   0.01/frame hasta cap 0.50 — la nota se dima a la mitad, no se guillotina.
+    // adaptiveNoiseAlpha 0.015: avgSignal alcanza la nota held → dynamicGate
+    //   sube → gate cierra sin corte brusco. Se mantiene del WAVE 7776.
+    decayBase: 0.75,
+    decayRange: 0.10,
+    maxIntensity: 0.85,
+    squelchBase: 0.28,   // OPERACIÓN: Mantiene a raya el barro de los graves
+    squelchSlope: 0.10,
+    ghostCap: 0.00,        // WAVE 3492: 0.05->0.00 — negro entre golpes
+    gateMargin: 0.005,
+    attackSlopeMin: 0.012,
+    adaptiveNoiseAlpha: 0.015,         // WAVE 7776: catch-up lento sobre notas sostenidas
+    sustainedSquelchStartFrames: 28,
+    sustainedSquelchRisePerFrame: 0.01,
+    sustainedSquelchMaxBoost: 0.50,
+    sustainedFlatVelocityMax: 0.012,
+  },
+
+  // Mover L — Melodías tonales (WAVE 2417: MONTE CARLO RESURRECTION)
+  // WAVE 3491: Bozal de Mover — arpegios agudos pasan, colchón de graves NO.
+  // WAVE 2520: DESBOZALADO PARCIAL — crushExponent 3.5→1.8, squelchBase 0.30→0.15.
+  //   Mismo razonamiento que envelopeVocal: las melodías progresivas de synth
+  //   (Opus, Eric Prydz) eran guillotinadas por el Bozal original. Curva más
+  //   lineal + piso más bajo deja disparar los arpegios suaves con naturalidad.
+  envelopeTreble: {
+    name: 'Mover L (Tonal Melodies)',
+    gateOn: 0.25,          // WAVE 3491: 0.02→0.25 — mínimo obligatorio Bozal
+    boost: 4.0,
+    crushExponent: 1.8,    // WAVE 2520: 3.5→1.8 — arpegios suaves respiran
+    decayBase: 0.78,
+    decayRange: 0.03,
+    maxIntensity: 1.0,
+    squelchBase: 0.15,     // WAVE 2520: 0.30→0.15 — piso relajado
+    squelchSlope: 0.10,
+    ghostCap: 0.00,        // WAVE 3491: 0.04→0.00 — negro absoluto entre arpegios
+    gateMargin: 0.005,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // BACK R: SCHWARZENEGGER (WAVE 2408M)
+  // ═══════════════════════════════════════════════════════════════
+
+  percMidSubtract: 1.0,   // WAVE 2424: Escudo Absoluto — relación 1:1, ningún sinte puede engañar al Látigo
+  percGate: 0.04,          // BACK-PAR TUNE: 0.06→0.04 — dejar pasar hits suaves del redoble de caja
+  percBoost: 5.0,          // WAVE 2419: 8.0→5.0
+  percExponent: 0.5,       // WAVE 2419: 1.2→0.5 (raíz cuadrada, suaviza transitorio)
+
+  // ═══════════════════════════════════════════════════════════════
+  // MOVER R (VOCES): BASS SUBTRACTOR (WAVE 2408g)
+  // ═══════════════════════════════════════════════════════════════
+
+  bassSubtractBase: 0.65,
+  bassSubtractRange: 0.45,
+
+  // ═══════════════════════════════════════════════════════════════
+  // BACK L (MID SYNTHS): Ghost Mids Reform (WAVE 3464)
+  // Objetivo: alimentar Back L con cuerpo melódico (MID) y purgar fuga de bombo.
+  // Señal efectiva buscada: mid*1.0 - bass*0.7 (sustracción híbrida purificada).
+  // Esto deja pasar la base armónica de synths sin comer el pico percutivo del kick.
+  // ═══════════════════════════════════════════════════════════════
+
+  backLLowMidWeight: 0.0,   // WAVE 2430: original no usaba lowMid
+  backLMidWeight: 0.85,     // OPERACIÓN: Devolvemos el cuerpo del sinte — potencia sin asfixia
+  backLTrebleSub: -0.3,     // WAVE 8009.3: 0.0→-0.3 — inyectar 30% treble para hi-hats sutiles del minimal
+  backLBassSub: 0.0,        // OPERACIÓN: Aislamiento estricto del bajo (0.0) para evitar fuga de bombo
+
+  // ═══════════════════════════════════════════════════════════════
+  // MOVER L (MELODÍAS): Cross-filter + tonal gate (WAVE 2411 → 2430)
+  // Original hardcodeado: mid×0.4 + highMid×1.0 - bass×0.1
+  // Nuevo: highMid×moverLHighMidWeight + treble×moverLTrebleWeight - bass×0.1
+  // Para Techno: highMid×1.0 + treble×0.0 (mid×0.4 se mueve a highMid)
+  // ═══════════════════════════════════════════════════════════════
+
+  moverLHighMidWeight: 1.0,   // WAVE 2430: original = highMid×1.0
+  moverLTrebleWeight: 0.0,    // WAVE 2430: original no usaba treble directo aquí
+  moverLMidWeight: 0.4,       // WAVE 2430: original = mid×0.4
+  moverLTonalThreshold: 0.40,
+
+  // ═══════════════════════════════════════════════════════════════
+  // MOVER R (VOCES): resta de treble para sibilantes
+  // ═══════════════════════════════════════════════════════════════
+
+  moverRTrebleSub: 0.3,
+
+  // ═══════════════════════════════════════════════════════════════
+  // SIDECHAIN GUILLOTINE
+  // ═══════════════════════════════════════════════════════════════
+
+  sidechainThreshold: 0.1,
+  sidechainDepth: 0.00,  // WAVE 3457: sidechain exterminado globalmente
+  snareSidechainDepth: 0.15,  // WAVE 2420: 0.80→0.15 (liberamos Mover R — la guillotina era fratricida)
+
+  // WAVE 2438 — valores legacy, ya no usados en strict-split pero se conservan
+  // para compatibilidad con el path 'default' si se cambia la estrategia.
+  frontKickSidechainThreshold: 0.2,
+  auraCapBase: 0.25,
+  auraCapExponent: 2,
+
+  // WAVE 2439 — METRÓNOMO/LIENZO: enrutamiento estricto para Techno 4.1.
+  // Front=kick, Back=snare, Movers=todo el muro atmosférico.
+  layout41Strategy: 'strict-split' as const,
+
+  // ═══════════════════════════════════════════════════════════════
+  // STROBE (God Mode exacto)
+  // ═══════════════════════════════════════════════════════════════
+
+  strobeThreshold: 0.80,
+  strobeDuration: 30,
+  strobeNoiseDiscount: 0.80,
+
+  // ═══════════════════════════════════════════════════════════════
+  // MODES
+  // ═══════════════════════════════════════════════════════════════
+
+  harshnessAcidThreshold: 0.60,
+  flatnessNoiseThreshold: 0.70,
+  apocalypseHarshness: 0.55,
+  apocalypseFlatness: 0.55,
+
+  // ═══════════════════════════════════════════════════════════════
+  // KICK DETECTION
+  // ═══════════════════════════════════════════════════════════════
+
+  // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
+  // Techno industrial: energía media-alta, rango estándar
+  morphFloor: 0.30,      // avgMid mínimo para arrancar el morph (30%)
+  morphCeiling: 0.70,    // avgMid máximo = morph pleno (70%)
+
+  kickEdgeMinInterval: 180,  // WAVE 8005.2: 80→180 — subbass rodante dispara armónicos cada ~120ms, 180ms los filtra
+  kickVetoFrames: 0,    // WAVE 2419: 5→0 (veto ON 48% del tiempo, asfixiaba Mover R)
+
+  // ⚒️ WAVE 7749.64: PATH 1 BASSΔ FLOOR — anti-hi-hat surfer.
+  // In techno, the bassline is continuous — every hi-hat has bassE > 0.40.
+  // Path 1's bassE > 0.40 clause (designed for Latin "rhythmic context")
+  // fires on every hat. This floor requires bassDelta > 0.005 to prove the
+  // bass is RISING (real percussive hit), not just sustained.
+  // Data (frontdisaster.md): techno hi-hats have bassDelta ≤ +0.002.
+  // Real snares in techno have bassDelta > +0.009. Clean gap at 0.005.
+  // Latino profile omits this field (default 0) — Latin off-beat snares
+  // have bassDelta -0.02 to +0.01 and need the legacy behavior.
+  snarePath1BassDeltaFloor: 0.005,
+
+  // ⚒️ WAVE 7749.65: EMA MOMENTUM SNARE DETECTOR — replaces the 5-path
+  // onset cascade with a dual-EMA crossover on snare_energy.
+  // Forensic analysis of imposiblesnare.md showed 80% of false onsets
+  // fired while snare_energy was DECAYING (RawΔ oscillates on the tail).
+  // The momentum crossover only fires when band energy is genuinely
+  // RISING, eliminating re-triggers by construction.
+  //
+  // WAVE 7749.66: VITAMIN BOOST — αF=1.0 (emaFast = SnareE, zero lag),
+  // θ=0.01 (ultra-sensitive). momentum = SnareE - emaSlow, so onset fires
+  // when SnareE rises just 0.01 above the slow baseline (~450ms average).
+  // This catches off-beat 16th snares that the conservative θ=0.04 missed.
+  // Verified: newsnare.md 11→21 onsets (off-beat 16ths recovered),
+  // imposiblesnare.md stays at 19 (no jitter regression).
+  // Hi-hats (SnareE = 0) never move either EMA → excluded for free.
+  // ⚒️ WAVE 7749.75: θ reducida de 0.04→0.01 porque el drive ahora es
+  // Res×Flux (escala ~4x menor que Res×Flat). El MACD necesita ver los
+  // cruces pequeños que antes quedaban bajo el radar.
+  snareMomentumThreshold: 0.01,
+  snareMomentumAlphaFast: 1.00,
+  snareMomentumAlphaSlow: 0.05,
+  // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > 0.15),
+  // pull emaSlow 70% toward emaFast. Allows re-fire in dense bursts.
+  // snareperfecto.md: 32→40 onsets (83% of legacy 48).
+  // imposiblesnare.md: stays 18 (no jitter). newsnare.md: 21 (vitaminas).
+  snareMomentumResetThreshold: 0.15,
+  snareMomentumResetRatio: 0.70,
+  // ⚒️ WAVE 7749.75: NOISE FLOOR sobre snareDrive (= residuo × spectralFlux),
+  // no sobre la energía cruda. La escala cambió: Res×Flux ≈ 0.005-0.15 en
+  // cajas reales (Flux mediano onset=0.112, non=0.043). Floor en 0.005 deja
+  // pasar los snares tímidos pero bloquea el ruido de fondo de hi-hats
+  // sostenidos (Flux bajo → Drive bajo). PENDIENTE DE CALIBRAR con telemetría.
+  // ⚒️ WAVE 7749.88: Floor raised 0.005 -> 0.08. calib7 showed 6.0 onsets/s
+  // in Brejcha (31% weak Drive<0.05), 4.5/s in Tiesto (26% weak). The weak
+  // onsets are imperceptible hi-hats/cymbals. At 0.08: Brejcha 6->3/s,
+  // Techhouse 4.7->3.7/s, Tiesto 4.5->2.8/s. Real snares have Drive 0.15+
+  // (SnareE 0.7+), well above this floor.
+  // ⚒️ WAVE 7749.88b: Floor 0.07→0.020→0.045. Forensic audit (2538 frames, 4 tracks)
+  // showed 294 misses (60.7%) killed by Drive < fFloor=0.070. Drive is a product
+  // of 4 factors [0,1]: Res×cFx×bFct×sEF. Typical snare: 0.3×0.2×1.0×1.0=0.06.
+  // Synthetic snare: 0.4×0.2×0.3×0.8=0.019. Floor 0.070 was mathematically
+  // unreachable. 0.020 let typical snares pass but also let weak synth bleeds
+  // through. Now that bodyFactor is floored at 0.300, legitimate snares generate
+  // Drive > 0.045 (Res 0.3 × cFx 0.2 × bFct 0.3 × sEF 0.8 = 0.014 minimum,
+  // but real snares with bFct 0.5-2.0 produce 0.05-0.35). 0.045 blocks weak
+  // synth melody bleed (Drive < 0.02 with WNS=0, Flux<0.05) while letting
+  // real snares through.
+  // ⚒️ WAVE 7775: MONTE CARLO — 0.045→0.040. Swept over 12704 frames the floor
+  // is a clean recall/precision dial and a WEAK one (fitness spread 0.0087):
+  //   0.020 -> recall 0.829, 101 evidence-free onsets
+  //   0.045 -> recall 0.802,  90 evidence-free onsets
+  //   0.070 -> recall 0.757,  83 evidence-free onsets
+  // 0.040 buys back the dry impacts "The Business" was dropping (track recall
+  // 0.809→0.944) for 3 extra weak onsets corpus-wide. It is NOT the knob that
+  // controls synth bleed — that myth is refuted by the path attribution below.
+  snareMomentumFloor: 0.040,
+  // ⚒️ WAVE 7749.89: DYNAMIC FLOOR MIN — the floor breathes with fBL.
+  // calib8b showed the static 0.08 floor killed genuine snares in dense
+  // buildups: Opus Prytdz lost ALL snares (Drive 0.01-0.03, fBL 0.06-0.085),
+  // Techhouse lost the roll during the climb (Drive 0.007-0.015, fBL 0.045-
+  // 0.064). The hi-hats we wanted to suppress live at fBL 0.026-0.046 —
+  // clean gap at 0.04. finalFloor = max(0.005, 0.08 - max(0,fBL-0.04)*4.0):
+  //   fBL=0.03 (Brejcha hats): floor=0.08 (strict, hats blocked)
+  //   fBL=0.05 (Techhouse):    floor=0.04 (relaxed, roll recovered)
+  //   fBL=0.085 (Opus peak):   floor=0.005 (max relaxation, snares recovered)
+  // ⚒️ WAVE 7749.105: REVERT 0.020→0.005 — the 0.020 floorMin killed Opus
+  // build snares (Drive 0.005-0.016 in dense AGC-compressed rolls). The UnG
+  // ghost gate (WAVE 7749.99 Fix 1) already filters synth FPs by soft-gating
+  // ghost contribution when UnG < 0.50. The floorMin raise was redundant
+  // protection that cost the Opus roll. Back to 0.005.
+  // ⚒️ WAVE 7749.105b: FloorMin 0.005→0.002. Forensic audit showed tiestomissed
+  // with fFloor relaxed to 0.008 still killed 99 snares (56.2%). In dense EDM
+  // builds with AGC compression, Drive can drop to 0.001-0.005. 0.002 lets the
+  // dense-path rescue fire when gH<0.05 && fBL>0.09, while the UnG ghost gate
+  // (WAVE 7749.99) still filters hi-hat FPs.
+  snareMomentumFloorMin: 0.002,
+
+  // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
+  // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
+  ambientAttackMs: 30,
+  ambientReleaseMs: 120,
+
+  // ⚒️ WAVE 7750: AMBIENT DESBLOQUEO DE LUMINOSIDAD — el ambientCrushExponent
+  // default de 2.0 asfixiaba los valores medios del washer Tungsten (RGBW LED,
+  // sin inercia térmica). Bajamos a 1.2 para transferencia casi lineal:
+  // subBass=0.30 → 0.30^1.2=0.24 (antes 0.30^2.0=0.09). Más luz en medios.
+  // El fade de apagado (<0.001→0) garantiza caída a 0.000 absoluto sin
+  // brillos residuales cuando el DJ corta la mezcla.
+  ambientCrushExponent: 1.2,
+
+  // ⚒️ WAVE 7750: AIR SPECTRAL — haces centrales de puro ruido blanco.
+  // treble×1.0 + highMid×0.0 = cuchillos espectrales sin contaminación del
+  // snare body (2-6kHz). Los LEDs RGBW responden instantáneo al contraste.
+  airTrebleWeight: 1.0,
+  airHighMidWeight: 0.0,
+
+  // ⚒️ WAVE 7750: FLOOR TERREMOTO HÍBRIDO — inyecta subgrave continuo en el
+  // input del envFloor. bassDelta*2.0 da el pulso transitorio; subBass*0.5
+  // da el baño de luz de suelo sostenido. La compuerta del envelope (gate
+  // 0.08 + decay 0.12) sigue cortando a negro total entre bombos.
+  floorSubWeight: 0.5,
+
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 2520: OVERRIDES 4.1 — CALIBRACIÓN EXTREMA ANTI-MELAZA
+  //
+  // PROBLEMA 1: Aislamiento Back PAR.
+  //   backPar = max(backLeft, backRight) = max(envHighMid, envSnare).
+  //   El colchón de sintes (envHighMid) es CONTINUO y satura ~0.85 constante;
+  //   el Látigo (envSnare) es impulsivo. max() deja ganar al colchón casi
+  //   siempre → el snare desaparece visualmente tras el muro de mid synths.
+  //
+  //   CONTRAMEDIDA: capar envHighMid.maxIntensity a 0.60 (por debajo del
+  //   pico del Látigo) + acelerar su decayBase (0.62→0.45) para que el
+  //   colchón libere entre golpes y deje campo al snare en el max().
+  //   Además bajamos envSnare.gateOn (0.28→0.22) para capturar hits más
+  //   sutiles del redoble que el compactado 4.1 tiende a tragarse.
+  //
+  // PROBLEMA 2: Pulso del Metrónomo en 4.1.
+  //   El Front PAR en strict-split = envKick solo. El decayBase base ya
+  //   subió a 0.08 (anti-micro-strobe). En 4.1 apretamos decayRange
+  //   (0.0329→0.02) para comportamiento aún más uniforme entre frames,
+  //   ya que el smoothing 0.88 del motor ha sido neutralizado para
+  //   strict-split (ver LiquidEngine41.routeZones) — el envelope crudo
+  //   es ahora el único responsable del pulso.
+  //
+  // PROBLEMA 3: Movers en compactación.
+  //   Los movers NO se compactan en 4.1 (pasan directos), así que heredan
+  //   el desbozalado del base (crushExponent 1.8, squelchBase 0.15). No
+  //   requieren override adicional aquí.
+  // ═══════════════════════════════════════════════════════════════
+  overrides41: {
+    // ── BACK PAR: el Látigo debe ganarle al Coro en max() ──────────
+    envelopeHighMid: {
+      maxIntensity: 0.60,   // WAVE 2520: 0.85→0.60 — cap por debajo del pico del snare
+      decayBase: 0.45,      // WAVE 2520: 0.62→0.45 — colchón libera entre golpes
+    },
+    envelopeSnare: {
+      gateOn: 0.22,         // WAVE 2520: 0.28→0.22 — más sensible en compactación
+    },
+
+    // ── FRONT PAR: Metrónomo uniforme sin inercia del motor ────────
+    envelopeKick: {
+      decayRange: 0.02,     // WAVE 2520: 0.0329→0.02 — uniforme (smoothing neutralizado)
+    },
+
+    layout41Strategy: 'strict-split' as const,
+
+    // WAVE 7749.4: Tame the Sustain Choke for dense techno.
+    // The choke was murdering the channel during continuous bass walls,
+    // dropping hybridSnare to 0.000 for seconds at a time (blackouts).
+    // snareChokeFrames 4→15: wait ~300ms before choking, preventing blackouts
+    // during fast 4/4 beats. snareChokeRate 0.70→0.85: softer exponential decay.
+    // WAVE 7749.8: Veto floors raised 0.02→0.04. Now that we use RAW crackDelta
+    // (not max(crackDelta, bodyDelta)), the raw delta is clean. The 0.02 floors
+    // were letting hi-hat bleed and synth tails through. 0.04 requires real
+    // broadband noise content, vetoing weak tonal bleed.
+    // ⚒️ WAVE 7749.102c: Floors 0.04→0.10. Tiesto/KarolG log showed synth melody
+    // bleed generating Drive 0.001-0.026 with WNS=0.000 and Flux<0.05 — tonal
+    // signals with no noise dispersion. Raising both WnsFloor and FlatnessFloor
+    // to 0.10 ensures that only signals with real broadband noise content
+    // (snares, claps) survive the veto. Synth melodies (voces, leads) have
+    // flatness < 0.10 and WNS < 0.10 → vetoed before they can generate FPs.
+    snareVetoFlatnessFloor: 0.10,
+    snareVetoFlatnessKnee: 0.10,
+    snareVetoWnsFloor: 0.10,
+    // ⚒️ WAVE 7749.102b: Knee 0.20→0.25. Forensic audit showed kick+snare
+    // collisions (Beat 1 EDM) dilute WNS because the kick's broadband content
+    // is sub-bass, not HF noise. The veto averaged 0.3-0.8 in kick frames
+    // (passes), but marginal cases with WNS~0.20 were killed. 0.25 gives more
+    // margin for kick collisions while still vetoing tonal synth sweeps.
+    snareVetoWnsKnee: 0.25,
+    // ⚒️ WAVE 7775: MONTE CARLO — floor 0.05→0.02, knee 0.25→0.15.
+    // 12704 frames / 12 logs / 375 independently-labelled impacts. The flux
+    // axis is the single most identifiable coefficient in the whole veto
+    // (fitness spread 0.087 vs 0.003 for the WNS axis) because in dense club
+    // material flatness and WNS are crushed by sub-bass, leaving spectralFlux
+    // as the only surviving discriminator — and the 0.05/0.25 ramp was
+    // dimming REAL snares to 96% while leaving garbage at 80%. At 0.02/0.15
+    // genuine impacts deliver 99.8% brightness. Verified on both halves of a
+    // split-half protocol (+0.0166 / +0.0202).
+    snareVetoFluxFloor: 0.02,
+    snareVetoFluxKnee: 0.15,
+    snareChokeFrames: 15,
+    snareChokeRate: 0.85,
+    // ⚒️ WAVE 7749.60: Techno decay 0.50→0.65. The 0.50 decay produced a
+    // 3-frame visual stutter (1.0→0.50→0.25→0.125) perceived as "3 broken
+    // hits per beat". 0.65 smooths the tail: 1.0→0.65→0.42→0.27→0.18 —
+    // a single cohesive strike with a natural fade. Latino stays at 0.25
+    // (dembow density requires fast re-trigger).
+    snareImpulseDecay: 0.65,
+  },
+}

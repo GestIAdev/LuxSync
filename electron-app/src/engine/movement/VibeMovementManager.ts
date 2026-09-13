@@ -202,6 +202,7 @@ export const TILT_OFFSET_BY_VIBE: Readonly<Record<VibeId, number>> = {
   'pop-rock': -0.30,
   'chill-lounge': -0.25,
   'idle': -0.10,
+  'rave': -0.35, // FASE 4: heredado de techno — geometría industrial
 } as const
 
 // VIBE CONFIGURATIONS
@@ -263,6 +264,20 @@ export const VIBE_CONFIG: Record<VibeId, VibeConfig> = {
     baseFrequency: 0.04,
     patterns: ['breath'],
     homeOnSilence: true,
+  },
+
+  // RAVE: Geometría dura + drops brutales — CATEDRAL de festival
+  //  FASE 4 — VIBE CANON. Clonado de techno-club con ajustes EDM:
+  //   panScale 0.92→0.95 (full stage, barridos láser de festival)
+  //   tiltScale 0.60→0.65 (tilt más abierto para drops verticales)
+  //   baseFrequency 0.15→0.18 (más rápido — EDM 128-150 BPM)
+  //   patterns: heredados de techno + laser_grid ya presente
+  'rave': {
+    panScale: 0.95,
+    tiltScale: 0.65,
+    baseFrequency: 0.18,
+    patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin', 'laser_grid', 'industrial_pendulum'],
+    homeOnSilence: false,
   },
 }
 
@@ -389,6 +404,7 @@ export const STEREO_CONFIG: Record<VibeId, StereoConfig> = {
   'pop-rock':       { offset: Math.PI / 3, type: 'snake' },    // 60° wall ondulante
   'chill-lounge':   { offset: Math.PI / 2, type: 'snake' },    // 90° ola de mar lenta
   'idle':           { offset: 0,           type: 'sync' },     // Sin movimiento
+  'rave':           { offset: Math.PI,     type: 'mirror' },   // FASE 4: heredado techno — L/R espejos
 }
 
 // THE GOLDEN DOZEN - Implementaciones Matematicas Puras

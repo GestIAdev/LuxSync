@@ -18,6 +18,7 @@ export { VIBE_TECHNO_CLUB } from './TechnoClubProfile'
 export { VIBE_CHILL_LOUNGE } from './ChillLoungeProfile'
 export { VIBE_POP_ROCK } from './PopRockProfile'
 export { VIBE_IDLE } from './IdleProfile'
+export { VIBE_RAVE } from './RaveProfile'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPORT ALL PROFILES
@@ -28,6 +29,7 @@ import { VIBE_TECHNO_CLUB } from './TechnoClubProfile'
 import { VIBE_CHILL_LOUNGE } from './ChillLoungeProfile'
 import { VIBE_POP_ROCK } from './PopRockProfile'
 import { VIBE_IDLE } from './IdleProfile'
+import { VIBE_RAVE } from './RaveProfile'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VIBE REGISTRY
@@ -42,6 +44,7 @@ export const VIBE_REGISTRY: Record<VibeId, VibeProfile> = {
   'chill-lounge': VIBE_CHILL_LOUNGE,
   'pop-rock': VIBE_POP_ROCK,
   'idle': VIBE_IDLE,
+  'rave': VIBE_RAVE,
 }
 
 /**

@@ -246,6 +246,7 @@ export const VIBE_COLORS: Record<VibeId, string> = {
   'chill-lounge': '#22d3ee',  // 🌊 Cyan - Chill Lounge
   'pop-rock': '#ef4444',      // 🎸 Red - Pop Rock
   'idle': '#6b7280',          // 💤 Gray - Idle
+  'rave': '#84cc16',          // 🎆 Lime Green - RaveX (FASE 4)
 }
 
 /**

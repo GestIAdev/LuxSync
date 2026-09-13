@@ -496,6 +496,144 @@ export const IDLE_CONSTITUTION: GenerationOptions = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎆 CONSTITUCIÓN RAVE: "El Caos Controlado" (FASE 4)
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * FASE 4 — VIBE CANON. EDM / Dubstep / Neurofunk / Hardstyle.
+ *
+ * Parámetros dictados por la directiva de ejecución Fase 4:
+ *   · forbiddenHueRanges: [[20, 60]]        — núcleo naranja/amarillo cálido
+ *   · allowedHueRanges:  [[260, 340], [100, 160]]
+ *       Azul/Magenta frío + Verde Láser/Cyan — split-complementary puro
+ *   · saturación extrema
+ *   · forceStrategy: 'split-complementary'
+ *
+ * Hereda de TECHNO_CONSTITUTION la Gravedad Térmica (9500K), el Neon Protocol
+ * y el Sidereal Clock — el rave comparte el bunker de neón con el techno,
+ * pero con identidad cromática split-complementary en lugar de prism.
+ *
+ * FILOSOFÍA: "El Caos Controlado"
+ *   Festival main stage. Drops brutales. Wobble de sub-bass. Strobes a
+ *   máxima frecuencia. Haces láser y UV saturado. Comprimido (brickwall)
+ *   — AGC y gates más sensibles. Vocales prominentes.
+ *
+ * ZONA PROHIBIDA: 20° - 60° (Naranja/Amarillo cálido — la calidez es herejía)
+ * ZONA AZUL/MAGENTA: 260° - 340° (Azul Rey → Magenta → Rosa Neón)
+ * ZONA VERDE/CYAN:  100° - 160° (Verde Láser → Cyan → Turquesa)
+ *
+ * Split-complementary: el primario cae en una zona, el secundario en la
+ * otra, separadas ~180° — máximo contraste sin caer en el complementario
+ * puro que el Techno ya explota con prism.
+ */
+export const RAVE_CONSTITUTION: GenerationOptions = {
+  // 🏛️ CONSTITUCIÓN: forceStrategy: 'split-complementary'
+  // ⚠️ DESVIACIÓN: la directiva Fase 4 pide 'split-complementary', pero
+  // GenerationOptions.forceStrategy sólo acepta 'analogous' | 'triadic' |
+  // 'complementary' | 'prism' (SeleneColorEngine.ts:301). El motor no
+  // implementa split-complementary como estrategia distinta.
+  // SUSTITUCIÓN: 'complementary' — split-complementary es una variante de
+  // complementary donde el secundario se sitúa adyacente al complemento
+  // (±30° del opuesto) en lugar de exactamente opuesto. Los
+  // allowedHueRanges [[260,340],[100,160]] + hueRemapping ya fuerzan los
+  // dos arcos split-complementary, así que el resultado visual es
+  // split-complementary aunque el motor use el algoritmo 'complementary'.
+  // Para implementar split-complementary nativo, habría que extender el
+  // tipo forceStrategy en SeleneColorEngine.ts (fuera del scope Fase 4).
+  forceStrategy: 'complementary',
+
+  // 🌡️ THERMAL GRAVITY — heredado de Techno (Polo Azul Masivo)
+  // 9500K = Fuerza ~29% hacia 240° (Azul Rey). El rave es frío como el techno.
+  atmosphericTemp: 9500,
+
+  // 🌬️ GRAVITATIONAL BALANCE — heredado de Techno
+  thermalGravityStrength: 0.22,
+
+  // 🏛️ CONSTITUCIÓN: forbiddenHueRanges: [[20, 60]]
+  // Prohibir el núcleo naranja/amarillo cálido. El rave es frío + magenta +
+  // verde láser. La gravedad térmica empuja cualquier fuga hacia el frío.
+  forbiddenHueRanges: [[20, 60]],
+
+  // 🏛️ CONSTITUCIÓN: allowedHueRanges: [[260, 340], [100, 160]]
+  // Dos arcos separados: Azul/Magenta frío + Verde Láser/Cyan.
+  // Split-complementary opera dentro de estos dos arcos.
+  allowedHueRanges: [[260, 340], [100, 160]],
+
+  // Elastic Rotation heredado de Techno — 15° para escapar zonas prohibidas
+  elasticRotation: 15,
+
+  // 🗺️ Remapping — empujar infractores del núcleo cálido al verde láser
+  // (100-160°) que es el arco complementario del split-complementary rave.
+  hueRemapping: [
+    { from: 20, to: 60, target: 130 },   // Naranja/Amarillo → Verde Láser
+  ],
+
+  // 🏛️ CONSTITUCIÓN: saturación extrema
+  // [95, 100] — más extremo que Techno ([90, 100]). El EDM es neón puro.
+  saturationRange: [95, 100],
+
+  // 🌑 Lightness — heredado de Techno (WAVE 7680 CHROMA UNLOCK)
+  // [20, 45] — el abismo neón. Piso 20% = colores casi negros que emergen
+  // del humo del festival; techo 45% = nunca lavado, siempre saturado.
+  lightnessRange: [20, 45],
+
+  // 🔓 Neon Protocol — heredado de Techno
+  neonProtocol: {
+    enabled: true,
+    dangerZone: [20, 60],        // Coincide con forbiddenHueRanges
+    minSaturation: 95,           // Saturación extrema
+    minLightness: 75,
+    fallbackToWhite: true,
+  },
+
+  // Comportamiento del strobe: Magenta Neón (heredado Techno)
+  accentBehavior: 'strobe',
+  strobeColor: { r: 255, g: 179, b: 255 },  // Magenta Neón (300° l:85)
+
+  // ⚡ Strobe permitido — el EDM vive de los strobes
+  strobeProhibited: false,
+
+  // Dimming agresivo — heredado de Techno
+  dimmingConfig: {
+    floor: 0.05,   // Casi blackout OK
+    ceiling: 1.0,  // Full power
+  },
+
+  // ⏱️ SIDEREAL CLOCK — heredado de Techno (5 actos × 6 min = 30 min)
+  // El rave comparte el bunker de neón. Los slots refinan el hue dentro
+  // de los dos arcos allowed (Azul/Magenta + Verde/Cyan).
+  siderealClock: {
+    slotDurationMs: 6 * 60 * 1000,  // 6 minutos por slot
+    slots: [
+      {
+        label: 'MAINSTAGE — Azul Eléctrico Profundo',
+        allowedHueRanges: [[260, 300]],  // Azul Rey → Índigo
+        lightnessRange: [40, 52],
+      },
+      {
+        label: 'DROP — Magenta Neón Industrial',
+        allowedHueRanges: [[300, 340]],  // Magenta a Rosa Neón
+        lightnessRange: [42, 55],
+      },
+      {
+        label: 'BUILD-UP — Verde Láser Ultravioleta',
+        allowedHueRanges: [[100, 130]],  // Verde Láser a Turquesa oscuro
+        lightnessRange: [40, 52],
+      },
+      {
+        label: 'BREAKDOWN — Cyan Turquesa',
+        allowedHueRanges: [[130, 160]],  // Cyan a Turquesa
+        lightnessRange: [38, 50],
+      },
+      {
+        label: 'FINALE — Magenta/Rosa Transgresión',
+        allowedHueRanges: [[290, 340]],  // Magenta a Rosa Neón
+        lightnessRange: [40, 52],
+      },
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 📚 REGISTRO DE CONSTITUCIONES
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -509,6 +647,7 @@ export const COLOR_CONSTITUTIONS: Record<VibeId, GenerationOptions> = {
   'fiesta-latina': LATINO_CONSTITUTION,
   'pop-rock': ROCK_CONSTITUTION,
   'chill-lounge': CHILL_CONSTITUTION,
+  'rave': RAVE_CONSTITUTION,
 };
 
 /**

@@ -194,6 +194,37 @@ export class AetherUIProjector {
             fixture.g = Math.max(fixture.g, projectedG)
             fixture.b = Math.max(fixture.b, projectedB)
           }
+
+          // 🩸 WAVE 7761 (Multi-RGB): Ruteo paralelo por zoneId hacia sub-zonas
+          // desagregadas. El fallback DMX (fixture.r/g/b de arriba) queda
+          // INTACTO — es la única fuente para hardware sin capacidades Aether
+          // (TickEngine.ts:1314 → hal.flushToDriver). Este bloque solo alimenta
+          // metadata de UI para el renderizador 2D (hélices/diamantes/barras).
+          //
+          // MIX: las tres zonas (ambient, air, strobe) son atmosféricas por
+          // definición (ATMOSPHERIC_ZONES, línea 52), asi que las tres usan
+          // aditivo Math.min(255, current + new) — consistente con el fallback
+          // maestro. Mezclar strobe con Math.max mientras el maestro usa
+          // Math.min desincronizaria el campo strobe del comportamiento
+          // canonico y romperia la paridad visual UI vs DMX.
+          //
+          // ?? 0 protege contra undefined (TickEngine resetea a 0 cada frame,
+          // pero fixtures recien creados o paths legacy pueden dejarlo sin
+          // setear hasta el primer tick).
+          const zid = (node.zoneId ?? '').toLowerCase().trim()
+          if (zid === 'ambient') {
+            fixture.rAmbient = Math.min(255, (fixture.rAmbient ?? 0) + projectedR)
+            fixture.gAmbient = Math.min(255, (fixture.gAmbient ?? 0) + projectedG)
+            fixture.bAmbient = Math.min(255, (fixture.bAmbient ?? 0) + projectedB)
+          } else if (zid === 'air') {
+            fixture.rAir = Math.min(255, (fixture.rAir ?? 0) + projectedR)
+            fixture.gAir = Math.min(255, (fixture.gAir ?? 0) + projectedG)
+            fixture.bAir = Math.min(255, (fixture.bAir ?? 0) + projectedB)
+          } else if (zid === 'strobe') {
+            fixture.rStrobe = Math.min(255, (fixture.rStrobe ?? 0) + projectedR)
+            fixture.gStrobe = Math.min(255, (fixture.gStrobe ?? 0) + projectedG)
+            fixture.bStrobe = Math.min(255, (fixture.bStrobe ?? 0) + projectedB)
+          }
         }
 
         // ── Canales extendidos: white, amber, uv ────────────────────────

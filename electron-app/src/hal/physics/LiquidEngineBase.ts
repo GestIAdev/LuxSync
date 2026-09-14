@@ -1947,7 +1947,7 @@ export abstract class LiquidEngineBase {
     // 🎚️ WAVE 7760: REACTIVADO para recalibración de umbrales back-snare tras
     // la reingeniería acústica (tilt + AGC corregido). Volver a `false` cuando
     // se complete el profiling.
-    if (true) {
+    if (false) {
       console.log(
         `[FINESSE_AUDIT] ` +
         `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +

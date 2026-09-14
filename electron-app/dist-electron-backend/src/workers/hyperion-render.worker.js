@@ -110,6 +110,10 @@ const unpackBuffer = {
     physicalPan: 0.5, physicalTilt: 0.5,
     zoom: 127, focus: 127,
     panVelocity: 0, tiltVelocity: 0,
+    // 🩸 WAVE 7761 (Multi-RGB): init de sub-zonas a 0 (slots del stride 20).
+    rAmbient: 0, gAmbient: 0, bAmbient: 0,
+    rAir: 0, gAir: 0, bAir: 0,
+    rStrobe: 0, gStrobe: 0, bStrobe: 0,
 };
 // ── Previous intensity map for snap detection ─────────────────────────────
 const prevIntensity = new Map();
@@ -178,6 +182,19 @@ function render(timestamp) {
             unpackBuffer.focus = currentFrameData[offset + FIXTURE_FIELD.FOCUS];
             unpackBuffer.panVelocity = currentFrameData[offset + FIXTURE_FIELD.PAN_VELOCITY];
             unpackBuffer.tiltVelocity = currentFrameData[offset + FIXTURE_FIELD.TILT_VELOCITY];
+            // 🩸 WAVE 7761 (Multi-RGB): sub-zonas desagregadas (slots 10..18).
+            // Path legacy (HyperionRenderBuffer, 10 floats): el guard superior
+            // exige el bloque completo de 20 → frames viejos saltan el unpack
+            // completo y conservan los valores suavizados del frame anterior.
+            unpackBuffer.rAmbient = currentFrameData[offset + FIXTURE_FIELD.R_AMBIENT];
+            unpackBuffer.gAmbient = currentFrameData[offset + FIXTURE_FIELD.G_AMBIENT];
+            unpackBuffer.bAmbient = currentFrameData[offset + FIXTURE_FIELD.B_AMBIENT];
+            unpackBuffer.rAir = currentFrameData[offset + FIXTURE_FIELD.R_AIR];
+            unpackBuffer.gAir = currentFrameData[offset + FIXTURE_FIELD.G_AIR];
+            unpackBuffer.bAir = currentFrameData[offset + FIXTURE_FIELD.B_AIR];
+            unpackBuffer.rStrobe = currentFrameData[offset + FIXTURE_FIELD.R_STROBE];
+            unpackBuffer.gStrobe = currentFrameData[offset + FIXTURE_FIELD.G_STROBE];
+            unpackBuffer.bStrobe = currentFrameData[offset + FIXTURE_FIELD.B_STROBE];
         }
         // ── Adaptive smoothing ──────────────────────────────────────────────
         // Pan/tilt/zoom: always interpolate (butter movement)
@@ -224,6 +241,17 @@ function render(timestamp) {
         fx.focus = unpackBuffer.focus;
         fx.panVelocity = unpackBuffer.panVelocity;
         fx.tiltVelocity = unpackBuffer.tiltVelocity;
+        // 🩸 WAVE 7761 (Multi-RGB): sub-zonas pasan en crudo (sin smoothing —
+        // son color, no mecánica; mismo criterio que r/g/b).
+        fx.rAmbient = unpackBuffer.rAmbient;
+        fx.gAmbient = unpackBuffer.gAmbient;
+        fx.bAmbient = unpackBuffer.bAmbient;
+        fx.rAir = unpackBuffer.rAir;
+        fx.gAir = unpackBuffer.gAir;
+        fx.bAir = unpackBuffer.bAir;
+        fx.rStrobe = unpackBuffer.rStrobe;
+        fx.gStrobe = unpackBuffer.gStrobe;
+        fx.bStrobe = unpackBuffer.bStrobe;
     }
     // Trim pool if fixture count shrank (keep slots for reuse but fix .length)
     if (smoothedFixturesPool.length > fixtureCount) {

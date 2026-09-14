@@ -43,6 +43,7 @@ import type {
 import { DEFAULT_TACTICAL_OPTIONS } from './types'
 import { type CanonicalZone } from '../../shared/ZoneLayoutEngine'
 import { FLOATS_PER_FIXTURE, FIXTURE_FIELD } from '../../../../workers/hyperion-render.types'
+import { GLASS_HEADER_FLOATS, FLOATS_PER_FIX, CELL_COLOR_BASE } from '../../../../core/aether/glass/layout'
 import { getTransientFixture } from '../../../../stores/transientStore'
 import type {
   WorkerInboundMessage,
@@ -131,14 +132,15 @@ function createRenderWorker(): Worker {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// GLASS FRAME PACKING — Aether Glass → Worker 10-float layout
+// GLASS FRAME PACKING — Aether Glass → Worker 20-float layout
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Glass buffer layout (from layout.ts FixField + TickEngine header)
-// Header floats [0..9]: bass, mid, high, energy, isBeat, reserved×5
-// Fixture block i starts at: GLASS_HEADER_FLOATS + i * GLASS_FLOATS_PER_FIX
-const GLASS_HEADER_FLOATS = 10
-const GLASS_FLOATS_PER_FIX = 16
+// 🩸 WAVE 7761 (Multi-RGB): GLASS_HEADER_FLOATS y FLOATS_PER_FIX ahora se
+// importan de core/aether/glass/layout.ts — adiós copias literales (el bug
+// del "tercer consumidor"). Header real: floats [0..4] = bass/mid/high/
+// energy/isBeat, [5..15] = reserva alineada a cacheline (64 bytes).
+// Fixture block i starts at: GLASS_HEADER_FLOATS + i * FLOATS_PER_FIX.
+// Field offsets dentro del bloque (legacy 0..15, sin cambio):
 const GF_R = 0, GF_G = 1, GF_B = 2
 const GF_DIMMER = 5
 const GF_PHYS_PAN = 8, GF_PHYS_TILT = 9
@@ -146,9 +148,13 @@ const GF_ZOOM = 10, GF_FOCUS = 11
 const GF_PAN_VEL = 12, GF_TILT_VEL = 13
 
 /**
- * Translate Aether Glass Float32Array (16 floats/fixture, raw DMX scale)
- * into the Worker's 10-float packed buffer (normalizes intensity/pan/tilt to 0-1).
+ * Translate Aether Glass Float32Array (32 floats/fixture, raw DMX scale)
+ * into the Worker's 20-float packed buffer (normalizes intensity/pan/tilt to 0-1).
  * Zero-allocation — writes into pre-allocated destBuffer.
+ *
+ * 🩸 WAVE 7761 (Multi-RGB): copia las sub-zonas (CELL_COLOR_BASE..+8) del Glass
+ * a los slots del worker (FIXTURE_FIELD.R_AMBIENT..B_STROBE). Escalares puros,
+ * cero allocs — mismo patron zero-copy del resto del pack.
  *
  * 🛡️ WAVE 7569: NaN SHIELD — every value is sanitized to 0 if non-finite
  * before writing to destBuffer. This prevents poisoned memory from reaching
@@ -161,7 +167,7 @@ function packGlassFrameInto(
   fixtureCount: number,
 ): void {
   for (let i = 0; i < fixtureCount; i++) {
-    const gOff = GLASS_HEADER_FLOATS + i * GLASS_FLOATS_PER_FIX
+    const gOff = GLASS_HEADER_FLOATS + i * FLOATS_PER_FIX
     const wOff = i * FLOATS_PER_FIXTURE
     const r   = glassView[gOff + GF_R]
     const g   = glassView[gOff + GF_G]
@@ -173,6 +179,15 @@ function packGlassFrameInto(
     const focus = glassView[gOff + GF_FOCUS]
     const panV  = glassView[gOff + GF_PAN_VEL]
     const tiltV = glassView[gOff + GF_TILT_VEL]
+    const rA = glassView[gOff + CELL_COLOR_BASE + 0]
+    const gA = glassView[gOff + CELL_COLOR_BASE + 1]
+    const bA = glassView[gOff + CELL_COLOR_BASE + 2]
+    const rAi = glassView[gOff + CELL_COLOR_BASE + 3]
+    const gAi = glassView[gOff + CELL_COLOR_BASE + 4]
+    const bAi = glassView[gOff + CELL_COLOR_BASE + 5]
+    const rS = glassView[gOff + CELL_COLOR_BASE + 6]
+    const gS = glassView[gOff + CELL_COLOR_BASE + 7]
+    const bS = glassView[gOff + CELL_COLOR_BASE + 8]
     destBuffer[wOff + FIXTURE_FIELD.R]             = Number.isFinite(r) ? r : 0
     destBuffer[wOff + FIXTURE_FIELD.G]             = Number.isFinite(g) ? g : 0
     destBuffer[wOff + FIXTURE_FIELD.B]             = Number.isFinite(b) ? b : 0
@@ -183,6 +198,15 @@ function packGlassFrameInto(
     destBuffer[wOff + FIXTURE_FIELD.FOCUS]         = Number.isFinite(focus) ? focus : 0
     destBuffer[wOff + FIXTURE_FIELD.PAN_VELOCITY]  = Number.isFinite(panV) ? panV : 0
     destBuffer[wOff + FIXTURE_FIELD.TILT_VELOCITY] = Number.isFinite(tiltV) ? tiltV : 0
+    destBuffer[wOff + FIXTURE_FIELD.R_AMBIENT] = Number.isFinite(rA) ? rA : 0
+    destBuffer[wOff + FIXTURE_FIELD.G_AMBIENT] = Number.isFinite(gA) ? gA : 0
+    destBuffer[wOff + FIXTURE_FIELD.B_AMBIENT] = Number.isFinite(bA) ? bA : 0
+    destBuffer[wOff + FIXTURE_FIELD.R_AIR]     = Number.isFinite(rAi) ? rAi : 0
+    destBuffer[wOff + FIXTURE_FIELD.G_AIR]     = Number.isFinite(gAi) ? gAi : 0
+    destBuffer[wOff + FIXTURE_FIELD.B_AIR]     = Number.isFinite(bAi) ? bAi : 0
+    destBuffer[wOff + FIXTURE_FIELD.R_STROBE]  = Number.isFinite(rS) ? rS : 0
+    destBuffer[wOff + FIXTURE_FIELD.G_STROBE]  = Number.isFinite(gS) ? gS : 0
+    destBuffer[wOff + FIXTURE_FIELD.B_STROBE]  = Number.isFinite(bS) ? bS : 0
   }
 }
 
@@ -581,8 +605,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   // GLASS PIPELINE — Connect Aether Glass directly to worker (GLASS BYPASS Fase 2)
   // ═══════════════════════════════════════════════════════════════════════
   // Replaces the old RAF data pump (React/IPC chain) with a direct subscription
-  // to window.glass.onFrame (Aether Glass SAB). Translation from Glass 16-float
-  // layout → Worker 10-float layout happens here on the main thread, then the
+  // to window.glass.onFrame (Aether Glass SAB). Translation from Glass 32-float
+  // layout → Worker 20-float layout happens here on the main thread, then the
   // packed buffer is forwarded to the worker via a dedicated MessageChannel port.
 
   useEffect(() => {
@@ -635,7 +659,7 @@ export const TacticalCanvas = memo(function TacticalCanvas({
           buf = new Float32Array(needed)
         }
 
-        // Translate Glass 16-float layout → Worker 10-float layout
+        // Translate Glass 32-float layout → Worker 20-float layout
         packGlassFrameInto(buf, view, count)
 
         const onBeat = view.length > 4 && view[4] > 0.5

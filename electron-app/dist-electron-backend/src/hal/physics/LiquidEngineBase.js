@@ -994,7 +994,14 @@ export class LiquidEngineBase {
                 //   Synth FPs: Flux 0.070-0.194 → gated (blocked)
                 //   Anyma snares: Flux 0.300-0.393 → exempted (fire)
                 //   missedsnare: Flux 0.258-0.475 → exempted (fire)
-                if (gateHealth > 0.1 && wns < 0.05 && spectralFlux < 0.25) {
+                // ⚒️ WAVE 7760: RESIDUAL EXEMPTION — post-FFT AGC tilt compressed
+                // Res and sEF simultaneously. Real snares with narrowband transients
+                // (Flux<0.25, WNS=0) now have Res>0.12 (synth stabs stay <0.05).
+                // Exempt high-residual frames from the WNS gate to rescue synthetic
+                // snares that lack noise content but have genuine crack residual.
+                //   Synth stabs: Res<0.05 → still gated (blocked)
+                //   Post-FFT snares: Res>0.12 → exempted (rescued)
+                if (gateHealth > 0.1 && wns < 0.05 && spectralFlux < 0.25 && residual < 0.12) {
                     crackDrive *= 0.3;
                 }
                 const ghostWeight = 1.0 - spectralDensity;
@@ -1171,11 +1178,22 @@ export class LiquidEngineBase {
                     //   Opus f642: Flux=0.128 gH=0.000 → RESCUE (was blocked by 0.20)
                     //   calib19 synth FPs: gH 0.214-1.000 → still blocked by 0.20
                     //   missedsnare: gH 0.026-0.029 → still rescued (Flux 0.258+)
+                    // ⚒️ WAVE 7760: POST-FFT THRESHOLD RECALIBRATION — AGC tilt
+                    // compressed UnG/Res/RawD ranges. Pre-FFT maxes (UnG 1.0, Res 0.92,
+                    // RawD 0.97) made 0.4/0.3/0.2 reachable. Post-FFT maxes (UnG 0.46,
+                    // Res 0.40, RawD 0.41) left the bypass unreachable for all but
+                    // the strongest hits. New thresholds calibrated from purified
+                    // post-FFT telemetry (purplenoisebrejchapostFFT.md):
+                    //   Missed snares: UnG 0.17-0.29, Res 0.12-0.21, RawD 0.10-0.22
+                    //   Hi-hats: UnG<0.05, Res≈0 → blocked by residual>0.10
+                    //   Synth stabs: Res<0.05 → blocked by residual>0.10
+                    //   Noise tails: RawD<0 → blocked by rawSnareDelta>0.10
+                    // Hi-hat exclusion !(SnareE<0.2 && hE>0.5) and Flux>0.20 remain.
                     const bypassFluxTh = gateHealth < 0.1 ? 0.08 : 0.20;
                     if (!rawOnset &&
-                        ungatedSnare > 0.4 &&
-                        residual > 0.3 &&
-                        rawSnareDelta > 0.2 &&
+                        ungatedSnare > 0.15 &&
+                        residual > 0.10 &&
+                        rawSnareDelta > 0.10 &&
                         spectralFlux > bypassFluxTh &&
                         !(snareEnergy < 0.2 && hhEnergy > 0.5)) {
                         rawOnset = true;
@@ -1202,14 +1220,18 @@ export class LiquidEngineBase {
                     if (!rawOnset &&
                         this._fluxBaseline > 0.09 &&
                         gateHealth < 0.05 &&
-                        ungatedSnare > 0.45 &&
+                        ungatedSnare > 0.40 &&
                         snareDrive >= snareFloor) {
                         rawOnset = true;
-                        // ⚒️ WAVE 7749.106: DENSITY REFRACTORY — 2 frames (not 4) for
-                        // denser firing in white noise. The noise is continuous, so we
-                        // want to fire every 2-3 frames (~45-68ms) to paint continuous
-                        // light. The standard 4-frame refractory leaves gaps.
-                        this._snareRefractoryFrames = 2;
+                        // ⚒️ WAVE 7760.3: DENSITY REFRACTORY — 1 frame for maximum
+                        // destruction in white noise build-ups (Opus). The noise IS
+                        // the signal — fire every other frame (~45ms at 44fps) to
+                        // paint continuous light at the climax. This is NOT hi-hat
+                        // strobing — it's a 22Hz noise wall where the goal is to
+                        // blind the track. Refractory 1 = fire, skip 1, fire...
+                        // ⚒️ WAVE 7749.106 (original): 2 frames, lowered from 4.
+                        // ⚒️ WAVE 7760.3: 1 frame — +53 onsets recovered in Opus.
+                        this._snareRefractoryFrames = 1;
                         this._ghostRefractoryFrames = LiquidEngineBase.GHOST_REFRACTORY_FRAMES;
                     }
                     else if (rawOnset) {
@@ -1634,6 +1656,9 @@ export class LiquidEngineBase {
         //   if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1))
         // 🎆 FASE 4b: FINESSE_AUDIT desactivado temporalmente. Cambiar `false` → `true`
         // para reactivar el dump frame-by-frame, o restaurar la condición gated de arriba.
+        // 🎚️ WAVE 7760: REACTIVADO para recalibración de umbrales back-snare tras
+        // la reingeniería acústica (tilt + AGC corregido). Volver a `false` cuando
+        // se complete el profiling.
         if (false) {
             console.log(`[FINESSE_AUDIT] ` +
                 `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +

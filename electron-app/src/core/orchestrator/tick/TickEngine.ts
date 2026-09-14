@@ -11,7 +11,7 @@ import { getEffectManager } from '../../effects/EffectManager'
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine'
 import { NodeFamily } from '../../aether'
 import type { AudioMetrics, MusicalContext, VibeProfile, FrameContext, NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor, VMMAdapter, LiquidImpactAdapter, AetherSafetyMiddleware } from '../../aether'
-import { FIX_DATA_FLOATS, CHANNELS_PER_UNI, MAX_UNIVERSES } from '../../aether/glass/layout'
+import { FIX_DATA_FLOATS, CHANNELS_PER_UNI, MAX_UNIVERSES, FLOATS_PER_FIX, GLASS_HEADER_FLOATS, MAX_GLASS_FIXTURES, CELL_COLOR_BASE } from '../../aether/glass/layout'
 import { DmxUniverseWriter, getDmxSab } from '../../aether/glass/DmxSabHandlers'
 import type { CalibrationEntry } from '../../aether/glass/CalibrationSAB'
 import type { INodeIntent } from '../../aether/intent-bus'
@@ -979,6 +979,11 @@ export class TickEngine {
           pan: 128, tilt: 128, zoom: 128, focus: 128,
           channels: null, profileId: '', fixtureId: '',
           hasColorWheel: false, hasColorMixing: false,
+          // 🩸 WAVE 7761 (Multi-RGB): init de sub-zonas a 0 para que el reset
+          // por frame nunca encuentre stale data en un slot recien creado.
+          rAmbient: 0, gAmbient: 0, bAmbient: 0,
+          rAir: 0, gAir: 0, bAir: 0,
+          rStrobe: 0, gStrobe: 0, bStrobe: 0,
         }
         this._cachedFixtureStates[_fi] = state
       }
@@ -990,6 +995,14 @@ export class TickEngine {
       state.isVirtual  = fix.isVirtual
       state.dimmer     = 0
       state.r = 0; state.g = 0; state.b = 0
+      // 🩸 WAVE 7761 (Multi-RGB): RESET VITAL de sub-zonas. Sin esto, el
+      // AetherUIProjector acumula (Math.min(255, r + projectedR)) sobre el
+      // valor del frame anterior → saturación a 255 en ~3 frames → sub-zonas
+      // atmosféricas clavadas en blanco permanente. El projector escribe
+      // DESPUES de este reset, asi que cada frame empieza desde cero.
+      state.rAmbient = 0; state.gAmbient = 0; state.bAmbient = 0
+      state.rAir = 0; state.gAir = 0; state.bAir = 0
+      state.rStrobe = 0; state.gStrobe = 0; state.bStrobe = 0
       state.pan  = 128
       state.tilt = 128
       state.zoom = 128
@@ -1747,11 +1760,13 @@ export class TickEngine {
     // 🩸 WAVE-6060: GlassBridge SIEMPRE emite, incluso sin dispositivos Aether.
     _t_glass_start = performance.now()
     const view = this._glassView
-    for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
+    for (let fi = 0; fi < fixtureStates.length && fi < MAX_GLASS_FIXTURES; fi++) {
       const fs = fixtureStates[fi]
       if (!fs) continue  // WAVE 7749.77: skip holes from unpatched fixtures
       if (fs.isVirtual) continue  // WAVE 7749.77b: no DMX for virtual fixtures
-      const off = 10 + fi * 16
+      // 🩸 WAVE 7761 (Multi-RGB): stride 32 + header 16 desde layout.ts.
+      // Adios numeros magicos: 10 + fi * 16 → GLASS_HEADER_FLOATS + fi * FLOATS_PER_FIX.
+      const off = GLASS_HEADER_FLOATS + fi * FLOATS_PER_FIX
       view[off + 0]  = fs.r ?? 0
       view[off + 1]  = fs.g ?? 0
       view[off + 2]  = fs.b ?? 0
@@ -1768,6 +1783,19 @@ export class TickEngine {
       view[off + 13] = fs.tiltVel ?? 0
       view[off + 14] = fs.strobe ?? 0
       view[off + 15] = (fs.dimmer > 0 ? 1 : 0) | (blackoutActive ? 2 : 0)
+      // 🩸 WAVE 7761 (Multi-RGB): sub-zonas desagregadas (celda c → BASE + c*3).
+      // CELL_COLOR_BASE=16: ambient (16-18), air (19-21), strobe (22-24).
+      // Con stride 32 los índices 16..24 son validos — aqui esta el bug del plan
+      // original (24 floats no cabia 25 campos). Reserva 25..31 sin tocar.
+      view[off + CELL_COLOR_BASE + 0] = fs.rAmbient ?? 0
+      view[off + CELL_COLOR_BASE + 1] = fs.gAmbient ?? 0
+      view[off + CELL_COLOR_BASE + 2] = fs.bAmbient ?? 0
+      view[off + CELL_COLOR_BASE + 3] = fs.rAir ?? 0
+      view[off + CELL_COLOR_BASE + 4] = fs.gAir ?? 0
+      view[off + CELL_COLOR_BASE + 5] = fs.bAir ?? 0
+      view[off + CELL_COLOR_BASE + 6] = fs.rStrobe ?? 0
+      view[off + CELL_COLOR_BASE + 7] = fs.gStrobe ?? 0
+      view[off + CELL_COLOR_BASE + 8] = fs.bStrobe ?? 0
     }
     view[0] = engineAudioMetrics.bass || 0
     view[1] = engineAudioMetrics.mid || 0

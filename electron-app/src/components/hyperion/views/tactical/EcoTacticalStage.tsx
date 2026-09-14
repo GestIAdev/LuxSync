@@ -59,10 +59,10 @@
  *   backend), fall back to the `getTransientFixture(id)` interval pump at
  *   22 Hz. This ensures the Eco view always works, even without Glass.
  *
- * GLASS FRAME LAYOUT (from TacticalCanvas.tsx):
- *   Header floats [0..9]: bass, mid, high, energy, isBeat, reserved×5
- *   Fixture block i starts at: GLASS_HEADER_FLOATS + i * GLASS_FLOATS_PER_FIX
- *   GLASS_HEADER_FLOATS = 10, GLASS_FLOATS_PER_FIX = 16
+ * GLASS FRAME LAYOUT (from core/aether/glass/layout.ts — WAVE 7761):
+ *   Header floats [0..4]: bass, mid, high, energy, isBeat; [5..15] reserva
+ *   Fixture block i starts at: GLASS_HEADER_FLOATS + i * FLOATS_PER_FIX
+ *   GLASS_HEADER_FLOATS = 16, FLOATS_PER_FIX = 32 (Multi-RGB expansion)
  *   GF_R = 0, GF_G = 1, GF_B = 2, GF_DIMMER = 5
  *   All values are 0-255 raw DMX scale.
  *
@@ -80,6 +80,7 @@ import {
 } from '../../shared/ZoneLayoutEngine'
 import type { CanonicalZone } from '../../../../core/stage/ShowFileV2'
 import type { FixtureV2 } from '../../../../core/stage/ShowFileV2'
+import { GLASS_HEADER_FLOATS, FLOATS_PER_FIX } from '../../../../core/aether/glass/layout'
 import './EcoTacticalStage.css'
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -92,9 +93,9 @@ const FALLBACK_INTERVAL_MS = 45
 /** Dim base color for inactive fixtures (dimmer=0) — never pitch-black. */
 const INACTIVE_COLOR = 'rgba(255, 255, 255, 0.05)'
 
-// ── Glass frame layout (mirrors TacticalCanvas.tsx) ──────────────────────────
-const GLASS_HEADER_FLOATS = 10
-const GLASS_FLOATS_PER_FIX = 16
+// ── Glass field offsets dentro del bloque (legacy 0..15, sin cambio) ────────
+// 🩸 WAVE 7761: GLASS_HEADER_FLOATS y FLOATS_PER_FIX se importan de layout.ts.
+// Adiós a la copia literal — el modo Eco lee con el stride 32 oficial.
 const GF_R = 0, GF_G = 1, GF_B = 2, GF_DIMMER = 5
 
 // ── Diagnostic logging interval (ms) ─────────────────────────────────────────
@@ -221,7 +222,7 @@ export const EcoTacticalStage: React.FC = memo(() => {
 
         const ids = fixtureIdsRef.current
         const count = Math.min(ids.length, Math.floor(
-          (view.length - GLASS_HEADER_FLOATS) / GLASS_FLOATS_PER_FIX
+          (view.length - GLASS_HEADER_FLOATS) / FLOATS_PER_FIX
         ))
 
         let activeCount = 0
@@ -232,7 +233,7 @@ export const EcoTacticalStage: React.FC = memo(() => {
           const node = nodeMap.get(fixtureId)
           if (!node) continue
 
-          const gOff = GLASS_HEADER_FLOATS + i * GLASS_FLOATS_PER_FIX
+          const gOff = GLASS_HEADER_FLOATS + i * FLOATS_PER_FIX
           const r = view[gOff + GF_R]
           const g = view[gOff + GF_G]
           const b = view[gOff + GF_B]

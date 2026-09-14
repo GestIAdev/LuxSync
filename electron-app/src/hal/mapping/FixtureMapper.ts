@@ -121,6 +121,20 @@ export interface FixtureState {
   r: number         // 0-255
   g: number         // 0-255
   b: number         // 0-255
+  // 🩸 WAVE 7761 (Multi-RGB): Sub-zonas desagregadas para el renderizador 2D.
+  // El AetherUIProjector rutea por node.zoneId hacia estos campos en lugar de
+  // acumular todo en r/g/b. Opcionales: legacy producers que no los poblen
+  // dejan undefined → TickEngine los resetea a 0 cada frame (Fase 1.5).
+  // ESCALARES PLANOS — nunca arrays de objetos (GC pressure, WAVE 7713).
+  rAmbient?: number   // 0-255 (zona Ambient)
+  gAmbient?: number
+  bAmbient?: number
+  rAir?: number       // 0-255 (zona Air)
+  gAir?: number
+  bAir?: number
+  rStrobe?: number    // 0-255 (zona Strobe)
+  gStrobe?: number
+  bStrobe?: number
   pan: number       // 0-255 (TARGET position)
   tilt: number      // 0-255 (TARGET position)
   rotation?: number // 0-255 (CONTINUOUS rotation: 0=max CCW, 128=stop, 255=max CW)

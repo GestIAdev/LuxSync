@@ -40,6 +40,18 @@ export interface TacticalFixture {
   g: number
   /** Blue channel (0-255) */
   b: number
+  // 🩸 WAVE 7761 (Multi-RGB): Sub-zonas desagregadas para geometría especializada
+  // (hélice 3 aspas, diamante direccional, barra láser). Opcionales hasta que
+  // la Fase 3 expanda el pack/unpack del worker. ESCALARES PLANOS — nunca arrays.
+  rAmbient?: number   // 0-255 (zona Ambient)
+  gAmbient?: number
+  bAmbient?: number
+  rAir?: number       // 0-255 (zona Air)
+  gAir?: number
+  bAir?: number
+  rStrobe?: number    // 0-255 (zona Strobe)
+  gStrobe?: number
+  bStrobe?: number
   
   // ── Intensity ───────────────────────────────────────────────────────────
   /** Normalized intensity (0-1) */

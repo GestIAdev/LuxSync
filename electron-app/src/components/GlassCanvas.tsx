@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { getTransientTruth, getTransientFixture } from '../stores/transientStore'
+import { GLASS_HEADER_FLOATS, FLOATS_PER_FIX } from '../core/aether/glass/layout'
 
 const CANVAS_W = 800
 const CANVAS_H = 200
@@ -35,12 +36,16 @@ export default function GlassCanvas() {
         transient.sensory.beat.onBeat = view[4] > 0.5
       }
       
-      // 2. Fixtures (desde offset 10) — WAVE 7174: Leer IDs de transientStore (no truthStore que está vacío)
+      // 2. Fixtures — 🩸 WAVE 7761 (Multi-RGB): offsets desde layout.ts (header 16,
+      // stride 32). Antes era `10 + i * 16` literal — con el layout expandido
+      // habría leído basura (reserva del header + fixtures cruzados) y envenenado
+      // el transientStore que consume el fallback del Eco.
+      // WAVE 7174: Leer IDs de transientStore (no truthStore que está vacío)
       // O(1) lookup via getTransientFixture() — zero Array.find(), zero allocation.
       const fixtures = transient.hardware?.fixtures
       if (fixtures && fixtures.length > 0) {
         for (let i = 0; i < fixtures.length; i++) {
-          const off = 10 + i * 16
+          const off = GLASS_HEADER_FLOATS + i * FLOATS_PER_FIX
           const id = fixtures[i]?.id
           if (!id) continue
 

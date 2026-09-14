@@ -116,11 +116,15 @@ const AGC_CONFIG = {
     // Graves: target alto, gain moderado — el kick necesita cabeza
     subBass: { attackMs: 15, releaseMs: 80, targetRMS: 0.45, maxGain: 2.0 },
     bass: { attackMs: 15, releaseMs: 80, targetRMS: 0.45, maxGain: 2.0 },
-    // Medios: escalonado a la baja — evita inflar voces/instrumentos ausentes
-    lowMid: { attackMs: 15, releaseMs: 100, targetRMS: 0.35, maxGain: 1.8 },
-    mid: { attackMs: 15, releaseMs: 120, targetRMS: 0.25, maxGain: 1.8 },
+    // 🎚️ WAVE 7760.2: RECALIBRACIÓN MELÓDICA — el tilt original (-3dB/oct)
+    // asfixió el canal LEFT (moverL=back highMid×1.0, backL=mid×0.85).
+    // Subimos lowMid/mid/highMid para dar a LEFT el rango dinámico que
+    // necesita para respirar líquido en EDM (Opus). Treble/ultraAir
+    // anclados — veto estroboscópico, no resucitar hi-hats.
+    lowMid: { attackMs: 15, releaseMs: 100, targetRMS: 0.38, maxGain: 1.8 },
+    mid: { attackMs: 15, releaseMs: 120, targetRMS: 0.32, maxGain: 1.8 },
     // Agudos: desplome intencionado — el noise floor NO debe llegar al 50%
-    highMid: { attackMs: 15, releaseMs: 150, targetRMS: 0.15, maxGain: 1.5 },
+    highMid: { attackMs: 15, releaseMs: 150, targetRMS: 0.25, maxGain: 1.5 },
     treble: { attackMs: 15, releaseMs: 150, targetRMS: 0.10, maxGain: 1.5 },
     ultraAir: { attackMs: 15, releaseMs: 180, targetRMS: 0.05, maxGain: 2.0 },
 };

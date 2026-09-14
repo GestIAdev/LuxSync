@@ -46,6 +46,19 @@ export interface WorkerFixtureFrame {
   panVelocity: number
   /** Tilt velocity (signed) for motion trails */
   tiltVelocity: number
+  // 🩸 WAVE 7761 (Multi-RGB): Sub-zonas desagregadas para geometría especializada
+  // (hélice 3 aspas, diamante direccional, barra láser). Opcionales hasta que
+  // la Fase 3 expanda FLOATS_PER_FIXTURE de 10 → 20 y el pack/unpack los llene.
+  // ESCALARES PLANOS — nunca arrays (GC pressure, WAVE 7713).
+  rAmbient?: number   // 0-255
+  gAmbient?: number
+  bAmbient?: number
+  rAir?: number       // 0-255
+  gAir?: number
+  bAir?: number
+  rStrobe?: number    // 0-255
+  gStrobe?: number
+  bStrobe?: number
 }
 
 /**
@@ -108,7 +121,7 @@ export interface WorkerMsgScaffold {
  * This is the high-frequency path (~44Hz from backend).
  * 
  * `frameData` is a Float32Array packed with WorkerFixtureFrame fields.
- * Layout: 10 floats per fixture × N fixtures.
+ * Layout: 20 floats per fixture × N fixtures.
  */
 export interface WorkerMsgFrame {
   type: 'FRAME'
@@ -117,7 +130,7 @@ export interface WorkerMsgFrame {
   onBeat: boolean
   beatIntensity: number
   fixtureCount: number
-  /** Packed Float32Array: [r,g,b,intensity,physicalPan,physicalTilt,zoom,focus,panVelocity,tiltVelocity] × N */
+  /** Packed Float32Array: [r,g,b,intensity,physicalPan,physicalTilt,zoom,focus,panVelocity,tiltVelocity,rAmbient..bAir,rStrobe..bStrobe] × N (20 floats/fixture) */
   frameData: Float32Array
 }
 
@@ -270,10 +283,15 @@ export type WorkerOutboundMessage =
 // BUFFER LAYOUT — Constants for Float32Array packing
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Number of Float32 fields per fixture in the frame buffer */
-export const FLOATS_PER_FIXTURE = 10
+/** Number of Float32 fields per fixture in the frame buffer.
+ * 🩸 WAVE 7761 (Multi-RGB): 10 → 20. Stride PAR deliberado (no 19): evita
+ * aritmetica impar del JIT y deja el slot 19 de reserva. El path legacy
+ * (HyperionRenderBuffer) empaqueta 10 campos y los slots 10..19 quedan a 0
+ * (zero-init de Float32Array) — compatible sin cambios.
+ */
+export const FLOATS_PER_FIXTURE = 20
 
-/** Field offsets within each fixture's 10-float block */
+/** Field offsets within each fixture's 20-float block */
 export const FIXTURE_FIELD = {
   R: 0,
   G: 1,
@@ -285,4 +303,15 @@ export const FIXTURE_FIELD = {
   FOCUS: 7,
   PAN_VELOCITY: 8,
   TILT_VELOCITY: 9,
+  // 🩸 WAVE 7761 (Multi-RGB): sub-zonas desagregadas (espejo de CELL_COLOR_BASE
+  // del Glass, recompactado al stride del worker). 19 = spare.
+  R_AMBIENT: 10,
+  G_AMBIENT: 11,
+  B_AMBIENT: 12,
+  R_AIR: 13,
+  G_AIR: 14,
+  B_AIR: 15,
+  R_STROBE: 16,
+  G_STROBE: 17,
+  B_STROBE: 18,
 } as const

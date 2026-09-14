@@ -59,9 +59,11 @@ export const TECHNO_CONSTITUTION = {
     //             9° está cerca del polo cálido, pero forbiddenHueRanges no lo atrapa
     //             PERO el hueRemapping [25-85] → frío con variación lo sanitiza
     thermalGravityStrength: 0.22,
-    // 🌐 WAVE 7773: ANTI-NARANJA BLINDADO — floor bajado de 25 a 5.
-    // El corredor [0, 25] dejaba pasar hue 10° que en LED se ve naranja, no rojo puro.
-    forbiddenHueRanges: [[5, 80]],
+    // 🌐 WAVE 7773 → 🧱 GRAN MURO ANTIMOSTAZA: forbiddenHueRanges ampliado a [10, 90].
+    // El hueco [60, 100] quedó expuesto al liberar los armónicos del slot, permitiendo
+    // el 67° (mostaza). Cerramos el muro de 10° a 90° para erradicar permanentemente
+    // cualquier rastro de naranja, ámbar, ocre, mostaza o amarillo verdoso del bunker.
+    forbiddenHueRanges: [[10, 90]],
     // 🌈 WAVE 285.5: Permitir todo, la gravedad + remapping hacen el trabajo
     allowedHueRanges: [[0, 360]],
     // Elastic Rotation de 15° para escapar zonas prohibidas
@@ -102,7 +104,7 @@ export const TECHNO_CONSTITUTION = {
     // ═══════════════════════════════════════════════════════════════════════
     neonProtocol: {
         enabled: true,
-        dangerZone: [5, 80], // WAVE 7773: Bajado de 15 a 5 — cierra el corredor naranja
+        dangerZone: [10, 90], // 🧱 GRAN MURO: alineado con forbiddenHueRanges [10, 90]
         minSaturation: 90, // Saturación mínima para neón
         minLightness: 75, // Luminosidad mínima para evitar barro
         fallbackToWhite: true, // Si no puede ser neón → blanco hielo
@@ -465,29 +467,23 @@ export const IDLE_CONSTITUTION = {
  * puro que el Techno ya explota con prism.
  */
 export const RAVE_CONSTITUTION = {
-    // 🏛️ CONSTITUCIÓN: forceStrategy: 'split-complementary'
-    // ⚠️ DESVIACIÓN: la directiva Fase 4 pide 'split-complementary', pero
-    // GenerationOptions.forceStrategy sólo acepta 'analogous' | 'triadic' |
-    // 'complementary' | 'prism' (SeleneColorEngine.ts:301). El motor no
-    // implementa split-complementary como estrategia distinta.
-    // SUSTITUCIÓN: 'complementary' — split-complementary es una variante de
-    // complementary donde el secundario se sitúa adyacente al complemento
-    // (±30° del opuesto) en lugar de exactamente opuesto. Los
-    // allowedHueRanges [[260,340],[100,160]] + hueRemapping ya fuerzan los
-    // dos arcos split-complementary, así que el resultado visual es
-    // split-complementary aunque el motor use el algoritmo 'complementary'.
-    // Para implementar split-complementary nativo, habría que extender el
-    // tipo forceStrategy en SeleneColorEngine.ts (fuera del scope Fase 4).
-    forceStrategy: 'complementary',
+    // � WAVE 7757: LIBERACIÓN — forceStrategy eliminado. RaveX ahora es libre
+    // para que el StrategyArbiter sincronizado con el Sidereal Clock decida su
+    // estrategia basándose en la energía musical del slot activo.
+    // Antes: forceStrategy: 'complementary' (dictadura que ignoraba la música).
+    // El split-complementary visual ya está garantizado por los allowedHueRanges
+    // [[260,340],[100,160]] — los dos arcos separados ~180°.
+    forceStrategy: undefined,
     // 🌡️ THERMAL GRAVITY — heredado de Techno (Polo Azul Masivo)
     // 9500K = Fuerza ~29% hacia 240° (Azul Rey). El rave es frío como el techno.
     atmosphericTemp: 9500,
     // 🌬️ GRAVITATIONAL BALANCE — heredado de Techno
     thermalGravityStrength: 0.22,
-    // 🏛️ CONSTITUCIÓN: forbiddenHueRanges: [[20, 60]]
-    // Prohibir el núcleo naranja/amarillo cálido. El rave es frío + magenta +
-    // verde láser. La gravedad térmica empuja cualquier fuga hacia el frío.
-    forbiddenHueRanges: [[20, 60]],
+    // 🏛️ CONSTITUCIÓN → 🧱 GRAN MURO ANTIMOSTAZA: forbiddenHueRanges: [[10, 90]]
+    // Ampliado desde [20, 60] para cerrar el hueco [60, 100] que quedó expuesto al
+    // liberar los armónicos del slot. El 67° (mostaza) ya no tiene brecha: el muro
+    // erradica naranja, ámbar, ocre, mostaza y amarillo verdoso del main stage.
+    forbiddenHueRanges: [[10, 90]],
     // 🏛️ CONSTITUCIÓN: allowedHueRanges: [[260, 340], [100, 160]]
     // Dos arcos separados: Azul/Magenta frío + Verde Láser/Cyan.
     // Split-complementary opera dentro de estos dos arcos.
@@ -509,7 +505,7 @@ export const RAVE_CONSTITUTION = {
     // 🔓 Neon Protocol — heredado de Techno
     neonProtocol: {
         enabled: true,
-        dangerZone: [20, 60], // Coincide con forbiddenHueRanges
+        dangerZone: [10, 90], // 🧱 GRAN MURO: alineado con forbiddenHueRanges [10, 90]
         minSaturation: 95, // Saturación extrema
         minLightness: 75,
         fallbackToWhite: true,

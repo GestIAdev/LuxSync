@@ -716,6 +716,9 @@ VIBE_PROFILES['techno-club'] = VIBE_PROFILES['techno'];
 VIBE_PROFILES['fiesta-latina'] = VIBE_PROFILES['latino'];
 VIBE_PROFILES['pop-rock'] = VIBE_PROFILES['rock'];
 VIBE_PROFILES['chill-lounge'] = VIBE_PROFILES['chill'];
+// 🎆 FASE 4b: RaveX — clon de techno (EDM comparte estructura 4x4, drops largos)
+VIBE_PROFILES['rave'] = VIBE_PROFILES['techno'];
+VIBE_PROFILES['rave-highfreq'] = VIBE_PROFILES['techno'];
 // Default profile (techno-compatible for backwards compatibility)
 const DEFAULT_PROFILE = VIBE_PROFILES['techno'];
 class TriBandRollingStats {

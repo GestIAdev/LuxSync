@@ -3,13 +3,20 @@
 // Envolvente lenta para normalizar niveles antes del análisis FFT.
 // Evita que GodEarFFT reciba señales demasiado bajas o saturadas.
 //
-// Specs del Blueprint:
+// 🎚️ WAVE 7760: CORRECCIÓN SEMÁNTICA — Attack/Release invertidos.
+// Antes: attack=200ms (subir gain lento), release=2000ms (bajar lentísimo).
+// Eso asfixiaba la señal tras drops: el gain se quedaba alto durante 6s.
+// Ahora: attack=10ms (aplastar picos instantáneo), release=400ms (recuperar suave).
+// Un AGC debe atacar rápido (bajar gain cuando hay señal fuerte) y liberar
+// suavemente (subir gain cuando hay silencio) — no al revés.
+//
+// Specs del Blueprint (actualizados WAVE 7760):
 //   - RMS Window: 500ms (22050 samples @ 44100Hz)
 //   - Target: -18 dBFS (0.12589 linear)
-//   - Attack: 200ms (ganancia sube lento — evita bombeo)
-//   - Release: 2000ms (ganancia baja muy lento — respeta la música)
+//   - Attack: 10ms (ganancia BAJA instantáneo — aplasta picos)
+//   - Release: 400ms (ganancia SUBE suave — recupera tras silencios)
 //   - Gain Range: -12 dB a +24 dB
-//   - Hard Clamp: [-1.0, 1.0]
+//   - Hard Clamp: tanh() soft saturation
 //
 // Zero allocation en hot path. Determinista.
 
@@ -21,9 +28,12 @@ const MAX_GAIN_DB = 24
 const MIN_GAIN_LINEAR = Math.pow(10, MIN_GAIN_DB / 20)  // 0.25119...
 const MAX_GAIN_LINEAR = Math.pow(10, MAX_GAIN_DB / 20)  // 15.8489...
 
-const ATTACK_TIME_S = 0.2      // 200ms
-const RELEASE_TIME_S = 2.0     // 2000ms
-const RMS_WINDOW_S = 0.5       // 500ms
+// 🎚️ WAVE 7760: SEMÁNTICA CORREGIDA
+// ATTACK = velocidad para BAJAR gain cuando la señal es fuerte (aplastar picos)
+// RELEASE = velocidad para SUBIR gain cuando la señal es débil (recuperar)
+const ATTACK_TIME_S = 0.01      // 10ms — aplastar picos instantáneo
+const RELEASE_TIME_S = 0.4       // 400ms — recuperar suave tras silencios
+const RMS_WINDOW_S = 0.5         // 500ms
 
 // Minimum RMS to avoid division by near-zero (silence floor)
 const RMS_FLOOR = 1e-8  // ~ -160 dBFS
@@ -116,8 +126,10 @@ export class AutoGainProcessor {
       if (desiredGain > MAX_GAIN_LINEAR) desiredGain = MAX_GAIN_LINEAR
 
       // Apply envelope smoothing (one-pole filter)
-      // Attack when gain goes UP, release when gain goes DOWN
-      const alpha = (desiredGain > this.currentGain) ? atkAlpha : relAlpha
+      // 🎚️ WAVE 7760: SEMÁNTICA CORREGIDA
+      // ATTACK = gain BAJA (señal fuerte → aplastar rápido, 10ms)
+      // RELEASE = gain SUBE (silencio → recuperar suave, 400ms)
+      const alpha = (desiredGain < this.currentGain) ? atkAlpha : relAlpha
       this.currentGain += alpha * (desiredGain - this.currentGain)
 
       // WAVE 7742: SOFT SATURATION — replaces hard clamp.

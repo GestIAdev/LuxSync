@@ -247,6 +247,10 @@ export class TitanOrchestrator {
         // WAVE 254: Control state
         this.mode = 'auto';
         this.useBrain = true;
+        // 🎚️ WAVE 7760: inputGain OBSOLETO — ya no se aplica al pipeline de audio.
+        // Se mantiene la variable para compatibilidad con la API IPC (setInputGain)
+        // pero el multiplicador fue erradicado de TickEngine y AudioPipelineManager.
+        // La salida del audioPipeline se consume pura, sin doble ganancia post-FFT.
         this.inputGain = 1.0;
         //  WAVE 560: Separated consciousness toggle (Layer 1 only)
         // useBrain = Layer 0 (reactiva) + Layer 1 (consciousness)
@@ -774,10 +778,12 @@ export class TitanOrchestrator {
     }
     /**
      * WAVE 254: Set input gain for audio
+     * 🎚️ WAVE 7760: OBSOLETO — el multiplicador ya no se aplica al pipeline.
+     * Se mantiene la firma para compatibilidad IPC pero el valor se ignora.
      */
     setInputGain(gain) {
         this.inputGain = Math.max(0, Math.min(2, gain));
-        console.log(`[TitanOrchestrator] Input gain set to: ${this.inputGain}`);
+        console.log(`[TitanOrchestrator] Input gain set to: ${this.inputGain} (OBSOLETE — no longer applied to audio pipeline)`);
     }
     /**
      * WAVE 255.5: Set callback for broadcasting truth to frontend

@@ -822,28 +822,9 @@ export const SystemsCheck: React.FC = () => {
             </div>
           )}
 
-          {/* WAVE 2502: INPUT GAIN CONTROL */}
-          <div className="gain-control">
-            <div className="gain-control-header">
-              <span className="gain-label">GAIN</span>
-              <span className="gain-value">{Math.round(inputGain * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              className="gain-slider"
-              min={0.1}
-              max={4.0}
-              step={0.05}
-              value={inputGain}
-              style={{ '--gain-pct': ((inputGain - 0.1) / (4.0 - 0.1)) * 100 } as React.CSSProperties}
-              onChange={(e) => setInputGain(parseFloat(e.target.value))}
-            />
-            <div className="gain-ticks">
-              <span>10%</span>
-              <span>100%</span>
-              <span>400%</span>
-            </div>
-          </div>
+          {/* 🎚️ WAVE 7760: INPUT GAIN CONTROL ELIMINADO — el multiplicador
+              post-FFT fue erradicado del pipeline (ver TitanOrchestrator.ts).
+              El slider ya no tiene efecto sobre el audio. Bloque removido. */}
 
           {audioError && (
             <div className="system-error">⚠️ {audioError}</div>

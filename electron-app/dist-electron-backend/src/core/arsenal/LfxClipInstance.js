@@ -34,6 +34,7 @@ export const COMPATIBLE_VIBES = Object.freeze([
     'latino-organic',
     'pop-rock',
     'chill-lounge',
+    'rave-highfreq', // 🎆 FASE 4b: RaveX
 ]);
 /** Lista canónica de arquetipos. */
 export const USER_ARCHETYPES = Object.freeze([
@@ -161,6 +162,7 @@ const VIBE_BRIDGE = Object.freeze({
     'latino-organic': 'fiesta-latina',
     'pop-rock': 'pop-rock',
     'chill-lounge': 'chill-lounge',
+    'rave-highfreq': 'rave', // 🎆 FASE 4b: RaveX → rave canónico
 });
 // ─── CLASE ÁTOMO ────────────────────────────────────────────────────────────
 /**

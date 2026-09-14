@@ -606,16 +606,16 @@ export class AudioPipelineManager {
   }
 
   /**
-   * Get the effective bass/mid/high/energy values with gain applied.
+   * Get the effective bass/mid/high/energy values.
+   * 🎚️ WAVE 7760: inputGain suprimido — salida pura del pipeline.
    */
   getEffectiveBands(): { bass: number; mid: number; high: number; energy: number } {
-    const inputGain = this.ctx.getInputGain()
     if (this.hasRealAudio) {
       return {
-        bass: this.lastAudioData.bass * inputGain,
-        mid: this.lastAudioData.mid * inputGain,
-        high: this.lastAudioData.high * inputGain,
-        energy: this.lastAudioData.energy * inputGain,
+        bass: this.lastAudioData.bass,
+        mid: this.lastAudioData.mid,
+        high: this.lastAudioData.high,
+        energy: this.lastAudioData.energy,
       }
     }
     return { bass: 0, mid: 0, high: 0, energy: 0 }

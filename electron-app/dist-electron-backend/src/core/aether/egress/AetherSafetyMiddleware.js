@@ -33,6 +33,8 @@ const VIBE_REV_LIMITS = {
     'pop-rock': { pan: 200, tilt: 150 }, // 🔥 130/90→200/150
     'chill-lounge': { pan: 15, tilt: 10 }, // Sin cambio
     'idle': { pan: 60, tilt: 40 }, // Sin cambio
+    // 🎆 FASE 4b: RaveX — mismos límites que techno (geometría industrial)
+    'rave': { pan: 320, tilt: 260 }, // 🔥 +20/+40 vs techno (drops más violentos)
 };
 // ── Kinetic state Float32Array slots ─────────────────────────────────────
 const KS_LAST_PAN = 0, KS_LAST_TILT = 1, KS_LAST_TIME = 2, KS_INIT = 3;

@@ -1922,7 +1922,10 @@ export abstract class LiquidEngineBase {
     //   if (FINESSE_AUDIT_ENABLED && (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1))
     // 🎆 FASE 4b: FINESSE_AUDIT desactivado temporalmente. Cambiar `false` → `true`
     // para reactivar el dump frame-by-frame, o restaurar la condición gated de arriba.
-    if (false) {
+    // 🎚️ WAVE 7760: REACTIVADO para recalibración de umbrales back-snare tras
+    // la reingeniería acústica (tilt + AGC corregido). Volver a `false` cuando
+    // se complete el profiling.
+    if (true) {
       console.log(
         `[FINESSE_AUDIT] ` +
         `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +

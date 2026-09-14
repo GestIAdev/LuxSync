@@ -98,20 +98,31 @@ const BLACKMAN_HARRIS_COHERENT_GAIN = 0.35875;
 /**
  * AGC Configuration per band
  *
- * Attack: How fast gain increases when signal is low
- * Release: How fast gain decreases when signal is high
+ * 🎚️ WAVE 7760: TILT ESPECTRAL NATURAL (-3dB/octava) + CORRECCIÓN SEMÁNTICA
  *
- * Bass bands: Slower attack (preserve dynamics), faster release
- * Treble bands: Faster attack (catch transients), slower release
+ * TILT: Los targetRMS decaen logarítmicamente de graves a agudos, imitando
+ * la curva de sensibilidad del oído humano. Esto evita que el AGC infle el
+ * noise floor del FFT en bandas vacías de techno minimal.
+ *
+ * SEMÁNTICA CORREGIDA:
+ * - attackMs = velocidad para BAJAR gain (señal fuerte → aplastar rápido)
+ * - releaseMs = velocidad para SUBIR gain (silencio → recuperar suave)
+ * Antes estaba invertido: atacaba lento y liberaba lentísimo → asfixia.
+ *
+ * Bass bands: Attack moderado (preserva punch), release rápido (recupera)
+ * Treble bands: Attack muy rápido (aplasta transitorios), release rápido
  */
 const AGC_CONFIG = {
-    subBass: { attackMs: 150, releaseMs: 50, targetRMS: 0.4, maxGain: 3.0 },
-    bass: { attackMs: 120, releaseMs: 60, targetRMS: 0.45, maxGain: 2.5 },
-    lowMid: { attackMs: 100, releaseMs: 80, targetRMS: 0.5, maxGain: 2.0 },
-    mid: { attackMs: 80, releaseMs: 100, targetRMS: 0.55, maxGain: 3.0 },
-    highMid: { attackMs: 60, releaseMs: 120, targetRMS: 0.55, maxGain: 3.5 },
-    treble: { attackMs: 40, releaseMs: 150, targetRMS: 0.50, maxGain: 4.0 },
-    ultraAir: { attackMs: 30, releaseMs: 180, targetRMS: 0.3, maxGain: 4.0 },
+    // Graves: target alto, gain moderado — el kick necesita cabeza
+    subBass: { attackMs: 15, releaseMs: 80, targetRMS: 0.45, maxGain: 2.0 },
+    bass: { attackMs: 15, releaseMs: 80, targetRMS: 0.45, maxGain: 2.0 },
+    // Medios: escalonado a la baja — evita inflar voces/instrumentos ausentes
+    lowMid: { attackMs: 15, releaseMs: 100, targetRMS: 0.35, maxGain: 1.8 },
+    mid: { attackMs: 15, releaseMs: 120, targetRMS: 0.25, maxGain: 1.8 },
+    // Agudos: desplome intencionado — el noise floor NO debe llegar al 50%
+    highMid: { attackMs: 15, releaseMs: 150, targetRMS: 0.15, maxGain: 1.5 },
+    treble: { attackMs: 15, releaseMs: 150, targetRMS: 0.10, maxGain: 1.5 },
+    ultraAir: { attackMs: 15, releaseMs: 180, targetRMS: 0.05, maxGain: 2.0 },
 };
 /**
  * WAVE 3424 - Post-FFT amplitude recovery (visual/control path only).
@@ -136,7 +147,11 @@ const AGC_CONFIG = {
 // zero samples above 1.25, so 1.50 was over-provisioned.
 const AGC_HEADROOM = 1.25;
 const AGC_TARGET_SCALE = 0.64; // Confirmed R2: p95 kicks 1.4133 → 0.9608
-const POST_FFT_LEGACY_EQ_GAIN = 2.25 * AGC_TARGET_SCALE; // 1.44
+// 🎚️ WAVE 7760: POST_FFT_LEGACY_EQ_GAIN ELIMINADO — el multiplicador global
+// de 1.44 inflaba todas las bandas por igual, causando doble inflación cuando
+// el AGC ya empujaba hacia targetRMS. Ahora scaleBandEnergyForVisual usa
+// solo AGC_TARGET_SCALE (0.64) sin el legacy EQ gain.
+const POST_FFT_LEGACY_EQ_GAIN = AGC_TARGET_SCALE; // 0.64 — sin el 2.25× legacy
 const POST_FFT_BAND_OUTPUT_CLAMP = AGC_HEADROOM;
 // WAVE 8005 R2: Spectral flatness → whiteNoiseScore mapping.
 // OFFSET at kicks p75 (0.1021) keeps 75% of kicks at zero.
@@ -1144,7 +1159,7 @@ class AGCTrustZone {
         this.rmsHistoryIndex = {};
         this.rmsHistorySum = {};
         this.rmsHistoryCount = {};
-        this.historyLength = 20; // ~1 second @ 20fps
+        this.historyLength = 5; // 🎚️ WAVE 7760: ~150ms @ 20fps (era 20 = ~1s)
         this.isActive = true;
         // WAVE 8003: AGC Freeze — when SI > 0.6, prevent gain reduction (brickwall anti-compensate)
         this.freezeReduction = false;
@@ -1193,15 +1208,18 @@ class AGCTrustZone {
             targetGain = Math.max(targetGain, 0.1); // Don't attenuate too much
         }
         // Smooth gain change (attack/release asymmetry)
+        // 🎚️ WAVE 7760: SEMÁNTICA CORREGIDA
+        // attackMs = velocidad para BAJAR gain (señal fuerte → aplastar rápido, 15ms)
+        // releaseMs = velocidad para SUBIR gain (silencio → recuperar suave, 80-180ms)
         const currentGain = this.gains[bandId] || 1.0;
         const gainDiff = targetGain - currentGain;
         let smoothingTime;
-        if (gainDiff > 0) {
-            // Increasing gain (attack) - slower to preserve dynamics
+        if (gainDiff < 0) {
+            // Gain debe BAJAR (señal fuerte) — ATTACK rápido
             smoothingTime = config.attackMs;
         }
         else {
-            // Decreasing gain (release) - faster to prevent clipping
+            // Gain debe SUBIR (silencio) — RELEASE suave
             smoothingTime = config.releaseMs;
         }
         // Exponential smoothing

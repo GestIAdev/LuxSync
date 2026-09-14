@@ -220,10 +220,13 @@ export class TickEngine {
         // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
         let bass, mid, high, energy;
         if (this.audioPipeline.hasRealAudio) {
-            bass = this.audioPipeline.lastAudioData.bass * this.inputGain;
-            mid = this.audioPipeline.lastAudioData.mid * this.inputGain;
-            high = this.audioPipeline.lastAudioData.high * this.inputGain;
-            energy = this.audioPipeline.lastAudioData.energy * this.inputGain;
+            // 🎚️ WAVE 7760: inputGain suprimido — la salida del audioPipeline se
+            // consume PURA. El multiplicador post-FFT saturaba el transientStore
+            // y el espectroscopio sin tocar el dominio espectral real.
+            bass = this.audioPipeline.lastAudioData.bass;
+            mid = this.audioPipeline.lastAudioData.mid;
+            high = this.audioPipeline.lastAudioData.high;
+            energy = this.audioPipeline.lastAudioData.energy;
         }
         else {
             // Silence - system in standby

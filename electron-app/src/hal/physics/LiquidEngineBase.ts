@@ -1502,15 +1502,19 @@ export abstract class LiquidEngineBase {
             !rawOnset &&
             this._fluxBaseline > 0.09 &&
             gateHealth < 0.05 &&
-            ungatedSnare > 0.45 &&
+            ungatedSnare > 0.40 &&
             snareDrive >= snareFloor
           ) {
             rawOnset = true
-            // ⚒️ WAVE 7749.106: DENSITY REFRACTORY — 2 frames (not 4) for
-            // denser firing in white noise. The noise is continuous, so we
-            // want to fire every 2-3 frames (~45-68ms) to paint continuous
-            // light. The standard 4-frame refractory leaves gaps.
-            this._snareRefractoryFrames = 2
+            // ⚒️ WAVE 7760.3: DENSITY REFRACTORY — 1 frame for maximum
+            // destruction in white noise build-ups (Opus). The noise IS
+            // the signal — fire every other frame (~45ms at 44fps) to
+            // paint continuous light at the climax. This is NOT hi-hat
+            // strobing — it's a 22Hz noise wall where the goal is to
+            // blind the track. Refractory 1 = fire, skip 1, fire...
+            // ⚒️ WAVE 7749.106 (original): 2 frames, lowered from 4.
+            // ⚒️ WAVE 7760.3: 1 frame — +53 onsets recovered in Opus.
+            this._snareRefractoryFrames = 1
             this._ghostRefractoryFrames = LiquidEngineBase.GHOST_REFRACTORY_FRAMES
           } else if (rawOnset) {
             this._snareRefractoryFrames = LiquidEngineBase.SNARE_REFRACTORY_FRAMES

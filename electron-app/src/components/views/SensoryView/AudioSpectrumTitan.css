@@ -104,11 +104,10 @@
   transform: translateX(-50%);
 }
 
-/* Bars Container */
-.audio-spectrum-titan__bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
+/* Bars Container — WAVE 7759: replaced by canvas */
+.audio-spectrum-titan__canvas {
+  display: block;
+  width: 100%;
   height: 100%;
   position: relative;
   z-index: 1;

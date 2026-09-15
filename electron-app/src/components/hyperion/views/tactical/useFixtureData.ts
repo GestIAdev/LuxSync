@@ -32,6 +32,10 @@ function classifyFixtureType(
   // Model-based classification first
   if (model) {
     const m = model.toLowerCase()
+    // 🩸 WAVE 7761.5: fans multicelulares (Tungsten) — geometría de hélice
+    // con sub-zonas RGB desagregadas. Debe ir ANTES del check de 'par'
+    // ('fan' no colisiona, pero mantenemos el orden defensivo).
+    if (m.includes('fan') || m.includes('tungsten')) return 'fan'
     if (m.includes('strobe') || m.includes('atomic')) return 'strobe'
     if (m.includes('laser')) return 'laser'
     if (m.includes('par') || m.includes('led bar')) return 'par'

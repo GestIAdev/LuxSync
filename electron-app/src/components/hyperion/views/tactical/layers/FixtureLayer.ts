@@ -28,6 +28,16 @@
  *   Oilpan safety of WAVE 7568. The GPU (RTX 3060) handles drawImage
  *   scaling trivially.
  *
+ * 🩸 WAVE 7761.5 (Multi-RGB Fase 5): GEOMETRÍA VECTORIAL POR TIPO + LRU.
+ *   - fan → hélice de 3 aspas (ambient/air/strobe desagregados)
+ *   - moving → diamante direccional (rota con physicalPan)
+ *   - laser → barra direccional con núcleo blanco
+ *   - default → círculo clásico con borde de contraste mejorado
+ *   Todos los sprites: fillStyle sólido (SIN gradientes), cache LRU
+ *   estricto (evictLRU reemplaza el vaciado total — el vaciado con 3
+ *   sub-zonas mutando era la aritmética exacta del OOM de WAVE 7568),
+ *   y las nuevas caches registradas en disposeFixtureLayerSprites().
+ *
  * @module components/hyperion/views/tactical/layers/FixtureLayer
  * @since WAVE 2042.5 (Project Hyperion — Phase 3)
  */
@@ -112,17 +122,64 @@ const deg2rad = (d: number): number => d * (Math.PI / 180)
 const GLOW_SPRITE_SIZE = 128
 const BEAM_SPRITE_W = 64
 const BEAM_SPRITE_H = 256
-// 🩸 WAVE 7749.25: Lowered from 150 → 64. Discrete fixture palettes rarely
-// exceed this; the lower cap bounds per-worker memory so orphaned workers
-// (if any slip past the HMR fix) stay cheap.
-const SPRITE_CACHE_LIMIT = 64
-// 🩸 WAVE 7749.25: Color quantization step. Rounding RGB to the nearest 8
-// collapses color-fade churn (e.g. a slow ramp 0→255 produces ~32 unique
-// sprites instead of 256). Visually indistinguishable at 8-bit display depth.
-const COLOR_QUANT_STEP = 8
+// 🩸 WAVE 7761.5 (Multi-RGB Fase 5): raised 64 → 192. Con 3 sub-zonas RGB
+// por fan mutando independientemente (RaveX: dientes de sierra a 44Hz), las
+// claves únicas por frame se triplican. 64 era el mundo de 1 color/fixture.
+// Memoria acotada: 192 × 128×128×4B ≈ 12.6 MB peor caso por cache — aceptable
+// frente al OOM que causaba el vaciado total (ver evictLRU).
+const SPRITE_CACHE_LIMIT = 192
+// 🩸 WAVE 7761.5: cuantización 8 → 16. Triplicar los orígenes de color exige
+// colapsar más agresivo los fades: 256 → ~16 niveles/canal. Indistinguible
+// a profundidad de 8 bits en vista táctica; mantiene las claves únicas bajo
+// control sin sacrificar el LRU.
+const COLOR_QUANT_STEP = 16
+
+// ── WAVE 7761.5: geometría vectorial por tipo (Zero-Alloc, sin gradientes) ──
+const HELIX_SPRITE_SIZE = 96     // fan: 3 aspas (ambient/air/strobe)
+const DIAMOND_SPRITE_SIZE = 64   // mover: rombo direccional
+const LASER_SPRITE_W = 96       // laser: barra direccional
+const LASER_SPRITE_H = 32
 
 const glowSpriteCache = new Map<string, OffscreenCanvas>()
 const beamSpriteCache = new Map<string, OffscreenCanvas>()
+const helixSpriteCache = new Map<string, OffscreenCanvas>()
+const diamondSpriteCache = new Map<string, OffscreenCanvas>()
+const laserBarSpriteCache = new Map<string, OffscreenCanvas>()
+
+/**
+ * 🩸 WAVE 7761.5: LRU TOUCH — on cache hit, refresh insertion order
+ * (Map preserva orden de inserción = orden de uso). Convierte la política
+ * FIFO en LRU estricto: lo más recientemente usado sobrevive a la eviction.
+ * Coste: delete+set por hit — trivial para V8 (~60k ops/s peor caso).
+ */
+function cacheGet(cache: Map<string, OffscreenCanvas>, key: string): OffscreenCanvas | undefined {
+  const cached = cache.get(key)
+  if (cached) {
+    cache.delete(key)
+    cache.set(key, cached)
+  }
+  return cached
+}
+
+/**
+ * 🩸 WAVE 7761.5: EVICCIÓN LRU ESTRICTA — reemplaza el vaciado total de
+ * WAVE 7749.25. El vaciado completo (`for…close(); clear()`) era la
+ * aritmética exacta del OOM de Oilpan (WAVE 7568): con >64 claves únicas
+ * por frame (3 sub-zonas mutando), el cache se vaciaba CADA frame y cada
+ * drawImage volvía a exigir new OffscreenCanvas + createRadialGradient +
+ * 5 addColorStop. LRU: evicta solo los más viejos hasta bajar del límite;
+ * los calientes (colores dominantes del show) nunca se re-rasterizan.
+ * 🛡️ WAVE 7713: .close() libera la textura GPU sincrónamente.
+ */
+function evictLRU(cache: Map<string, OffscreenCanvas>): void {
+  while (cache.size >= SPRITE_CACHE_LIMIT) {
+    const oldest = cache.keys().next().value
+    if (oldest === undefined) break
+    const sprite = cache.get(oldest)
+    cache.delete(oldest)
+    try { (sprite as any).close() } catch {}
+  }
+}
 
 /**
  * 🩸 WAVE 7749.25: Quantize RGB to the nearest COLOR_QUANT_STEP boundary.
@@ -145,18 +202,11 @@ function getGlowSprite(r: number, g: number, b: number): OffscreenCanvas {
   // 🩸 WAVE 7749.25: Quantize color so fades collapse into fewer cache keys.
   const q = quantizeColor(r, g, b)
   const colorKey = `rgb(${q.r},${q.g},${q.b})`
-  const cached = glowSpriteCache.get(colorKey)
+  const cached = cacheGet(glowSpriteCache, colorKey)
   if (cached) return cached
 
-  // Safety valve: clear if too many unique colors (color fades etc.)
-  // 🛡️ WAVE 7713: Call .close() on evicted sprites to release GPU memory
-  // immediately instead of waiting for GC (OffscreenCanvas holds GPU textures).
-  if (glowSpriteCache.size >= SPRITE_CACHE_LIMIT) {
-    for (const sprite of glowSpriteCache.values()) {
-      try { (sprite as any).close() } catch {}
-    }
-    glowSpriteCache.clear()
-  }
+  // 🩸 WAVE 7761.5: LRU estricto — evicta los más viejos, NO vaciado total.
+  evictLRU(glowSpriteCache)
 
   const sprite = new OffscreenCanvas(GLOW_SPRITE_SIZE, GLOW_SPRITE_SIZE)
   const sctx = sprite.getContext('2d')!
@@ -184,16 +234,11 @@ function getBeamSprite(r: number, g: number, b: number): OffscreenCanvas {
   // 🩸 WAVE 7749.25: Quantize color so fades collapse into fewer cache keys.
   const q = quantizeColor(r, g, b)
   const colorKey = `rgb(${q.r},${q.g},${q.b})`
-  const cached = beamSpriteCache.get(colorKey)
+  const cached = cacheGet(beamSpriteCache, colorKey)
   if (cached) return cached
 
-  if (beamSpriteCache.size >= SPRITE_CACHE_LIMIT) {
-    // 🛡️ WAVE 7713: Close evicted sprites to release GPU memory immediately.
-    for (const sprite of beamSpriteCache.values()) {
-      try { (sprite as any).close() } catch {}
-    }
-    beamSpriteCache.clear()
-  }
+  // 🩸 WAVE 7761.5: LRU estricto — evicta los más viejos, NO vaciado total.
+  evictLRU(beamSpriteCache)
 
   const sprite = new OffscreenCanvas(BEAM_SPRITE_W, BEAM_SPRITE_H)
   const sctx = sprite.getContext('2d')!
@@ -208,6 +253,148 @@ function getBeamSprite(r: number, g: number, b: number): OffscreenCanvas {
   sctx.fillRect(0, 0, BEAM_SPRITE_W, BEAM_SPRITE_H)
 
   beamSpriteCache.set(colorKey, sprite)
+  return sprite
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🩸 WAVE 7761.5 (Multi-RGB Fase 5): GEOMETRÍA VECTORIAL POR TIPO
+//
+// Primitivas pre-renderizadas en OffscreenCanvas, SIN createRadialGradient ni
+// createLinearGradient — solo fillStyle sólido + strokeStyle. El cache por
+// color cuantizado mantiene el contrato Oilpan-cero-allocs del hot loop
+// (WAVE 7568/7571): los paths se rasterizan UNA vez por combinación de color
+// y se estampan con drawImage a 60fps.
+//
+// REGLA DE CONTRASTE: toda geometría sólida lleva contorno blanco 0.4 para
+// no perderse en el fondo oscuro del canvas (rgba(255,255,255,0.4), 1.5px).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Fallback por-aspa: si la sub-zona es 0/nula/NaN, usa el RGB maestro. */
+function pickZoneColor(v: number | undefined, fallback: number): number {
+  return (v !== undefined && Number.isFinite(v) && v > 0) ? v : fallback
+}
+
+/**
+ * HÉLICE DE 3 ASPAS (fan — ej. Tungsten). Cada aspa lleva el color de su
+ * sub-zona: aspa 0 = Ambient, aspa 1 = Air, aspa 2 = Strobe. Gaps de 15%
+ * entre aspas para el look mecánico de ventilador. Hub central oscuro
+ * (el drawHotCenter pintará el eje blanco encima).
+ */
+function getHelixSprite(
+  aR: number, aG: number, aB: number,
+  aiR: number, aiG: number, aiB: number,
+  sR: number, sG: number, sB: number,
+): OffscreenCanvas {
+  const qa = quantizeColor(aR, aG, aB)
+  const qi = quantizeColor(aiR, aiG, aiB)
+  const qs = quantizeColor(sR, sG, sB)
+  const key = `h|${qa.r},${qa.g},${qa.b}|${qi.r},${qi.g},${qi.b}|${qs.r},${qs.g},${qs.b}`
+  const cached = cacheGet(helixSpriteCache, key)
+  if (cached) return cached
+
+  evictLRU(helixSpriteCache)
+
+  const sprite = new OffscreenCanvas(HELIX_SPRITE_SIZE, HELIX_SPRITE_SIZE)
+  const sctx = sprite.getContext('2d')!
+  const c = HELIX_SPRITE_SIZE / 2
+  const radius = c - 6
+  const bladeSpan = (Math.PI * 2 / 3) * 0.85  // 102° por aspa, 18° de gap
+  const colors = [
+    `rgb(${qa.r}, ${qa.g}, ${qa.b})`,
+    `rgb(${qi.r}, ${qi.g}, ${qi.b})`,
+    `rgb(${qs.r}, ${qs.g}, ${qs.b})`,
+  ]
+  for (let i = 0; i < 3; i++) {
+    const start = (Math.PI * 2 / 3) * i - Math.PI / 2
+    sctx.beginPath()
+    sctx.moveTo(c, c)
+    sctx.arc(c, c, radius, start, start + bladeSpan)
+    sctx.closePath()
+    sctx.fillStyle = colors[i]
+    sctx.fill()
+    sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+    sctx.lineWidth = 1.5
+    sctx.stroke()
+  }
+  // Hub central (eje mecánico del ventilador)
+  sctx.beginPath()
+  sctx.arc(c, c, radius * 0.18, 0, Math.PI * 2)
+  sctx.fillStyle = 'rgba(20, 20, 28, 0.95)'
+  sctx.fill()
+  sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+  sctx.lineWidth = 1.5
+  sctx.stroke()
+
+  helixSpriteCache.set(key, sprite)
+  return sprite
+}
+
+/**
+ * DIAMANTE DIRECCIONAL (mover). Rombo sólido con borde. Se estampa rotado
+ * por physicalPan en drawDiamondFixture — apunta hacia donde mira el beam.
+ */
+function getDiamondSprite(r: number, g: number, b: number): OffscreenCanvas {
+  const q = quantizeColor(r, g, b)
+  const key = `d|${q.r},${q.g},${q.b}`
+  const cached = cacheGet(diamondSpriteCache, key)
+  if (cached) return cached
+
+  evictLRU(diamondSpriteCache)
+
+  const sprite = new OffscreenCanvas(DIAMOND_SPRITE_SIZE, DIAMOND_SPRITE_SIZE)
+  const sctx = sprite.getContext('2d')!
+  const c = DIAMOND_SPRITE_SIZE / 2
+  const rr = c - 6
+  sctx.beginPath()
+  sctx.moveTo(c, c - rr)          // punta superior (dirección del beam)
+  sctx.lineTo(c + rr * 0.7, c)     // derecha
+  sctx.lineTo(c, c + rr)          // inferior
+  sctx.lineTo(c - rr * 0.7, c)    // izquierda
+  sctx.closePath()
+  sctx.fillStyle = `rgb(${q.r}, ${q.g}, ${q.b})`
+  sctx.fill()
+  sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+  sctx.lineWidth = 1.5
+  sctx.stroke()
+
+  diamondSpriteCache.set(key, sprite)
+  return sprite
+}
+
+/**
+ * BARRA LÁSER (laser). Rectángulo grueso redondeado con núcleo central
+ * blanco brillante — la firma visual del láser. Se estampa rotada por
+ * physicalPan en drawLaserFixture.
+ */
+function getLaserBarSprite(r: number, g: number, b: number): OffscreenCanvas {
+  const q = quantizeColor(r, g, b)
+  const key = `l|${q.r},${q.g},${q.b}`
+  const cached = cacheGet(laserBarSpriteCache, key)
+  if (cached) return cached
+
+  evictLRU(laserBarSpriteCache)
+
+  const sprite = new OffscreenCanvas(LASER_SPRITE_W, LASER_SPRITE_H)
+  const sctx = sprite.getContext('2d')!
+  const pad = 5
+  const barH = LASER_SPRITE_H - pad * 2
+  sctx.beginPath()
+  sctx.roundRect(pad, pad, LASER_SPRITE_W - pad * 2, barH, barH / 2)
+  sctx.fillStyle = `rgb(${q.r}, ${q.g}, ${q.b})`
+  sctx.fill()
+  sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+  sctx.lineWidth = 1.5
+  sctx.stroke()
+  // Núcleo central blanco — el "haz" del láser
+  sctx.beginPath()
+  sctx.moveTo(pad * 2, LASER_SPRITE_H / 2)
+  sctx.lineTo(LASER_SPRITE_W - pad * 2, LASER_SPRITE_H / 2)
+  sctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
+  sctx.lineWidth = 2
+  sctx.lineCap = 'round'
+  sctx.stroke()
+
+  laserBarSpriteCache.set(key, sprite)
   return sprite
 }
 
@@ -227,6 +414,19 @@ export function disposeFixtureLayerSprites(): void {
     try { (sprite as any).close() } catch {}
   }
   beamSpriteCache.clear()
+  // 🩸 WAVE 7761.5: geometría vectorial por tipo — mismos registros de teardown.
+  for (const sprite of helixSpriteCache.values()) {
+    try { (sprite as any).close() } catch {}
+  }
+  helixSpriteCache.clear()
+  for (const sprite of diamondSpriteCache.values()) {
+    try { (sprite as any).close() } catch {}
+  }
+  diamondSpriteCache.clear()
+  for (const sprite of laserBarSpriteCache.values()) {
+    try { (sprite as any).close() } catch {}
+  }
+  laserBarSpriteCache.clear()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -320,8 +520,9 @@ function drawBeam(
 ): void {
   const { r, g, b, intensity, physicalPan, physicalTilt, zoom, focus, type } = fixture
 
-  // Only movers get beams
-  if (type === 'par' || type === 'wash' || intensity < 0.03) return
+  // Only movers get beams. Fans (Tungsten) son atmosféricos — no proyectan
+  // cono direccional (WAVE 7761.5).
+  if (type === 'par' || type === 'wash' || type === 'fan' || intensity < 0.03) return
 
   // Pan angle: 0→ +45°, 0.5→ 0°, 1→ -45°
   const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
@@ -414,6 +615,11 @@ function drawCore(
   ctx.arc(x, y, coreRadius, 0, Math.PI * 2)
   ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${coreAlpha})`
   ctx.fill()
+  // 🩸 WAVE 7761.5: REGLA DE CONTRASTE — contorno visible para que la
+  // geometría sólida no se pierda en el fondo oscuro del canvas.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
 }
 
 /**
@@ -486,6 +692,103 @@ function drawOffFixture(
   ctx.arc(x, y, 2, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(0, 240, 255, 0.20)'
   ctx.fill()
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🩸 WAVE 7761.5 (Multi-RGB Fase 5): TYPE-DISPATCHED VECTOR DRAW FUNCTIONS
+// Sustituyen a drawCore + drawNeonRim cuando el tipo tiene geometría propia.
+// Todas estampan sprites cacheados con drawImage — zero-alloc en el hot loop.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * FAN — hélice de 3 aspas. Aspa 0 = Ambient, aspa 1 = Air, aspa 2 = Strobe.
+ * Cada aspa hace fallback al RGB maestro si su sub-zona es 0/nula (paths
+ * legacy sin Aether proyectan sub-zonas a 0 — fallback garantiza que el
+ * fan nunca quede invisible).
+ */
+function drawHelixFixture(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  fixture: TacticalFixture,
+  baseRadius: number,
+  beatBoost: number
+): void {
+  const { r, g, b, intensity } = fixture
+  if (intensity < 0.02) return
+
+  const aR = pickZoneColor(fixture.rAmbient, r)
+  const aG = pickZoneColor(fixture.gAmbient, g)
+  const aB = pickZoneColor(fixture.bAmbient, b)
+  const aiR = pickZoneColor(fixture.rAir, r)
+  const aiG = pickZoneColor(fixture.gAir, g)
+  const aiB = pickZoneColor(fixture.bAir, b)
+  const sR = pickZoneColor(fixture.rStrobe, r)
+  const sG = pickZoneColor(fixture.gStrobe, g)
+  const sB = pickZoneColor(fixture.bStrobe, b)
+
+  const sprite = getHelixSprite(aR, aG, aB, aiR, aiG, aiB, sR, sG, sB)
+  const size = baseRadius * 2.8
+  const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
+
+  const prevAlpha = ctx.globalAlpha
+  ctx.globalAlpha = alpha
+  ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size)
+  ctx.globalAlpha = prevAlpha
+}
+
+/**
+ * MOVER — diamante direccional. Rotado por physicalPan: la punta superior
+ * apunta hacia donde mira el beam cone (drawBeam sigue dibujando el cono).
+ */
+function drawDiamondFixture(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  fixture: TacticalFixture,
+  baseRadius: number,
+  beatBoost: number
+): void {
+  const { r, g, b, intensity, physicalPan } = fixture
+  if (intensity < 0.02) return
+
+  const sprite = getDiamondSprite(r, g, b)
+  const size = baseRadius * 2.0
+  const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
+  const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
+
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(panAngle)
+  ctx.globalAlpha = alpha
+  ctx.drawImage(sprite, -size / 2, -size / 2, size, size)
+  ctx.restore()
+}
+
+/**
+ * LASER — barra direccional con núcleo blanco. Rotada por physicalPan
+ * (misma convención de ángulo que el beam cone).
+ */
+function drawLaserFixture(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  fixture: TacticalFixture,
+  baseRadius: number,
+  beatBoost: number
+): void {
+  const { r, g, b, intensity, physicalPan } = fixture
+  if (intensity < 0.02) return
+
+  const sprite = getLaserBarSprite(r, g, b)
+  const w = baseRadius * 3.4
+  const h = baseRadius * 1.1
+  const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
+  const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
+
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(panAngle)
+  ctx.globalAlpha = alpha
+  ctx.drawImage(sprite, -w / 2, -h / 2, w, h)
+  ctx.restore()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -563,11 +866,27 @@ export function renderFixtureLayer(
       // Off fixture
       drawOffFixture(ctx, fx, fy, fixture, baseRadius)
     } else {
-      // Lit fixture: halo + core + hot center + rim
+      // Lit fixture: halo + geometría por tipo + hot center
       drawHalo(ctx, fx, fy, fixture, baseRadius, beatScale)
-      drawCore(ctx, fx, fy, fixture, baseRadius, beatBoost)
+      // 🩸 WAVE 7761.5 (Multi-RGB Fase 5): despacho de geometría vectorial
+      // por tipo. Reemplaza drawCore + drawNeonRim cuando el tipo tiene
+      // primitiva propia; default conserva el comportamiento circular
+      // clásico (con el borde de contraste mejorado).
+      switch (fixture.type) {
+        case 'fan':
+          drawHelixFixture(ctx, fx, fy, fixture, baseRadius, beatBoost)
+          break
+        case 'moving':
+          drawDiamondFixture(ctx, fx, fy, fixture, baseRadius, beatBoost)
+          break
+        case 'laser':
+          drawLaserFixture(ctx, fx, fy, fixture, baseRadius, beatBoost)
+          break
+        default:
+          drawCore(ctx, fx, fy, fixture, baseRadius, beatBoost)
+          drawNeonRim(ctx, fx, fy, fixture, baseRadius)
+      }
       drawHotCenter(ctx, fx, fy, fixture, baseRadius)
-      drawNeonRim(ctx, fx, fy, fixture, baseRadius)
     }
   }
 }

@@ -58,8 +58,8 @@ export interface TacticalFixture {
   intensity: number
   
   // ── Fixture Classification ──────────────────────────────────────────────
-  /** Fixture archetype */
-  type: 'par' | 'moving' | 'strobe' | 'laser' | 'wash'
+  /** Fixture archetype. 'fan' = fixtures multicelulares (Tungsten) con sub-zonas RGB (WAVE 7761.5) */
+  type: 'par' | 'moving' | 'strobe' | 'laser' | 'wash' | 'fan'
   /** Canonical zone */
   zone: CanonicalZone
   

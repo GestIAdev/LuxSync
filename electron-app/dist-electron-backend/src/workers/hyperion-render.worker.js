@@ -114,8 +114,8 @@ const unpackBuffer = {
     rAmbient: 0, gAmbient: 0, bAmbient: 0,
     rAir: 0, gAir: 0, bAir: 0,
     rStrobe: 0, gStrobe: 0, bStrobe: 0,
-    // 🩸 WAVE 7761.6 (Fase 6): rotation init a 128 (stop por convención DMX).
-    rotation: 128,
+    // 🩸 WAVE 7761.6.3 (Fase 6.3): rotation init a 0 (STOP — convención DMX real).
+    rotation: 0,
 };
 // ── Previous intensity map for snap detection ─────────────────────────────
 const prevIntensity = new Map();

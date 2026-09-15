@@ -129,8 +129,17 @@ export class AetherUIProjector {
         // ── KINETIC: posición mecánica leída desde currentPosition (IK/physics) ──
         if (node.family === NodeFamily.KINETIC) {
           const kn = node as IKineticNodeData
+          // 🩸 WAVE 7761.6.3 (Fase 6.3): Eslabón perdido — leer el override del
+          // Árbitro ANTES de proyectar. El bloque KINETIC hace `continue` antes
+          // de llegar al duck-typing de abajo (línea 154), asi que sin esto el
+          // proyector es ciego al override manual del usuario.
+          const ch = arbitrated.get(nodeId)
+          const arbRotation = ch ? ch['rotation'] : undefined
           if (kn.isContinuous) {
-            fixture.rotation = toDmx(kn.currentPosition.rotation ?? 0.5)
+            // Prioriza el override del Árbitro (0.0-1.0) sobre la posición física.
+            // Default 0.0 = STOP (convención DMX real del hardware).
+            const rotVal = arbRotation !== undefined ? arbRotation : (kn.currentPosition.rotation ?? 0.0)
+            fixture.rotation = toDmx(rotVal)
           } else {
             const panDmx  = toDmx(kn.currentPosition.pan  ?? 0.5)
             const tiltDmx = toDmx(kn.currentPosition.tilt ?? 0.5)

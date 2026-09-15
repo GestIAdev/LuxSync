@@ -716,10 +716,9 @@ function drawOffFixture(ctx, x, y, fixture, baseRadius, frameTime) {
         case 'fan': {
             const sprite = getOffHelixSprite();
             const size = baseRadius * 2.8;
-            // 🩸 WAVE 7761.6.2: WYSIWYG absoluto — el chasis apagado también gira
-            // con el control manual del usuario. Misma matemática que drawHelixFixture:
-            // speed = (rotation - 128) / 127, angle = speed * (frameTime / 150).
-            const speed = ((fixture.rotation ?? 128) - 128) / 127;
+            // 🩸 WAVE 7761.6.3: WYSIWYG absoluto — el chasis apagado también gira
+            // con el control manual del usuario. 0 = STOP, 255 = velocidad máxima CW.
+            const speed = (fixture.rotation ?? 0) / 255;
             const angle = speed * (frameTime / 150);
             ctx.save();
             ctx.translate(x, y);
@@ -805,13 +804,12 @@ function drawHelixFixture(ctx, x, y, fixture, baseRadius, beatBoost, frameTime) 
     const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB);
     const size = baseRadius * 2.8;
     const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1);
-    // 🩸 WAVE 7761.6.1 (Fase 6.1): Rotación CONTINUA (velocidad, no ángulo).
-    // rotation es 0-255 DMX (128 = stop). La desviación respecto al centro
-    // determina la velocidad y dirección del giro continuo.
-    // speed > 0 = CW, speed < 0 = CCW, speed = 0 = parado.
-    // angle = speed * (timeValue / 150) — acumulación temporal continua.
-    const rotValue = fixture.rotation ?? 128;
-    const speed = (rotValue - 128) / 127; // [-1, 1]: -1=max CCW, 0=stop, +1=max CW
+    // 🩸 WAVE 7761.6.3 (Fase 6.3): Rotación CONTINUA unidireccional.
+    // rotation es 0-255 DMX (0 = STOP, 255 = velocidad máxima CW).
+    // El hardware real usa 0 como stop, no 128. Matemática directa:
+    // speed = rotValue / 255 → [0, 1]. angle = speed * (frameTime / 150).
+    const rotValue = fixture.rotation ?? 0;
+    const speed = rotValue / 255; // 0 = stop, 1.0 = velocidad máxima CW
     const angle = speed * (frameTime / 150);
     const prevAlpha = ctx.globalAlpha;
     ctx.globalAlpha = alpha;

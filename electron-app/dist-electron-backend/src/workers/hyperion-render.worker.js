@@ -317,6 +317,8 @@ function render(timestamp) {
         quality,
         onBeat: beatEnvelope > 0.05,
         beatIntensity: beatEnvelope,
+        // 🩸 WAVE 7761.6.1: timestamp del frame para rotación continua del fan.
+        frameTime: timestamp,
     });
     // LAYER 4: SELECTION
     renderSelectionLayer(ctx, canvasWidth, canvasHeight, smoothedFixtures, baseRadius, {

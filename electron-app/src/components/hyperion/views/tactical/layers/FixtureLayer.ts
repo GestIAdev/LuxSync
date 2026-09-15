@@ -289,9 +289,31 @@ function getBeamSprite(r: number, g: number, b: number): OffscreenCanvas {
 // no perderse en el fondo oscuro del canvas (rgba(255,255,255,0.4), 1.5px).
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Fallback por-aspa: si la sub-zona es 0/nula/NaN, usa el RGB maestro. */
-function pickZoneColor(v: number | undefined, fallback: number): number {
-  return (v !== undefined && Number.isFinite(v) && v > 0) ? v : fallback
+/**
+ * 🩸 WAVE 7761.6.1 (Fase 6.1): Fallback legacy protegido.
+ *
+ * NO hace fallback per-channel a Master RGB. TickEngine resetea las sub-zonas
+ * a 0 cada frame, asi que 0 significa "Negro" (canal apagado), no "usa master".
+ *
+ * El fallback SOLO activa cuando las TRES sub-zonas (Ambient, Air, Strobe)
+ * estan exactamente a 0 PERO el Master RGB es > 0. Esto protege a los fixtures
+ * legacy que no usan celdas Aether (su master es la unica fuente de color).
+ *
+ * @param allZero true si las tres sub-zonas estan a 0 (precomputado por el caller)
+ * @param masterValor el valor del canal maestro (r, g o b)
+ */
+function zoneColorOrFallback(
+  zoneV: number | undefined,
+  allZero: boolean,
+  masterV: number,
+): number {
+  if (!allZero) {
+    // Al menos una sub-zona tiene color → usar el valor crudo de la sub-zona
+    // (0 = negro legitimo, no fallback)
+    return (zoneV !== undefined && Number.isFinite(zoneV)) ? zoneV : 0
+  }
+  // Todas las sub-zonas a 0 → fallback a master SOLO si master > 0 (legacy)
+  return masterV > 0 ? masterV : 0
 }
 
 /**
@@ -833,51 +855,60 @@ function drawOffFixture(
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * FAN — hélice de 3 aspas. Hub = sub-zona Air (o maestro si es 0/null),
- * aspas = sub-zona Ambient (o maestro). La separación núcleo/aspa diferencia
- * visualmente el motor del ventilador de las aspas que giran.
+ * FAN — hélice de 3 aspas. Hub = sub-zona Air, aspas = sub-zona Ambient.
+ * La separación núcleo/aspa diferencia visualmente el motor del ventilador
+ * de las aspas que giran.
  * 🩸 WAVE 7761.5.1: firma cambiada a (hub, blades).
+ * 🩸 WAVE 7761.6.1 (Fase 6.1): fallback legacy protegido — solo usa Master
+ * RGB si las TRES sub-zonas estan a 0 Y master > 0. Rotación continua
+ * (velocidad, no ángulo absoluto) usando timestamp del frame.
  */
 function drawHelixFixture(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
   fixture: TacticalFixture,
   baseRadius: number,
-  beatBoost: number
+  beatBoost: number,
+  frameTime: number,
 ): void {
   const { r, g, b, intensity } = fixture
   if (intensity < 0.02) return
 
+  // 🩸 WAVE 7761.6.1: Fallback legacy protegido.
+  // TickEngine resetea las sub-zonas a 0 cada frame → 0 = negro legitimo.
+  // Solo hacemos fallback a Master RGB si TODAS las sub-zonas estan a 0
+  // Y el Master RGB es > 0 (fixture legacy sin celdas Aether).
+  const allZonesZero =
+    (fixture.rAmbient ?? 0) === 0 && (fixture.gAmbient ?? 0) === 0 && (fixture.bAmbient ?? 0) === 0 &&
+    (fixture.rAir ?? 0) === 0 && (fixture.gAir ?? 0) === 0 && (fixture.bAir ?? 0) === 0 &&
+    (fixture.rStrobe ?? 0) === 0 && (fixture.gStrobe ?? 0) === 0 && (fixture.bStrobe ?? 0) === 0
+
   // Hub = Air (núcleo del ventilador), aspas = Ambient (lo que gira)
-  const hubR = pickZoneColor(fixture.rAir, r)
-  const hubG = pickZoneColor(fixture.gAir, g)
-  const hubB = pickZoneColor(fixture.bAir, b)
-  const bladeR = pickZoneColor(fixture.rAmbient, r)
-  const bladeG = pickZoneColor(fixture.gAmbient, g)
-  const bladeB = pickZoneColor(fixture.bAmbient, b)
+  const hubR = zoneColorOrFallback(fixture.rAir, allZonesZero, r)
+  const hubG = zoneColorOrFallback(fixture.gAir, allZonesZero, g)
+  const hubB = zoneColorOrFallback(fixture.bAir, allZonesZero, b)
+  const bladeR = zoneColorOrFallback(fixture.rAmbient, allZonesZero, r)
+  const bladeG = zoneColorOrFallback(fixture.gAmbient, allZonesZero, g)
+  const bladeB = zoneColorOrFallback(fixture.bAmbient, allZonesZero, b)
 
   const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB)
   const size = baseRadius * 2.8
   const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
 
-  // 🩸 WAVE 7761.6 (Fase 6): rotación cinética desde datos reales del NodeGraph.
-  // rotation llega por el spare slot 19 del worker (0-255 DMX, 128=stop).
-  // Mapeado a ±0.45π — mismo rango que el diamante de los movers.
-  // Antes usaba physicalPan como proxy; ahora usa rotation canónico.
+  // 🩸 WAVE 7761.6.1 (Fase 6.1): Rotación CONTINUA (velocidad, no ángulo).
+  // rotation es 0-255 DMX (128 = stop). La desviación respecto al centro
+  // determina la velocidad y dirección del giro continuo.
+  // speed > 0 = CW, speed < 0 = CCW, speed = 0 = parado.
+  // angle = speed * (timeValue / 150) — acumulación temporal continua.
   const rotValue = fixture.rotation ?? 128
-  const panAngle = mapRange(
-    rotValue,
-    0,
-    255,
-    -Math.PI * 0.45,
-    Math.PI * 0.45
-  )
+  const speed = (rotValue - 128) / 127  // [-1, 1]: -1=max CCW, 0=stop, +1=max CW
+  const angle = speed * (frameTime / 150)
 
   const prevAlpha = ctx.globalAlpha
   ctx.globalAlpha = alpha
   ctx.save()
   ctx.translate(x, y)
-  ctx.rotate(panAngle)
+  ctx.rotate(angle)
   ctx.drawImage(sprite, -size / 2, -size / 2, size, size)
   ctx.restore()
   ctx.globalAlpha = prevAlpha
@@ -960,12 +991,15 @@ export function renderFixtureLayer(
     onBeat?: boolean
     /** Beat intensity (0-1) */
     beatIntensity?: number
+    /** 🩸 WAVE 7761.6.1: Frame timestamp for continuous rotation (ms). */
+    frameTime?: number
   }
 ): void {
   const {
     quality = 'HQ',
     onBeat = false,
     beatIntensity = 0,
+    frameTime = 0,
   } = options ?? {}
 
   const isHQ = quality === 'HQ'
@@ -1024,7 +1058,7 @@ export function renderFixtureLayer(
       // clásico (con el borde de contraste mejorado).
       switch (fixture.type) {
         case 'fan':
-          drawHelixFixture(ctx, fx, fy, fixture, baseRadius, beatBoost)
+          drawHelixFixture(ctx, fx, fy, fixture, baseRadius, beatBoost, frameTime)
           break
         case 'moving':
           drawDiamondFixture(ctx, fx, fy, fixture, baseRadius, beatBoost)

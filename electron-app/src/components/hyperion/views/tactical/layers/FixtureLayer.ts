@@ -595,7 +595,9 @@ function drawHalo(
 ): void {
   const { r, g, b, intensity, type } = fixture
 
-  if (intensity < 0.02) return
+  // 🩸 WAVE 7761.6.6 (Bug 2): guard eliminado — el caller (PASS 3) ya decide
+  // isLit. Con dimmer maestro a 0, outerAlpha/innerAlpha son 0 → no dibuja
+  // glow (correcto: el halo es luz del Washer). Pero ya NO aborta el flujo.
 
   const isPar = type === 'par' || type === 'wash'
   const glowMultiplier = isPar ? FIXTURE_CONFIG.PAR_GLOW : FIXTURE_CONFIG.MOVER_GLOW
@@ -724,7 +726,9 @@ function drawCore(
 ): void {
   const { r, g, b, intensity } = fixture
 
-  if (intensity < 0.02) return
+  // 🩸 WAVE 7761.6.6 (Bug 2): guard eliminado — el caller (PASS 3) ya decide
+  // isLit. Con dimmer a 0 pero sub-zonas con color, el core pinta su color
+  // nativo con el baseline 0.25 (no bloqueado por intensity).
 
   const coreRadius = baseRadius * 0.70
   const coreAlpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
@@ -801,10 +805,17 @@ function drawOffFixture(
     case 'fan': {
       const sprite = getOffHelixSprite()
       const size = baseRadius * 2.8
-      // 🩸 WAVE 7761.6.3: WYSIWYG absoluto — el chasis apagado también gira
-      // con el control manual del usuario. 0 = STOP, 255 = velocidad máxima CW.
-      const speed = (fixture.rotation ?? 0) / 255
-      const angle = speed * (frameTime / 150)
+      // 🩸 WAVE 7761.6.6 (Bug 1): NaN SHIELD — ctx.rotate(NaN) destruye el
+      // estado del canvas y aborta el renderizado del fixture completo.
+      // `?? 0` NO captura NaN (solo null/undefined), así que sanitizamos
+      // con Number.isFinite tanto rotation como frameTime. Sin señal DMX
+      // el chasis debe estamparse SIEMPRE (WYSIWYG: la máquina existe).
+      const rawRot = fixture.rotation ?? 0
+      const rot = Number.isFinite(rawRot) ? rawRot : 0
+      const safeTime = Number.isFinite(frameTime) ? frameTime : 0
+      // 🩸 WAVE 7761.6.3: 0 = STOP, 255 = velocidad máxima CW.
+      const speed = rot / 255
+      const angle = speed * (safeTime / 150)
       ctx.save()
       ctx.translate(x, y)
       ctx.rotate(angle)
@@ -881,7 +892,15 @@ function drawHelixFixture(
   frameTime: number,
 ): void {
   const { r, g, b, intensity } = fixture
-  if (intensity < 0.02) return
+  // 🩸 WAVE 7761.6.6 (Bug 2): guard `if (intensity < 0.02) return` ELIMINADO.
+  // El caller (PASS 3) ya decide isLit con `intensity > 0.02 || sub-zonas > 0`.
+  // Este guard creaba un LIMBO en máquinas multicelulares (Tungsten): con
+  // Beam color (rAir > 0 → isLit=true) pero Washer dimmer a 0 (intensity=0),
+  // drawOffFixture NO se llamaba (isLit=true) y drawHelixFixture abortaba
+  // (intensity < 0.02) → el fixture DESAPARECÍA del render.
+  // Ahora: PASS 3 estampa el chasis apagado como fondo y esta función pinta
+  // los colores puros de las sub-zonas por encima. El alpha conserva el
+  // baseline 0.25 — la intensidad maestra NO bloquea el color nativo.
 
   // 🩸 WAVE 7761.6.1: Fallback legacy protegido.
   // TickEngine resetea las sub-zonas a 0 cada frame → 0 = negro legitimo.
@@ -908,9 +927,12 @@ function drawHelixFixture(
   // rotation es 0-255 DMX (0 = STOP, 255 = velocidad máxima CW).
   // El hardware real usa 0 como stop, no 128. Matemática directa:
   // speed = rotValue / 255 → [0, 1]. angle = speed * (frameTime / 150).
-  const rotValue = fixture.rotation ?? 0
+  // 🩸 WAVE 7761.6.6 (Bug 1): NaN SHIELD — sanitizar rot y frameTime.
+  const rawRot = fixture.rotation ?? 0
+  const rotValue = Number.isFinite(rawRot) ? rawRot : 0
+  const safeTime = Number.isFinite(frameTime) ? frameTime : 0
   const speed = rotValue / 255  // 0 = stop, 1.0 = velocidad máxima CW
-  const angle = speed * (frameTime / 150)
+  const angle = speed * (safeTime / 150)
 
   const prevAlpha = ctx.globalAlpha
   ctx.globalAlpha = alpha
@@ -934,7 +956,7 @@ function drawDiamondFixture(
   beatBoost: number
 ): void {
   const { r, g, b, intensity, physicalPan } = fixture
-  if (intensity < 0.02) return
+  // 🩸 WAVE 7761.6.6 (Bug 2): guard eliminado — el caller decide isLit.
 
   const sprite = getDiamondSprite(r, g, b)
   // 🩸 WAVE 7761.5.1: stamp 2.0 → 2.4. Combinado con vértices +38.5% en
@@ -964,7 +986,7 @@ function drawLaserFixture(
   beatBoost: number
 ): void {
   const { r, g, b, intensity, physicalPan } = fixture
-  if (intensity < 0.02) return
+  // 🩸 WAVE 7761.6.6 (Bug 2): guard eliminado — el caller decide isLit.
 
   const sprite = getLaserBarSprite(r, g, b)
   const w = baseRadius * 3.4
@@ -1066,6 +1088,14 @@ export function renderFixtureLayer(
       // Off fixture
       drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime)
     } else {
+      // 🩸 WAVE 7761.6.6 (Bug 2): BASE MULTICELULAR — cuando isLit llega solo
+      // por sub-zonas (Beam color > 0) pero el dimmer maestro es 0, estampamos
+      // el chasis apagado como FONDO para que la máquina nunca desaparezca.
+      // Los colores puros del Beam se pintan por encima (geometría encendida).
+      // WYSIWYG: la máquina existe (chasis) Y sus canales independientes brillan.
+      if (fixture.intensity < 0.02) {
+        drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime)
+      }
       // Lit fixture: halo + geometría por tipo + hot center
       drawHalo(ctx, fx, fy, fixture, baseRadius, beatScale)
       // 🩸 WAVE 7761.5 (Multi-RGB Fase 5): despacho de geometría vectorial

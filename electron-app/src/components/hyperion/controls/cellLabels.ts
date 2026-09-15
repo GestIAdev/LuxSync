@@ -31,11 +31,11 @@ export const UNKNOWN_CELL_LABEL = 'Unknown Cell'
 export const WELL_KNOWN_LABELS: Readonly<Record<string, string>> = Object.freeze({
   // Roles canónicos
   'wash':           'Wash',
-  'beam':           'Rayo',
+  'beam':           'Beam',
   'kinetic':        'Rotation',
   'impact':         'Master',
   'color':          'Color',
-  'atmosphere':     'Ambiente',
+  'atmosphere':     'Atmosphere',
   // Variantes Tungsten / multi-impact
   'impact-golden':  'Golden',
   'impact-stain':   'Stain',
@@ -154,7 +154,7 @@ export function resolveCellLabel(raw: string | null | undefined): string {
  * Si NO lo es → es una etiqueta personalizada Aether → muestra SOLO el label.
  */
 const GENERIC_AUTO_LABELS = new Set([
-  'Intensidad', 'Color', 'Cinética', 'Haz', 'Extras',
+  'Intensity', 'Color', 'Kinetic', 'Beam', 'Extras',
 ])
 
 /**

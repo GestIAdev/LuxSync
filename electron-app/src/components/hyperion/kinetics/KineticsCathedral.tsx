@@ -277,7 +277,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
             <button
               className={`kc-paradigm-btn kc-paradigm-btn--spatial kc-paradigm-btn--disabled${viewMode === 'spatial' ? ' kc-paradigm-btn--active' : ''}`}
               disabled
-              title="SPATIAL — Pendiente de calibración. Disponible esta semana antes del show."
+              title="SPATIAL — Pending calibration. Available this week before the show."
             >
               <span className="kc-paradigm-btn__icon">🎯</span>
               <span className="kc-paradigm-btn__label">SPATIAL</span>

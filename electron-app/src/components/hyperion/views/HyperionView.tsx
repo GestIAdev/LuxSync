@@ -203,14 +203,14 @@ const HyperionView = React.memo(function HyperionView({
               <button
                 className={`hyperion-view-toggle__btn ${viewMode === '2D' ? 'active' : ''}`}
                 onClick={() => handleViewModeChange('2D')}
-                title="Vista 2D Táctica"
+                title="2D Tactical View"
               >
                 2D
               </button>
               <button
                 className={`hyperion-view-toggle__btn ${viewMode === '3D' ? 'active' : ''}`}
                 onClick={() => handleViewModeChange('3D')}
-                title="Vista 3D Visualizer"
+                title="3D Visualizer View"
               >
                 3D
               </button>

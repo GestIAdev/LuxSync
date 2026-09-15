@@ -684,6 +684,10 @@ ArsenalRepository.EFFECTS_BY_VIBE = {
         'neon_blinder', // APEX flash wall (peak)
         'surgical_strike', // APEX mover strobe (peak)
         'ghost_chase', // Phantom dimmer chase (ambient)
+        // 🩸 WAVE RAVEX-FX: efectos nativos RaveX V3 (cyberpunk/industrial)
+        'fx_guillotina', // Destello ciego + blackout (drop/climax)
+        'fx_sysfail', // Fluorescentes rotos asimétricos (breakdown)
+        'fx_ametralladora', // Movers convergentes + strobo acelerado (buildup)
     ],
 };
 // ═══════════════════════════════════════════════════════════════════════════

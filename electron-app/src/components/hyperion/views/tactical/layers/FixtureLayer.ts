@@ -881,18 +881,7 @@ function drawHelixFixture(
   frameTime: number,
 ): void {
   const { r, g, b, intensity } = fixture
-  // 🩸 WAVE 7761.6.5 (Fase 6.5): ELIMINADO el guard `if (intensity < 0.02) return`.
-  // El caller (PASS 3) ya decide isLit con `intensity > 0.02 || sub-zonas > 0`.
-  // Este guard heredado creaba un LIMBO cuando el Tungsten tenía Beam color
-  // (rAir > 0 → isLit = true) pero Washer dimmer a 0 (intensity = 0):
-  //   - isLit = true → drawOffFixture NO se llama
-  //   - drawHelixFixture se llama pero return inmediato (intensity < 0.02)
-  //   - Resultado: el fixture DESAPARECE del render (ningún path dibuja)
-  // Solo el Tungsten entraba al limbo porque es el único fixture con zona
-  // air desacoplada (Beam color independiente del Washer dimmer).
-  // Sin este guard, alpha = clamp(0 + 0.25 + beatBoost, 0, 1) = 0.25 mínimo
-  // → el chasis se dibuja con el color del Beam en el hub aunque el Washer
-  // esté apagado.
+  if (intensity < 0.02) return
 
   // 🩸 WAVE 7761.6.1: Fallback legacy protegido.
   // TickEngine resetea las sub-zonas a 0 cada frame → 0 = negro legitimo.
@@ -913,15 +902,7 @@ function drawHelixFixture(
 
   const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB)
   const size = baseRadius * 2.8
-  // 🩸 WAVE 7761.6.5b (Fase 6.5 fixup): Alpha basado en señal real, no en
-  // baseline fijo. El `+ 0.25` anterior forzaba un 25% de glow permanente
-  // cuando isLit=true por sub-zonas pero intensity=0 → el fan se quedaba
-  // "siempre encendido" aunque se cortara la música. Ahora el alpha es el
-  // máximo entre la intensidad del Washer y el brillo del color de las
-  // sub-zonas. Sin señal → alpha=0 (isLit=false → drawOffFixture igual).
-  const maxColor = Math.max(hubR, hubG, hubB, bladeR, bladeG, bladeB) / 255
-  const effectiveIntensity = Math.max(intensity, maxColor)
-  const alpha = clamp(effectiveIntensity + beatBoost, 0, 1)
+  const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
 
   // 🩸 WAVE 7761.6.3 (Fase 6.3): Rotación CONTINUA unidireccional.
   // rotation es 0-255 DMX (0 = STOP, 255 = velocidad máxima CW).

@@ -881,7 +881,18 @@ function drawHelixFixture(
   frameTime: number,
 ): void {
   const { r, g, b, intensity } = fixture
-  if (intensity < 0.02) return
+  // 🩸 WAVE 7761.6.5 (Fase 6.5): ELIMINADO el guard `if (intensity < 0.02) return`.
+  // El caller (PASS 3) ya decide isLit con `intensity > 0.02 || sub-zonas > 0`.
+  // Este guard heredado creaba un LIMBO cuando el Tungsten tenía Beam color
+  // (rAir > 0 → isLit = true) pero Washer dimmer a 0 (intensity = 0):
+  //   - isLit = true → drawOffFixture NO se llama
+  //   - drawHelixFixture se llama pero return inmediato (intensity < 0.02)
+  //   - Resultado: el fixture DESAPARECE del render (ningún path dibuja)
+  // Solo el Tungsten entraba al limbo porque es el único fixture con zona
+  // air desacoplada (Beam color independiente del Washer dimmer).
+  // Sin este guard, alpha = clamp(0 + 0.25 + beatBoost, 0, 1) = 0.25 mínimo
+  // → el chasis se dibuja con el color del Beam en el hub aunque el Washer
+  // esté apagado.
 
   // 🩸 WAVE 7761.6.1: Fallback legacy protegido.
   // TickEngine resetea las sub-zonas a 0 cada frame → 0 = negro legitimo.

@@ -46,4 +46,7 @@ export const FIXTURE_FIELD = {
     R_STROBE: 16,
     G_STROBE: 17,
     B_STROBE: 18,
+    // 🩸 WAVE 7761.6 (Fase 6): rotación cinética — spare slot 19 reutilizado.
+    // FLOATS_PER_FIXTURE sigue en 20; el slot 19 era reserva y ahora porta rotation.
+    ROTATION: 19,
 };

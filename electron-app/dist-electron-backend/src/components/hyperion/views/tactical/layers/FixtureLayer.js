@@ -768,10 +768,12 @@ function drawHelixFixture(ctx, x, y, fixture, baseRadius, beatBoost) {
     const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB);
     const size = baseRadius * 2.8;
     const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1);
-    // 🩸 WAVE 7761.5.4: rotación cinética de las aspas en tiempo real.
-    // Misma matemática que el diamante de los movers — physicalPan mapeado
-    // a ±0.45π. save/translate/rotate/drawImage centrado/restore.
-    const panAngle = mapRange(fixture.physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
+    // 🩸 WAVE 7761.6 (Fase 6): rotación cinética desde datos reales del NodeGraph.
+    // rotation llega por el spare slot 19 del worker (0-255 DMX, 128=stop).
+    // Mapeado a ±0.45π — mismo rango que el diamante de los movers.
+    // Antes usaba physicalPan como proxy; ahora usa rotation canónico.
+    const rotValue = fixture.rotation ?? 128;
+    const panAngle = mapRange(rotValue, 0, 255, -Math.PI * 0.45, Math.PI * 0.45);
     const prevAlpha = ctx.globalAlpha;
     ctx.globalAlpha = alpha;
     ctx.save();

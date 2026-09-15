@@ -155,7 +155,17 @@ export class AetherUIProjector {
         if (!ch) continue
 
         // ── Luminancia: dimmer / brightness ────────────────────────────────
-        const dimmerNorm = ch['dimmer'] ?? ch['brightness']
+        let dimmerNorm = ch['dimmer'] ?? ch['brightness']
+        // 🩸 WAVE 7761.6 (Fase 6): Emancipación del Beam — la zona `air` usa
+        // un dimmer virtual de 1.0 para que el color puro del beam (RGBW)
+        // pase sin atenuación. El dimmer real del fixture lo controla el
+        // nodo IMPACT separado (si existe). Sin esto, un nodo air sin
+        // canal dimmer propio proyectaría oscuridad aunque el beam esté
+        // emitiendo color.
+        const zid = (node.zoneId ?? '').toLowerCase().trim()
+        if (zid === 'air' && dimmerNorm === undefined) {
+          dimmerNorm = 1.0
+        }
         if (dimmerNorm !== undefined) {
           // 🌊 WAVE 4696 M2: Gain compensation para role='primary' (física de mover).
           const gainFactor = node.role === 'primary' ? 1.25 : 1.0

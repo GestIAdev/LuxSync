@@ -849,6 +849,10 @@ export class TickEngine {
             state.rStrobe = 0;
             state.gStrobe = 0;
             state.bStrobe = 0;
+            // 🩸 WAVE 7761.6 (Fase 6): reset de rotation a 128 (stop). Sin esto,
+            // un fixture que pase de continuous a non-continuous conservaría el
+            // valor stale del frame anterior. 128 = stop por convención DMX.
+            state.rotation = 128;
             state.pan = 128;
             state.tilt = 128;
             state.zoom = 128;
@@ -1600,6 +1604,10 @@ export class TickEngine {
             view[off + CELL_COLOR_BASE + 6] = fs.rStrobe ?? 0;
             view[off + CELL_COLOR_BASE + 7] = fs.gStrobe ?? 0;
             view[off + CELL_COLOR_BASE + 8] = fs.bStrobe ?? 0;
+            // 🩸 WAVE 7761.6 (Fase 6): rotación cinética en offset 25 (libre).
+            // 128 = stop por convención DMX. El projector escribe fs.rotation
+            // desde kn.currentPosition.rotation (nodo KINETIC continuous).
+            view[off + 25] = fs.rotation ?? 128;
         }
         view[0] = engineAudioMetrics.bass || 0;
         view[1] = engineAudioMetrics.mid || 0;

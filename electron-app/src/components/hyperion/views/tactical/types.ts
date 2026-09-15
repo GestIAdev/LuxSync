@@ -68,6 +68,10 @@ export interface TacticalFixture {
   physicalPan: number
   /** Physical tilt position (0-1, 0.5=horizontal) */
   physicalTilt: number
+  // 🩸 WAVE 7761.6 (Fase 6): rotación cinética continua (0-255 DMX, 128=stop).
+  // Transportada por el spare slot 19 del worker. Usada por drawHelixFixture
+  // para girar las aspas del Tungsten con datos reales del NodeGraph.
+  rotation?: number
   
   // ── Optics (0-255 DMX) ──────────────────────────────────────────────────
   /** Zoom (0=tight beam, 255=wide wash) */

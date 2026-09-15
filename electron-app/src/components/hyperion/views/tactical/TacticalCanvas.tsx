@@ -207,6 +207,10 @@ function packGlassFrameInto(
     destBuffer[wOff + FIXTURE_FIELD.R_STROBE]  = Number.isFinite(rS) ? rS : 0
     destBuffer[wOff + FIXTURE_FIELD.G_STROBE]  = Number.isFinite(gS) ? gS : 0
     destBuffer[wOff + FIXTURE_FIELD.B_STROBE]  = Number.isFinite(bS) ? bS : 0
+    // 🩸 WAVE 7761.6 (Fase 6): rotación cinética — Glass offset 25 → worker slot 19.
+    // 128 = stop por defecto (convención DMX). NaN shield como el resto del pack.
+    const rot = glassView[gOff + 25]
+    destBuffer[wOff + FIXTURE_FIELD.ROTATION] = Number.isFinite(rot) ? rot : 128
   }
 }
 

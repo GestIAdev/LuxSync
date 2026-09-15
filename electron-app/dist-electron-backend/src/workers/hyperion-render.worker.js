@@ -114,6 +114,8 @@ const unpackBuffer = {
     rAmbient: 0, gAmbient: 0, bAmbient: 0,
     rAir: 0, gAir: 0, bAir: 0,
     rStrobe: 0, gStrobe: 0, bStrobe: 0,
+    // 🩸 WAVE 7761.6 (Fase 6): rotation init a 128 (stop por convención DMX).
+    rotation: 128,
 };
 // ── Previous intensity map for snap detection ─────────────────────────────
 const prevIntensity = new Map();
@@ -195,6 +197,8 @@ function render(timestamp) {
             unpackBuffer.rStrobe = currentFrameData[offset + FIXTURE_FIELD.R_STROBE];
             unpackBuffer.gStrobe = currentFrameData[offset + FIXTURE_FIELD.G_STROBE];
             unpackBuffer.bStrobe = currentFrameData[offset + FIXTURE_FIELD.B_STROBE];
+            // 🩸 WAVE 7761.6 (Fase 6): rotación cinética — spare slot 19.
+            unpackBuffer.rotation = currentFrameData[offset + FIXTURE_FIELD.ROTATION];
         }
         // ── Adaptive smoothing ──────────────────────────────────────────────
         // Pan/tilt/zoom: always interpolate (butter movement)
@@ -252,6 +256,9 @@ function render(timestamp) {
         fx.rStrobe = unpackBuffer.rStrobe;
         fx.gStrobe = unpackBuffer.gStrobe;
         fx.bStrobe = unpackBuffer.bStrobe;
+        // 🩸 WAVE 7761.6 (Fase 6): rotation pasa en crudo (sin smoothing — es
+        // posición mecánica continua, pero el projector ya la suaviza vía IK).
+        fx.rotation = unpackBuffer.rotation;
     }
     // Trim pool if fixture count shrank (keep slots for reuse but fix .length)
     if (smoothedFixturesPool.length > fixtureCount) {

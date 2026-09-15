@@ -913,7 +913,15 @@ function drawHelixFixture(
 
   const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB)
   const size = baseRadius * 2.8
-  const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
+  // 🩸 WAVE 7761.6.5b (Fase 6.5 fixup): Alpha basado en señal real, no en
+  // baseline fijo. El `+ 0.25` anterior forzaba un 25% de glow permanente
+  // cuando isLit=true por sub-zonas pero intensity=0 → el fan se quedaba
+  // "siempre encendido" aunque se cortara la música. Ahora el alpha es el
+  // máximo entre la intensidad del Washer y el brillo del color de las
+  // sub-zonas. Sin señal → alpha=0 (isLit=false → drawOffFixture igual).
+  const maxColor = Math.max(hubR, hubG, hubB, bladeR, bladeG, bladeB) / 255
+  const effectiveIntensity = Math.max(intensity, maxColor)
+  const alpha = clamp(effectiveIntensity + beatBoost, 0, 1)
 
   // 🩸 WAVE 7761.6.3 (Fase 6.3): Rotación CONTINUA unidireccional.
   // rotation es 0-255 DMX (0 = STOP, 255 = velocidad máxima CW).

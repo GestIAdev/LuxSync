@@ -38,6 +38,17 @@
  *   sub-zonas mutando era la aritmética exacta del OOM de WAVE 7568),
  *   y las nuevas caches registradas en disposeFixtureLayerSprites().
  *
+ * 🩸 WAVE 7761.5.1 (Fase 5.1): REFINAMIENTO VISUAL.
+ *   - Chasis apagado: drawOffFixture despacha por tipo a sprites OFF
+ *     (getOffHelixSprite/getOffDiamondSprite/getOffLaserSprite). Relleno
+ *     oscuro rgba(20,20,25,0.8) + trazo visible rgba(255,255,255,0.3) —
+ *     el contraste vive en el OFF, no en el ON.
+ *   - Estado encendido: SIN strokes. Color puro sin bordes — cuando hay
+ *     luz, el halo aporta el contraste, no el borde.
+ *   - Hélice rediseñada: firma (hubColor, bladesColor). Núcleo = Air,
+ *     aspas = Ambient. Diferencia el motor del ventilador de las aspas.
+ *   - Diamante/laser OFF rotados por physicalPan (coherencia direccional).
+ *
  * @module components/hyperion/views/tactical/layers/FixtureLayer
  * @since WAVE 2042.5 (Project Hyperion — Phase 3)
  */
@@ -145,6 +156,13 @@ const beamSpriteCache = new Map<string, OffscreenCanvas>()
 const helixSpriteCache = new Map<string, OffscreenCanvas>()
 const diamondSpriteCache = new Map<string, OffscreenCanvas>()
 const laserBarSpriteCache = new Map<string, OffscreenCanvas>()
+
+// 🩸 WAVE 7761.5.1: sprites OFF — singletons color-independent (relleno oscuro
+// uniforme). No necesitan LRU: hay exactamente uno por tipo. Se cierran en
+// disposeFixtureLayerSprites como los demás.
+let offHelixSprite: OffscreenCanvas | null = null
+let offDiamondSprite: OffscreenCanvas | null = null
+let offLaserSprite: OffscreenCanvas | null = null
 
 /**
  * 🩸 WAVE 7761.5: LRU TOUCH — on cache hit, refresh insertion order
@@ -275,20 +293,21 @@ function pickZoneColor(v: number | undefined, fallback: number): number {
 }
 
 /**
- * HÉLICE DE 3 ASPAS (fan — ej. Tungsten). Cada aspa lleva el color de su
- * sub-zona: aspa 0 = Ambient, aspa 1 = Air, aspa 2 = Strobe. Gaps de 15%
- * entre aspas para el look mecánico de ventilador. Hub central oscuro
- * (el drawHotCenter pintará el eje blanco encima).
+ * HÉLICE DE 3 ASPAS (fan — ej. Tungsten). Núcleo central (hub) relleno con
+ * hubColor, 3 aspas a su alrededor rellenas con bladesColor. Gaps de 15%
+ * entre aspas para el look mecánico de ventilador.
+ *
+ * 🩸 WAVE 7761.5.1: firma cambiada de (3 colores) a (hub, blades). El
+ * Tungsten no tiene 3 sub-zonas de color distinto — tiene un núcleo (air)
+ * y aspas (ambient). Sin strokes: cuando hay luz, color puro sin bordes.
  */
 function getHelixSprite(
-  aR: number, aG: number, aB: number,
-  aiR: number, aiG: number, aiB: number,
-  sR: number, sG: number, sB: number,
+  hubR: number, hubG: number, hubB: number,
+  bladeR: number, bladeG: number, bladeB: number,
 ): OffscreenCanvas {
-  const qa = quantizeColor(aR, aG, aB)
-  const qi = quantizeColor(aiR, aiG, aiB)
-  const qs = quantizeColor(sR, sG, sB)
-  const key = `h|${qa.r},${qa.g},${qa.b}|${qi.r},${qi.g},${qi.b}|${qs.r},${qs.g},${qs.b}`
+  const qh = quantizeColor(hubR, hubG, hubB)
+  const qb = quantizeColor(bladeR, bladeG, bladeB)
+  const key = `h|${qh.r},${qh.g},${qh.b}|${qb.r},${qb.g},${qb.b}`
   const cached = cacheGet(helixSpriteCache, key)
   if (cached) return cached
 
@@ -299,31 +318,21 @@ function getHelixSprite(
   const c = HELIX_SPRITE_SIZE / 2
   const radius = c - 6
   const bladeSpan = (Math.PI * 2 / 3) * 0.85  // 102° por aspa, 18° de gap
-  const colors = [
-    `rgb(${qa.r}, ${qa.g}, ${qa.b})`,
-    `rgb(${qi.r}, ${qi.g}, ${qi.b})`,
-    `rgb(${qs.r}, ${qs.g}, ${qs.b})`,
-  ]
+  const bladeColor = `rgb(${qb.r}, ${qb.g}, ${qb.b})`
   for (let i = 0; i < 3; i++) {
     const start = (Math.PI * 2 / 3) * i - Math.PI / 2
     sctx.beginPath()
     sctx.moveTo(c, c)
     sctx.arc(c, c, radius, start, start + bladeSpan)
     sctx.closePath()
-    sctx.fillStyle = colors[i]
+    sctx.fillStyle = bladeColor
     sctx.fill()
-    sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
-    sctx.lineWidth = 1.5
-    sctx.stroke()
   }
-  // Hub central (eje mecánico del ventilador)
+  // Hub central (núcleo) — pinta encima de las aspas para diferenciarlo
   sctx.beginPath()
-  sctx.arc(c, c, radius * 0.18, 0, Math.PI * 2)
-  sctx.fillStyle = 'rgba(20, 20, 28, 0.95)'
+  sctx.arc(c, c, radius * 0.32, 0, Math.PI * 2)
+  sctx.fillStyle = `rgb(${qh.r}, ${qh.g}, ${qh.b})`
   sctx.fill()
-  sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
-  sctx.lineWidth = 1.5
-  sctx.stroke()
 
   helixSpriteCache.set(key, sprite)
   return sprite
@@ -353,9 +362,7 @@ function getDiamondSprite(r: number, g: number, b: number): OffscreenCanvas {
   sctx.closePath()
   sctx.fillStyle = `rgb(${q.r}, ${q.g}, ${q.b})`
   sctx.fill()
-  sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
-  sctx.lineWidth = 1.5
-  sctx.stroke()
+  // 🩸 WAVE 7761.5.1: sin stroke cuando hay luz — color puro sin bordes.
 
   diamondSpriteCache.set(key, sprite)
   return sprite
@@ -382,10 +389,8 @@ function getLaserBarSprite(r: number, g: number, b: number): OffscreenCanvas {
   sctx.roundRect(pad, pad, LASER_SPRITE_W - pad * 2, barH, barH / 2)
   sctx.fillStyle = `rgb(${q.r}, ${q.g}, ${q.b})`
   sctx.fill()
-  sctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
-  sctx.lineWidth = 1.5
-  sctx.stroke()
-  // Núcleo central blanco — el "haz" del láser
+  // 🩸 WAVE 7761.5.1: sin stroke exterior cuando hay luz — color puro.
+  // Núcleo central blanco — el "haz" del láser (esto es firma visual, no borde)
   sctx.beginPath()
   sctx.moveTo(pad * 2, LASER_SPRITE_H / 2)
   sctx.lineTo(LASER_SPRITE_W - pad * 2, LASER_SPRITE_H / 2)
@@ -395,6 +400,85 @@ function getLaserBarSprite(r: number, g: number, b: number): OffscreenCanvas {
   sctx.stroke()
 
   laserBarSpriteCache.set(key, sprite)
+  return sprite
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🩸 WAVE 7761.5.1: SPRITES OFF — chasis apagados por tipo.
+// Relleno muy oscuro rgba(20,20,25,0.8) + trazo visible rgba(255,255,255,0.3)
+// 1.5px para que no se pierdan en el fondo oscuro del canvas. Singletons: no
+// dependen del color (siempre oscuros), así que no hay cache por color.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const OFF_FILL = 'rgba(20, 20, 25, 0.8)'
+const OFF_STROKE = 'rgba(255, 255, 255, 0.3)'
+const OFF_LINE_WIDTH = 1.5
+
+function getOffHelixSprite(): OffscreenCanvas {
+  if (offHelixSprite) return offHelixSprite
+  const sprite = new OffscreenCanvas(HELIX_SPRITE_SIZE, HELIX_SPRITE_SIZE)
+  const sctx = sprite.getContext('2d')!
+  const c = HELIX_SPRITE_SIZE / 2
+  const radius = c - 6
+  const bladeSpan = (Math.PI * 2 / 3) * 0.85
+  for (let i = 0; i < 3; i++) {
+    const start = (Math.PI * 2 / 3) * i - Math.PI / 2
+    sctx.beginPath()
+    sctx.moveTo(c, c)
+    sctx.arc(c, c, radius, start, start + bladeSpan)
+    sctx.closePath()
+    sctx.fillStyle = OFF_FILL
+    sctx.fill()
+    sctx.strokeStyle = OFF_STROKE
+    sctx.lineWidth = OFF_LINE_WIDTH
+    sctx.stroke()
+  }
+  sctx.beginPath()
+  sctx.arc(c, c, radius * 0.32, 0, Math.PI * 2)
+  sctx.fillStyle = OFF_FILL
+  sctx.fill()
+  sctx.strokeStyle = OFF_STROKE
+  sctx.lineWidth = OFF_LINE_WIDTH
+  sctx.stroke()
+  offHelixSprite = sprite
+  return sprite
+}
+
+function getOffDiamondSprite(): OffscreenCanvas {
+  if (offDiamondSprite) return offDiamondSprite
+  const sprite = new OffscreenCanvas(DIAMOND_SPRITE_SIZE, DIAMOND_SPRITE_SIZE)
+  const sctx = sprite.getContext('2d')!
+  const c = DIAMOND_SPRITE_SIZE / 2
+  const rr = c - 6
+  sctx.beginPath()
+  sctx.moveTo(c, c - rr)
+  sctx.lineTo(c + rr * 0.7, c)
+  sctx.lineTo(c, c + rr)
+  sctx.lineTo(c - rr * 0.7, c)
+  sctx.closePath()
+  sctx.fillStyle = OFF_FILL
+  sctx.fill()
+  sctx.strokeStyle = OFF_STROKE
+  sctx.lineWidth = OFF_LINE_WIDTH
+  sctx.stroke()
+  offDiamondSprite = sprite
+  return sprite
+}
+
+function getOffLaserSprite(): OffscreenCanvas {
+  if (offLaserSprite) return offLaserSprite
+  const sprite = new OffscreenCanvas(LASER_SPRITE_W, LASER_SPRITE_H)
+  const sctx = sprite.getContext('2d')!
+  const pad = 5
+  const barH = LASER_SPRITE_H - pad * 2
+  sctx.beginPath()
+  sctx.roundRect(pad, pad, LASER_SPRITE_W - pad * 2, barH, barH / 2)
+  sctx.fillStyle = OFF_FILL
+  sctx.fill()
+  sctx.strokeStyle = OFF_STROKE
+  sctx.lineWidth = OFF_LINE_WIDTH
+  sctx.stroke()
+  offLaserSprite = sprite
   return sprite
 }
 
@@ -427,6 +511,10 @@ export function disposeFixtureLayerSprites(): void {
     try { (sprite as any).close() } catch {}
   }
   laserBarSpriteCache.clear()
+  // 🩸 WAVE 7761.5.1: sprites OFF singletons — mismo teardown.
+  if (offHelixSprite) { try { (offHelixSprite as any).close() } catch {} offHelixSprite = null }
+  if (offDiamondSprite) { try { (offDiamondSprite as any).close() } catch {} offDiamondSprite = null }
+  if (offLaserSprite) { try { (offLaserSprite as any).close() } catch {} offLaserSprite = null }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -615,11 +703,8 @@ function drawCore(
   ctx.arc(x, y, coreRadius, 0, Math.PI * 2)
   ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${coreAlpha})`
   ctx.fill()
-  // 🩸 WAVE 7761.5: REGLA DE CONTRASTE — contorno visible para que la
-  // geometría sólida no se pierda en el fondo oscuro del canvas.
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
-  ctx.lineWidth = 1.5
-  ctx.stroke()
+  // 🩸 WAVE 7761.5.1: sin stroke cuando hay luz — color puro sin bordes.
+  // El contraste lo aporta el halo (drawHalo) alrededor, no el borde.
 }
 
 /**
@@ -667,6 +752,9 @@ function drawNeonRim(
 
 /**
  * Draw off-state fixture (sleeping but present).
+ * 🩸 WAVE 7761.5.1: switch por tipo — estampa el sprite OFF correspondiente
+ * en lugar del círculo genérico aburrido. El diamante se rota por physicalPan
+ * para apuntar en la misma dirección que el beam cuando se encienda.
  */
 function drawOffFixture(
   ctx: CanvasRenderingContext2D,
@@ -674,24 +762,58 @@ function drawOffFixture(
   fixture: TacticalFixture,
   baseRadius: number
 ): void {
-  const { r, g, b } = fixture
+  const prevAlpha = ctx.globalAlpha
+  ctx.globalAlpha = 1
 
-  // Dark interior
-  ctx.beginPath()
-  ctx.arc(x, y, baseRadius * 0.85, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(10, 10, 18, 0.85)'
-  ctx.fill()
+  switch (fixture.type) {
+    case 'fan': {
+      const sprite = getOffHelixSprite()
+      const size = baseRadius * 2.8
+      ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size)
+      break
+    }
+    case 'moving': {
+      const sprite = getOffDiamondSprite()
+      const size = baseRadius * 2.0
+      const panAngle = mapRange(fixture.physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.rotate(panAngle)
+      ctx.drawImage(sprite, -size / 2, -size / 2, size, size)
+      ctx.restore()
+      break
+    }
+    case 'laser': {
+      const sprite = getOffLaserSprite()
+      const w = baseRadius * 3.4
+      const h = baseRadius * 1.1
+      const panAngle = mapRange(fixture.physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.rotate(panAngle)
+      ctx.drawImage(sprite, -w / 2, -h / 2, w, h)
+      ctx.restore()
+      break
+    }
+    default: {
+      // par / wash / strobe / unknown — círculo oscuro con borde de contraste
+      ctx.beginPath()
+      ctx.arc(x, y, baseRadius * 0.85, 0, Math.PI * 2)
+      ctx.fillStyle = OFF_FILL
+      ctx.fill()
+      ctx.strokeStyle = OFF_STROKE
+      ctx.lineWidth = OFF_LINE_WIDTH
+      ctx.stroke()
+    }
+  }
 
-  // Color rim (memory of the fixture's identity)
-  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.18)`
-  ctx.lineWidth = 1
-  ctx.stroke()
-
-  // Tiny cyan dot (fixture exists but sleeping)
+  // Tiny cyan dot (fixture exists but sleeping) — común a todos los tipos
   ctx.beginPath()
   ctx.arc(x, y, 2, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(0, 240, 255, 0.20)'
   ctx.fill()
+
+  ctx.globalAlpha = prevAlpha
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -701,10 +823,10 @@ function drawOffFixture(
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * FAN — hélice de 3 aspas. Aspa 0 = Ambient, aspa 1 = Air, aspa 2 = Strobe.
- * Cada aspa hace fallback al RGB maestro si su sub-zona es 0/nula (paths
- * legacy sin Aether proyectan sub-zonas a 0 — fallback garantiza que el
- * fan nunca quede invisible).
+ * FAN — hélice de 3 aspas. Hub = sub-zona Air (o maestro si es 0/null),
+ * aspas = sub-zona Ambient (o maestro). La separación núcleo/aspa diferencia
+ * visualmente el motor del ventilador de las aspas que giran.
+ * 🩸 WAVE 7761.5.1: firma cambiada a (hub, blades).
  */
 function drawHelixFixture(
   ctx: CanvasRenderingContext2D,
@@ -716,17 +838,15 @@ function drawHelixFixture(
   const { r, g, b, intensity } = fixture
   if (intensity < 0.02) return
 
-  const aR = pickZoneColor(fixture.rAmbient, r)
-  const aG = pickZoneColor(fixture.gAmbient, g)
-  const aB = pickZoneColor(fixture.bAmbient, b)
-  const aiR = pickZoneColor(fixture.rAir, r)
-  const aiG = pickZoneColor(fixture.gAir, g)
-  const aiB = pickZoneColor(fixture.bAir, b)
-  const sR = pickZoneColor(fixture.rStrobe, r)
-  const sG = pickZoneColor(fixture.gStrobe, g)
-  const sB = pickZoneColor(fixture.bStrobe, b)
+  // Hub = Air (núcleo del ventilador), aspas = Ambient (lo que gira)
+  const hubR = pickZoneColor(fixture.rAir, r)
+  const hubG = pickZoneColor(fixture.gAir, g)
+  const hubB = pickZoneColor(fixture.bAir, b)
+  const bladeR = pickZoneColor(fixture.rAmbient, r)
+  const bladeG = pickZoneColor(fixture.gAmbient, g)
+  const bladeB = pickZoneColor(fixture.bAmbient, b)
 
-  const sprite = getHelixSprite(aR, aG, aB, aiR, aiG, aiB, sR, sG, sB)
+  const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB)
   const size = baseRadius * 2.8
   const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
 

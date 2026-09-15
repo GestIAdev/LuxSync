@@ -321,6 +321,9 @@ function getHelixSprite(
   const radius = c - 6
   const bladeSpan = (Math.PI * 2 / 3) * 0.85  // 102° por aspa, 18° de gap
   const bladeColor = `rgb(${qb.r}, ${qb.g}, ${qb.b})`
+  // 🩸 WAVE 7761.5.4: aspas primero, hub después y 100% opaco.
+  // El hub se pinta encima para que el núcleo sea visible incluso si
+  // las aspas están apagadas (color 0). Sin gradientes ni transparencias.
   for (let i = 0; i < 3; i++) {
     const start = (Math.PI * 2 / 3) * i - Math.PI / 2
     sctx.beginPath()
@@ -330,7 +333,8 @@ function getHelixSprite(
     sctx.fillStyle = bladeColor
     sctx.fill()
   }
-  // Hub central (núcleo) — pinta encima de las aspas para diferenciarlo
+  // Hub central (núcleo) — pinta encima de las aspas, alpha = 1.0 explícito.
+  sctx.globalAlpha = 1
   sctx.beginPath()
   sctx.arc(c, c, radius * 0.32, 0, Math.PI * 2)
   sctx.fillStyle = `rgb(${qh.r}, ${qh.g}, ${qh.b})`
@@ -856,9 +860,24 @@ function drawHelixFixture(
   const size = baseRadius * 2.8
   const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
 
+  // 🩸 WAVE 7761.5.4: rotación cinética de las aspas en tiempo real.
+  // Misma matemática que el diamante de los movers — physicalPan mapeado
+  // a ±0.45π. save/translate/rotate/drawImage centrado/restore.
+  const panAngle = mapRange(
+    fixture.physicalPan,
+    0,
+    1,
+    -Math.PI * 0.45,
+    Math.PI * 0.45
+  )
+
   const prevAlpha = ctx.globalAlpha
   ctx.globalAlpha = alpha
-  ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size)
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(panAngle)
+  ctx.drawImage(sprite, -size / 2, -size / 2, size, size)
+  ctx.restore()
   ctx.globalAlpha = prevAlpha
 }
 

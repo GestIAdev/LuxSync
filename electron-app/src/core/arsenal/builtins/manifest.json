@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-14T23:51:20.375Z",
-  "count": 42,
+  "generatedAt": "2026-09-15T16:05:17.223Z",
+  "count": 45,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -68,6 +68,21 @@
       "relPath": "latin/tidal_wave.lfx",
       "checksum": "1217052104ca33b3",
       "size": 8338
+    },
+    "ravex/fx_ametralladora.lfx": {
+      "relPath": "ravex/fx_ametralladora.lfx",
+      "checksum": "2a748181f9b0a2ce",
+      "size": 19561
+    },
+    "ravex/fx_guillotina.lfx": {
+      "relPath": "ravex/fx_guillotina.lfx",
+      "checksum": "66a06f650094460d",
+      "size": 4512
+    },
+    "ravex/fx_sysfail.lfx": {
+      "relPath": "ravex/fx_sysfail.lfx",
+      "checksum": "fd8e62c75cf8b9ec",
+      "size": 8716
     },
     "rock/amp_heat.lfx": {
       "relPath": "rock/amp_heat.lfx",

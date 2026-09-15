@@ -1,0 +1,377 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_sysfail",
+    "name": "Fallo de Sistema",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "strobe",
+      "glitch",
+      "ravex",
+      "breakdown",
+      "fluorescent",
+      "asymmetric"
+    ],
+    "vibeCompat": [
+      "rave"
+    ],
+    "spatialZones": [
+      "all",
+      "all-pars",
+      "all-movers"
+    ],
+    "mixBus": "global",
+    "priority": 85,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "df6ddb4c-256d-4a0a-8a92-04a4570523de",
+        "paramId": "intensity",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 200,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 400,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 600,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 900,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1400,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1700,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1900,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2200,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2500,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2700,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3600,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 180,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 2,
+          "shuffle": 1,
+          "shuffleSeed": 42,
+          "direction": 1
+        }
+      },
+      {
+        "id": "34e3bfa7-010a-4fe9-8c69-1ccb6d7b376e",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 300,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 400,
+              "value": {
+                "h": 180,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": {
+                "h": 300,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1700,
+              "value": {
+                "h": 180,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2500,
+              "value": {
+                "h": 300,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": {
+                "h": 180,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": {
+                "h": 300,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "4ea2caca-8c6c-4cce-8717-6c328168c1fd",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 200,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 400,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 600,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1400,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1700,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1900,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2500,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2700,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 300,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
+      "isOneShot": false,
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "attackMs": 0,
+      "strobeHz": 20
+    },
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.6,
+        "chaos": 1,
+        "organicity": 0.2
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "rave"
+      ],
+      "validSections": [
+        "breakdown",
+        "textural"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.3,
+        "max": 0.9
+      },
+      "pressureRange": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.75,
+        "energyMultiplier": 1.2,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.2,
+      "fatigueImpact": 0.7,
+      "minDurationMs": 1000,
+      "cooldownMs": 8000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.5
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 20,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:6106996f8ae0ee673a88342b5ebe2249fa4fe392865e2e88ae21e70a106fd68c"
+}

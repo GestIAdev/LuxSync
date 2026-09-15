@@ -709,14 +709,23 @@ function drawNeonRim(ctx, x, y, fixture, baseRadius) {
  * en lugar del círculo genérico aburrido. El diamante se rota por physicalPan
  * para apuntar en la misma dirección que el beam cuando se encienda.
  */
-function drawOffFixture(ctx, x, y, fixture, baseRadius) {
+function drawOffFixture(ctx, x, y, fixture, baseRadius, frameTime) {
     const prevAlpha = ctx.globalAlpha;
     ctx.globalAlpha = 1;
     switch (fixture.type) {
         case 'fan': {
             const sprite = getOffHelixSprite();
             const size = baseRadius * 2.8;
-            ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
+            // 🩸 WAVE 7761.6.2: WYSIWYG absoluto — el chasis apagado también gira
+            // con el control manual del usuario. Misma matemática que drawHelixFixture:
+            // speed = (rotation - 128) / 127, angle = speed * (frameTime / 150).
+            const speed = ((fixture.rotation ?? 128) - 128) / 127;
+            const angle = speed * (frameTime / 150);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+            ctx.restore();
             break;
         }
         case 'moving': {
@@ -896,9 +905,16 @@ export function renderFixtureLayer(ctx, width, height, fixtures, options) {
     for (const fixture of fixtures) {
         const fx = fixture.x * width;
         const fy = fixture.y * height;
-        if (fixture.intensity < 0.02) {
+        // 🩸 WAVE 7761.6.2: Despertar por color — la UI se enciende si hay dimmer
+        // O si hay color en las sub-zonas (air, ambient, strobe). El Beam central
+        // puede iluminarse con su color puro sin depender del dimmer del Washer.
+        const isLit = fixture.intensity > 0.02 ||
+            (fixture.rAir ?? 0) > 0 || (fixture.gAir ?? 0) > 0 || (fixture.bAir ?? 0) > 0 ||
+            (fixture.rAmbient ?? 0) > 0 || (fixture.gAmbient ?? 0) > 0 || (fixture.bAmbient ?? 0) > 0 ||
+            (fixture.rStrobe ?? 0) > 0 || (fixture.gStrobe ?? 0) > 0 || (fixture.bStrobe ?? 0) > 0;
+        if (!isLit) {
             // Off fixture
-            drawOffFixture(ctx, fx, fy, fixture, baseRadius);
+            drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime);
         }
         else {
             // Lit fixture: halo + geometría por tipo + hot center

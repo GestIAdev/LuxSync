@@ -156,13 +156,16 @@ export class AetherUIProjector {
                 if (rRaw !== undefined || gRaw !== undefined || bRaw !== undefined) {
                     // 🌊 WAVE 4695: Luminance-chrominance decoupling.
                     // Si existe nodo IMPACT en el device, brightness ya porta luminancia → no escalar.
-                    const brightnessScale = hasImpactDimmer ? 1.0 : (ch['brightness'] ?? 1.0);
-                    // ⚡ WAVE 4855: La máscara de strobo se compone con brightnessScale.
-                    // En fixtures pure-RGB (sin IMPACT) el shutter virtual interrumpe la
-                    // crominancia directamente; en fixtures con IMPACT, la interrupción
-                    // viaja vía fixture.dimmer y el renderer escala color por dimmer.
-                    // Multiplicar aquí garantiza la representación WYSIWYG en ambos.
-                    const chromaScale = brightnessScale * strobeMask;
+                    // 🩸 WAVE 7761.6.2: Dimmer virtual AISLADO — localDimmer se usa SOLO
+                    // para calcular chromaScale y projectedR/G/B. NUNCA se asigna a
+                    // fixture.dimmer. El dimmer maestro se queda en 0 si no existe el
+                    // canal, para no encender el Wash por accidente. El Beam central
+                    // (zona air) puede iluminarse con su color puro sin depender del
+                    // dimmer del Washer.
+                    const localDimmer = hasImpactDimmer
+                        ? 1.0
+                        : (ch['brightness'] ?? ch['dimmer'] ?? 1.0);
+                    const chromaScale = localDimmer * strobeMask;
                     const projectedR = toDmx((rRaw ?? 0) * chromaScale);
                     const projectedG = toDmx((gRaw ?? 0) * chromaScale);
                     const projectedB = toDmx((bRaw ?? 0) * chromaScale);

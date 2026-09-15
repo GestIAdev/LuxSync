@@ -1015,7 +1015,12 @@ export function renderFixtureLayer(
           drawCore(ctx, fx, fy, fixture, baseRadius, beatBoost)
           drawNeonRim(ctx, fx, fy, fixture, baseRadius)
       }
-      drawHotCenter(ctx, fx, fy, fixture, baseRadius)
+      // 🩸 WAVE 7761.5.3: hot center solo para fixtures sin geometría propia.
+      // fan/moving/laser tienen su propia firma visual (hélice/diamante/barra)
+      // — el punto blanco genérico tapa el color real del hub del Tungsten.
+      if (fixture.type !== 'fan' && fixture.type !== 'moving' && fixture.type !== 'laser') {
+        drawHotCenter(ctx, fx, fy, fixture, baseRadius)
+      }
     }
   }
 }

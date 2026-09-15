@@ -131,7 +131,9 @@ const SPRITE_CACHE_LIMIT = 192;
 const COLOR_QUANT_STEP = 16;
 // ── WAVE 7761.5: geometría vectorial por tipo (Zero-Alloc, sin gradientes) ──
 const HELIX_SPRITE_SIZE = 96; // fan: 3 aspas (ambient/air/strobe)
-const DIAMOND_SPRITE_SIZE = 64; // mover: rombo direccional
+// 🩸 WAVE 7761.5.1: 64 → 80 para alojar vértices +38.5% (rr = c-4 = 36).
+// El diamante ahora ocupa área visual similar al círculo de un PAR.
+const DIAMOND_SPRITE_SIZE = 80; // mover: rombo direccional
 const LASER_SPRITE_W = 96; // laser: barra direccional
 const LASER_SPRITE_H = 32;
 const glowSpriteCache = new Map();
@@ -320,7 +322,9 @@ function getDiamondSprite(r, g, b) {
     const sprite = new OffscreenCanvas(DIAMOND_SPRITE_SIZE, DIAMOND_SPRITE_SIZE);
     const sctx = sprite.getContext('2d');
     const c = DIAMOND_SPRITE_SIZE / 2;
-    const rr = c - 6;
+    // 🩸 WAVE 7761.5.1: rr = c-4 = 36 (era c-6 = 26 con sprite 64). Vértices
+    // +38.5% para que el diamante ocupe área visual similar al círculo PAR.
+    const rr = c - 4;
     sctx.beginPath();
     sctx.moveTo(c, c - rr); // punta superior (dirección del beam)
     sctx.lineTo(c + rr * 0.7, c); // derecha
@@ -410,7 +414,8 @@ function getOffDiamondSprite() {
     const sprite = new OffscreenCanvas(DIAMOND_SPRITE_SIZE, DIAMOND_SPRITE_SIZE);
     const sctx = sprite.getContext('2d');
     const c = DIAMOND_SPRITE_SIZE / 2;
-    const rr = c - 6;
+    // 🩸 WAVE 7761.5.1: mismos vértices +38.5% que el sprite encendido.
+    const rr = c - 4;
     sctx.beginPath();
     sctx.moveTo(c, c - rr);
     sctx.lineTo(c + rr * 0.7, c);
@@ -694,7 +699,8 @@ function drawOffFixture(ctx, x, y, fixture, baseRadius) {
         }
         case 'moving': {
             const sprite = getOffDiamondSprite();
-            const size = baseRadius * 2.0;
+            // 🩸 WAVE 7761.5.1: stamp 2.0 → 2.4 (paridad con el diamante encendido).
+            const size = baseRadius * 2.4;
             const panAngle = mapRange(fixture.physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
             ctx.save();
             ctx.translate(x, y);
@@ -772,7 +778,10 @@ function drawDiamondFixture(ctx, x, y, fixture, baseRadius, beatBoost) {
     if (intensity < 0.02)
         return;
     const sprite = getDiamondSprite(r, g, b);
-    const size = baseRadius * 2.0;
+    // 🩸 WAVE 7761.5.1: stamp 2.0 → 2.4. Combinado con vértices +38.5% en
+    // el sprite, el diamante alcanza área on-canvas ≈ círculo PAR (1.63·br²
+    // vs 1.54·br²). Solo vértices no basta: rr/sprite ≤ 0.5 (clipping).
+    const size = baseRadius * 2.4;
     const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1);
     const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
     ctx.save();

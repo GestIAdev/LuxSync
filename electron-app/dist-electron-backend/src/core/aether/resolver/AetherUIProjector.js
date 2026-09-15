@@ -171,7 +171,15 @@ export class AetherUIProjector {
                     // canal, para no encender el Wash por accidente. El Beam central
                     // (zona air) puede iluminarse con su color puro sin depender del
                     // dimmer del Washer.
-                    const localDimmer = hasImpactDimmer
+                    // 🩸 WAVE 7761.6.4 (Fase 6.4): FIX BEAM — los nodos atmosféricos
+                    // (air, ambient, strobe) ignoran el dimmer/brightness del propio
+                    // nodo COLOR. El Árbitro envía brightness=0 (no undefined) cuando
+                    // el fader está a 0, y el `?? 1.0` no activa porque 0 no es nullish.
+                    // Sin este fix, chromaScale=0 destruye el color del Beam aunque el
+                    // usuario tenga RGB levantado. El dimmer del fixture lo controla
+                    // el nodo IMPACT separado, no el nodo COLOR atmosférico.
+                    const isAtmo = isAtmosphericZone(node.zoneId);
+                    const localDimmer = (hasImpactDimmer || isAtmo)
                         ? 1.0
                         : (ch['brightness'] ?? ch['dimmer'] ?? 1.0);
                     const chromaScale = localDimmer * strobeMask;

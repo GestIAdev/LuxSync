@@ -179,16 +179,15 @@ export class AetherUIProjector {
         const bRaw = ch['b'] ?? ch['blue']
         if (rRaw !== undefined || gRaw !== undefined || bRaw !== undefined) {
           // 🌊 WAVE 4695: Luminance-chrominance decoupling.
-          // 🩸 WAVE 7761.6.9 (Fase 6.9 — LEY DEL FOTÓN): CERO DEFAULTS. La
-          // geometría física SIEMPRE se renderiza, pero la luz (fotones) SOLO
-          // existe si hay señal explícita del Árbitro. Se erradica toda la
-          // lógica de rescate (hasImpactDimmer, isAtmo, fallback 1.0) — si el
-          // motor de audio (L0) está en silencio y el Árbitro no envía
-          // brightness ni dimmer, la proyección de color es estrictamente 0.0.
-          // Esto neutraliza el color base de la Vibe (L1) iluminando el Beam
-          // sin música. El dimmer del fixture lo controla el nodo IMPACT
-          // separado, no un default inventado.
-          const localDimmer = ch['brightness'] ?? ch['dimmer'] ?? 0.0
+          // 🩸 WAVE 7761.6.12 (Fase 6.12 — FALLBACK MANUAL): Si no hay música
+          // (ausencia de brightness del L0), el nodo COLOR hereda la
+          // intensidad maestra de la máquina (que el usuario levanta con el
+          // fader manual del Washer) en lugar de un 0.0 ciego. Así el color
+          // manual funciona sin música: el usuario levanta el dimmer del
+          // Washer → fixture.dimmer sube → localDimmer sube → el color del
+          // Beam se proyecta. Con música, L0 envía brightness explícito y
+          // este fallback no se activa (?? solo cae si es undefined/null).
+          const localDimmer = ch['brightness'] ?? ch['dimmer'] ?? (hasImpactDimmer ? (fixture.dimmer / 255) : 0.0)
           const chromaScale = localDimmer * strobeMask
           const projectedR = toDmx((rRaw ?? 0) * chromaScale)
           const projectedG = toDmx((gRaw ?? 0) * chromaScale)

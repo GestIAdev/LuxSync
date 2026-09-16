@@ -355,15 +355,15 @@
 .intensity-slider {
   flex: 1;
   height: 4px;
-  /* Track con degradado dinámico vibrante: casi transparente → neon de
-     familia opaco (--neon-base lo inyecta la raíz del CellAccordion; las
-     filas phantom/sub-dimmer lo sobreescriben por canal). !important
-     (patrón .strobe-slider) para ganar a reglas globales que inyectan
-     color plano. Fallback gris fuera de contexto acordeón. */
+  /* Track con degradado dinámico con acabado mate: casi transparente →
+     neon de familia al 75% (--neon-base lo inyecta la raíz del
+     CellAccordion; las filas phantom/sub-dimmer lo sobreescriben por
+     canal). !important (patrón .strobe-slider) para ganar a reglas
+     globales que inyectan color plano. */
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.05) 0%,
-    var(--neon-base, #a855f7) 100%
+    color-mix(in srgb, var(--neon-base, #a855f7) 75%, transparent) 100%
   ) !important;
   border-radius: 2px;
   outline: none;
@@ -379,7 +379,9 @@
   background: var(--neon-base, #a855f7) !important;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 8px var(--neon-base, #a855f7) !important;
+  /* Glow optimizado: blur 4px + opacidad 25% vía color-mix — acabado mate
+     y menor coste de GPU en modos de bajo consumo. */
+  box-shadow: 0 0 4px color-mix(in srgb, var(--neon-base, #a855f7) 25%, transparent) !important;
 }
 
 /* globals.css pinta ::-webkit-slider-runnable-track con un overlay oscuro
@@ -391,7 +393,7 @@
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.05) 0%,
-    var(--neon-base, #a855f7) 100%
+    color-mix(in srgb, var(--neon-base, #a855f7) 75%, transparent) 100%
   ) !important;
   height: 4px;
   border: none;
@@ -621,14 +623,15 @@
   flex: 1;
   min-width: 0;
   height: 4px;
-  /* Track con degradado dinámico por canal: transparente → --neon-base.
-     La fila (.rgb-slider-row) o la clase de canal (.red/.green/.blue)
-     declaran el color; el slider lo consume. !important (patrón
-     .strobe-slider) para ganar a reglas globales que inyectan color plano. */
+  /* Track con degradado dinámico por canal con acabado mate:
+     transparente → --neon-base al 75%. La fila (.rgb-slider-row) o la
+     clase de canal (.red/.green/.blue) declaran el color; el slider lo
+     consume. !important (patrón .strobe-slider) para ganar a reglas
+     globales que inyectan color plano. */
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.05) 0%,
-    var(--neon-base, #a855f7) 100%
+    color-mix(in srgb, var(--neon-base, #a855f7) 75%, transparent) 100%
   ) !important;
   border-radius: 2px;
   outline: none;
@@ -643,7 +646,8 @@
   border-radius: 50%;
   cursor: pointer;
   background: var(--neon-base, #a855f7) !important;
-  box-shadow: 0 0 8px var(--neon-base, #a855f7) !important;
+  /* Glow optimizado: blur 4px + opacidad 25% — acabado mate, menor GPU. */
+  box-shadow: 0 0 4px color-mix(in srgb, var(--neon-base, #a855f7) 25%, transparent) !important;
 }
 
 /* Canal → --neon-base: el color vive en la variable para que track y

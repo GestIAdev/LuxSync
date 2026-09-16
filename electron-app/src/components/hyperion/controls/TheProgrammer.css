@@ -389,7 +389,8 @@
    el background del elemento. Forzamos el degradado dinámico también en
    el pseudo-track. :not(.strobe-slider) preserva el rojo del strobe. */
 .intensity-slider:not(.strobe-slider)::-webkit-slider-runnable-track,
-.rgb-slider::-webkit-slider-runnable-track {
+.rgb-slider::-webkit-slider-runnable-track,
+.beam-slider::-webkit-slider-runnable-track {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.05) 0%,
@@ -1037,12 +1038,18 @@
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
 
-/* Beam Sliders */
+/* Beam Sliders — mismo sistema dinámico que .intensity-slider/.rgb-slider:
+   degradado mate al 75% + thumb sólido + glow 25%, con !important para
+   erradicar el cyan plano de globals.css (especificidad 0,1,2). */
 .beam-slider {
   width: 100%;
   min-width: 0;
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    color-mix(in srgb, var(--neon-base, #a855f7) 75%, transparent) 100%
+  ) !important;
   border-radius: 2px;
   outline: none;
   appearance: none;
@@ -1053,10 +1060,10 @@
   appearance: none;
   width: 12px;
   height: 12px;
-  background: var(--neon-base, #a855f7);
+  background: var(--neon-base, #a855f7) !important;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 5px rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--neon-base, #a855f7) 25%, transparent) !important;
 }
 
 /* Prism Slider */

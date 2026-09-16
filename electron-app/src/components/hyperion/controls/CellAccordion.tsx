@@ -53,7 +53,7 @@ export const FAMILY_NEON: Readonly<Record<NodeFamily, string>> = Object.freeze({
   [NodeFamily.IMPACT]:     '#ffd700', // Dorado — intensidad
   [NodeFamily.COLOR]:      '#ff3366', // Rojo ardiente — mezcla cromática
   [NodeFamily.KINETIC]:    '#00ffff', // Cyan neon — rotación / movimiento
-  [NodeFamily.BEAM]:       '#e0e0ff', // Azul-blanco frío — óptica
+  [NodeFamily.BEAM]:       '#e2e8f0', // Plata nítido — óptica
   [NodeFamily.ATMOSPHERE]: '#00ffcc', // Verde tóxico — extras / ambiente
 })
 

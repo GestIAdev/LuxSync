@@ -179,24 +179,16 @@ export class AetherUIProjector {
         const bRaw = ch['b'] ?? ch['blue']
         if (rRaw !== undefined || gRaw !== undefined || bRaw !== undefined) {
           // 🌊 WAVE 4695: Luminance-chrominance decoupling.
-          // Si existe nodo IMPACT en el device, brightness ya porta luminancia → no escalar.
-          // 🩸 WAVE 7761.6.2: Dimmer virtual AISLADO — localDimmer se usa SOLO
-          // para calcular chromaScale y projectedR/G/B. NUNCA se asigna a
-          // fixture.dimmer. El dimmer maestro se queda en 0 si no existe el
-          // canal, para no encender el Wash por accidente. El Beam central
-          // (zona air) puede iluminarse con su color puro sin depender del
-          // dimmer del Washer.
-          // 🩸 WAVE 7761.6.4 (Fase 6.4): FIX BEAM — los nodos atmosféricos
-          // (air, ambient, strobe) ignoran el dimmer/brightness del propio
-          // nodo COLOR. El Árbitro envía brightness=0 (no undefined) cuando
-          // el fader está a 0, y el `?? 1.0` no activa porque 0 no es nullish.
-          // Sin este fix, chromaScale=0 destruye el color del Beam aunque el
-          // usuario tenga RGB levantado. El dimmer del fixture lo controla
-          // el nodo IMPACT separado, no el nodo COLOR atmosférico.
-          const isAtmo = isAtmosphericZone(node.zoneId)
-          const localDimmer = (hasImpactDimmer || isAtmo)
-            ? 1.0
-            : (ch['brightness'] ?? ch['dimmer'] ?? 1.0)
+          // 🩸 WAVE 7761.6.9 (Fase 6.9 — LEY DEL FOTÓN): CERO DEFAULTS. La
+          // geometría física SIEMPRE se renderiza, pero la luz (fotones) SOLO
+          // existe si hay señal explícita del Árbitro. Se erradica toda la
+          // lógica de rescate (hasImpactDimmer, isAtmo, fallback 1.0) — si el
+          // motor de audio (L0) está en silencio y el Árbitro no envía
+          // brightness ni dimmer, la proyección de color es estrictamente 0.0.
+          // Esto neutraliza el color base de la Vibe (L1) iluminando el Beam
+          // sin música. El dimmer del fixture lo controla el nodo IMPACT
+          // separado, no un default inventado.
+          const localDimmer = ch['brightness'] ?? ch['dimmer'] ?? 0.0
           const chromaScale = localDimmer * strobeMask
           const projectedR = toDmx((rRaw ?? 0) * chromaScale)
           const projectedG = toDmx((gRaw ?? 0) * chromaScale)

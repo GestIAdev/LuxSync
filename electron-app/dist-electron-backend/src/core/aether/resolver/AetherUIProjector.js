@@ -164,24 +164,15 @@ export class AetherUIProjector {
                 const bRaw = ch['b'] ?? ch['blue'];
                 if (rRaw !== undefined || gRaw !== undefined || bRaw !== undefined) {
                     // 🌊 WAVE 4695: Luminance-chrominance decoupling.
-                    // Si existe nodo IMPACT en el device, brightness ya porta luminancia → no escalar.
-                    // 🩸 WAVE 7761.6.2: Dimmer virtual AISLADO — localDimmer se usa SOLO
-                    // para calcular chromaScale y projectedR/G/B. NUNCA se asigna a
-                    // fixture.dimmer. El dimmer maestro se queda en 0 si no existe el
-                    // canal, para no encender el Wash por accidente. El Beam central
-                    // (zona air) puede iluminarse con su color puro sin depender del
-                    // dimmer del Washer.
-                    // 🩸 WAVE 7761.6.4 (Fase 6.4): FIX BEAM — los nodos atmosféricos
-                    // (air, ambient, strobe) ignoran el dimmer/brightness del propio
-                    // nodo COLOR. El Árbitro envía brightness=0 (no undefined) cuando
-                    // el fader está a 0, y el `?? 1.0` no activa porque 0 no es nullish.
-                    // Sin este fix, chromaScale=0 destruye el color del Beam aunque el
-                    // usuario tenga RGB levantado. El dimmer del fixture lo controla
-                    // el nodo IMPACT separado, no el nodo COLOR atmosférico.
-                    const isAtmo = isAtmosphericZone(node.zoneId);
-                    const localDimmer = (hasImpactDimmer || isAtmo)
-                        ? 1.0
-                        : (ch['brightness'] ?? ch['dimmer'] ?? 1.0);
+                    // 🩸 WAVE 7761.6.12 (Fase 6.12 — FALLBACK MANUAL): Si no hay música
+                    // (ausencia de brightness del L0), el nodo COLOR hereda la
+                    // intensidad maestra de la máquina (que el usuario levanta con el
+                    // fader manual del Washer) en lugar de un 0.0 ciego. Así el color
+                    // manual funciona sin música: el usuario levanta el dimmer del
+                    // Washer → fixture.dimmer sube → localDimmer sube → el color del
+                    // Beam se proyecta. Con música, L0 envía brightness explícito y
+                    // este fallback no se activa (?? solo cae si es undefined/null).
+                    const localDimmer = ch['brightness'] ?? ch['dimmer'] ?? (hasImpactDimmer ? (fixture.dimmer / 255) : 0.0);
                     const chromaScale = localDimmer * strobeMask;
                     const projectedR = toDmx((rRaw ?? 0) * chromaScale);
                     const projectedG = toDmx((gRaw ?? 0) * chromaScale);

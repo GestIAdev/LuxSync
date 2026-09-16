@@ -819,7 +819,18 @@ function drawHelixFixture(ctx, x, y, fixture, baseRadius, beatBoost, frameTime) 
     const bladeB = zoneColorOrFallback(fixture.bAmbient, allZonesZero, b);
     const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB);
     const size = baseRadius * 2.8;
-    const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1);
+    // 🩸 WAVE 7761.6.12 (Fase 6.12 — OPACIDAD ESTRICTA): el alpha se basa
+    // ÚNICAMENTE en la luminancia real del sprite (hub + aspas). Si el color
+    // es 0 (negro por la Ley del Fotón), alpha = 0 → sprite invisible → solo
+    // queda el chasis gris del drawOffFixture (Chasis Inmortal). Si hay color
+    // real, alpha = spriteIntensity + 0.25 + beatBoost. Eliminada la lógica
+    // de effectiveIntensity (Fase 6.8) que usaba el dimmer maestro y hacía
+    // visibles los sprites negros.
+    const maxSpriteLuminance = Math.max(hubR, hubG, hubB, bladeR, bladeG, bladeB);
+    const spriteIntensity = maxSpriteLuminance / 255;
+    const alpha = spriteIntensity > 0.01
+        ? clamp(spriteIntensity + 0.25 + beatBoost, 0, 1)
+        : 0;
     // 🩸 WAVE 7761.6.3 (Fase 6.3): Rotación CONTINUA unidireccional.
     // rotation es 0-255 DMX (0 = STOP, 255 = velocidad máxima CW).
     // El hardware real usa 0 como stop, no 128. Matemática directa:
@@ -932,14 +943,13 @@ export function renderFixtureLayer(ctx, width, height, fixtures, options) {
             drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime);
         }
         else {
-            // 🩸 WAVE 7761.6.6 (Bug 2): BASE MULTICELULAR — cuando isLit llega solo
-            // por sub-zonas (Beam color > 0) pero el dimmer maestro es 0, estampamos
-            // el chasis apagado como FONDO para que la máquina nunca desaparezca.
-            // Los colores puros del Beam se pintan por encima (geometría encendida).
-            // WYSIWYG: la máquina existe (chasis) Y sus canales independientes brillan.
-            if (fixture.intensity < 0.02) {
-                drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime);
-            }
+            // 🩸 WAVE 7761.6.12 (Fase 6.12 — CHASIS INMORTAL): drawOffFixture se
+            // ejecuta SIEMPRE como fondo, sin importar si hay intensidad. Esto
+            // garantiza el metal base debajo de la geometría encendida y evita
+            // los "agujeros negros" cuando el sprite de la hélice es negro puro
+            // (color 0 por la Ley del Fotón). El sprite encendido se estampa
+            // encima, sumando luz al chasis en lugar de reemplazarlo.
+            drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime);
             // Lit fixture: halo + geometría por tipo + hot center
             drawHalo(ctx, fx, fy, fixture, baseRadius, beatScale);
             // 🩸 WAVE 7761.5 (Multi-RGB Fase 5): despacho de geometría vectorial

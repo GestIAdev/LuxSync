@@ -252,7 +252,7 @@
           "channelType": "custom",
           "dmxOffset": 0,
           "channelName": "Custom",
-          "cellLabel": "Atmosphere",
+          "cellLabel": "Macros",
           "defaultDmxValue": 0,
           "aetherNodeId": "atmosphere",
           "aetherZone": "unassigned"
@@ -263,7 +263,7 @@
         },
         "label": "CH1: Custom",
         "profileMeta": {
-          "customLabel": "Atmosphere"
+          "customLabel": "Macros"
         }
       },
       {
@@ -310,7 +310,7 @@
           "channelType": "rotation",
           "dmxOffset": 1,
           "channelName": "X infinite",
-          "cellLabel": "Posición",
+          "cellLabel": "Rotation X",
           "defaultDmxValue": 0,
           "continuousRotation": true,
           "aetherNodeId": "kinetic-22",
@@ -322,7 +322,7 @@
         },
         "label": "CH2: X infinite",
         "profileMeta": {
-          "customLabel": "Posición"
+          "customLabel": "Rotation X"
         }
       },
       {
@@ -369,7 +369,7 @@
           "channelType": "dimmer",
           "dmxOffset": 2,
           "channelName": "Golden dimmer",
-          "cellLabel": "Intensidad",
+          "cellLabel": "Main Intensity",
           "defaultDmxValue": 20,
           "aetherNodeId": "impact-20",
           "aetherZone": "flash"
@@ -380,7 +380,7 @@
         },
         "label": "CH3: Golden dimmer",
         "profileMeta": {
-          "customLabel": "Intensidad"
+          "customLabel": "Main Intensity"
         }
       },
       {
@@ -427,7 +427,7 @@
           "channelType": "strobe",
           "dmxOffset": 3,
           "channelName": "Strobe",
-          "cellLabel": "Intensidad",
+          "cellLabel": "Main Intensity",
           "defaultDmxValue": 0,
           "aetherNodeId": "impact-20",
           "aetherZone": "flash",
@@ -444,7 +444,7 @@
         },
         "label": "CH4: Strobe",
         "profileMeta": {
-          "customLabel": "Intensidad"
+          "customLabel": "Main Intensity"
         }
       },
       {
@@ -491,7 +491,7 @@
           "channelType": "dimmer",
           "dmxOffset": 4,
           "channelName": "Gold 1",
-          "cellLabel": "Intensidad",
+          "cellLabel": "Main Intensity",
           "defaultDmxValue": 0,
           "aetherNodeId": "impact-14",
           "aetherZone": "flash"
@@ -502,7 +502,7 @@
         },
         "label": "CH5: Gold 1",
         "profileMeta": {
-          "customLabel": "Intensidad"
+          "customLabel": "Main Intensity"
         }
       },
       {
@@ -549,7 +549,7 @@
           "channelType": "dimmer",
           "dmxOffset": 5,
           "channelName": "Gold 2",
-          "cellLabel": "Intensidad",
+          "cellLabel": "Main Intensity",
           "defaultDmxValue": 0,
           "aetherNodeId": "impact-16",
           "aetherZone": "flash"
@@ -560,7 +560,7 @@
         },
         "label": "CH6: Gold 2",
         "profileMeta": {
-          "customLabel": "Intensidad"
+          "customLabel": "Main Intensity"
         }
       },
       {
@@ -607,7 +607,7 @@
           "channelType": "dimmer",
           "dmxOffset": 6,
           "channelName": "Gold 3",
-          "cellLabel": "Intensidad",
+          "cellLabel": "Main Intensity",
           "defaultDmxValue": 0,
           "aetherNodeId": "impact-18",
           "aetherZone": "flash"
@@ -618,7 +618,7 @@
         },
         "label": "CH7: Gold 3",
         "profileMeta": {
-          "customLabel": "Intensidad"
+          "customLabel": "Main Intensity"
         }
       },
       {
@@ -665,7 +665,7 @@
           "channelType": "dimmer",
           "dmxOffset": 7,
           "channelName": "Stainning dimmer",
-          "cellLabel": "Wash Color",
+          "cellLabel": "Wash Intensity",
           "defaultDmxValue": 0,
           "aetherNodeId": "wash-impact",
           "aetherZone": "ambient"
@@ -676,7 +676,7 @@
         },
         "label": "CH8: Stainning dimmer",
         "profileMeta": {
-          "customLabel": "Wash Color"
+          "customLabel": "Wash Intensity"
         }
       },
       {
@@ -723,7 +723,7 @@
           "channelType": "strobe",
           "dmxOffset": 8,
           "channelName": "Stainning strobe",
-          "cellLabel": "Wash Color",
+          "cellLabel": "Wash Intensity",
           "defaultDmxValue": 0,
           "aetherNodeId": "wash-impact",
           "aetherZone": "ambient"
@@ -734,7 +734,7 @@
         },
         "label": "CH9: Stainning strobe",
         "profileMeta": {
-          "customLabel": "Wash Color"
+          "customLabel": "Wash Intensity"
         }
       },
       {
@@ -1205,7 +1205,7 @@
           "channelType": "custom",
           "dmxOffset": 16,
           "channelName": "macro gold",
-          "cellLabel": "Atmosphere",
+          "cellLabel": "Macros",
           "defaultDmxValue": 0,
           "aetherNodeId": "atmosphere",
           "aetherZone": "unassigned"
@@ -1216,7 +1216,7 @@
         },
         "label": "CH17: macro gold",
         "profileMeta": {
-          "customLabel": "Atmosphere"
+          "customLabel": "Macros"
         }
       },
       {
@@ -1263,7 +1263,7 @@
           "channelType": "custom",
           "dmxOffset": 17,
           "channelName": "macro stain",
-          "cellLabel": "Atmosphere",
+          "cellLabel": "Macros",
           "defaultDmxValue": 0,
           "aetherNodeId": "atmosphere",
           "aetherZone": "unassigned"
@@ -1274,7 +1274,7 @@
         },
         "label": "CH18: macro stain",
         "profileMeta": {
-          "customLabel": "Atmosphere"
+          "customLabel": "Macros"
         }
       },
       {
@@ -1321,7 +1321,7 @@
           "channelType": "custom",
           "dmxOffset": 18,
           "channelName": "macro beam",
-          "cellLabel": "Atmosphere",
+          "cellLabel": "Macros",
           "defaultDmxValue": 0,
           "aetherNodeId": "atmosphere",
           "aetherZone": "unassigned"
@@ -1332,7 +1332,7 @@
         },
         "label": "CH19: macro beam",
         "profileMeta": {
-          "customLabel": "Atmosphere"
+          "customLabel": "Macros"
         }
       },
       {
@@ -1379,7 +1379,7 @@
           "channelType": "custom",
           "dmxOffset": 19,
           "channelName": "repo",
-          "cellLabel": "Atmosphere",
+          "cellLabel": "Macros",
           "defaultDmxValue": 0,
           "aetherNodeId": "atmosphere",
           "aetherZone": "unassigned"
@@ -1390,7 +1390,7 @@
         },
         "label": "CH20: repo",
         "profileMeta": {
-          "customLabel": "Atmosphere"
+          "customLabel": "Macros"
         }
       }
     ],

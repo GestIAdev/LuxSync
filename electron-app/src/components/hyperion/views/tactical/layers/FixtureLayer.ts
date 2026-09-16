@@ -921,7 +921,15 @@ function drawHelixFixture(
 
   const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB)
   const size = baseRadius * 2.8
-  const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1)
+  // 🩸 WAVE 7761.6.7 (Fase 6.7 — EXORCISMO DEL 0.25): El alpha es 0 absoluto
+  // si la intensidad maestra es residual. Si hay luz, aplicamos el glow base
+  // `+ 0.25`. Esto neutraliza el fantasma del color de las sub-zonas sobre
+  // el chasis cuando el dimmer maestro es 0 — el chasis iluminado pinta con
+  // alpha 0 y solo queda visible el drawOffFixture (chasis gris limpio) con
+  // su hélice girando y el Beam central brillando por su cuenta.
+  const alpha = intensity > 0.02
+    ? clamp(intensity + 0.25 + beatBoost, 0, 1)
+    : 0
 
   // 🩸 WAVE 7761.6.3 (Fase 6.3): Rotación CONTINUA unidireccional.
   // rotation es 0-255 DMX (0 = STOP, 255 = velocidad máxima CW).

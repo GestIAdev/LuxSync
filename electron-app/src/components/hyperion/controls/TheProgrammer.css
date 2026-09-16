@@ -357,13 +357,14 @@
   height: 4px;
   /* Track con degradado dinámico vibrante: casi transparente → neon de
      familia opaco (--neon-base lo inyecta la raíz del CellAccordion; las
-     filas phantom/sub-dimmer lo sobreescriben por canal). Mismo patrón
-     que .strobe-slider. Fallback gris fuera de contexto acordeón. */
+     filas phantom/sub-dimmer lo sobreescriben por canal). !important
+     (patrón .strobe-slider) para ganar a reglas globales que inyectan
+     color plano. Fallback gris fuera de contexto acordeón. */
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.05) 0%,
-    var(--neon-base, rgba(255, 255, 255, 0.2)) 100%
-  );
+    var(--neon-base, #a855f7) 100%
+  ) !important;
   border-radius: 2px;
   outline: none;
   appearance: none;
@@ -375,10 +376,26 @@
   appearance: none;
   width: 12px;
   height: 12px;
-  background: var(--neon-base, #a855f7);
+  background: var(--neon-base, #a855f7) !important;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 5px rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 8px var(--neon-base, #a855f7) !important;
+}
+
+/* globals.css pinta ::-webkit-slider-runnable-track con un overlay oscuro
+   (especificidad input[type=range] = 0,1,2 > clase = 0,1,1) que amortigua
+   el background del elemento. Forzamos el degradado dinámico también en
+   el pseudo-track. :not(.strobe-slider) preserva el rojo del strobe. */
+.intensity-slider:not(.strobe-slider)::-webkit-slider-runnable-track,
+.rgb-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    var(--neon-base, #a855f7) 100%
+  ) !important;
+  height: 4px;
+  border: none;
+  border-radius: 2px;
 }
 
 .intensity-value {
@@ -606,12 +623,13 @@
   height: 4px;
   /* Track con degradado dinámico por canal: transparente → --neon-base.
      La fila (.rgb-slider-row) o la clase de canal (.red/.green/.blue)
-     declaran el color; el slider lo consume. */
+     declaran el color; el slider lo consume. !important (patrón
+     .strobe-slider) para ganar a reglas globales que inyectan color plano. */
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.05) 0%,
-    var(--neon-base, rgba(255, 255, 255, 0.15)) 100%
-  );
+    var(--neon-base, #a855f7) 100%
+  ) !important;
   border-radius: 2px;
   outline: none;
   appearance: none;
@@ -624,8 +642,8 @@
   height: 12px;
   border-radius: 50%;
   cursor: pointer;
-  background: var(--neon-base, #a855f7);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--neon-base, #a855f7) 55%, transparent);
+  background: var(--neon-base, #a855f7) !important;
+  box-shadow: 0 0 8px var(--neon-base, #a855f7) !important;
 }
 
 /* Canal → --neon-base: el color vive en la variable para que track y
@@ -1406,6 +1424,15 @@
 
 .strobe-slider {
   background: linear-gradient(90deg, #1a1a2e 0%, #ff3366 100%) !important;
+}
+
+/* El runnable-track global de globals.css amortigua el degradado rojo —
+   lo reafirmamos aquí con la misma fuerza bruta del patrón strobe. */
+.strobe-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, #1a1a2e 0%, #ff3366 100%) !important;
+  height: 4px;
+  border: none;
+  border-radius: 2px;
 }
 
 .strobe-slider::-webkit-slider-thumb {

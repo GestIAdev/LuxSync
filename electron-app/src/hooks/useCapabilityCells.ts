@@ -146,9 +146,9 @@ const FAMILY_DEFAULT_ROLE: Record<NodeFamily, string> = {
 
 const FAMILY_DEFAULT_LABEL: Record<NodeFamily, string> = {
   [NodeFamily.COLOR]:      'Color',
-  [NodeFamily.IMPACT]:     'Intensidad',
-  [NodeFamily.KINETIC]:    'Rotation',
-  [NodeFamily.BEAM]:       'Haz',
+  [NodeFamily.IMPACT]:     'Intensity',
+  [NodeFamily.KINETIC]:    'Position',
+  [NodeFamily.BEAM]:       'Beam',
   [NodeFamily.ATMOSPHERE]: 'Extras',
 }
 

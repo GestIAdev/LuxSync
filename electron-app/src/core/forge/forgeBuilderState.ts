@@ -703,10 +703,10 @@ function expandChannelsToMaxIndex(
 function defaultLabelFor(family: NodeFamily): string {
   const labels: Record<string, string> = {
     COLOR:      'Color',
-    IMPACT:     'Intensidad',
-    KINETIC:    'Posición',
-    BEAM:       'Haz',
-    ATMOSPHERE: 'Atmósfera',
+    IMPACT:     'Intensity',
+    KINETIC:    'Position',
+    BEAM:       'Beam',
+    ATMOSPHERE: 'Extras',
   }
   return labels[String(family)] ?? String(family)
 }

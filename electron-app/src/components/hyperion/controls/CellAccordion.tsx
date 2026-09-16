@@ -135,9 +135,14 @@ const CellAccordionBase: React.FC<CellAccordionProps> = ({
           {/* Neon dot por rol */}
           <span className="cell-accordion__neon-dot" aria-hidden="true" />
 
-          {/* Texto: «GOLD 1» (Aether custom) o «INTENSITY: MAIN» (clásico) */}
+          {/* Texto: «GOLD 1» (Aether custom) o «INTENSITY: MAIN» (clásico).
+              Guarda de deduplicación: si el label genérico coincide con el
+              título de sección (ej. COLOR + 'Color'), el sublabel es redundante
+              y no se renderiza — evita el «COLOR: COLOR». */}
           <span className="cell-accordion__title">{isCustom ? sublabel : title}</span>
-          {!isCustom && <span className="cell-accordion__sublabel">: {sublabel}</span>}
+          {!isCustom && sublabel !== title && (
+            <span className="cell-accordion__sublabel">: {sublabel}</span>
+          )}
 
           {/* Badge ×N — solo cuando hay más de un fixture (Hive Mind) */}
           {group.cellCount > 1 && (

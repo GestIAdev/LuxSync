@@ -154,7 +154,7 @@ export function resolveCellLabel(raw: string | null | undefined): string {
  * Si NO lo es → es una etiqueta personalizada Aether → muestra SOLO el label.
  */
 const GENERIC_AUTO_LABELS = new Set([
-  'Intensity', 'Color', 'Kinetic', 'Beam', 'Extras',
+  'Intensity', 'Color', 'Position', 'Beam', 'Extras',
 ])
 
 /**

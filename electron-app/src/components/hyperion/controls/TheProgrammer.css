@@ -355,7 +355,14 @@
 .intensity-slider {
   flex: 1;
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  /* Track con degradado dinámico: oscuro → neon de familia (--neon-base
+     lo inyecta la raíz del CellAccordion; las filas phantom/sub-dimmer lo
+     sobreescriben por canal). Fallback gris fuera de contexto acordeón. */
+  background: linear-gradient(
+    90deg,
+    rgba(26, 26, 46, 0.9) 0%,
+    color-mix(in srgb, var(--neon-base, rgba(255, 255, 255, 0.2)) 55%, transparent) 100%
+  );
   border-radius: 2px;
   outline: none;
   appearance: none;

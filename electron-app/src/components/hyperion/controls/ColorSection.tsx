@@ -30,6 +30,20 @@ const QUICK_COLORS = [
   { label: 'M', color: { r: 255, g: 0, b: 255 } },
 ]
 
+/**
+ * Color neon por canal de color — override local de `--neon-base` para que
+ * cada slider R/G/B (y futuros W/A/UV) lleve su propio color dinámico en
+ * lugar del cyan genérico de la familia COLOR.
+ */
+const CHANNEL_NEON: Readonly<Record<string, string>> = Object.freeze({
+  r:  '#ef4444',
+  g:  '#22c55e',
+  b:  '#3b82f6',
+  w:  '#f8fafc',
+  a:  '#f59e0b',
+  uv: '#a855f7',
+})
+
 function clamp255(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)))
 }
@@ -226,7 +240,7 @@ export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, peerCellKeys, i
           </div>
 
           <div className="rgb-sliders">
-            <div className="rgb-slider-row">
+            <div className="rgb-slider-row" style={{ '--neon-base': CHANNEL_NEON.r } as React.CSSProperties}>
               <label className="rgb-label red">R</label>
               <input
                 type="range"
@@ -239,7 +253,7 @@ export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, peerCellKeys, i
               <span className="rgb-value">{r ?? '-'}</span>
             </div>
 
-            <div className="rgb-slider-row">
+            <div className="rgb-slider-row" style={{ '--neon-base': CHANNEL_NEON.g } as React.CSSProperties}>
               <label className="rgb-label green">G</label>
               <input
                 type="range"
@@ -252,7 +266,7 @@ export const ColorSection: React.FC<ColorSectionProps> = ({ ctx, peerCellKeys, i
               <span className="rgb-value">{g ?? '-'}</span>
             </div>
 
-            <div className="rgb-slider-row">
+            <div className="rgb-slider-row" style={{ '--neon-base': CHANNEL_NEON.b } as React.CSSProperties}>
               <label className="rgb-label blue">B</label>
               <input
                 type="range"
@@ -391,7 +405,11 @@ export const ColorBody: React.FC<ColorBodyProps> = ({ primaryKey, allCellKeys, e
 
       <div className="rgb-sliders">
         {(['r', 'g', 'b'] as const).map(ch => (
-          <div key={ch} className="rgb-slider-row">
+          <div
+            key={ch}
+            className="rgb-slider-row"
+            style={{ '--neon-base': CHANNEL_NEON[ch] } as React.CSSProperties}
+          >
             <label className={`rgb-label ${ch === 'r' ? 'red' : ch === 'g' ? 'green' : 'blue'}`}>
               {ch.toUpperCase()}
             </label>

@@ -355,13 +355,14 @@
 .intensity-slider {
   flex: 1;
   height: 4px;
-  /* Track con degradado dinámico: oscuro → neon de familia (--neon-base
-     lo inyecta la raíz del CellAccordion; las filas phantom/sub-dimmer lo
-     sobreescriben por canal). Fallback gris fuera de contexto acordeón. */
+  /* Track con degradado dinámico vibrante: casi transparente → neon de
+     familia opaco (--neon-base lo inyecta la raíz del CellAccordion; las
+     filas phantom/sub-dimmer lo sobreescriben por canal). Mismo patrón
+     que .strobe-slider. Fallback gris fuera de contexto acordeón. */
   background: linear-gradient(
     90deg,
-    rgba(26, 26, 46, 0.9) 0%,
-    color-mix(in srgb, var(--neon-base, rgba(255, 255, 255, 0.2)) 55%, transparent) 100%
+    rgba(255, 255, 255, 0.05) 0%,
+    var(--neon-base, rgba(255, 255, 255, 0.2)) 100%
   );
   border-radius: 2px;
   outline: none;
@@ -595,15 +596,22 @@
   text-align: center;
 }
 
-.rgb-label.red { color: #ff5555; }
-.rgb-label.green { color: #55ff55; }
-.rgb-label.blue { color: #5555ff; }
+.rgb-label.red { color: #ef4444; }
+.rgb-label.green { color: #22c55e; }
+.rgb-label.blue { color: #3b82f6; }
 
 .rgb-slider {
   flex: 1;
   min-width: 0;
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  /* Track con degradado dinámico por canal: transparente → --neon-base.
+     La fila (.rgb-slider-row) o la clase de canal (.red/.green/.blue)
+     declaran el color; el slider lo consume. */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    var(--neon-base, rgba(255, 255, 255, 0.15)) 100%
+  );
   border-radius: 2px;
   outline: none;
   appearance: none;
@@ -616,22 +624,15 @@
   height: 12px;
   border-radius: 50%;
   cursor: pointer;
+  background: var(--neon-base, #a855f7);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--neon-base, #a855f7) 55%, transparent);
 }
 
-.rgb-slider.red::-webkit-slider-thumb {
-  background: #ff5555;
-  box-shadow: 0 0 8px rgba(255, 85, 85, 0.5);
-}
-
-.rgb-slider.green::-webkit-slider-thumb {
-  background: #55ff55;
-  box-shadow: 0 0 8px rgba(85, 255, 85, 0.5);
-}
-
-.rgb-slider.blue::-webkit-slider-thumb {
-  background: #5555ff;
-  box-shadow: 0 0 8px rgba(85, 85, 255, 0.5);
-}
+/* Canal → --neon-base: el color vive en la variable para que track y
+   thumb lo compartan; la fila React puede sobreescribirlo inline. */
+.rgb-slider.red   { --neon-base: #ef4444; }
+.rgb-slider.green { --neon-base: #22c55e; }
+.rgb-slider.blue  { --neon-base: #3b82f6; }
 
 .rgb-value {
   min-width: 28px;

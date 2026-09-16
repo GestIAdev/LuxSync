@@ -269,6 +269,13 @@ export interface CellDescriptor {
   readonly label: string
   readonly cellIndex: number
   /**
+   * Nombre del canal físico principal del nodo (ej: "Gold 1", "Golden dimmer").
+   * Proviene de `INodeChannelDef.customName` (channelName del output_dmx).
+   * A diferencia de `label` (etiqueta de celda compartida por el grupo),
+   * identifica el canal individual — usado por las sub-filas compactas.
+   */
+  readonly channelLabel?: string
+  /**
    * Para nodos COLOR con canales de intensidad físicos embebidos
    * (dimmer/strobe/shutter dentro del mismo nodo). Informa a ColorBody
    * qué filas InlineImpactRow mostrar ANTES de que haya un override.

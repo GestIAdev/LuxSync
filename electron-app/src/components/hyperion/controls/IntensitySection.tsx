@@ -5,9 +5,10 @@
  */
 
 import React, { useCallback } from 'react'
-import { NodeFamily } from '../../../stores/programmer-types'
+import { NodeFamily, cellKeyDeviceId } from '../../../stores/programmer-types'
 import type { CapabilityContext, CellKey } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
+import { humanizeCellId } from './cellLabels'
 import { IntensityIcon, StrobeIcon } from '../../icons/LuxIcons'
 
 export interface IntensitySectionProps {
@@ -297,8 +298,79 @@ export interface IntensityBodyProps {
   nodeIds: readonly string[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SUB-DIMMER ROW — renderizado compacto híbrido (estructura DOM de Extras)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Color del tipo 'dimmer' — FAMILY_NEON[IMPACT] (#ffd700, dorado). NO hereda
+// el violeta de los macros/phantoms (#8b5cf6 / #d946ef).
+const SUB_DIMMER_COLOR = '#ffd700'
+
+interface SubDimmerRowProps {
+  /** CellKey de la sub-celda dimmer (índice > 0 del grupo). */
+  readonly cellKey: CellKey
+  /** CellKey maestra (índice 0) — para detectar filas cross-device. */
+  readonly masterKey: CellKey
+}
+
+/**
+ * Fila compacta de dimmer secundario — misma estructura DOM y clases CSS que
+ * `PhantomChannelRow` de ExtrasAggregator (phantom-row + intensity-slider-container).
+ * Cada fila lee/escribe SOLO su propia cellKey (control individual, no Hive Mind).
+ */
+const SubDimmerRow: React.FC<SubDimmerRowProps> = ({ cellKey, masterKey }) => {
+  const ov = useProgrammerStore(s => s.cellOverrides.get(cellKey))
+  const descriptor = useProgrammerStore(s => s.cellRegistry.get(cellKey))
+
+  const dimmer = ov?.payload.family === NodeFamily.IMPACT && ov.payload.data.dimmer !== undefined
+    ? Math.round(ov.payload.data.dimmer * 100)
+    : null
+  const value = dimmer ?? 0
+
+  const suffix = cellKey.slice(cellKey.indexOf(':') + 1)
+  const sameDevice = cellKeyDeviceId(cellKey) === cellKeyDeviceId(masterKey)
+  const baseLabel = descriptor?.channelLabel ?? humanizeCellId(suffix)
+  const label = sameDevice ? baseLabel : `${cellKeyDeviceId(cellKey)} · ${baseLabel}`
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    useProgrammerStore.getState().setCellImpact(cellKey, 'dimmer', Number(e.target.value))
+  }, [cellKey])
+
+  return (
+    <div className="phantom-row">
+      <div className="phantom-row__header">
+        <span className="phantom-row__label" style={{ color: SUB_DIMMER_COLOR }}>{label}</span>
+      </div>
+      <div
+        className="intensity-slider-container"
+        style={{ '--neon-base': SUB_DIMMER_COLOR } as React.CSSProperties}
+      >
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={value}
+          onChange={handleChange}
+          className="intensity-slider"
+          aria-label={label}
+        />
+        <div className="intensity-value" style={{ color: SUB_DIMMER_COLOR }}>
+          {dimmer === null ? '—' : `${value}%`}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const IntensityBody: React.FC<IntensityBodyProps> = ({ primaryKey, allCellKeys, nodeIds }) => {
-  const ov = useProgrammerStore(s => s.cellOverrides.get(primaryKey))
+  // ── División lógica de canales dimmer ─────────────────────────────────────
+  // masterDimmer: índice 0 del grupo (UI completa con Limitador).
+  // subDimmers:   índice > 0 (sub-dimmers de celdas individuales — ej. Gold 1/2/3
+  //               del Tungsten). Se renderizan como filas compactas estilo Extras.
+  const masterDimmer = allCellKeys[0] ?? primaryKey
+  const subDimmers = allCellKeys.slice(1)
+
+  const ov = useProgrammerStore(s => s.cellOverrides.get(masterDimmer))
   const data = ov?.payload.family === NodeFamily.IMPACT ? ov.payload.data : {}
 
   const dimmer = data.dimmer !== undefined ? Math.round(data.dimmer * 100) : null
@@ -425,6 +497,17 @@ export const IntensityBody: React.FC<IntensityBodyProps> = ({ primaryKey, allCel
         </div>
         {hasStrobe && <div className="override-badge strobe-override">STROBE MANUAL</div>}
       </div>
+
+      {/* SUB-DIMMERS — celdas individuales del grupo (índice > 0).
+          Renderizado compacto idéntico a las filas phantom de Extras. */}
+      {subDimmers.length > 0 && (
+        <div className="extras-aggregator__phantom-section">
+          <div className="extras-aggregator__section-header">SUB-DIMMERS</div>
+          {subDimmers.map(key => (
+            <SubDimmerRow key={key} cellKey={key} masterKey={masterDimmer} />
+          ))}
+        </div>
+      )}
     </>
   )
 }

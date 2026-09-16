@@ -202,6 +202,12 @@ function capabilityNodesToDescriptors(
       ? customLabel
       : suffixToLabel(suffix, family)
 
+    // Nombre del canal físico principal (ej: "Gold 1" para un sub-dimmer).
+    // Preferimos el canal dimmer; si no hay, el primero con customName.
+    const channelLabel =
+      node.channels.find(ch => ch.type === 'dimmer' && !!ch.customName)?.customName
+      ?? node.channels.find(ch => !!ch.customName)?.customName
+
     // WAVE 4743: Para nodos COLOR con canales de intensidad físicos (dimmer/strobe/shutter),
     // construir el set de canales embebidos. Esto permite a ColorBody mostrar los
     // InlineImpactRow ANTES de que exista un override (discovery desde la definición).
@@ -224,6 +230,7 @@ function capabilityNodesToDescriptors(
       role,
       label,
       cellIndex,
+      ...(channelLabel !== undefined ? { channelLabel } : {}),
       ...(embeddedImpactChannels && embeddedImpactChannels.size > 0
         ? { embeddedImpactChannels: Object.freeze(embeddedImpactChannels) as ReadonlySet<EmbeddedImpactChannelType> }
         : {}),

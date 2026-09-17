@@ -1,0 +1,179 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_laser_cage",
+    "name": "Laser Cage",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "laser",
+      "cage",
+      "prison",
+      "static",
+      "ravex",
+      "red",
+      "floor-air"
+    ],
+    "vibeCompat": [
+      "rave"
+    ],
+    "spatialZones": [
+      "floor",
+      "air"
+    ],
+    "mixBus": "global",
+    "priority": 89,
+    "durationMs": 2000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "359eff84-fdc5-42c0-a800-5265c9357fa4",
+        "paramId": "intensity",
+        "zones": [
+          "floor",
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "548c0b73-8b9d-470c-a299-9bfa2fde7b32",
+        "paramId": "color",
+        "zones": [
+          "floor",
+          "air"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 0,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 140,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "heavy",
+      "genome": {
+        "aggression": 0.85,
+        "chaos": 0.3,
+        "organicity": 0.1
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "rave"
+      ],
+      "validSections": [
+        "drop",
+        "climax"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.7,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.85,
+        "energyMultiplier": 1.4,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.15,
+      "fatigueImpact": 0.6,
+      "minDurationMs": 1000,
+      "cooldownMs": 10000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": null,
+        "minimumEnergy": 0.7
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:032852e1ec7625156936f7eebc1e273de270e88097e4af87eda22585d04bdcee"
+}

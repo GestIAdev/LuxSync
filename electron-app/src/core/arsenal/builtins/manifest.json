@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-17T16:07:54.609Z",
-  "count": 57,
+  "generatedAt": "2026-09-17T16:29:09.395Z",
+  "count": 63,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -38,6 +38,21 @@
       "relPath": "latin/divine_obliteration.lfx",
       "checksum": "c7627af2420c3201",
       "size": 5156
+    },
+    "latin/fx_brisa_caribe.lfx": {
+      "relPath": "latin/fx_brisa_caribe.lfx",
+      "checksum": "a15f5284d6056562",
+      "size": 4790
+    },
+    "latin/fx_fuego_lento.lfx": {
+      "relPath": "latin/fx_fuego_lento.lfx",
+      "checksum": "4853acc6d64eb148",
+      "size": 4016
+    },
+    "latin/fx_perreo_peak.lfx": {
+      "relPath": "latin/fx_perreo_peak.lfx",
+      "checksum": "a50220eb16d4139f",
+      "size": 3861
     },
     "latin/ghost_breath.lfx": {
       "relPath": "latin/ghost_breath.lfx",
@@ -79,6 +94,11 @@
       "checksum": "2a748181f9b0a2ce",
       "size": 19561
     },
+    "ravex/fx_blackout_threat.lfx": {
+      "relPath": "ravex/fx_blackout_threat.lfx",
+      "checksum": "ea6e63a44076c008",
+      "size": 3975
+    },
     "ravex/fx_core_meltdown.lfx": {
       "relPath": "ravex/fx_core_meltdown.lfx",
       "checksum": "fa7ee24d52d67f27",
@@ -104,6 +124,11 @@
       "checksum": "c45a371ad7c954f8",
       "size": 4102
     },
+    "ravex/fx_glitch_protocol.lfx": {
+      "relPath": "ravex/fx_glitch_protocol.lfx",
+      "checksum": "d9a3878919d84e01",
+      "size": 10044
+    },
     "ravex/fx_grid_collapse.lfx": {
       "relPath": "ravex/fx_grid_collapse.lfx",
       "checksum": "f37580bf3127705d",
@@ -123,6 +148,11 @@
       "relPath": "ravex/fx_kernel_panic.lfx",
       "checksum": "a0f858cb759c1483",
       "size": 7702
+    },
+    "ravex/fx_laser_cage.lfx": {
+      "relPath": "ravex/fx_laser_cage.lfx",
+      "checksum": "57bf9f41f73b22ae",
+      "size": 3878
     },
     "ravex/fx_neon_buzz.lfx": {
       "relPath": "ravex/fx_neon_buzz.lfx",

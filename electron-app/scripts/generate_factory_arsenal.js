@@ -10,6 +10,9 @@
  * LOTE 2 — RaveX: fx_neon_flicker, fx_sector_purge, fx_acid_wash
  * LOTE 3 — RaveX: fx_grid_collapse, fx_dead_pixel, fx_core_meltdown
  * LOTE 4 — RaveX: fx_neon_buzz, fx_data_leak, fx_ghost_pulse (atmosféricos)
+ * LOTE 5 — RaveX: fx_glitch_protocol, fx_laser_cage, fx_blackout_threat
+ *         Latino (próximo): subdir 'latin', vibe 'fiesta-latina',
+ *         cinemática permitida (pan/tilt, 'linear', organicity alta).
  * Restricciones globales del lote: CERO cinemática, spatialBehavior 'static',
  * interpolación 'hold' exclusiva (salvo arranque 'linear' del strobe plano),
  * strobe plano [{0,1,linear},{DUR,1,hold}], energyZone span ≤ 2.
@@ -95,6 +98,15 @@ function kernelPanicSide(durationMs, phase, untilMs, resumeMs) {
   return kfs
 }
 
+/** Alternancia dura cada stepMs durante todo el clip; corta a 0 en endMs. */
+function alternating(durationMs, phase, stepMs = 50) {
+  const kfs = []
+  for (let t = 0; t < durationMs; t += stepMs)
+    kfs.push(kf(t, (t / stepMs) % 2 === 0 ? phase : 1 - phase))
+  kfs.push(kf(durationMs, 0))
+  return kfs
+}
+
 /** Ventana cuadrada: ON de onMs a offMs dentro de durationMs, OFF el resto. */
 function window(durationMs, onMs, offMs, endValue = 0) {
   const kfs = []
@@ -120,6 +132,16 @@ const colorTrack = (zones, kfs, extra) =>
   track('color', zones,
     { paramId:'color', valueType:'color', range:[0,360],
       defaultValue:{ h:0, s:0, l:50 }, keyframes:kfs, mode:'absolute' }, extra)
+// ── Cinemática (factoría Latino: offsets relativos [-1,1] 'additive') ──────
+const panTrack = (zones, kfs, extra) =>
+  track('pan', zones, numCurve('pan', kfs, [-1, 1], 0, 'additive'), extra)
+const tiltTrack = (zones, kfs, extra) =>
+  track('tilt', zones, numCurve('tilt', kfs, [-1, 1], 0, 'additive'), extra)
+/** Pan/Tilt absolutos [0,1] para spatialBehavior 'absolute'. */
+const panAbsTrack = (zones, kfs, extra) =>
+  track('pan', zones, numCurve('pan', kfs, [0, 1], 0.5), extra)
+const tiltAbsTrack = (zones, kfs, extra) =>
+  track('tilt', zones, numCurve('tilt', kfs, [0, 1], 0.5), extra)
 
 const NO_PHASE = { spreadDeg:0, symmetry:'linear', wings:1, blocks:1, shuffle:0, shuffleSeed:1, direction:1 }
 
@@ -687,6 +709,183 @@ const BLUEPRINTS = [
       gpuCost: 0.08, fatigueImpact: 0.2, minDurationMs: 1000, cooldownMs: 8000,
       isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
       zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.05 },
+    },
+  },
+
+  // ═══════════════ LOTE 5 — RAVEX ═══════════════
+
+  // ── EFECTO 13: GLITCH PROTOCOL — estrobo asimétrico front/back ────────────
+  {
+    id: 'fx_glitch_protocol', name: 'Glitch Protocol', subdir: 'ravex',
+    category: 'physical',
+    tags: ['glitch','protocol','strobe','asymmetric','ravex','cyberpunk','front-back'],
+    vibes: ['rave'], sections: ['drop','climax'],
+    energyZone: { min: 'peak', max: 'peak' },
+    genome: { aggression: 0.95, chaos: 1.0, organicity: 0.0 },
+    archetype: 'strobe', spatialBehavior: 'static',
+    spatialZones: ['all'], mixBus: 'global', priority: 96,
+    durationMs: 1000, strobeHz: 25, isOneShot: true, bpmRef: 140,
+    dominantColor: { h: 0, s: 0, l: 100 },
+    buildTracks: () => [
+      // Front: 50ms ON / 50ms OFF durante todo el clip
+      intensityTrack(['front'], alternating(1000, 1), { phaseConfig: NO_PHASE }),
+      // Back: inverso (ON cuando Front está OFF)
+      intensityTrack(['back'], alternating(1000, 0), { phaseConfig: NO_PHASE }),
+      strobeTrack(['all'], strobeFlat(1000)),
+      colorTrack(['all'], [kf(0, { h:0, s:0, l:100 }), kf(1000, { h:0, s:0, l:100 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.9, energyMultiplier: 1.5, vibeBonus: 0.15 },
+      gpuCost: 0.25, fatigueImpact: 0.9, minDurationMs: 500, cooldownMs: 15000,
+      isStrobe: true, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.85 },
+    },
+  },
+
+  // ── EFECTO 14: LASER CAGE — prisión estática floor+air ────────────────────
+  {
+    id: 'fx_laser_cage', name: 'Laser Cage', subdir: 'ravex',
+    category: 'physical',
+    tags: ['laser','cage','prison','static','ravex','red','floor-air'],
+    vibes: ['rave'], sections: ['drop','climax'],
+    energyZone: { min: 'intense', max: 'intense' },
+    // Spec: chaos 0.2 viola chaosMin 0.3 del bias heavy → clamp a 0.3.
+    genome: { aggression: 0.85, chaos: 0.3, organicity: 0.1 },
+    archetype: 'heavy', spatialBehavior: 'static',
+    spatialZones: ['floor','air'], mixBus: 'global', priority: 89,
+    durationMs: 2000, strobeHz: 0, isOneShot: true, bpmRef: 140,
+    dominantColor: { h: 0, s: 100, l: 50 },
+    buildTracks: () => [
+      // Suelo + aire encendidos fijos — el resto apagado (sin track = off)
+      intensityTrack(['floor','air'], [kf(0, 1), kf(2000, 1)], { phaseConfig: NO_PHASE }),
+      // Sin strobe — "estática", un strobe plano rompería la prisión de luz
+      colorTrack(['floor','air'], [kf(0, { h:0, s:100, l:50 }), kf(2000, { h:0, s:100, l:50 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.85, energyMultiplier: 1.4, vibeBonus: 0.1 },
+      gpuCost: 0.15, fatigueImpact: 0.6, minDurationMs: 1000, cooldownMs: 10000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.7 },
+    },
+  },
+
+  // ── EFECTO 15: BLACKOUT THREAT — oscuridad + micropulso cada 2s ───────────
+  {
+    id: 'fx_blackout_threat', name: 'Blackout Threat', subdir: 'ravex',
+    category: 'physical',
+    tags: ['blackout','threat','dark','micropulse','ravex','toxic','tension'],
+    vibes: ['rave'], sections: ['breakdown','textural'],
+    energyZone: { min: 'silence', max: 'valley' },
+    // Spec: chaos 0.9 / organicity 0.1 violan bias ambient (C≤0.3, O≥0.55) →
+    // clamps {0.3, 0.55}. textureAffinity 'dirty': amarillo tóxico industrial.
+    textureAffinity: 'dirty',
+    genome: { aggression: 0.3, chaos: 0.3, organicity: 0.55 },
+    archetype: 'ambient', spatialBehavior: 'static',
+    spatialZones: ['all'], mixBus: 'global', priority: 48,
+    durationMs: 2000, strobeHz: 0, isOneShot: true, bpmRef: 140,
+    dominantColor: { h: 60, s: 100, l: 50 },
+    buildTracks: () => [
+      // Fogonazo eléctrico 0→20ms, oscuridad total el resto
+      intensityTrack(['all'], [kf(0, 1), kf(20, 0), kf(2000, 0)], { phaseConfig: NO_PHASE }),
+      colorTrack(['all'], [kf(0, { h:60, s:100, l:50 }), kf(2000, { h:60, s:100, l:50 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.6, energyMultiplier: 1.1, vibeBonus: 0.05 },
+      gpuCost: 0.1, fatigueImpact: 0.3, minDurationMs: 500, cooldownMs: 8000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.1 },
+    },
+  },
+
+  // ═══════════════ LOTE 5B — LATINO (vibe 'fiesta-latina', subdir 'latin') ═══
+  // Cinemática permitida, transiciones 'linear', colores cálidos.
+
+  // ── EFECTO 16: FUEGO LENTO — respiración orgánica tipo brasa ───────────────
+  {
+    id: 'fx_fuego_lento', name: 'Fuego Lento', subdir: 'latin',
+    category: 'physical',
+    tags: ['fuego','lento','braza','breathing','latino','warm','amber','organic'],
+    vibes: ['fiesta-latina'], sections: ['breakdown','valley','outro'],
+    // Spec: 'valley→gentle' = span 3 en escala canónica (incluye 'ambient')
+    // → G4 exige ≤2. Ajustado a 'ambient→gentle' (extremo cálido del rango).
+    energyZone: { min: 'ambient', max: 'gentle' },
+    // Spec completo dentro del bias ambient (A≤0.3, C≤0.3, O≥0.55) — sin clamps.
+    genome: { aggression: 0.1, chaos: 0.1, organicity: 0.9 },
+    archetype: 'ambient', spatialBehavior: 'static',
+    spatialZones: ['all'], mixBus: 'global', priority: 42,
+    durationMs: 4000, strobeHz: 0, isOneShot: true, bpmRef: 90,
+    dominantColor: { h: 35, s: 100, l: 50 },
+    buildTracks: () => [
+      // Respiración: sube a 1.0 en 2000ms, baja a 0 en 4000ms — LINEAR
+      intensityTrack(['all'],
+        [kf(0, 0, 'linear'), kf(2000, 1, 'linear'), kf(4000, 0, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      colorTrack(['all'], [kf(0, { h:35, s:100, l:50 }), kf(4000, { h:35, s:100, l:50 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.7, energyMultiplier: 1.0, vibeBonus: 0.15 },
+      gpuCost: 0.1, fatigueImpact: 0.15, minDurationMs: 2000, cooldownMs: 6000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.05 },
+    },
+  },
+
+  // ── EFECTO 17: BRISA CARIBE — barrido color + pan en movers ────────────────
+  {
+    id: 'fx_brisa_caribe', name: 'Brisa del Caribe', subdir: 'latin',
+    category: 'composite',
+    tags: ['brisa','caribe','sweep','color-pan','latino','fresh','cyan-magenta'],
+    vibes: ['fiesta-latina'], sections: ['verse','build'],
+    energyZone: { min: 'gentle', max: 'active' },
+    // Utility: sin clamps de bias — spec pasa limpio.
+    genome: { aggression: 0.4, chaos: 0.2, organicity: 0.8 },
+    archetype: 'utility', spatialBehavior: 'relative_offset',
+    spatialZones: ['all-movers'], mixBus: 'global', priority: 55,
+    durationMs: 4000, strobeHz: 0, isOneShot: true, bpmRef: 96,
+    dominantColor: { h: 180, s: 100, l: 50 },
+    buildTracks: () => [
+      // Spec no declara intensidad → 0.6 constante en 'all' (sin ella el
+      // barrido de color/pan sería invisible — fix de transcripción).
+      intensityTrack(['all'], [kf(0, 0.6), kf(4000, 0.6)], { phaseConfig: NO_PHASE }),
+      // Color 'all': cian → magenta LINEAR sobre 4000ms
+      colorTrack(['all'],
+        [kf(0, { h:180, s:100, l:50 }, 'linear'), kf(4000, { h:300, s:100, l:50 }, 'linear')]),
+      // Pan 'all-movers' (canonical para "movers-all" del spec): -0.5 → 0.5
+      panTrack(['all-movers'], [kf(0, -0.5, 'linear'), kf(4000, 0.5, 'linear')],
+        { phaseConfig: NO_PHASE }),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.75, energyMultiplier: 1.1, vibeBonus: 0.15 },
+      gpuCost: 0.2, fatigueImpact: 0.3, minDurationMs: 2000, cooldownMs: 8000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.2 },
+    },
+  },
+
+  // ── EFECTO 18: PERREO PEAK — golpe reguetón con decaimiento orgánico ───────
+  {
+    id: 'fx_perreo_peak', name: 'Perreo Peak', subdir: 'latin',
+    category: 'physical',
+    tags: ['perreo','peak','reggaeton','hit','latino','hot-pink','punch'],
+    vibes: ['fiesta-latina'], sections: ['drop','chorus'],
+    energyZone: { min: 'active', max: 'intense' },
+    // Spec: organicity 0.7 viola organicityMax 0.45 del bias heavy → clamp a 0.45.
+    genome: { aggression: 0.8, chaos: 0.4, organicity: 0.7 },
+    archetype: 'heavy', spatialBehavior: 'static',
+    spatialZones: ['all'], mixBus: 'global', priority: 88,
+    durationMs: 1500, strobeHz: 0, isOneShot: true, bpmRef: 96,
+    dominantColor: { h: 330, s: 100, l: 50 },
+    buildTracks: () => [
+      // Golpe a 1.0 que decae suavemente a 0.2 — LINEAR (orgánico, no strobe)
+      intensityTrack(['all'], [kf(0, 1, 'linear'), kf(1500, 0.2, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      colorTrack(['all'], [kf(0, { h:330, s:100, l:50 }), kf(1500, { h:330, s:100, l:50 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.85, energyMultiplier: 1.4, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.5, minDurationMs: 750, cooldownMs: 8000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.5 },
     },
   },
 ]

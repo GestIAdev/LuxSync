@@ -54,7 +54,16 @@ const HARD_ARCHETYPES = new Set(['strobe','heavy','divine'])
 
 const clamp01 = v => Math.max(0, Math.min(1, v))
 const round2 = v => Math.round(v * 100) / 100
-const uuid = () => crypto.randomUUID()
+
+// Track IDs deterministas: reproducible builds — regenerar sin cambios
+// produce archivos idénticos (mismo checksum). Formato UUID-v4-shaped.
+let _trackSeed = { clipId: '', n: 0 }
+const trackId = (paramId, zones) => {
+  const h = crypto.createHash('sha1')
+    .update(`${_trackSeed.clipId}|${_trackSeed.n++}|${paramId}|${zones.join(',')}`)
+    .digest('hex')
+  return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-a${h.slice(17,20)}-${h.slice(20,32)}`
+}
 
 // ─── CHECKSUM — LAZARUS B-4 (idéntico a computeLfxChecksum) ─────────────────
 function computeChecksum(clip) {
@@ -98,7 +107,7 @@ function window(durationMs, onMs, offMs, endValue = 0) {
 
 // ─── TRACK BUILDERS ─────────────────────────────────────────────────────────
 function track(paramId, zones, curve, extra = {}) {
-  return { id: uuid(), paramId, zones, curve, blendMode: 'replace', ...extra }
+  return { id: trackId(paramId, zones), paramId, zones, curve, blendMode: 'replace', ...extra }
 }
 function numCurve(paramId, keyframes, range = [0, 1], defaultValue = 0, mode = 'absolute') {
   return { paramId, valueType: 'number', range, defaultValue, keyframes, mode }
@@ -243,6 +252,7 @@ function gateValidate(clip) {
 
 // ─── EMISIÓN ────────────────────────────────────────────────────────────────
 function emit(bp) {
+  _trackSeed = { clipId: bp.id, n: 0 }
   const clip = {
     id: bp.id, name: bp.name, author: 'LuxSync Factory', category: bp.category,
     tags: bp.tags, vibeCompat: bp.vibes, spatialZones: bp.spatialZones,
@@ -663,11 +673,14 @@ const BLUEPRINTS = [
     archetype: 'ambient', spatialBehavior: 'static',
     spatialZones: ['all'], mixBus: 'global', priority: 45,
     durationMs: 2500, strobeHz: 0, isOneShot: true, bpmRef: 140,
-    dominantColor: { h: 200, s: 10, l: 20 },
+    // HOTFIX L4: spec L:20 rendía ≈rgb(46,53,56) → "negro indefinido" en
+    // runtime (S:10 casi sin saturación + L mínimo). L:50 = blanco frío
+    // visible que conserva el carácter tenue del diseño.
+    dominantColor: { h: 200, s: 10, l: 50 },
     buildTracks: () => [
       // Muro tenue al 40% entre 500→1500, corte seco — sin parpadeos
       intensityTrack(['all'], [kf(0, 0), kf(500, 0.4), kf(1500, 0), kf(2500, 0)], { phaseConfig: NO_PHASE }),
-      colorTrack(['all'], [kf(0, { h:200, s:10, l:20 }), kf(2500, { h:200, s:10, l:20 })]),
+      colorTrack(['all'], [kf(0, { h:200, s:10, l:50 }), kf(2500, { h:200, s:10, l:50 })]),
     ],
     simMeta: {
       beautyWeights: { base: 0.65, energyMultiplier: 1.1, vibeBonus: 0.05 },

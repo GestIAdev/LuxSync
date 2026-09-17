@@ -26,7 +26,7 @@
     "effectType": "heph_custom",
     "tracks": [
       {
-        "id": "371c241d-0f29-48aa-a4ff-08a988ac782b",
+        "id": "6f239e30-d977-44b8-a347-c2ac74949edd",
         "paramId": "intensity",
         "zones": [
           "front",
@@ -81,7 +81,7 @@
         }
       },
       {
-        "id": "cfa76d76-1983-4a53-8566-e652f8b82297",
+        "id": "e2932dc8-3a12-4af5-aba5-fdffa8ebc801",
         "paramId": "intensity",
         "zones": [
           "movers-left",
@@ -141,7 +141,7 @@
         }
       },
       {
-        "id": "0f518fec-ff83-4245-8d69-c93deb3eb41b",
+        "id": "4d203fd5-fdcd-4d6a-a83c-47842c0aa78c",
         "paramId": "intensity",
         "zones": [
           "back",
@@ -201,7 +201,7 @@
         }
       },
       {
-        "id": "8473e9e1-5103-40a1-82d0-44403e970683",
+        "id": "5abdb64c-b0e5-4cc2-a5b8-3453c39314c0",
         "paramId": "strobe",
         "zones": [
           "all"
@@ -231,7 +231,7 @@
         "blendMode": "replace"
       },
       {
-        "id": "1e484959-26e4-415d-ace6-79452980a97d",
+        "id": "f82e574e-1713-456c-ae56-e774463cba3b",
         "paramId": "color",
         "zones": [
           "all"
@@ -347,5 +347,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:c93f8b264a868f4da2e67831218cb331726d1813814ca8705687f25eeae582cb"
+  "checksum": "sha256:945c7e1e0aa07f85a2885079f0e7f247866c19856cf93a7df1f4401c1ff57565"
 }

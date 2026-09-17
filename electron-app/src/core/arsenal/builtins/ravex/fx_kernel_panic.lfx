@@ -26,7 +26,7 @@
     "effectType": "heph_custom",
     "tracks": [
       {
-        "id": "e0d5ae66-427d-4883-9323-11802967e503",
+        "id": "f416da72-0156-4565-a02b-7cd53d89389a",
         "paramId": "intensity",
         "zones": [
           "front",
@@ -112,7 +112,7 @@
         }
       },
       {
-        "id": "c0819a55-70b7-487a-808c-829f6477a4bd",
+        "id": "00505aa0-eff1-4418-ad36-0eed6db01d6e",
         "paramId": "intensity",
         "zones": [
           "front",
@@ -198,7 +198,7 @@
         }
       },
       {
-        "id": "58c29550-8bfe-4eb0-9833-b0da78132e8a",
+        "id": "5c00844d-65aa-49f0-aff7-6b155429e412",
         "paramId": "strobe",
         "zones": [
           "all"
@@ -228,7 +228,7 @@
         "blendMode": "replace"
       },
       {
-        "id": "c599070f-9693-4719-9cac-25a8748ee5e3",
+        "id": "15f3dd2d-3970-4392-add0-2569be30189f",
         "paramId": "color",
         "zones": [
           "all"
@@ -335,5 +335,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:5166e75ef216604fd929b7941a8cc5ec8763ec1a93c8141e499c11c0e0d70d00"
+  "checksum": "sha256:a6a194b488acd07846b412949f03c55474033b9508ab4fd292d11a31bd65573e"
 }

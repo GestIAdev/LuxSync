@@ -26,7 +26,7 @@
     "effectType": "heph_custom",
     "tracks": [
       {
-        "id": "a6fdd137-5b0e-4ea9-8262-b486e381dbd7",
+        "id": "ce718dcb-b3eb-4699-a1ce-ca1db1e3a98f",
         "paramId": "intensity",
         "zones": [
           "front",
@@ -71,7 +71,7 @@
         }
       },
       {
-        "id": "ceee1a67-9b1f-4ae8-a1ed-f393277e2488",
+        "id": "670ebf3b-b12d-4e42-a9c0-5eeae0dfd4b9",
         "paramId": "intensity",
         "zones": [
           "movers-left",
@@ -116,7 +116,7 @@
         }
       },
       {
-        "id": "6d7b3454-df05-4047-9f6d-1e81af60e4f6",
+        "id": "76bce10a-c6cd-4f61-a4b9-73b3a1c032e3",
         "paramId": "intensity",
         "zones": [
           "back",
@@ -161,7 +161,7 @@
         }
       },
       {
-        "id": "fd15f68f-daf7-467b-87a6-7853c9352e55",
+        "id": "4f141af2-287f-4d91-a7e6-8f1eb64e4282",
         "paramId": "strobe",
         "zones": [
           "all"
@@ -191,7 +191,7 @@
         "blendMode": "replace"
       },
       {
-        "id": "26dcba0f-b735-4ddf-b00f-7280877d3502",
+        "id": "01a9eb37-10ba-45ca-ad00-120b4b004c34",
         "paramId": "color",
         "zones": [
           "all"
@@ -298,5 +298,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:1ba9323a50ff8242838808e486c8f8fd41b9bdd54069c9e68530f5010d6d9ebf"
+  "checksum": "sha256:3407c70e9ad6fb57d1443d83c91ecb36b04383411ad6969f2fcdf30b4a0350b6"
 }

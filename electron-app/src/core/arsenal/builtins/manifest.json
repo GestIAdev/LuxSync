@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-17T15:42:03.928Z",
+  "generatedAt": "2026-09-17T16:07:54.609Z",
   "count": 57,
   "files": {
     "chill/solar_caustics.lfx": {
@@ -71,7 +71,7 @@
     },
     "ravex/fx_acid_wash.lfx": {
       "relPath": "ravex/fx_acid_wash.lfx",
-      "checksum": "01ca114a03f0bed0",
+      "checksum": "041dd79a6bb9f28a",
       "size": 4759
     },
     "ravex/fx_ametralladora.lfx": {
@@ -81,32 +81,32 @@
     },
     "ravex/fx_core_meltdown.lfx": {
       "relPath": "ravex/fx_core_meltdown.lfx",
-      "checksum": "645e59179073869b",
+      "checksum": "fa7ee24d52d67f27",
       "size": 4632
     },
     "ravex/fx_data_leak.lfx": {
       "relPath": "ravex/fx_data_leak.lfx",
-      "checksum": "298d9056ff981dcf",
+      "checksum": "8c56a97b82631a3d",
       "size": 6427
     },
     "ravex/fx_dead_pixel.lfx": {
       "relPath": "ravex/fx_dead_pixel.lfx",
-      "checksum": "57fdfd0d578c66c0",
+      "checksum": "89247db0ce23ce77",
       "size": 7065
     },
     "ravex/fx_depth_charge.lfx": {
       "relPath": "ravex/fx_depth_charge.lfx",
-      "checksum": "40fa7484eec55680",
+      "checksum": "a6ad9816b2175eb3",
       "size": 5933
     },
     "ravex/fx_ghost_pulse.lfx": {
       "relPath": "ravex/fx_ghost_pulse.lfx",
-      "checksum": "446975cf9a01e301",
+      "checksum": "c45a371ad7c954f8",
       "size": 4102
     },
     "ravex/fx_grid_collapse.lfx": {
       "relPath": "ravex/fx_grid_collapse.lfx",
-      "checksum": "e43fe12823abae0f",
+      "checksum": "f37580bf3127705d",
       "size": 7935
     },
     "ravex/fx_guillotina.lfx": {
@@ -116,27 +116,27 @@
     },
     "ravex/fx_hydraulic_press.lfx": {
       "relPath": "ravex/fx_hydraulic_press.lfx",
-      "checksum": "28e9c6cfec8f83d3",
+      "checksum": "793430c4ca414db8",
       "size": 5350
     },
     "ravex/fx_kernel_panic.lfx": {
       "relPath": "ravex/fx_kernel_panic.lfx",
-      "checksum": "650d566f8e55dfba",
+      "checksum": "a0f858cb759c1483",
       "size": 7702
     },
     "ravex/fx_neon_buzz.lfx": {
       "relPath": "ravex/fx_neon_buzz.lfx",
-      "checksum": "4c1b65d02981963d",
+      "checksum": "d9a430d9e4087034",
       "size": 5262
     },
     "ravex/fx_neon_flicker.lfx": {
       "relPath": "ravex/fx_neon_flicker.lfx",
-      "checksum": "552a2d688967beda",
+      "checksum": "6b34199f504aa7c5",
       "size": 5492
     },
     "ravex/fx_sector_purge.lfx": {
       "relPath": "ravex/fx_sector_purge.lfx",
-      "checksum": "5cf690e84e52b511",
+      "checksum": "dfc6c0592a05f67d",
       "size": 6756
     },
     "ravex/fx_sysfail.lfx": {

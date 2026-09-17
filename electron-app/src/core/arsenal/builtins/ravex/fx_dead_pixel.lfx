@@ -27,7 +27,7 @@
     "effectType": "heph_custom",
     "tracks": [
       {
-        "id": "48668f2d-7131-4bef-b63d-a9f709a9fe35",
+        "id": "3b76a87b-0ed6-4f39-a452-9a6a4eadc0e1",
         "paramId": "intensity",
         "zones": [
           "air"
@@ -76,7 +76,7 @@
         }
       },
       {
-        "id": "67584fde-4599-4710-96c7-593a19228c93",
+        "id": "fb58f156-ecac-4149-ab39-ebbeebfee4ef",
         "paramId": "intensity",
         "zones": [
           "movers-right"
@@ -125,7 +125,7 @@
         }
       },
       {
-        "id": "c9685529-7e5b-4296-b686-55f11f90aeba",
+        "id": "3b32b9a4-6a0e-4f03-ac79-b2e307482a81",
         "paramId": "intensity",
         "zones": [
           "floor"
@@ -174,7 +174,7 @@
         }
       },
       {
-        "id": "98867449-ef90-4975-beae-f9c7858abbb0",
+        "id": "4a5b4497-6db5-479a-a5a9-99366db3d848",
         "paramId": "strobe",
         "zones": [
           "all"
@@ -204,7 +204,7 @@
         "blendMode": "replace"
       },
       {
-        "id": "9f1d683f-7f45-4bd9-a4ff-60a3a8ac0596",
+        "id": "e436e855-b03f-4b23-a304-dae58814c4b6",
         "paramId": "color",
         "zones": [
           "all"
@@ -311,5 +311,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:ec2ee030325e3b501313f0e10b4f75a0fb8ff5ffb949c03c7c71fed0129b90c7"
+  "checksum": "sha256:d059d09d9a823d7315e314e55e72cf4c3f1f29380cd67ac08f73c9cd1671dc86"
 }

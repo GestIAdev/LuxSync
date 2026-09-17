@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-16T02:04:02.490Z",
-  "count": 45,
+  "generatedAt": "2026-09-17T15:42:03.928Z",
+  "count": 57,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -69,15 +69,75 @@
       "checksum": "1217052104ca33b3",
       "size": 8338
     },
+    "ravex/fx_acid_wash.lfx": {
+      "relPath": "ravex/fx_acid_wash.lfx",
+      "checksum": "01ca114a03f0bed0",
+      "size": 4759
+    },
     "ravex/fx_ametralladora.lfx": {
       "relPath": "ravex/fx_ametralladora.lfx",
       "checksum": "2a748181f9b0a2ce",
       "size": 19561
     },
+    "ravex/fx_core_meltdown.lfx": {
+      "relPath": "ravex/fx_core_meltdown.lfx",
+      "checksum": "645e59179073869b",
+      "size": 4632
+    },
+    "ravex/fx_data_leak.lfx": {
+      "relPath": "ravex/fx_data_leak.lfx",
+      "checksum": "298d9056ff981dcf",
+      "size": 6427
+    },
+    "ravex/fx_dead_pixel.lfx": {
+      "relPath": "ravex/fx_dead_pixel.lfx",
+      "checksum": "57fdfd0d578c66c0",
+      "size": 7065
+    },
+    "ravex/fx_depth_charge.lfx": {
+      "relPath": "ravex/fx_depth_charge.lfx",
+      "checksum": "40fa7484eec55680",
+      "size": 5933
+    },
+    "ravex/fx_ghost_pulse.lfx": {
+      "relPath": "ravex/fx_ghost_pulse.lfx",
+      "checksum": "446975cf9a01e301",
+      "size": 4102
+    },
+    "ravex/fx_grid_collapse.lfx": {
+      "relPath": "ravex/fx_grid_collapse.lfx",
+      "checksum": "e43fe12823abae0f",
+      "size": 7935
+    },
     "ravex/fx_guillotina.lfx": {
       "relPath": "ravex/fx_guillotina.lfx",
       "checksum": "66a06f650094460d",
       "size": 4512
+    },
+    "ravex/fx_hydraulic_press.lfx": {
+      "relPath": "ravex/fx_hydraulic_press.lfx",
+      "checksum": "28e9c6cfec8f83d3",
+      "size": 5350
+    },
+    "ravex/fx_kernel_panic.lfx": {
+      "relPath": "ravex/fx_kernel_panic.lfx",
+      "checksum": "650d566f8e55dfba",
+      "size": 7702
+    },
+    "ravex/fx_neon_buzz.lfx": {
+      "relPath": "ravex/fx_neon_buzz.lfx",
+      "checksum": "4c1b65d02981963d",
+      "size": 5262
+    },
+    "ravex/fx_neon_flicker.lfx": {
+      "relPath": "ravex/fx_neon_flicker.lfx",
+      "checksum": "552a2d688967beda",
+      "size": 5492
+    },
+    "ravex/fx_sector_purge.lfx": {
+      "relPath": "ravex/fx_sector_purge.lfx",
+      "checksum": "5cf690e84e52b511",
+      "size": 6756
     },
     "ravex/fx_sysfail.lfx": {
       "relPath": "ravex/fx_sysfail.lfx",

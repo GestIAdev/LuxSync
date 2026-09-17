@@ -1,0 +1,187 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_ghost_pulse",
+    "name": "Ghost Pulse",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "ghost",
+      "pulse",
+      "ambient",
+      "tension",
+      "ravex",
+      "cold",
+      "breath",
+      "static"
+    ],
+    "vibeCompat": [
+      "rave"
+    ],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 45,
+    "durationMs": 2500,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "f791e115-3c96-4b92-a69a-ab35528b0c02",
+        "paramId": "intensity",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 500,
+              "value": 0.4,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2500,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "c6a7588b-6bfa-4be7-9938-0954c7dc0661",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 200,
+                "s": 10,
+                "l": 20
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2500,
+              "value": {
+                "h": 200,
+                "s": 10,
+                "l": 20
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 200,
+      "dominantColorS": 10,
+      "dominantColorL": 20,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 140,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "ambient",
+      "genome": {
+        "aggression": 0.1,
+        "chaos": 0.1,
+        "organicity": 0.55
+      },
+      "textureAffinity": "clean",
+      "compatibleVibes": [
+        "rave"
+      ],
+      "validSections": [
+        "breakdown",
+        "intro"
+      ],
+      "energyZone": {
+        "min": "silence",
+        "max": "valley"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 0.3
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 0.5
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.65,
+        "energyMultiplier": 1.1,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.08,
+      "fatigueImpact": 0.2,
+      "minDurationMs": 1000,
+      "cooldownMs": 8000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.05
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:9acb1cd8477b6a5f79fa3743e20d38b831b6791a17b3d630d119436f97340455"
+}

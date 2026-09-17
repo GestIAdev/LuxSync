@@ -1,0 +1,236 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_neon_buzz",
+    "name": "Neon Buzz",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "buzz",
+      "neon",
+      "ambient",
+      "ravex",
+      "defective",
+      "garage",
+      "hum"
+    ],
+    "vibeCompat": [
+      "rave"
+    ],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 55,
+    "durationMs": 2000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "40672cb4-c444-4a8a-b6c8-7e889f5d2624",
+        "paramId": "intensity",
+        "zones": [
+          "back"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.5,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 800,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 850,
+              "value": 0.5,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1600,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1650,
+              "value": 0.5,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0.5,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "b8432d48-eba4-44a9-887c-0960b8e43237",
+        "paramId": "intensity",
+        "zones": [
+          "floor"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.2,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0.2,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "f558067f-932c-4e3d-a6ea-6f665160aacd",
+        "paramId": "color",
+        "zones": [
+          "back",
+          "floor"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 180,
+                "s": 50,
+                "l": 20
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": {
+                "h": 180,
+                "s": 50,
+                "l": 20
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 180,
+      "dominantColorS": 50,
+      "dominantColorL": 20,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 140,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "ambient",
+      "genome": {
+        "aggression": 0.25,
+        "chaos": 0.3,
+        "organicity": 0.8
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "rave"
+      ],
+      "validSections": [
+        "breakdown",
+        "textural"
+      ],
+      "energyZone": {
+        "min": "valley",
+        "max": "ambient"
+      },
+      "aggressionRange": {
+        "min": 0.05,
+        "max": 0.45
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 0.5
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.55,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.08,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 5000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.05
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:f11a247ff4a1dae46f788421b21c8ab47ba4326b980a8574e316a4c0bfadde75"
+}

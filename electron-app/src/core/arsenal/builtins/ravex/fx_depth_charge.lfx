@@ -1,0 +1,265 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_depth_charge",
+    "name": "Depth Charge",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "impact",
+      "depth",
+      "cascade",
+      "ravex",
+      "z-axis",
+      "sequential",
+      "one-shot"
+    ],
+    "vibeCompat": [
+      "rave"
+    ],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 90,
+    "durationMs": 1200,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "ef9f5344-8209-442c-a912-ef2ed274e50f",
+        "paramId": "intensity",
+        "zones": [
+          "back",
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 300,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "9cef7c52-41aa-4ea6-93d4-bf96be45f421",
+        "paramId": "intensity",
+        "zones": [
+          "movers-left",
+          "movers-right"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 300,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 600,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "2d347259-49fd-486f-9c45-a4e551c253d6",
+        "paramId": "intensity",
+        "zones": [
+          "front",
+          "floor"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 600,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "e5ad1d61-19c8-4ffb-873c-9e06347fdc44",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1200,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 0,
+      "dominantColorS": 0,
+      "dominantColorL": 100,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 140,
+      "attackMs": 0,
+      "strobeHz": 25
+    },
+    "cognitiveDNA": {
+      "archetype": "heavy",
+      "genome": {
+        "aggression": 0.85,
+        "chaos": 0.4,
+        "organicity": 0.2
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "rave"
+      ],
+      "validSections": [
+        "drop",
+        "climax"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.7,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.85,
+        "energyMultiplier": 1.4,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.2,
+      "fatigueImpact": 0.7,
+      "minDurationMs": 500,
+      "cooldownMs": 12000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": null,
+        "minimumEnergy": 0.7
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:153163ba8fec7e105b9a743577003de84a293c68282775270dde58b476a946cc"
+}

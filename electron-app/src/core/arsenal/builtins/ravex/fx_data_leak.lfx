@@ -1,0 +1,287 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_data_leak",
+    "name": "Data Leak",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "data",
+      "leak",
+      "spark",
+      "minimal",
+      "ravex",
+      "cybernetic",
+      "tension",
+      "cold"
+    ],
+    "vibeCompat": [
+      "rave"
+    ],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 50,
+    "durationMs": 1500,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "fc5f2c64-d8c7-4748-b6bb-ccac8cc0c4e6",
+        "paramId": "intensity",
+        "zones": [
+          "front"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 100,
+              "value": 0.3,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 150,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "65b2d348-ab2c-4ca9-b007-c0cf31cdd9ff",
+        "paramId": "intensity",
+        "zones": [
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 700,
+              "value": 0.3,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 750,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "ab513f24-16f1-4cc7-93cf-a721b480ceb5",
+        "paramId": "intensity",
+        "zones": [
+          "back"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1300,
+              "value": 0.3,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1350,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "be0a8b04-42eb-44c6-92e4-16c8ad1d7ff0",
+        "paramId": "color",
+        "zones": [
+          "front",
+          "air",
+          "back"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 30
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 30
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 120,
+      "dominantColorS": 100,
+      "dominantColorL": 30,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 140,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "ambient",
+      "genome": {
+        "aggression": 0.15,
+        "chaos": 0.3,
+        "organicity": 0.55
+      },
+      "textureAffinity": "clean",
+      "compatibleVibes": [
+        "rave"
+      ],
+      "validSections": [
+        "breakdown",
+        "textural"
+      ],
+      "energyZone": {
+        "min": "silence",
+        "max": "valley"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 0.35
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 0.5
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.5,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.08,
+      "fatigueImpact": 0.1,
+      "minDurationMs": 500,
+      "cooldownMs": 5000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.05
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:e2355073d40b78914fcacf792d58fc0962c2a11366ac2723648da6e3a2012e67"
+}

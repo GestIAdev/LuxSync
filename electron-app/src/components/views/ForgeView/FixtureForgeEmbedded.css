@@ -1023,6 +1023,34 @@
   border-radius: 4px;
 }
 
+/* Governor rule selects — same gold-on-dark treatment as the number inputs.
+   color-scheme: dark makes Chromium render the native dropdown popup and
+   arrow glyph in dark mode instead of OS-default light gray. */
+.governor-inline-drawer select.gov-rule-select {
+  height: 24px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 183, 3, 0.4);
+  color: #ffb703;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 4px;
+  padding: 2px 4px;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.governor-inline-drawer select.gov-rule-select:focus {
+  outline: none;
+  border-color: #ffb703;
+  box-shadow: 0 0 0 2px rgba(255, 183, 3, 0.15);
+}
+
+.governor-inline-drawer select.gov-rule-select option {
+  background: #0f172a;
+  color: #fbbf24;
+}
+
 .btn-drawer-kill {
   background: transparent;
   color: #ef4444;

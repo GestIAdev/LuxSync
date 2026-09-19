@@ -315,8 +315,8 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                           <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', flexWrap: 'wrap' }}>
                             <span style={{ color: 'rgba(255,255,255,0.35)', minWidth: '14px' }}>{ri + 1}.</span>
                             <select
+                              className="gov-rule-select"
                               value={rule.when.intentType}
-                              style={selStyle}
                               title="Intent type this rule intercepts ('fallback' = any)"
                               onChange={(e) => patchRule(r => ({ ...r, when: { ...r.when, intentType: e.target.value as GovernorIntentType } }))}
                             >
@@ -341,8 +341,8 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                             />
                             <span style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
                             <select
+                              className="gov-rule-select"
                               value={rule.then.forceByte !== undefined ? 'forceByte' : rule.then.mapToRange !== undefined ? 'mapToRange' : 'clampMin'}
-                              style={selStyle}
                               title="Action applied on match"
                               onChange={(e) => {
                                 const kind = e.target.value

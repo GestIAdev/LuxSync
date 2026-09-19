@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-17T16:29:09.395Z",
-  "count": 63,
+  "generatedAt": "2026-09-19T04:16:31.611Z",
+  "count": 66,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -44,15 +44,30 @@
       "checksum": "a15f5284d6056562",
       "size": 4790
     },
+    "latin/fx_calor_urbano.lfx": {
+      "relPath": "latin/fx_calor_urbano.lfx",
+      "checksum": "f91ec656bfae47d1",
+      "size": 4020
+    },
     "latin/fx_fuego_lento.lfx": {
       "relPath": "latin/fx_fuego_lento.lfx",
       "checksum": "4853acc6d64eb148",
       "size": 4016
     },
+    "latin/fx_ocaso_latino.lfx": {
+      "relPath": "latin/fx_ocaso_latino.lfx",
+      "checksum": "ad022e1a43434aa5",
+      "size": 4943
+    },
     "latin/fx_perreo_peak.lfx": {
       "relPath": "latin/fx_perreo_peak.lfx",
       "checksum": "a50220eb16d4139f",
       "size": 3861
+    },
+    "latin/fx_salsa_flash.lfx": {
+      "relPath": "latin/fx_salsa_flash.lfx",
+      "checksum": "a9ac565b8a6aa0d8",
+      "size": 4293
     },
     "latin/ghost_breath.lfx": {
       "relPath": "latin/ghost_breath.lfx",

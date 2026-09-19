@@ -888,6 +888,106 @@ const BLUEPRINTS = [
       zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.5 },
     },
   },
+
+  // ═══════════ LOTE 6 — LATINO 2 (vibe 'fiesta-latina', subdir 'latin') ═══
+  // Club + restaurante Sunset. Cinemática permitida, 'linear' preferido.
+
+  // ── EFECTO 19: CALOR URBANO — pulso dembow, respiración orgánica ───────────
+  {
+    id: 'fx_calor_urbano', name: 'Calor Urbano', subdir: 'latin',
+    category: 'physical',
+    tags: ['calor','urbano','dembow','pulso','latino','warm','orange','breathing'],
+    vibes: ['fiesta-latina'], sections: ['verse','chorus','build'],
+    energyZone: { min: 'gentle', max: 'active' },
+    // Spec pide archetype 'active': NO existe en USER_ARCHETYPES
+    // (strobe|ambient|heavy|divine|utility) → isUserArchetype() caería a
+    // 'utility' silenciosamente al cargar. Emitimos 'utility' directamente:
+    // passthrough de bias → ACO {0.6,0.2,0.8} pasa SIN clamps (heavy habría
+    // clampeado A0.6→0.7 y O0.8→0.45, destruyendo la organicidad pedida).
+    genome: { aggression: 0.6, chaos: 0.2, organicity: 0.8 },
+    archetype: 'utility', spatialBehavior: 'static',
+    spatialZones: ['all'], mixBus: 'global', priority: 60,
+    durationMs: 2000, strobeHz: 0, isOneShot: true, bpmRef: 96,
+    dominantColor: { h: 30, s: 100, l: 50 },
+    buildTracks: () => [
+      // Pulso de calor: 0.2 → 1.0 → 0.2 en 2000ms, todo LINEAR
+      intensityTrack(['all'],
+        [kf(0, 0.2, 'linear'), kf(1000, 1, 'linear'), kf(2000, 0.2, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      colorTrack(['all'], [kf(0, { h:30, s:100, l:50 }), kf(2000, { h:30, s:100, l:50 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.7, energyMultiplier: 1.2, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.35, minDurationMs: 1000, cooldownMs: 6000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.3 },
+    },
+  },
+
+  // ── EFECTO 20: SALSA FLASH — rebote rítmico con fade (metales) ─────────────
+  {
+    id: 'fx_salsa_flash', name: 'Salsa Flash', subdir: 'latin',
+    category: 'physical',
+    tags: ['salsa','flash','rebote','brass','latino','gold','bounce','rhythmic'],
+    vibes: ['fiesta-latina'], sections: ['chorus','drop'],
+    energyZone: { min: 'active', max: 'intense' },
+    // Spec 'active' → no canónico: emitido 'utility' (ver fx_calor_urbano).
+    // heavy habría clampeado O0.7→0.45 — el rebote necesita su organicidad.
+    genome: { aggression: 0.75, chaos: 0.4, organicity: 0.7 },
+    archetype: 'utility', spatialBehavior: 'static',
+    spatialZones: ['front','all-movers'], mixBus: 'global', priority: 75,
+    durationMs: 1000, strobeHz: 0, isOneShot: true, bpmRef: 100,
+    dominantColor: { h: 50, s: 100, l: 50 },
+    buildTracks: () => [
+      // Doble rebote triangular LINEAR: 0→1 en 200ms, 0 en 500, 1 en 700, 0 en 1000.
+      // Parpadeo con fade, no estrobo duro — acompaña metales sin agredir.
+      intensityTrack(['front','all-movers'],
+        [kf(0, 0, 'linear'), kf(200, 1, 'linear'), kf(500, 0, 'linear'),
+         kf(700, 1, 'linear'), kf(1000, 0, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      colorTrack(['all'], [kf(0, { h:50, s:100, l:50 }), kf(1000, { h:50, s:100, l:50 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.75, energyMultiplier: 1.3, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.4, minDurationMs: 500, cooldownMs: 5000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.4 },
+    },
+  },
+
+  // ── EFECTO 21: OCASO LATINO — crossfade rosa→naranja + balanceo ────────────
+  {
+    id: 'fx_ocaso_latino', name: 'Ocaso Latino', subdir: 'latin',
+    category: 'composite',
+    tags: ['ocaso','sunset','crossfade','rosa','naranja','latino','slow','restaurant'],
+    vibes: ['fiesta-latina'], sections: ['intro','breakdown','outro'],
+    energyZone: { min: 'silence', max: 'valley' },
+    // Bias ambient: A0.15≤0.3 ✓ C0.1≤0.3 ✓ O0.9≥0.55 ✓ — spec pasa limpio.
+    genome: { aggression: 0.15, chaos: 0.1, organicity: 0.9 },
+    archetype: 'ambient', spatialBehavior: 'relative_offset',
+    spatialZones: ['all'], mixBus: 'global', priority: 35,
+    durationMs: 5000, strobeHz: 0, isOneShot: true, bpmRef: 80,
+    dominantColor: { h: 330, s: 100, l: 50 },
+    buildTracks: () => [
+      // Intensidad sostenida tenue — el crossfade de color es el protagonista
+      intensityTrack(['all'], [kf(0, 0.4), kf(5000, 0.4)], { phaseConfig: NO_PHASE }),
+      // Rosa → naranja LINEAR sobre 5000ms (transición de ocaso, one-way)
+      colorTrack(['all'],
+        [kf(0, { h:330, s:100, l:50 }, 'linear'), kf(5000, { h:30, s:100, l:50 }, 'linear')]),
+      // Spec dice pan "oscila" -0.3→0.3: triángulo -0.3→0.3→-0.3 en 5000ms.
+      // Loop seamless (punta final = punta inicial), no el barrido one-way
+      // de brisa_caribe. 'relative_offset' + panTrack additive [-1,1].
+      panTrack(['all-movers'],
+        [kf(0, -0.3, 'linear'), kf(2500, 0.3, 'linear'), kf(5000, -0.3, 'linear')],
+        { phaseConfig: NO_PHASE }),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.8, energyMultiplier: 0.8, vibeBonus: 0.15 },
+      gpuCost: 0.2, fatigueImpact: 0.1, minDurationMs: 3000, cooldownMs: 8000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.05 },
+    },
+  },
 ]
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────

@@ -1,0 +1,183 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_calor_urbano",
+    "name": "Calor Urbano",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "calor",
+      "urbano",
+      "dembow",
+      "pulso",
+      "latino",
+      "warm",
+      "orange",
+      "breathing"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 60,
+    "durationMs": 2000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "47f5d1b8-6d9c-4888-a3e9-287dff77276c",
+        "paramId": "intensity",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.2,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1000,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0.2,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "75bcfcf4-5bae-4f00-a60f-efe9f724595a",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 30,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": {
+                "h": 30,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 30,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 96,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.6,
+        "chaos": 0.2,
+        "organicity": 0.8
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [
+        "verse",
+        "chorus",
+        "build"
+      ],
+      "energyZone": {
+        "min": "gentle",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.2,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.15,
+      "fatigueImpact": 0.35,
+      "minDurationMs": 1000,
+      "cooldownMs": 6000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.3
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:21ee34c30fc2e031b06fe4c1fbc2f4670b85c4f2e7ecee5806b73718ecd899d8"
+}

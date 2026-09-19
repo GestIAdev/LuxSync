@@ -988,6 +988,108 @@ const BLUEPRINTS = [
       zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.05 },
     },
   },
+
+  // ═══ LOTE 7 — MIX QUINCHO: ROCK + CUMBIA + ELECTRO LIGHT (fiesta-latina) ═══
+  // ADN asimétrico 3 decimales: evita empates en el simulador y maximiza
+  // mutaciones (minions) en el Coliseo de Genesis. Todos van a vibe
+  // 'fiesta-latina' — la distribución por género se hace en UI.
+
+  // ── EFECTO 22: FURIA NACIONAL — rasgueo rock, picos contundentes ───────────
+  {
+    id: 'fx_furia_nacional', name: 'Furia Nacional', subdir: 'latin',
+    category: 'physical',
+    tags: ['rock','nacional','guitarra','rasgueo','furia','latino','argentina','hit'],
+    vibes: ['fiesta-latina'], sections: ['chorus','drop','climax'],
+    energyZone: { min: 'active', max: 'intense' },
+    // Utility por diseño del spec: sin bias → genoma asimétrico pasa intacto.
+    genome: { aggression: 0.714, chaos: 0.428, organicity: 0.681 },
+    archetype: 'utility', spatialBehavior: 'static',
+    spatialZones: ['front','back'], mixBus: 'global', priority: 80,
+    durationMs: 1200, strobeHz: 0, isOneShot: true, bpmRef: 140,
+    dominantColor: { h: 200, s: 100, l: 50 },
+    buildTracks: () => [
+      // Rasgueo: pico@0 → caída 0.2@300 → segundo pico@600 → fade a 0@1200
+      intensityTrack(['front','back'],
+        [kf(0, 1, 'linear'), kf(300, 0.2, 'linear'), kf(600, 1, 'linear'),
+         kf(1200, 0, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      // "Blanco puro a Celeste": golpe blanco (s=0,l=100) que asienta a
+      // celeste H200 — flash de acorde que decae al color de la bandera.
+      colorTrack(['all'],
+        [kf(0, { h:0, s:0, l:100 }, 'linear'), kf(1200, { h:200, s:100, l:50 }, 'linear')]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.8, energyMultiplier: 1.35, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.45, minDurationMs: 600, cooldownMs: 5000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.45 },
+    },
+  },
+
+  // ── EFECTO 23: CUMBIA SWING — vaivén tropical + pan cadencioso ─────────────
+  {
+    id: 'fx_cumbia_swing', name: 'Cumbia Swing', subdir: 'latin',
+    category: 'composite',
+    tags: ['cumbia','swing','tropical','vaiven','latino','amarillo','lima','pan'],
+    vibes: ['fiesta-latina'], sections: ['verse','chorus'],
+    energyZone: { min: 'gentle', max: 'active' },
+    // Utility: genoma asimétrico intacto.
+    genome: { aggression: 0.412, chaos: 0.185, organicity: 0.843 },
+    archetype: 'utility', spatialBehavior: 'relative_offset',
+    spatialZones: ['all-movers'], mixBus: 'global', priority: 55,
+    durationMs: 2000, strobeHz: 0, isOneShot: true, bpmRef: 96,
+    dominantColor: { h: 50, s: 100, l: 50 },
+    buildTracks: () => [
+      // Spec no declara intensidad → all @ 0.6 (mismo fix que brisa_caribe:
+      // sin ella el vaivén de color/pan sería invisible).
+      intensityTrack(['all'], [kf(0, 0.6), kf(2000, 0.6)], { phaseConfig: NO_PHASE }),
+      // Tropical: amarillo → verde lima LINEAR sobre 2000ms
+      colorTrack(['all'],
+        [kf(0, { h:50, s:100, l:50 }, 'linear'), kf(2000, { h:90, s:100, l:50 }, 'linear')]),
+      // Pan "oscila" → triángulo -0.35→0.35→-0.35 en 2000ms (loop seamless,
+      // mismo criterio que ocaso_latino).
+      panTrack(['all-movers'],
+        [kf(0, -0.35, 'linear'), kf(1000, 0.35, 'linear'), kf(2000, -0.35, 'linear')],
+        { phaseConfig: NO_PHASE }),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.75, energyMultiplier: 1.1, vibeBonus: 0.15 },
+      gpuCost: 0.2, fatigueImpact: 0.3, minDurationMs: 1000, cooldownMs: 6000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.2 },
+    },
+  },
+
+  // ── EFECTO 24: PSY DUB — atmósfera lisérgica de respiración lenta ──────────
+  {
+    id: 'fx_psy_dub', name: 'Psy Dub', subdir: 'latin',
+    category: 'physical',
+    tags: ['psydub','electro','liso','deep','morado','toxico','latino','breathing'],
+    vibes: ['fiesta-latina'], sections: ['intro','breakdown','outro'],
+    energyZone: { min: 'valley', max: 'ambient' },
+    // Spec: chaos 0.615 viola chaosMax 0.3 del bias ambient → emitido 0.3
+    // (= bakeCognitiveDNA). La lisergia vive en el crossfade de color, no en
+    // el caos cognitivo. A0.237≤0.3 ✓ · O0.892≥0.55 ✓ pasan intactos.
+    genome: { aggression: 0.237, chaos: 0.615, organicity: 0.892 },
+    archetype: 'ambient', spatialBehavior: 'static',
+    spatialZones: ['floor','ambient'], mixBus: 'global', priority: 40,
+    durationMs: 6000, strobeHz: 0, isOneShot: true, bpmRef: 70,
+    dominantColor: { h: 270, s: 100, l: 30 },
+    buildTracks: () => [
+      // Lecho constante tenue: floor + ambient al 0.45 sostenido
+      intensityTrack(['floor','ambient'], [kf(0, 0.45), kf(6000, 0.45)],
+        { phaseConfig: NO_PHASE }),
+      // Morado profundo → verde tóxico LINEAR sobre 6000ms (ambos L:30)
+      colorTrack(['all'],
+        [kf(0, { h:270, s:100, l:30 }, 'linear'), kf(6000, { h:120, s:100, l:30 }, 'linear')]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.85, energyMultiplier: 0.7, vibeBonus: 0.15 },
+      gpuCost: 0.1, fatigueImpact: 0.08, minDurationMs: 4000, cooldownMs: 10000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.05 },
+    },
+  },
 ]
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────

@@ -1,0 +1,190 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_furia_nacional",
+    "name": "Furia Nacional",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "rock",
+      "nacional",
+      "guitarra",
+      "rasgueo",
+      "furia",
+      "latino",
+      "argentina",
+      "hit"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "front",
+      "back"
+    ],
+    "mixBus": "global",
+    "priority": 80,
+    "durationMs": 1200,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "f80c9a7d-9cf0-4a62-a3f9-03dae4e6a395",
+        "paramId": "intensity",
+        "zones": [
+          "front",
+          "back"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 300,
+              "value": 0.2,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 600,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1200,
+              "value": 0,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "5a2f6ebb-eaf1-439f-aebb-f92ac1e27838",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1200,
+              "value": {
+                "h": 200,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 200,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 140,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.714,
+        "chaos": 0.428,
+        "organicity": 0.681
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [
+        "chorus",
+        "drop",
+        "climax"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.8,
+        "energyMultiplier": 1.35,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.15,
+      "fatigueImpact": 0.45,
+      "minDurationMs": 600,
+      "cooldownMs": 5000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": null,
+        "minimumEnergy": 0.45
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:424418fee60043aa8c58603cef0997c896da7fd1e6764df97b998bb87fae6062"
+}

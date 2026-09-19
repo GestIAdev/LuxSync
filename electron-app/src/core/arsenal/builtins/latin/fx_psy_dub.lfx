@@ -1,0 +1,180 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_psy_dub",
+    "name": "Psy Dub",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "psydub",
+      "electro",
+      "liso",
+      "deep",
+      "morado",
+      "toxico",
+      "latino",
+      "breathing"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "floor",
+      "ambient"
+    ],
+    "mixBus": "global",
+    "priority": 40,
+    "durationMs": 6000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "df9fb243-3cf7-429f-a404-a8b15e9aae89",
+        "paramId": "intensity",
+        "zones": [
+          "floor",
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.45,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 6000,
+              "value": 0.45,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "06dd3142-70ca-4097-ab4c-d3014ade0ae2",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 270,
+                "s": 100,
+                "l": 30
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 6000,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 30
+              },
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 270,
+      "dominantColorS": 100,
+      "dominantColorL": 30,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 70,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "ambient",
+      "genome": {
+        "aggression": 0.237,
+        "chaos": 0.3,
+        "organicity": 0.892
+      },
+      "textureAffinity": "clean",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [
+        "intro",
+        "breakdown",
+        "outro"
+      ],
+      "energyZone": {
+        "min": "valley",
+        "max": "ambient"
+      },
+      "aggressionRange": {
+        "min": 0.04,
+        "max": 0.44
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 0.5
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.85,
+        "energyMultiplier": 0.7,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.1,
+      "fatigueImpact": 0.08,
+      "minDurationMs": 4000,
+      "cooldownMs": 10000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.05
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:10ca00021eae9460746a100b7c3652c367efe241c31d3667d7c3e7ebd617c1a4"
+}

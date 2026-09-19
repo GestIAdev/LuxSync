@@ -380,10 +380,10 @@ export const LATINO_PROFILE = {
             gateOn: 0.18, // WAVE 6071: umbral estático, el motor deja de "perseguir"
             squelchBase: 0.18, // WAVE 6070: piso funcional contra ruido residual
             squelchSlope: 0.08, // WAVE 6070: limpieza dinámica del piso
-            boost: 2.2, // WAVE 6070: empuje moderado, ondula sin cegar
+            boost: 2.6, // V&S: 2.2→2.6 — eleva la presencia de la capa melódica post-AGC
             decayBase: 0.75, // WAVE 6070: caída lenta, manto de melaza
             decayRange: 0.03,
-            crushExponent: 1.5, // WAVE 6070: compresión moderada
+            crushExponent: 1.1, // V&S: 1.5→1.1 — menos aplastamiento, las melodías respiran lineal
             maxIntensity: 0.95, // WAVE 6070: techo para evitar clipping lógico
             ghostCap: 0.00, // WAVE 7749.57: 0.04→0.00 — sin ghostcaps en ningún perfil
             attackSlopeMin: 0.03, // Motor intacto: solo transientes reales abren compuerta
@@ -420,13 +420,18 @@ export const LATINO_PROFILE = {
         //   industrial. Con 0.45 la caja caía a negro en ~90ms = flash strobo.
         //   Con 0.60: 1.0→0.60→0.36→0.22→0.13→0.08 = ~140ms de caída natural.
         //   El TAcka se siente, no ametralla. Techno se queda con 0.40 (snap puro).
+        // 🩸 VITAMINS & SONOTONE (post-AGC): la limpieza del AGC dejó el back_R
+        //   descafeinado — menos impulsos cruzan la cascada de onsets.
+        //   gateOn 0.55→0.45: la puerta de ruido baja para captar más redobles.
+        //   boost 2.5→3.2: más latigazo visual post-ataque.
+        //   decayBase 0.60→0.50: caída más rápida — impacto eléctrico, no fangoso.
         envelopeSnare: {
-            gateOn: 0.55, // WAVE 6050: endurecimiento extremo, solo golpes brutos pasan
+            gateOn: 0.45, // V&S: 0.55→0.45 — captar más redobles tras el ajuste del AGC
             squelchBase: 0.45, // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
-            decayBase: 0.60, // WAVE 7749.20: 0.45→0.60 — el TAcka respira, no es techno snap
+            decayBase: 0.50, // V&S: 0.60→0.50 — caída eléctrica, menos fangosa
             decayRange: 0.10,
             ghostCap: 0.00, // WAVE 7749.57: 0.01→0.00 — sin ghostcaps en ningún perfil
-            boost: 2.5,
+            boost: 3.2, // V&S: 2.5→3.2 — más latigazo visual post-ataque
         },
         // WAVE 3457: sidechain exterminado también en overrides 4.1
         sidechainDepth: 0.00,

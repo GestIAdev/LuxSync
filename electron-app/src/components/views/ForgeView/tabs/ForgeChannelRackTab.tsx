@@ -7,9 +7,42 @@ import {
 } from '../../../icons/LuxIcons'
 import { FixturePreview3D } from '../../../shared/PhysicsTuner/FixturePreview3D'
 import { SimpleModeLockBanner, isSimpleCompatible } from '../canvas/ForgeModeSwitcher'
-import type { FixtureChannel, ChannelType, FixtureType, IDMXGovernor, IGovernorRule } from '../../../../types/FixtureDefinition'
+import type { FixtureChannel, ChannelType, FixtureType, IDMXGovernor, IGovernorRule, GovernorIntentType } from '../../../../types/FixtureDefinition'
 import type { ForgeAction } from '../../../../core/forge/forgeBuilderState'
 import { FUNCTION_PALETTE, getChannelCategory, getCategoryColor, getSmartDefaultValue } from '../FixtureForgeEmbedded'
+
+// ────────────────────────────────────────────────────────────────────────────────
+// GOVERNOR INTENT OPTIONS — mirrors DMXGovernorEvaluator.CHANNEL_TO_INTENT.
+// `when.intentType` only ever fires if it matches the channel's mapped intent
+// (or 'fallback', which matches anything). New rules default to the channel's
+// own intent so they can actually trigger.
+// ────────────────────────────────────────────────────────────────────────────────
+
+const INTENT_OPTIONS: readonly GovernorIntentType[] = [
+  'intensity', 'strobe', 'shutter', 'prism', 'prism-rotation', 'gobo',
+  'frost', 'zoom', 'focus', 'emission', 'fire', 'smoke', 'fallback',
+]
+
+const CHANNEL_INTENT_DEFAULT: Record<string, GovernorIntentType> = {
+  dimmer: 'intensity',
+  strobe: 'strobe',
+  shutter: 'shutter',
+  prism: 'prism',
+  'prism-rotation': 'prism-rotation',
+  gobo: 'gobo',
+  'gobo-rotation': 'gobo',
+  frost: 'frost',
+  zoom: 'zoom',
+  focus: 'focus',
+  emission_gate: 'emission',
+  fire_valve: 'fire',
+  fire_ignite: 'fire',
+  smoke_pump: 'smoke',
+  smoke_density: 'smoke',
+}
+
+const intentForChannel = (channelType: string): GovernorIntentType =>
+  CHANNEL_INTENT_DEFAULT[channelType] ?? 'fallback'
 
 // ────────────────────────────────────────────────────────────────────────────────
 // GOVERNOR SUMMARY — compact display of multi-rule governors
@@ -17,7 +50,9 @@ import { FUNCTION_PALETTE, getChannelCategory, getCategoryColor, getSmartDefault
 
 function formatGovernorRule(rule: IGovernorRule): string {
   const intent = rule.when.intentType
-  const condition = rule.when.min !== undefined ? `≥${rule.when.min}` : ''
+  const lo = rule.when.min !== undefined ? `≥${rule.when.min}` : ''
+  const hi = rule.when.max !== undefined ? `<${rule.when.max}` : ''
+  const condition = lo + (lo && hi ? ' ' : '') + hi
   const action = rule.then.forceByte !== undefined
     ? `=${rule.then.forceByte}`
     : rule.then.clampMin !== undefined
@@ -262,39 +297,157 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                   </span>
                   {activeGov && (
                     <div className="governor-rules-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      {activeGov.rules.map((rule, ri) => (
-                        <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
-                          <span style={{ color: '#fbbf24', minWidth: '80px' }}>{rule.when.intentType}{rule.when.min !== undefined ? ` ≥${rule.when.min}` : ''}</span>
-                          <span style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
-                          {rule.then.forceByte !== undefined && (
+                      {activeGov.rules.map((rule, ri) => {
+                        const gov = activeGov
+                        const setRules = (newRules: IGovernorRule[]) =>
+                          dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: { ...gov, rules: newRules } })
+                        const patchRule = (updater: (r: IGovernorRule) => IGovernorRule) =>
+                          setRules(gov.rules.map((r, i) => (i === ri ? updater(r) : r)))
+                        const numStyle: React.CSSProperties = { width: '46px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 4px', fontSize: '10px' }
+                        const selStyle: React.CSSProperties = { background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 2px', fontSize: '10px', fontFamily: 'inherit' }
+                        const parseNorm = (raw: string): number | undefined => {
+                          const v = parseFloat(raw)
+                          return Number.isNaN(v) ? undefined : Math.min(1, Math.max(0, v))
+                        }
+                        const parseByte = (raw: string): number =>
+                          Math.min(255, Math.max(0, parseInt(raw) || 0))
+                        return (
+                          <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', flexWrap: 'wrap' }}>
+                            <span style={{ color: 'rgba(255,255,255,0.35)', minWidth: '14px' }}>{ri + 1}.</span>
+                            <select
+                              value={rule.when.intentType}
+                              style={selStyle}
+                              title="Intent type this rule intercepts ('fallback' = any)"
+                              onChange={(e) => patchRule(r => ({ ...r, when: { ...r.when, intentType: e.target.value as GovernorIntentType } }))}
+                            >
+                              {INTENT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
                             <input
-                              type="number" min="0" max="255"
-                              defaultValue={rule.then.forceByte}
-                              style={{ width: '50px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 4px', fontSize: '10px' }}
-                              onChange={(e) => {
-                                const safeByte = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
-                                const newRules = activeGov.rules.map((r, i) => i === ri ? { ...r, then: { ...r.then, forceByte: safeByte } } : r)
-                                dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: { ...activeGov, rules: newRules } })
-                              }}
+                              type="number" min="0" max="1" step="0.05"
+                              defaultValue={rule.when.min ?? ''}
+                              placeholder="min"
+                              title="when.min — normalized lower bound, inclusive (empty = none)"
+                              style={numStyle}
+                              onChange={(e) => patchRule(r => ({ ...r, when: { ...r.when, min: parseNorm(e.target.value) } }))}
                             />
-                          )}
-                          {rule.then.clampMin !== undefined && (
+                            <span style={{ color: 'rgba(255,255,255,0.35)' }}>–</span>
                             <input
-                              type="number" min="0" max="255"
-                              defaultValue={rule.then.clampMin}
-                              style={{ width: '50px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 4px', fontSize: '10px' }}
-                              onChange={(e) => {
-                                const safeVal = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
-                                const newRules = activeGov.rules.map((r, i) => i === ri ? { ...r, then: { ...r.then, clampMin: safeVal } } : r)
-                                dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: { ...activeGov, rules: newRules } })
-                              }}
+                              type="number" min="0" max="1" step="0.05"
+                              defaultValue={rule.when.max ?? ''}
+                              placeholder="max"
+                              title="when.max — normalized upper bound, exclusive (empty = none)"
+                              style={numStyle}
+                              onChange={(e) => patchRule(r => ({ ...r, when: { ...r.when, max: parseNorm(e.target.value) } }))}
                             />
-                          )}
-                          {rule.then.forceByte === undefined && rule.then.clampMin === undefined && (
-                            <span style={{ color: 'rgba(255,255,255,0.4)' }}>mapToRange</span>
-                          )}
-                        </div>
-                      ))}
+                            <span style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
+                            <select
+                              value={rule.then.forceByte !== undefined ? 'forceByte' : rule.then.mapToRange !== undefined ? 'mapToRange' : 'clampMin'}
+                              style={selStyle}
+                              title="Action applied on match"
+                              onChange={(e) => {
+                                const kind = e.target.value
+                                patchRule(r => ({
+                                  ...r,
+                                  then: kind === 'forceByte'
+                                    ? { forceByte: r.then.forceByte ?? 255 }
+                                    : kind === 'mapToRange'
+                                      ? { mapToRange: r.then.mapToRange ?? ([0, 255] as [number, number]) }
+                                      : { clampMin: r.then.clampMin ?? 64 },
+                                }))
+                              }}
+                            >
+                              <option value="forceByte">forceByte</option>
+                              <option value="mapToRange">mapToRange</option>
+                              <option value="clampMin">clampMin</option>
+                            </select>
+                            {rule.then.forceByte !== undefined && (
+                              <input
+                                type="number" min="0" max="255"
+                                defaultValue={rule.then.forceByte}
+                                style={numStyle}
+                                onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, forceByte: parseByte(e.target.value) } }))}
+                              />
+                            )}
+                            {rule.then.clampMin !== undefined && (
+                              <input
+                                type="number" min="0" max="255"
+                                defaultValue={rule.then.clampMin}
+                                style={numStyle}
+                                onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, clampMin: parseByte(e.target.value) } }))}
+                              />
+                            )}
+                            {rule.then.mapToRange !== undefined && (
+                              <>
+                                <input
+                                  type="number" min="0" max="255"
+                                  defaultValue={rule.then.mapToRange[0]}
+                                  title="mapToRange low byte"
+                                  style={numStyle}
+                                  onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, mapToRange: [parseByte(e.target.value), r.then.mapToRange![1]] as [number, number] } }))}
+                                />
+                                <span style={{ color: 'rgba(255,255,255,0.35)' }}>–</span>
+                                <input
+                                  type="number" min="0" max="255"
+                                  defaultValue={rule.then.mapToRange[1]}
+                                  title="mapToRange high byte"
+                                  style={numStyle}
+                                  onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, mapToRange: [r.then.mapToRange![0], parseByte(e.target.value)] as [number, number] } }))}
+                                />
+                              </>
+                            )}
+                            <button
+                              title="Move rule up (evaluated earlier)"
+                              disabled={ri === 0}
+                              style={{ ...selStyle, cursor: 'pointer', opacity: ri === 0 ? 0.3 : 1 }}
+                              onClick={() => {
+                                const next = [...gov.rules]
+                                ;[next[ri - 1], next[ri]] = [next[ri], next[ri - 1]]
+                                setRules(next)
+                              }}
+                            >↑</button>
+                            <button
+                              title="Move rule down (evaluated later)"
+                              disabled={ri === gov.rules.length - 1}
+                              style={{ ...selStyle, cursor: 'pointer', opacity: ri === gov.rules.length - 1 ? 0.3 : 1 }}
+                              onClick={() => {
+                                const next = [...gov.rules]
+                                ;[next[ri], next[ri + 1]] = [next[ri + 1], next[ri]]
+                                setRules(next)
+                              }}
+                            >↓</button>
+                            <button
+                              title="Delete this rule"
+                              style={{ ...selStyle, cursor: 'pointer', color: '#f87171', border: '1px solid rgba(248,113,113,0.4)' }}
+                              onClick={() => {
+                                const next = gov.rules.filter((_, i) => i !== ri)
+                                dispatch({
+                                  type: 'GOVERNOR_SET_FOR_CHANNEL',
+                                  channelIndex: idx,
+                                  governor: next.length > 0 ? { ...gov, rules: next } : null,
+                                })
+                              }}
+                            >✕</button>
+                          </div>
+                        )
+                      })}
+                      <button
+                        className="btn-governor-add-rule"
+                        title="Append a new rule (evaluated top-to-bottom, first match wins)"
+                        style={{ alignSelf: 'flex-start', background: 'rgba(245,158,11,0.12)', border: '1px dashed rgba(245,158,11,0.5)', color: '#fbbf24', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontSize: '10px', fontFamily: 'inherit' }}
+                        onClick={() => {
+                          const newRule: IGovernorRule = {
+                            when: { intentType: intentForChannel(channel.type), min: 0.85 },
+                            then: { forceByte: 255 },
+                          }
+                          dispatch({
+                            type: 'GOVERNOR_SET_FOR_CHANNEL',
+                            channelIndex: idx,
+                            governor: { ...activeGov, rules: [...activeGov.rules, newRule] },
+                          })
+                        }}
+                      >
+                        + Add rule
+                      </button>
                     </div>
                   )}
                   {!activeGov && (
@@ -313,7 +466,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                             channelIndex: idx,
                             description: `${channel.type.toUpperCase()} safety limit`,
                             rules: [{
-                              when: { intentType: 'fallback', min: 0.85 },
+                              when: { intentType: intentForChannel(channel.type), min: 0.85 },
                               then: { forceByte: safeByte }
                             }]
                           }

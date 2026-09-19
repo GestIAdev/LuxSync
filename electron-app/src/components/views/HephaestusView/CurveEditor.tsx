@@ -64,6 +64,40 @@ const GRID_LINES_Y = 10 // Horizontal grid divisions (0.0 to 1.0)
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 8
 
+/**
+ * ⚒️ OOM GUARD (Oilpan): hard ceiling on interactive SVG keyframe nodes.
+ *
+ * The "~50 keyframes" assumption above is broken by Genesis organisms
+ * (measured ~77/track after repeated mutation, and tracks themselves grow
+ * via gene_augmentation). Every rendered keyframe costs 2-4 SVG nodes,
+ * every bezier handle group 5 — an unbounded clip injects unbounded DOM,
+ * and each preview/drag re-render churns them (Blink/Oilpan objects).
+ *
+ * When a curve exceeds the cap we stride-subsample the DRAWN indices —
+ * first/last always included, plus every index in `keepIndices`
+ * (selected + dragged keyframes stay interactive). Data is untouched:
+ * the curve <path> still renders all keyframes via buildCurvePath.
+ */
+export const MAX_RENDERED_KEYFRAMES = 240
+
+export function computeDrawableKeyframeIndices(
+  keyframeCount: number,
+  keepIndices?: Iterable<number>,
+): number[] {
+  if (keyframeCount <= MAX_RENDERED_KEYFRAMES) {
+    return Array.from({ length: keyframeCount }, (_, i) => i)
+  }
+  const keep = new Set<number>()
+  for (const i of keepIndices ?? []) {
+    if (i >= 0 && i < keyframeCount) keep.add(i)
+  }
+  const stride = (keyframeCount - 1) / (MAX_RENDERED_KEYFRAMES - 1)
+  for (let i = 0; i < MAX_RENDERED_KEYFRAMES; i++) {
+    keep.add(Math.round(i * stride))
+  }
+  return [...keep].sort((a, b) => a - b)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -489,6 +523,18 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     [curve, toX, toY]
   )
 
+  // ⚒️ OOM GUARD: interactive keyframe indices — stride-capped; selection
+  // and the active drag target always stay drawn/grabbable.
+  const drawableKeyframeIndices = useMemo(() => {
+    const keep: number[] = []
+    if (selectedKeyframeIdx !== null) keep.push(selectedKeyframeIdx)
+    for (const i of selectedIndices) keep.push(i)
+    if (drag && (drag.type === 'keyframe' || drag.type === 'handle-cp1' || drag.type === 'handle-cp2')) {
+      keep.push(drag.index, drag.index + 1)
+    }
+    return computeDrawableKeyframeIndices(curve.keyframes.length, keep)
+  }, [curve.keyframes.length, selectedKeyframeIdx, selectedIndices, drag])
+
   // ── Grid lines ──
   const valueGridLines = useMemo(() => {
     const lines: number[] = []
@@ -578,18 +624,12 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
    * Falls back to beatDivisionsProp (default 8) when no BPM available.
    */
   const beatDivisions = useMemo(() => {
-    // 🔍 WAVE 2044.4: GRIDLOCK DEBUG — Verify BPM propagation
-    console.log(`[CurveEditor] 🔍 beatDivisions recalc → bpm=${bpm}, duration=${durationMs}`)
-    
     if (bpm > 0) {
       const beatMs = 60000 / bpm
       const totalBeats = durationMs / beatMs
       // Corcheas (8th notes) = 2 per beat. Minimum 2 divisions.
-      const result = Math.max(2, Math.round(totalBeats * 2))
-      console.log(`[CurveEditor] 🎵 Musical grid → ${result} divisions (from ${bpm} BPM)`)
-      return result
+      return Math.max(2, Math.round(totalBeats * 2))
     }
-    console.log(`[CurveEditor] ⚠️ No BPM → using fallback: ${beatDivisionsProp} divisions`)
     return beatDivisionsProp
   }, [bpm, durationMs, beatDivisionsProp])
 
@@ -1351,7 +1391,8 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
 
         {/* ═══ BEZIER HANDLES ═══ */}
         {/* ⚒️ WAVE 7749.30: Hide bezier handles for stepped curves — no smooth interpolation */}
-        {curve.keyframes.map((kf, i) => {
+        {drawableKeyframeIndices.map((i) => {
+          const kf = curve.keyframes[i]
           if (isSteppedCurve(curve)) return null
           if (kf.interpolation !== 'bezier' || i >= curve.keyframes.length - 1) return null
           const nextKf = curve.keyframes[i + 1]
@@ -1361,6 +1402,11 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           const y0 = toY(kf.value)
           const x1 = toX(nextKf.timeMs)
           const y1 = toY(nextKf.value)
+
+          // ⚒️ OOM GUARD: same viewport clip as keyframe nodes — a segment
+          // fully outside the plot can't show handles (5 SVG nodes each).
+          if ((x0 < PADDING.left - HANDLE_RADIUS && x1 < PADDING.left - HANDLE_RADIUS) ||
+              (x0 > PADDING.left + plotW + HANDLE_RADIUS && x1 > PADDING.left + plotW + HANDLE_RADIUS)) return null
 
           const cp1x = x0 + (x1 - x0) * handles[0]
           const cp1y = y0 + (y1 - y0) * handles[1]
@@ -1406,7 +1452,10 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
 
         {/* ═══ ⚒️ WAVE 2043.11: GHOST KEYFRAME DOTS — Original positions during drag ═══ */}
         {ghostPath && drag && (drag.type === 'keyframe' || drag.type === 'handle-cp1' || drag.type === 'handle-cp2') &&
-          ghostKeyframePositionsRef.current.map((pos, i) => (
+          ghostKeyframePositionsRef.current.map((pos, i) => {
+            // ⚒️ OOM GUARD: same viewport clip as keyframe nodes
+            if (pos.x < PADDING.left - KEYFRAME_RADIUS || pos.x > PADDING.left + plotW + KEYFRAME_RADIUS) return null
+            return (
             <circle
               key={`ghost-kf-${i}`}
               cx={pos.x}
@@ -1418,11 +1467,13 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
               strokeDasharray="2 2"
               style={{ pointerEvents: 'none' }}
             />
-          ))
+            )
+          })
         }
 
         {/* ═══ KEYFRAME NODES ═══ */}
-        {curve.keyframes.map((kf, i) => {
+        {drawableKeyframeIndices.map((i) => {
+          const kf = curve.keyframes[i]
           const x = toX(kf.timeMs)
           const y = toY(kf.value)
           const isSelected = selectedKeyframeIdx === i || selectedIndices.has(i)

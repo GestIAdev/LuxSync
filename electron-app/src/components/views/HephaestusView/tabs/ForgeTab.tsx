@@ -864,16 +864,16 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
 
   const handleRemoveTrack = useCallback((trackId: string) => {
     removeTrackFromStore(trackId)
-    if (activeTrackId === trackId) {
-      const remaining = clip.tracks.filter(t => t.id !== trackId)
-      if (remaining.length > 0) {
-        selectTrack(remaining[0].id)
-      } else {
-        selectTrack(null)
-      }
+    // ⚒️ OOM GUARD: read post-removal state via getState() — keeps this
+    // callback referentially stable so memoized ParameterLane skips
+    // re-render on unrelated clip mutations.
+    const state = useHephaestusEditorStore.getState()
+    if (state.selection.activeTrackId === trackId) {
+      const remaining = state.clip?.tracks ?? []
+      selectTrack(remaining.length > 0 ? remaining[0].id : null)
     }
     setSelectedKeyframeIdx(null)
-  }, [removeTrackFromStore, activeTrackId, clip.tracks, selectTrack])
+  }, [removeTrackFromStore, selectTrack])
 
   const handleDuplicateTrack = useCallback((trackId: string) => {
     const newId = duplicateTrackFromStore(trackId)
@@ -1186,7 +1186,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                     curve={track.curve}
                     zones={track.zones}
                     isActive={track.id === activeTrackId}
-                    onClick={() => selectTrack(track.id)}
+                    onSelectTrack={selectTrack}
                     onRemove={handleRemoveTrack}
                     onDuplicate={handleDuplicateTrack}
                     onTrackZonesChange={handleTrackZonesChange}

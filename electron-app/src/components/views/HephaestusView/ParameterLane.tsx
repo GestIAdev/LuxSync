@@ -159,23 +159,28 @@ interface ParameterLaneProps {
   curve: HephCurve
   zones: readonly ZoneTarget[]
   isActive: boolean
-  onClick: () => void
+  onSelectTrack: (trackId: string) => void
   onRemove?: (trackId: string) => void
   onDuplicate?: (trackId: string) => void
   onTrackZonesChange?: (trackId: string, zones: ZoneTarget[]) => void
 }
 
-export const ParameterLane: React.FC<ParameterLaneProps> = ({
+// ⚒️ OOM GUARD (Oilpan): memoized — without this, every ForgeTab render
+// (each mousemove during keyframe drags, each Genesis preview loadClip)
+// re-rendered the ENTIRE lane stack; gene_augmentation grows track count
+// so the churned DOM grew with the organism. Unchanged lanes (same
+// curve/zones refs via store structural sharing) now skip re-render.
+export const ParameterLane = React.memo(function ParameterLane({
   trackId,
   paramId,
   curve,
   zones,
   isActive,
-  onClick,
+  onSelectTrack,
   onRemove,
   onDuplicate,
   onTrackZonesChange,
-}) => {
+}: ParameterLaneProps) {
   const meta = PARAM_META[paramId] ?? { label: paramId.toUpperCase(), color: '#888', icon: '●' }
   const [showZonePopover, setShowZonePopover] = useState(false)
   const zoneBadgeRef = useRef<HTMLButtonElement>(null)
@@ -239,7 +244,7 @@ export const ParameterLane: React.FC<ParameterLaneProps> = ({
   return (
     <div
       className={`param-lane ${isActive ? 'param-lane--active' : ''}`}
-      onClick={onClick}
+      onClick={() => onSelectTrack(trackId)}
       style={{ '--lane-color': meta.color, position: 'relative' } as React.CSSProperties}
     >
       <span className="param-lane__icon">{meta.icon}</span>
@@ -359,4 +364,4 @@ export const ParameterLane: React.FC<ParameterLaneProps> = ({
       )}
     </div>
   )
-}
+})

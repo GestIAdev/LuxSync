@@ -302,9 +302,9 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // §5.4: Vibe branches (isTechnoVibe / isLatinVibe) PURGED — replaced with
   // continuous ΠMΔG interpolation. The divine threshold is now a function of
   // the fluid descriptors, not a genre string:
-  //   V3_EPSILON_DIVINE = 0.50 - 0.10 · Π·(1−M)
-  //     High percussiveness + low melodicity (techno) → 0.40 (permissive)
-  //     Low percussiveness or high melodicity (ambient) → 0.50 (strict)
+  //   V3_EPSILON_DIVINE = 0.75 - 0.10 · Π·(1−M)
+  //     High percussiveness + low melodicity (techno) → 0.65 (permissive floor)
+  //     Low percussiveness or high melodicity (ambient) → 0.75 (strict)
   //   DIVINE_SUSTAINED_RMS_FLOOR = 0.75 - 0.10 · G
   //     High groove (latin reggaeton) → 0.65 (lower floor)
   //     Low groove (ambient) → 0.75 (strict floor)
@@ -319,18 +319,27 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   //   DIVINE_SUSTAINED_EPICNESS lowered 0.50 → 0.40: the sustained path
   //   was marginal — epicness hovered at 0.48-0.52 but the threshold was
   //   exactly 0.50, missing by fractions. 0.40 gives breathing room.
+  //
+  // 🌩️ DIVINE EPICNESS GATE (hotfix): epicness floor sealed at 0.650.
+  //   False positives in fiesta-latina: autotune vocal screams in ambient
+  //   valleys spiked Z > 2.1σ with epicness ~0.517, which crossed the
+  //   0.40-0.50 adaptive epsilon. Base raised 0.50 → 0.75 so the most
+  //   permissive case (Π=1, M=0) is exactly 0.650 and only gets stricter
+  //   toward ambient. The sustained path is sealed to the same 0.650
+  //   epicness floor — an isolated scream can no longer enter through
+  //   rolling epicness below 0.650 either.
   // ═══════════════════════════════════════════════════════════════════════
   const v3Epicness = inputs.v3Epicness ?? 0
   // ΠMΔG interpolation — no genre strings, pure fluid descriptors
   const Π = pattern.rhythmicIntensity ?? 0  // percussiveness proxy (pattern-level)
   const M = pattern.harmonicDensity ?? 0.5   // melodicity proxy
   const G = pattern.syncopation ?? 0         // groove
-  const V3_EPSILON_DIVINE = 0.50 - 0.10 * clamp01(Π * (1 - clamp01(M)))
+  const V3_EPSILON_DIVINE = 0.75 - 0.10 * clamp01(Π * (1 - clamp01(M)))
   // 🩸 WAVE 7171: Two-path divine gate — A) brutal isolated peak OR B) sustained epicness
   const rms10s = inputs.rmsAverage10s ?? 0
   const DIVINE_SUSTAINED_RMS_FLOOR = 0.75 - 0.10 * clamp01(G)
-  // 🔬 WAVE 7542: Lowered from 0.50 → 0.40 (Divine Resuscitation).
-  const DIVINE_SUSTAINED_EPICNESS = 0.40
+  // 🌩️ DIVINE EPICNESS GATE: 0.40 → 0.65 — same global epicness floor as the peak path
+  const DIVINE_SUSTAINED_EPICNESS = 0.65
   const divinePeakPassed = v3Epicness > V3_EPSILON_DIVINE
   const divineSustainedPassed = v3Epicness > DIVINE_SUSTAINED_EPICNESS && rms10s > DIVINE_SUSTAINED_RMS_FLOOR
   // 🩸 WAVE 7186: Z-SCORE FLOOR — Divine is a rare event by definition.

@@ -1324,6 +1324,108 @@ const BLUEPRINTS = [
       zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.4 },
     },
   },
+
+  // ═══ LOTE 10 — CLUB 3: TRACA DE ESTROBOS & CEGADORAS (techno-club) ═══
+  // Cero cinética. Arquetipos nativos (strobe/heavy). maxStrobeFreqHz=25 =
+  // techo de seguridad del sistema (convención builtins techno): NO es la
+  // frecuencia artística — el runtime gobierna el rate real dentro del límite.
+
+  // ── EFECTO 31: XENON FRENZY — metralla estroboscópica de clímax ────────────
+  {
+    id: 'fx_club_xenon_frenzy', name: 'Xenon Frenzy', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','xenon','frenzy','strobe','metralla','edm','peak','blinder'],
+    vibes: ['techno-club'], sections: ['drop','climax'],
+    // Spec 'peak→intense' descendente → normalizado a intense→peak (span 2).
+    energyZone: { min: 'intense', max: 'peak' },
+    // Bias strobe: A0.972≥0.75 ✓ C0.841≥0.4 ✓ O0.103≤0.35 ✓ — limpio.
+    genome: { aggression: 0.972, chaos: 0.841, organicity: 0.103 },
+    archetype: 'strobe', spatialBehavior: 'static',
+    spatialZones: ['all-movers','air','front'], mixBus: 'global', priority: 95,
+    durationMs: 1800, strobeHz: 25, isOneShot: true, bpmRef: 140,
+    dominantColor: { h: 0, s: 0, l: 100 },
+    buildTracks: () => [
+      // Intensidad clavada al 1.0 — el estrobo hace la metralla
+      intensityTrack(['all-movers','air','front'], [kf(0, 1), kf(1800, 1)],
+        { phaseConfig: NO_PHASE }),
+      // Blanco puro frío constante
+      colorTrack(['all'], [kf(0, { h:0, s:0, l:100 }), kf(1800, { h:0, s:0, l:100 })]),
+      // Estrobo plano — rate real lo decide el runtime bajo el techo 25Hz
+      strobeTrack(['all-movers','air','front'], strobeFlat(1800)),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.9, energyMultiplier: 1.5, vibeBonus: 0.15 },
+      gpuCost: 0.25, fatigueImpact: 0.65, minDurationMs: 1000, cooldownMs: 12000,
+      isStrobe: true, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.75 },
+    },
+  },
+
+  // ── EFECTO 32: TUNGSTEN SLAM — cegadora de festival con caída térmica ──────
+  {
+    id: 'fx_club_tungsten_slam', name: 'Tungsten Slam', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','tungsten','slam','blinder','cegadora','festival','amber','crowd'],
+    vibes: ['techno-club'], sections: ['drop','climax'],
+    energyZone: { min: 'peak', max: 'peak' },
+    // Spec: organicity 0.528 viola organicityMax 0.45 del bias heavy →
+    // emitido 0.45 (= bakeCognitiveDNA). A0.894≥0.7 ✓ C0.312≥0.3 ✓.
+    genome: { aggression: 0.894, chaos: 0.312, organicity: 0.528 },
+    archetype: 'heavy', spatialBehavior: 'static',
+    spatialZones: ['front','ambient','floor'], mixBus: 'global', priority: 88,
+    durationMs: 2400, strobeHz: 0, isOneShot: true, bpmRef: 130,
+    dominantColor: { h: 38, s: 100, l: 55 },
+    buildTracks: () => [
+      // Blinder: salto a 1.0, sostenido 150ms (hold), caída térmica LINEAR
+      // a 0 en 1400ms, negro hasta el final — la cegadora respira su tungsteno
+      intensityTrack(['front','ambient','floor'],
+        [kf(0, 1), kf(150, 1, 'linear'), kf(1400, 0), kf(2400, 0)],
+        { phaseConfig: NO_PHASE }),
+      // Ámbar cálido constante — la lámpara no cambia de color, se apaga
+      colorTrack(['all'], [kf(0, { h:38, s:100, l:55 }), kf(2400, { h:38, s:100, l:55 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.9, energyMultiplier: 1.4, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.55, minDurationMs: 1200, cooldownMs: 10000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.65 },
+    },
+  },
+
+  // ── EFECTO 33: LASER CUTTER — cuchillas aéreas quirúrgicas ─────────────────
+  {
+    id: 'fx_club_laser_cutter', name: 'Laser Cutter', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','laser','cutter','cuchillas','aereo','contrafase','cyan','surgical'],
+    vibes: ['techno-club'], sections: ['drop','climax'],
+    energyZone: { min: 'intense', max: 'intense' },
+    // Bias strobe: A0.931≥0.75 ✓ C0.674≥0.4 ✓ O0.179≤0.35 ✓ — limpio.
+    genome: { aggression: 0.931, chaos: 0.674, organicity: 0.179 },
+    archetype: 'strobe', spatialBehavior: 'static',
+    spatialZones: ['air','back-right'], mixBus: 'global', priority: 90,
+    durationMs: 2000, strobeHz: 25, isOneShot: true, bpmRef: 135,
+    dominantColor: { h: 185, s: 100, l: 50 },
+    buildTracks: () => [
+      // Tren de pulsos cuadrados quirúrgico: ON 80ms / OFF 120ms (periodo
+      // 200ms, 10 cortes) SOLO en air + back-right — contrafase aérea
+      intensityTrack(['air','back-right'],
+        [kf(0, 1), kf(80, 0), kf(200, 1), kf(280, 0), kf(400, 1), kf(480, 0),
+         kf(600, 1), kf(680, 0), kf(800, 1), kf(880, 0), kf(1000, 1), kf(1080, 0),
+         kf(1200, 1), kf(1280, 0), kf(1400, 1), kf(1480, 0), kf(1600, 1),
+         kf(1680, 0), kf(1800, 1), kf(1880, 0), kf(2000, 0)],
+        { phaseConfig: NO_PHASE }),
+      // Cyan eléctrico constante — el láser no tinta, corta
+      colorTrack(['all'], [kf(0, { h:185, s:100, l:50 }), kf(2000, { h:185, s:100, l:50 })]),
+      // Estrobo plano en las cuchillas — rate bajo techo sistema 25Hz
+      strobeTrack(['air','back-right'], strobeFlat(2000)),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.85, energyMultiplier: 1.45, vibeBonus: 0.15 },
+      gpuCost: 0.2, fatigueImpact: 0.55, minDurationMs: 1200, cooldownMs: 8000,
+      isStrobe: true, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.6 },
+    },
+  },
 ]
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────

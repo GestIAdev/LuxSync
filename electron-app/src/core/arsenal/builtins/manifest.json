@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-19T13:59:54.925Z",
-  "count": 75,
+  "generatedAt": "2026-09-19T14:18:33.496Z",
+  "count": 78,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -308,6 +308,21 @@
       "relPath": "techno/fx_club_industrial_whip.lfx",
       "checksum": "fc5e8a86c707849e",
       "size": 4508
+    },
+    "techno/fx_club_laser_cutter.lfx": {
+      "relPath": "techno/fx_club_laser_cutter.lfx",
+      "checksum": "01dea55f521851cc",
+      "size": 6954
+    },
+    "techno/fx_club_tungsten_slam.lfx": {
+      "relPath": "techno/fx_club_tungsten_slam.lfx",
+      "checksum": "11b8381587215ac0",
+      "size": 4198
+    },
+    "techno/fx_club_xenon_frenzy.lfx": {
+      "relPath": "techno/fx_club_xenon_frenzy.lfx",
+      "checksum": "2afa9d6eed598c77",
+      "size": 4661
     },
     "techno/gatling_raid.lfx": {
       "relPath": "techno/gatling_raid.lfx",

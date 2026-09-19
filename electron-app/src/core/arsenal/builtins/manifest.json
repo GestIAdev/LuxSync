@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-19T13:49:42.395Z",
-  "count": 72,
+  "generatedAt": "2026-09-19T13:59:54.925Z",
+  "count": 75,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -279,10 +279,20 @@
       "checksum": "783a4e5897c89ec3",
       "size": 4050
     },
+    "techno/fx_club_abyssal_breakdown.lfx": {
+      "relPath": "techno/fx_club_abyssal_breakdown.lfx",
+      "checksum": "bca89633ec223e5e",
+      "size": 4617
+    },
     "techno/fx_club_acid_riser.lfx": {
       "relPath": "techno/fx_club_acid_riser.lfx",
       "checksum": "a68c1ab295d7ac7e",
       "size": 6624
+    },
+    "techno/fx_club_acid_stabs.lfx": {
+      "relPath": "techno/fx_club_acid_stabs.lfx",
+      "checksum": "a83c25425f96e386",
+      "size": 4797
     },
     "techno/fx_club_berlin_drop.lfx": {
       "relPath": "techno/fx_club_berlin_drop.lfx",
@@ -293,6 +303,11 @@
       "relPath": "techno/fx_club_hypnotic_bounce.lfx",
       "checksum": "8ba89785e3318fbe",
       "size": 7178
+    },
+    "techno/fx_club_industrial_whip.lfx": {
+      "relPath": "techno/fx_club_industrial_whip.lfx",
+      "checksum": "fc5e8a86c707849e",
+      "size": 4508
     },
     "techno/gatling_raid.lfx": {
       "relPath": "techno/gatling_raid.lfx",

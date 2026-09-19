@@ -1219,6 +1219,111 @@ const BLUEPRINTS = [
       zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.7 },
     },
   },
+
+  // ═══ LOTE 9 — CLUB 2: BREAKDOWN & LÁTIGO (techno-club) ═══
+  // CINÉTICA CERO: ningún pan/tilt — el motor base mueve las máquinas.
+  // Solo intensity, color y strobe. Todos 'static' (G7).
+
+  // ── EFECTO 28: ABYSSAL BREAKDOWN — valle deep techno subacuático ───────────
+  {
+    id: 'fx_club_abyssal_breakdown', name: 'Abyssal Breakdown', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','abyssal','breakdown','deep','subacuatico','techno','valley','abisal'],
+    vibes: ['techno-club'], sections: ['breakdown','valley','outro'],
+    energyZone: { min: 'valley', max: 'ambient' },
+    // Bias ambient: A0.112≤0.3 ✓ C0.285≤0.3 ✓ O0.814≥0.55 ✓ — limpio.
+    genome: { aggression: 0.112, chaos: 0.285, organicity: 0.814 },
+    archetype: 'ambient', spatialBehavior: 'static',
+    spatialZones: ['back-left','floor','ambient'], mixBus: 'global', priority: 38,
+    durationMs: 8000, strobeHz: 0, isOneShot: true, bpmRef: 120,
+    dominantColor: { h: 240, s: 100, l: 20 },
+    buildTracks: () => [
+      // Senoidal extremadamente lenta 0.1↔0.45 en el colchón trasero-izq,
+      // el suelo y el ambiente — 2 respiraciones completas en 8000ms
+      intensityTrack(['back-left','floor','ambient'],
+        [kf(0, 0.1, 'linear'), kf(2000, 0.45, 'linear'), kf(4000, 0.1, 'linear'),
+         kf(6000, 0.45, 'linear'), kf(8000, 0.1, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      // Azul abisal ↔ púrpura oscuro pulsando lento (loop seamless)
+      colorTrack(['all'],
+        [kf(0, { h:240, s:100, l:20 }, 'linear'), kf(4000, { h:280, s:100, l:20 }, 'linear'),
+         kf(8000, { h:240, s:100, l:20 }, 'linear')]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.85, energyMultiplier: 0.7, vibeBonus: 0.15 },
+      gpuCost: 0.1, fatigueImpact: 0.08, minDurationMs: 5000, cooldownMs: 8000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.05 },
+    },
+  },
+
+  // ── EFECTO 29: INDUSTRIAL WHIP — látigo percusivo en back-right ────────────
+  {
+    id: 'fx_club_industrial_whip', name: 'Industrial Whip', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','industrial','whip','latigo','slap','percusive','techno','needle'],
+    vibes: ['techno-club'], sections: ['chorus','drop'],
+    energyZone: { min: 'active', max: 'intense' },
+    // Spec pide 'rhythmic': NO canónico → fallback utility al cargar.
+    // Emitido 'heavy': genoma {0.884,0.612,0.211} pasa el bias LIMPIO
+    // (A≥0.7, C≥0.3, O≤0.45) y casa con "golpe seco brutal".
+    genome: { aggression: 0.884, chaos: 0.612, organicity: 0.211 },
+    archetype: 'heavy', spatialBehavior: 'static',
+    spatialZones: ['back-right'], mixBus: 'global', priority: 70,
+    durationMs: 600, strobeHz: 0, isOneShot: true, bpmRef: 130,
+    dominantColor: { h: 210, s: 40, l: 90 },
+    buildTracks: () => [
+      // 3 golpes de ametralladora SOLO en back-right (El Látigo / transient
+      // detector): salto instantáneo a 1.0 (hold previo a 0) + caída LINEAR
+      // a 0 absoluto en 100ms. Golpes a 0/200/400ms.
+      intensityTrack(['back-right'],
+        [kf(0, 1, 'linear'), kf(100, 0),
+         kf(200, 1, 'linear'), kf(300, 0),
+         kf(400, 1, 'linear'), kf(500, 0), kf(600, 0)],
+        { phaseConfig: NO_PHASE }),
+      // Blanco frío CTB constante — el látigo no canta, solo pega
+      colorTrack(['all'], [kf(0, { h:210, s:40, l:90 }), kf(600, { h:210, s:40, l:90 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.8, energyMultiplier: 1.35, vibeBonus: 0.15 },
+      gpuCost: 0.1, fatigueImpact: 0.5, minDurationMs: 400, cooldownMs: 4000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.5 },
+    },
+  },
+
+  // ── EFECTO 30: ACID STABS — destellos rítmicos on/off bruscos ──────────────
+  {
+    id: 'fx_club_acid_stabs', name: 'Acid Stabs', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','acid','stabs','synth','arpegio','techno','verde','rhythmic'],
+    vibes: ['techno-club'], sections: ['verse','chorus','build'],
+    energyZone: { min: 'active', max: 'active' },
+    // Spec pide 'rhythmic': NO canónico. 'heavy' clampearía A0.618→0.7 y
+    // 'strobe'→0.75; 'utility' preserva el genoma asimétrico intacto.
+    genome: { aggression: 0.618, chaos: 0.354, organicity: 0.419 },
+    archetype: 'utility', spatialBehavior: 'static',
+    spatialZones: ['all-movers','air'], mixBus: 'global', priority: 60,
+    durationMs: 1000, strobeHz: 0, isOneShot: true, bpmRef: 128,
+    dominantColor: { h: 120, s: 100, l: 50 },
+    buildTracks: () => [
+      // Onda cuadrada 250ms: ON 0.8 durante 100ms / OFF durante 150ms.
+      // Spec dice zona 'mover' → canonical 'all-movers' (+ láseres air).
+      // 4 ciclos en 1000ms. HOLD = cortes secos, no fades.
+      intensityTrack(['all-movers','air'],
+        [kf(0, 0.8), kf(100, 0), kf(250, 0.8), kf(350, 0),
+         kf(500, 0.8), kf(600, 0), kf(750, 0.8), kf(850, 0), kf(1000, 0)],
+        { phaseConfig: NO_PHASE }),
+      // Verde ácido constante — los stabs manipulan intensidad, no color
+      colorTrack(['all'], [kf(0, { h:120, s:100, l:50 }), kf(1000, { h:120, s:100, l:50 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.75, energyMultiplier: 1.25, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.4, minDurationMs: 500, cooldownMs: 4000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.4 },
+    },
+  },
 ]
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────

@@ -824,6 +824,13 @@ const luxApi = {
     // ============================================
     /** Read the tier chosen in the pre-boot Launcher (hydrates usePerformanceStore) */
     getPerformanceProfile: () => ipcRenderer.invoke('launcher:getProfile'),
+    /**
+     * ♻️ UX HOTFIX: Re-arm the Vanguard Launcher for the next startup.
+     * Clears the persisted "Don't ask again" flag (`skipLauncher`) without
+     * touching the chosen render tier. Used by Tactical Hub → RESTORE LAUNCHER
+     * PROMPT.
+     */
+    resetLauncherPrompt: () => ipcRenderer.invoke('launcher:reset'),
     // ============================================
     // 🎛️ WAVE 375: MASTER ARBITER API
     // ============================================

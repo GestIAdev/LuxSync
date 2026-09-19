@@ -6,6 +6,7 @@
  *   • Art-Net Discovery (migrated from standalone NetIndicator)
  *   • SYNC & TIMECODE — Clock Source selection + protocol controls (WAVE 2502)
  *   • MIDI Clock Master — Outbound clock generation (WAVE 2502)
+ *   • SYSTEM & UI PERFORMANCE — Vanguard Launcher restore (UX HOTFIX)
  *   • [Future] OSC Configuration
  *   • [Future] sACN Bridge
  *   • [Future] System Diagnostics
@@ -150,6 +151,13 @@ export default function TacticalHub() {
 
   // Shared timecode display for active source
   const [liveTimecode, setLiveTimecode] = useState<SMPTETimecode>({ hours: 0, minutes: 0, seconds: 0, frames: 0, frameRate: 25 })
+
+  // ── SYSTEM & UI PERFORMANCE State (UX HOTFIX) ──
+  const [perfTier, setPerfTier] = useState<'hq' | 'balanced' | 'eco' | null>(null)
+  const [launcherSuppressed, setLauncherSuppressed] = useState<boolean | null>(null)
+  const [isRestoringLauncher, setIsRestoringLauncher] = useState(false)
+  const [launcherToast, setLauncherToast] = useState<{ msg: string; isError: boolean } | null>(null)
+  const launcherToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Refs for intervals ──
   const syncPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -303,6 +311,31 @@ export default function TacticalHub() {
       ltcAnalyserRef.current = null
     }
   }, [activeClockSource, isOpen])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // VANGUARD LAUNCHER — profile readout (UX HOTFIX)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Refresh the render-mode / launcher-gate readout each time the panel opens
+  useEffect(() => {
+    if (!isOpen) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await window.lux?.getPerformanceProfile?.()
+        if (!cancelled && res) {
+          setPerfTier(res.tier)
+          setLauncherSuppressed(res.skipLauncher === true)
+        }
+      } catch { /* IPC unavailable outside Electron */ }
+    })()
+    return () => { cancelled = true }
+  }, [isOpen])
+
+  // Clear the pending toast auto-dismiss on unmount
+  useEffect(() => () => {
+    if (launcherToastTimerRef.current) clearTimeout(launcherToastTimerRef.current)
+  }, [])
 
   // ── Close on outside click ──
   useEffect(() => {
@@ -460,6 +493,34 @@ export default function TacticalHub() {
       return !prev
     })
   }, [refreshNodes])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // VANGUARD LAUNCHER — restore action (UX HOTFIX)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const showLauncherToast = useCallback((msg: string, isError = false) => {
+    setLauncherToast({ msg, isError })
+    if (launcherToastTimerRef.current) clearTimeout(launcherToastTimerRef.current)
+    launcherToastTimerRef.current = setTimeout(() => setLauncherToast(null), 4000)
+  }, [])
+
+  const handleRestoreLauncher = useCallback(async () => {
+    if (isRestoringLauncher) return
+    setIsRestoringLauncher(true)
+    try {
+      const res = await window.lux?.resetLauncherPrompt?.()
+      if (res?.ok) {
+        setLauncherSuppressed(false)
+        showLauncherToast('Launcher restored for next startup')
+      } else {
+        showLauncherToast(`Reset failed${res?.error ? `: ${res.error}` : ''}`, true)
+      }
+    } catch {
+      showLauncherToast('Reset failed — IPC unavailable', true)
+    } finally {
+      setIsRestoringLauncher(false)
+    }
+  }, [isRestoringLauncher, showLauncherToast])
 
   // ═══════════════════════════════════════════════════════════════════════
   // DOT CLASS (Art-Net status dot on the pill)
@@ -811,6 +872,57 @@ export default function TacticalHub() {
             <div className="hub-section-empty">Próximamente</div>
           </div>
           */}
+
+          {/* ═══ SECTION: SYSTEM & UI PERFORMANCE (UX HOTFIX) ═══ */}
+          <div className="hub-section">
+            <div className="hub-section-header">
+              <span className="hub-section-icon">🚀</span>
+              <span className="hub-section-title">SYSTEM & UI PERFORMANCE</span>
+            </div>
+
+            <div className="hub-sync-controls">
+              <div className="hub-sync-row">
+                <label className="hub-sync-row-label">Render Mode</label>
+                <span className="hub-sync-value hub-sync-value--mono">
+                  {perfTier ? perfTier.toUpperCase() : '—'}
+                </span>
+              </div>
+              <div className="hub-sync-row">
+                <label className="hub-sync-row-label">Launcher</label>
+                <span className={`hub-sync-value ${launcherSuppressed === false ? 'hub-sync-value--on' : ''}`}>
+                  {launcherSuppressed === null
+                    ? '—'
+                    : launcherSuppressed
+                      ? 'SUPPRESSED AT BOOT'
+                      : 'SHOWS AT BOOT'}
+                </span>
+              </div>
+              <div className="hub-sync-row">
+                <label className="hub-sync-row-label">Vanguard</label>
+                <button
+                  className="hub-restore-btn"
+                  onClick={handleRestoreLauncher}
+                  disabled={isRestoringLauncher}
+                  title="Re-arm the Vanguard Launcher so it appears on next startup"
+                >
+                  {isRestoringLauncher ? '⟳ RESETTING…' : '⟲ RESTORE LAUNCHER PROMPT'}
+                </button>
+              </div>
+            </div>
+
+            {launcherToast && (
+              <div className={`hub-toast ${launcherToast.isError ? 'hub-toast--error' : ''}`} role="status">
+                {launcherToast.msg}
+              </div>
+            )}
+
+            <div className="hub-section-footer">
+              <span>VANGUARD LAUNCHER GATE</span>
+              <span>
+                {launcherSuppressed === null ? '—' : launcherSuppressed ? '⚠️ SKIP FLAG ON' : '🟢 ARMED'}
+              </span>
+            </div>
+          </div>
           </div>{/* end hub-panel-body */}
 
           {/* Panel Footer */}
@@ -1446,6 +1558,61 @@ export default function TacticalHub() {
           border-color: #10b981;
           color: #10b981;
           background: rgba(16, 185, 129, 0.08);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* SYSTEM & UI PERFORMANCE — UX HOTFIX                           */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        /* ── Restore Launcher button ── */
+        .hub-restore-btn {
+          flex: 1;
+          max-width: 230px;
+          padding: 5px 10px;
+          border: 1px solid rgba(0, 240, 255, 0.28);
+          border-radius: 6px;
+          background: rgba(0, 240, 255, 0.05);
+          color: rgba(0, 240, 255, 0.8);
+          font-family: var(--font-mono, monospace);
+          font-size: 0.6rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+
+        .hub-restore-btn:hover:not(:disabled) {
+          border-color: rgba(0, 240, 255, 0.6);
+          color: var(--accent-primary, #00ffff);
+          background: rgba(0, 240, 255, 0.1);
+          box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+        }
+
+        .hub-restore-btn:disabled {
+          opacity: 0.4;
+          cursor: wait;
+        }
+
+        /* ── Inline toast (auto-dismiss) ── */
+        .hub-toast {
+          margin: 0 14px 8px;
+          padding: 6px 10px;
+          border-radius: 6px;
+          border: 1px solid rgba(16, 185, 129, 0.35);
+          background: rgba(16, 185, 129, 0.08);
+          color: #10b981;
+          font-family: var(--font-mono, monospace);
+          font-size: 0.6rem;
+          letter-spacing: 0.05em;
+          text-align: center;
+          animation: hub-panel-in 0.2s ease;
+        }
+
+        .hub-toast--error {
+          border-color: rgba(239, 68, 68, 0.4);
+          background: rgba(239, 68, 68, 0.08);
+          color: #ef4444;
         }
 
         /* ── Panel Footer ── */

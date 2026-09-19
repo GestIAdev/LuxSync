@@ -21,15 +21,17 @@
  *
  * LIFECYCLE WARNING:
  * `launcher:probe`, `launcher:commit` and `launcher:cancel` are only meaningful
- * while the Launcher window lives, but `launcher:getProfile` is called later by
- * the MAIN APP renderer to hydrate `usePerformanceStore`. All four are therefore
+ * while the Launcher window lives, but `launcher:getProfile` and
+ * `launcher:reset` are called later by the MAIN APP renderer — the former to
+ * hydrate `usePerformanceStore`, the latter from the Tactical Hub's
+ * "RESTORE LAUNCHER PROMPT" escape hatch (UX hotfix). All five are therefore
  * registered unconditionally and NONE are ever removed. Registering them inside
  * an `if (shouldShowLauncher)` branch would leave `launcher:getProfile` missing
  * whenever the Launcher is skipped, and hydration would silently fall back to HQ
  * (blueprint risk #5).
  *
  * @module electron/launcher/launcherIpc
- * @version 7580.0.0
+ * @version 7580.1.0 - UX hotfix: launcher:reset
  */
 
 import { app, ipcMain, BrowserWindow } from 'electron'
@@ -76,6 +78,20 @@ export interface LauncherCommitResult {
 export interface LauncherGetProfileResult {
   tier: PerformanceTier
   hardware: HardwareProfile | null
+  /**
+   * The persisted "Don't ask again" flag. `usePerformanceStore.hydrate()`
+   * ignores it; the Tactical Hub reads it to show whether the Launcher is
+   * currently suppressed at boot.
+   */
+  skipLauncher: boolean
+  /** Whether the stored tier was explicitly picked by the operator. */
+  userConfirmed: boolean
+}
+
+/** Response of `launcher:reset` — consumed by the Tactical Hub restore button. */
+export interface LauncherResetResult {
+  ok: boolean
+  error?: string
 }
 
 /** Dependencies injected by `main.ts`. */
@@ -143,7 +159,7 @@ function closeLauncher(deps: LauncherIpcDeps): void {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Register the four `launcher:*` channels.
+ * Register the five `launcher:*` channels.
  *
  * Call once, from the Launcher gate in `main.ts`, BEFORE the Launcher window
  * loads (its inline script calls `launcher:probe` on `DOMContentLoaded`), and
@@ -252,8 +268,41 @@ export function registerLauncherIpc(deps: LauncherIpcDeps): void {
     return {
       tier: profile.tier,
       hardware: profile.hardware,
+      skipLauncher: profile.skipLauncher,
+      userConfirmed: profile.userConfirmed,
     }
   })
 
-  console.log('[Vanguard] IPC registered: probe, commit, cancel, getProfile')
+  // ───────────────────────────────────────────────────────────────────────────
+  // launcher:reset — MAIN APP renderer → main, invoke  (UX HOTFIX)
+  //
+  // Re-arms the Vanguard Launcher for the next startup by clearing ONLY the
+  // `skipLauncher` flag. The chosen tier and `userConfirmed` are deliberately
+  // preserved so the operator's render mode stays intact and the Launcher
+  // re-opens with their previous selection pre-highlighted.
+  //
+  // `shouldShowLauncher()` suppresses the window only when
+  // `skipLauncher && userConfirmed`, so flipping this single flag is both
+  // necessary and sufficient — no other profile field needs to be touched.
+  // ───────────────────────────────────────────────────────────────────────────
+  ipcMain.handle('launcher:reset', async (): Promise<LauncherResetResult> => {
+    try {
+      const saved = await configManager.setPerformanceProfile({ skipLauncher: false })
+
+      if (!saved) {
+        const error = 'Failed to write luxsync-config.json'
+        console.error('[Vanguard]', error)
+        return { ok: false, error }
+      }
+
+      console.log('[Vanguard] ♻️ skipLauncher cleared — Launcher will appear on next startup')
+      return { ok: true }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      console.error('[Vanguard] Reset threw:', error)
+      return { ok: false, error }
+    }
+  })
+
+  console.log('[Vanguard] IPC registered: probe, commit, cancel, getProfile, reset')
 }

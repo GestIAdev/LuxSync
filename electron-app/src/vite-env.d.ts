@@ -620,7 +620,18 @@ declare global {
         screenHeight: number
         probedAt: string
       } | null
+      /** Persisted "Don't ask again" flag — true means the Launcher is suppressed at boot */
+      skipLauncher: boolean
+      /** Whether the stored tier was explicitly picked by the operator */
+      userConfirmed: boolean
     }>
+
+    /**
+     * ♻️ UX HOTFIX: Re-arm the Vanguard Launcher for the next startup.
+     * Clears the persisted "Don't ask again" flag (`skipLauncher`) without
+     * touching the chosen render tier.
+     */
+    resetLauncherPrompt: () => Promise<{ ok: boolean; error?: string }>
     
     // ============================================
     // 🎛️ WAVE 375: MASTER ARBITER API

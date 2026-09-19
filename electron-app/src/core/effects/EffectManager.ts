@@ -64,6 +64,8 @@ import { getHeatmapLogger } from '../genesis/fitness/HeatmapLogger'
 import { getGenesisVault } from '../genesis/GenesisVaultService'
 import { getColiseumService } from '../genesis/ColiseumService'
 import { getOrganismTag } from '../genesis/naming/OrganismTag'
+// 🔒 UX HOTFIX: ecosystem master switch — gates the EMERGENCY SPARK below.
+import { isGenesisPaused } from '../genesis/EcosystemGate'
 import type { ContextVector6D } from '../genesis/types'
 
 // ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
@@ -583,7 +585,10 @@ export class EffectManager extends EventEmitter {
         // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn
         // an initial cohort immediately. This ensures that any effect fired in
         // vivo — even if cold-start seeding missed it — gets its first children.
-        if (organisms.length === 0) {
+        // 🔒 UX HOTFIX: only while the ecosystem is ON. When the laboratory is
+        // closed, the trigger stays on the factory .lfx blueprint that already
+        // fired above — zero DNA generation, zero emergency sparks.
+        if (organisms.length === 0 && !isGenesisPaused()) {
           // Verify the blueprint exists before attempting to spawn
           const bpExists = db.prepare(
             'SELECT 1 FROM lfx_blueprints WHERE blueprint_id = ?',
@@ -605,6 +610,13 @@ export class EffectManager extends EventEmitter {
               }
             })
           }
+        } else if (organisms.length === 0) {
+          // 🔒 UX HOTFIX: lab closed — the factory .lfx blueprint that already
+          // fired above remains the answer. No DNA is generated while paused.
+          console.log(
+            `[EffectManager 🧬] LAB CLOSED — "${config.effectType}" stays on ` +
+            `factory builtin (EMERGENCY SPARK denied: ecosystem PAUSED)`,
+          )
         }
 
         for (const org of organisms) {

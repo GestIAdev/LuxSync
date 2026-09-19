@@ -36,6 +36,10 @@ import {
 } from './operators/GeneticOperators'
 import { prenatalScreening, type ScreeningResult } from './screening/PrenatalScreening'
 import { computeRarity, computeRaritySimple, type RarityOutput } from './loot/RarityEngine'
+// 🔒 UX HOTFIX: ecosystem master switch. Read from the zero-import gate
+// module — importing GenesisIgnition here would close a dependency cycle
+// (GenesisIgnition already imports this service).
+import { isGenesisPaused } from './EcosystemGate'
 import { getHeatmapLogger } from './fitness/HeatmapLogger'
 import { getSpeciationEngine, type SpeciationResult } from './ecology/SpeciationEngine'
 import { getLifecycleManager, type LifecycleResult } from './ecology/LifecycleManager'
@@ -284,6 +288,30 @@ export class ColiseumService {
     birthFitness?: number,
     birthVector?: ContextVector6D,
   ): SpawnResult {
+    // 🔒 UX HOTFIX — MASTER SWITCH GUARD (choke point):
+    // When the ecosystem is OFF the laboratory is CLOSED — zero DNA
+    // generation, zero DB writes, zero new organisms. This aborts every
+    // caller uniformly: EffectManager's EMERGENCY SPARK, _mitosis, and any
+    // future entry point. The live trigger falls back to the factory .lfx
+    // blueprint (it never consumed the SpawnResult anyway).
+    if (isGenesisPaused()) {
+      console.log(
+        `[Coliseum 🧬] LAB CLOSED — spawnOrganism(${parentBlueprintId} via ${operatorType}) denied: ecosystem PAUSED`,
+      )
+      return {
+        success: false,
+        organismId: null,
+        blueprintId: parentBlueprintId,
+        operator: operatorType,
+        rarityTier: 'COMMON',
+        rarityScore: 0,
+        l2Distance: 0,
+        screening: { viable: false, gates: [], abortReason: 'ECOSYSTEM_PAUSED' },
+        customName: null,
+        generation: 0,
+      }
+    }
+
     // 1. Fetch ancestor
     const blueprint = this._vault.getBlueprint(parentBlueprintId)
     if (!blueprint) {
@@ -445,6 +473,28 @@ export class ColiseumService {
     seed?: number,
     birthVector?: ContextVector6D,
   ): SpawnHybridResult {
+    // 🔒 UX HOTFIX — MASTER SWITCH GUARD: same choke-point abort as
+    // spawnOrganism. Sexual reproduction (crossover) is DNA generation too —
+    // the lab being closed means zero hybrids, period.
+    if (isGenesisPaused()) {
+      console.log(
+        `[Coliseum 🧬] LAB CLOSED — spawnHybrid(${parentOrganismIdA} × ${parentOrganismIdB}) denied: ecosystem PAUSED`,
+      )
+      return {
+        success: false,
+        organismId: null,
+        blueprintId: '',
+        parentOrganismIdA,
+        parentOrganismIdB,
+        dominantParent: 'A',
+        rarityTier: 'COMMON',
+        rarityScore: 0,
+        l2Distance: 0,
+        screening: { viable: false, gates: [], abortReason: 'ECOSYSTEM_PAUSED' },
+        generation: 0,
+      }
+    }
+
     if (parentOrganismIdA === parentOrganismIdB) {
       throw new Error('[Coliseum] Sexual reproduction requires two distinct parents')
     }
@@ -600,6 +650,14 @@ export class ColiseumService {
    * Empty ecosystem → 100% spawn. Full ecosystem → 0% spawn.
    */
   spawnInitialCohort(parentBlueprintId: string, birthVector?: ContextVector6D): readonly SpawnResult[] {
+    // 🔒 UX HOTFIX — MASTER SWITCH GUARD: the EMERGENCY SPARK entry point.
+    // When the ecosystem is OFF, an orphaned blueprint keeps firing its
+    // factory .lfx — no initial cohort is spawned. Returning [] makes the
+    // caller's viable-count check see zero spawns without touching the DB.
+    if (isGenesisPaused()) {
+      return []
+    }
+
     // WAVE 6000.V5: Deterministic PRNG — no Math.random()
     const rng = makeRng(stringToSeed(`${parentBlueprintId}-${Date.now()}`))
 

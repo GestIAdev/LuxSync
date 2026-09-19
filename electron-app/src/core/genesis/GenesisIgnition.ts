@@ -18,15 +18,16 @@ import { getColiseumService } from './ColiseumService'
 import { getAncestralIngestor } from './AncestralIngestor'
 import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry'
 import { dreamEngineIntegrator } from '../intelligence/integration/DreamEngineIntegrator'
+// 🔒 UX HOTFIX: the paused flag now lives in EcosystemGate (zero-import module)
+// so the spawn pipeline can read it without closing a dependency cycle on
+// this file. `isGenesisPaused` is re-exported below for existing consumers
+// (genesisIpc.ts, genesis/index.ts).
+import { isGenesisPaused, setGenesisPaused } from './EcosystemGate'
 
 const MAINTENANCE_INTERVAL_MS = 60_000  // 60 seconds — geological time
 
 let _maintenanceTimer: ReturnType<typeof setInterval> | null = null
 let _ignited = false
-// 🔒 WAVE 7527: Default PAUSED — ecosystem is OPT-IN per session.
-// The geological loop (maintenance + heatmap) does NOT auto-start on boot.
-// The operator must explicitly press "▶ START ECOSYSTEM" in the Genesis Lab.
-let _genesisPaused = true
 
 /**
  * Ignites the Genesis Engine's geological loop.
@@ -85,7 +86,7 @@ function _startEcosystemTimers(): void {
 
   // Geological maintenance timer (60s) + Arena Gates refresh
   _maintenanceTimer = setInterval(() => {
-    if (_genesisPaused) return
+    if (isGenesisPaused()) return
     getColiseumService()
       .runEcologicalMaintenance()
       .then(() => {
@@ -139,8 +140,8 @@ export function shutdownGenesisEngine(): void {
  * instead of letting them idle. This fully halts the geological loop.
  */
 export function pauseGenesisEngine(): void {
-  if (_genesisPaused) return
-  _genesisPaused = true
+  if (isGenesisPaused()) return
+  setGenesisPaused(true)
   _stopEcosystemTimers()
   console.log('[GenesisIgnition 🧬] Ecosystem PAUSED — geological loop halted.')
 }
@@ -152,18 +153,18 @@ export function pauseGenesisEngine(): void {
  * that activates the geological loop.
  */
 export function resumeGenesisEngine(): void {
-  if (!_genesisPaused) return
-  _genesisPaused = false
+  if (!isGenesisPaused()) return
+  setGenesisPaused(false)
   _startEcosystemTimers()
   console.log('[GenesisIgnition 🧬] Ecosystem RESUMED — geological loop active.')
 }
 
 /**
  * Returns true if the Genesis ecosystem is currently paused.
+ * Re-exported from EcosystemGate — the canonical home of the flag —
+ * so existing consumers (genesisIpc, genesis/index) keep their import.
  */
-export function isGenesisPaused(): boolean {
-  return _genesisPaused
-}
+export { isGenesisPaused } from './EcosystemGate'
 
 /**
  * WAVE 6000.V6: Cold-start seeding PURGED.

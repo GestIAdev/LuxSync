@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-09-19T14:18:33.496Z",
-  "count": 78,
+  "generatedAt": "2026-09-19T14:38:51.838Z",
+  "count": 81,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -299,6 +299,16 @@
       "checksum": "d6ceaf0f027492aa",
       "size": 7627
     },
+    "techno/fx_club_chromatic_pulse.lfx": {
+      "relPath": "techno/fx_club_chromatic_pulse.lfx",
+      "checksum": "d6ec25b0dd9bc684",
+      "size": 5099
+    },
+    "techno/fx_club_deep_resonance.lfx": {
+      "relPath": "techno/fx_club_deep_resonance.lfx",
+      "checksum": "6aa5562faa49acd6",
+      "size": 4386
+    },
     "techno/fx_club_hypnotic_bounce.lfx": {
       "relPath": "techno/fx_club_hypnotic_bounce.lfx",
       "checksum": "8ba89785e3318fbe",
@@ -313,6 +323,11 @@
       "relPath": "techno/fx_club_laser_cutter.lfx",
       "checksum": "01dea55f521851cc",
       "size": 6954
+    },
+    "techno/fx_club_titanium_hit.lfx": {
+      "relPath": "techno/fx_club_titanium_hit.lfx",
+      "checksum": "1e643045b5086c9f",
+      "size": 4341
     },
     "techno/fx_club_tungsten_slam.lfx": {
       "relPath": "techno/fx_club_tungsten_slam.lfx",

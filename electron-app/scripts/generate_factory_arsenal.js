@@ -1426,6 +1426,113 @@ const BLUEPRINTS = [
       zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.6 },
     },
   },
+
+  // ═══ LOTE 11 — CLUB 4: THE LONG HOLDS (techno-club) ═══
+  // Tiempos mecánicos ≥3500ms para las ruedas de color de las cabezas de
+  // 25kg (darkspinfilter). Cero cinética — solo intensity/color/strobe.
+
+  // ── EFECTO 34: DEEP RESONANCE — oleaje tech house de larga duración ────────
+  {
+    id: 'fx_club_deep_resonance', name: 'Deep Resonance', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','deep','resonance','swell','tech-house','oleaje','techno','long'],
+    vibes: ['techno-club'], sections: ['build','breakdown','groove'],
+    // Spec 'active' fuera de allowedZones ambient (LOW) → warn R4, no fail.
+    // Emitido tal cual: la subida elegante puede vivir en zona activa.
+    energyZone: { min: 'active', max: 'active' },
+    // Bias ambient: A0.215≤0.3 ✓ C0.184≤0.3 ✓ O0.892≥0.55 ✓ — limpio.
+    genome: { aggression: 0.215, chaos: 0.184, organicity: 0.892 },
+    archetype: 'ambient', spatialBehavior: 'static',
+    spatialZones: ['back-left','floor','ambient'], mixBus: 'global', priority: 45,
+    durationMs: 6000, strobeHz: 0, isOneShot: true, bpmRef: 122,
+    dominantColor: { h: 230, s: 100, l: 25 },
+    buildTracks: () => [
+      // Swell: rampa ease-in-out aproximada (0.1→0.45→0.8) en 3000ms,
+      // hold 1000ms, fade-out lento 2000ms hasta 0
+      intensityTrack(['back-left','floor','ambient'],
+        [kf(0, 0.1, 'linear'), kf(1500, 0.45, 'linear'), kf(3000, 0.8, 'linear'),
+         kf(4000, 0.8, 'linear'), kf(6000, 0, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      // Azul marino → magenta profundo, transición hiper-lenta (ruedas de
+      // color tienen tiempo de clavar el hue)
+      colorTrack(['all'],
+        [kf(0, { h:230, s:100, l:25 }, 'linear'), kf(6000, { h:300, s:100, l:30 }, 'linear')]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.85, energyMultiplier: 1.0, vibeBonus: 0.15 },
+      gpuCost: 0.1, fatigueImpact: 0.15, minDurationMs: 4000, cooldownMs: 8000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.15 },
+    },
+  },
+
+  // ── EFECTO 35: TITANIUM HIT — slam masivo congelado en el aire ─────────────
+  {
+    id: 'fx_club_titanium_hit', name: 'Titanium Hit', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','titanium','hit','slam','frozen','blinder','techno','ice','heavy'],
+    vibes: ['techno-club'], sections: ['drop','climax'],
+    energyZone: { min: 'intense', max: 'intense' },
+    // Spec: organicity 0.621 viola organicityMax 0.45 del bias heavy →
+    // emitido 0.45 (= bakeCognitiveDNA). A0.863≥0.7 ✓ C0.417≥0.3 ✓.
+    genome: { aggression: 0.863, chaos: 0.417, organicity: 0.621 },
+    archetype: 'heavy', spatialBehavior: 'static',
+    spatialZones: ['front','air','back-right'], mixBus: 'global', priority: 90,
+    durationMs: 4000, strobeHz: 0, isOneShot: true, bpmRef: 130,
+    dominantColor: { h: 200, s: 30, l: 90 },
+    buildTracks: () => [
+      // Salto instantáneo a 1.0 (hold previo a 0 implícito), hold 1500ms de
+      // ceguera fija, decaimiento parabólico aproximado en 2500ms: lento al
+      // inicio (0.9→0.7), se acelera al final (0.3→0)
+      intensityTrack(['front','air','back-right'],
+        [kf(0, 1), kf(1500, 1, 'linear'), kf(2500, 0.7, 'linear'),
+         kf(3300, 0.3, 'linear'), kf(4000, 0)],
+        { phaseConfig: NO_PHASE }),
+      // Blanco hielo CTB constante — la rueda clava el frío y se queda
+      colorTrack(['all'], [kf(0, { h:200, s:30, l:90 }), kf(4000, { h:200, s:30, l:90 })]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.9, energyMultiplier: 1.4, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.5, minDurationMs: 3500, cooldownMs: 12000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.6 },
+    },
+  },
+
+  // ── EFECTO 36: CHROMATIC PULSE — pumper largo para saltos de rueda ─────────
+  {
+    id: 'fx_club_chromatic_pulse', name: 'Chromatic Pulse', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','chromatic','pulse','pumper','synth','techno','yellow','red'],
+    vibes: ['techno-club'], sections: ['verse','chorus','build'],
+    energyZone: { min: 'active', max: 'intense' },
+    // Utility: genoma asimétrico intacto.
+    genome: { aggression: 0.548, chaos: 0.382, organicity: 0.514 },
+    archetype: 'utility', spatialBehavior: 'static',
+    spatialZones: ['all-movers','ambient'], mixBus: 'global', priority: 62,
+    durationMs: 5000, strobeHz: 0, isOneShot: true, bpmRef: 126,
+    dominantColor: { h: 60, s: 100, l: 50 },
+    buildTracks: () => [
+      // 3 pulsos anchos back-to-back (ciclo 1600ms): sube 400ms a 0.85,
+      // hold 800ms, baja 400ms a 0. Los cruces por 0 = puntos ciegos donde
+      // la rueda de color salta. Cola final 200ms a 0.
+      intensityTrack(['all-movers','ambient'],
+        [kf(0, 0, 'linear'), kf(400, 0.85, 'linear'), kf(1200, 0.85, 'linear'), kf(1600, 0, 'linear'),
+         kf(2000, 0.85, 'linear'), kf(2800, 0.85, 'linear'), kf(3200, 0, 'linear'),
+         kf(3600, 0.85, 'linear'), kf(4400, 0.85, 'linear'), kf(4800, 0, 'linear'),
+         kf(5000, 0)],
+        { phaseConfig: NO_PHASE }),
+      // Amarillo tóxico → rojo sangre LINEAR sobre los 5s completos
+      colorTrack(['all'],
+        [kf(0, { h:60, s:100, l:50 }, 'linear'), kf(5000, { h:0, s:100, l:40 }, 'linear')]),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.8, energyMultiplier: 1.25, vibeBonus: 0.15 },
+      gpuCost: 0.15, fatigueImpact: 0.35, minDurationMs: 3500, cooldownMs: 6000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.4 },
+    },
+  },
 ]
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────

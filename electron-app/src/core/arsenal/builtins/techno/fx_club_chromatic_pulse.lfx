@@ -1,0 +1,225 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_club_chromatic_pulse",
+    "name": "Chromatic Pulse",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "club",
+      "chromatic",
+      "pulse",
+      "pumper",
+      "synth",
+      "techno",
+      "yellow",
+      "red"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "spatialZones": [
+      "all-movers",
+      "ambient"
+    ],
+    "mixBus": "global",
+    "priority": 62,
+    "durationMs": 5000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "000f7c8b-f260-425c-a38e-430a8cb74147",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 400,
+              "value": 0.85,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1200,
+              "value": 0.85,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1600,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0.85,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2800,
+              "value": 0.85,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3200,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3600,
+              "value": 0.85,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4400,
+              "value": 0.85,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4800,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 5000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "e6a9c23f-b1a6-480e-ad94-e0ea13fcfd58",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 60,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 5000,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 40
+              },
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 60,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 126,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.548,
+        "chaos": 0.382,
+        "organicity": 0.514
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "verse",
+        "chorus",
+        "build"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.8,
+        "energyMultiplier": 1.25,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.15,
+      "fatigueImpact": 0.35,
+      "minDurationMs": 3500,
+      "cooldownMs": 6000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": 0.4
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:8590bb33c272336515151ae0ccb07257bec04119ec1b74199ad03446b6af9162"
+}

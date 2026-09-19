@@ -1,0 +1,197 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_club_titanium_hit",
+    "name": "Titanium Hit",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "club",
+      "titanium",
+      "hit",
+      "slam",
+      "frozen",
+      "blinder",
+      "techno",
+      "ice",
+      "heavy"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "spatialZones": [
+      "front",
+      "air",
+      "back-right"
+    ],
+    "mixBus": "global",
+    "priority": 90,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "3e8fbeac-8794-4252-a6cb-c471c2f60e7b",
+        "paramId": "intensity",
+        "zones": [
+          "front",
+          "air",
+          "back-right"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2500,
+              "value": 0.7,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0.3,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "9bee8660-9fd9-4848-a945-ba89befbf0f7",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 200,
+                "s": 30,
+                "l": 90
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": {
+                "h": 200,
+                "s": 30,
+                "l": 90
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 200,
+      "dominantColorS": 30,
+      "dominantColorL": 90,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 130,
+      "attackMs": 0,
+      "strobeHz": 0
+    },
+    "cognitiveDNA": {
+      "archetype": "heavy",
+      "genome": {
+        "aggression": 0.863,
+        "chaos": 0.417,
+        "organicity": 0.45
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "drop",
+        "climax"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.71,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.4,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.15,
+      "fatigueImpact": 0.5,
+      "minDurationMs": 3500,
+      "cooldownMs": 12000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": null,
+        "minimumEnergy": 0.6
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:9e08e181f0caf33cb30ec198bc156e583e0f18a9b6366e6b614d087dcfbdeef6"
+}

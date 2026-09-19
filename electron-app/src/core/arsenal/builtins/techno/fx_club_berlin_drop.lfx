@@ -1,0 +1,336 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "fx_club_berlin_drop",
+    "name": "Berlin Drop",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "club",
+      "berlin",
+      "drop",
+      "industrial",
+      "strobe",
+      "hard",
+      "techno",
+      "toxico"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "spatialZones": [
+      "air",
+      "front-right",
+      "all-movers"
+    ],
+    "mixBus": "global",
+    "priority": 92,
+    "durationMs": 1500,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "2f8e9598-ff89-4a0e-a7f7-4fd463214c1c",
+        "paramId": "intensity",
+        "zones": [
+          "air",
+          "front-right"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 50,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 300,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 350,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 600,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 650,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 900,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 950,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1250,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "40fdcbb3-0599-4502-aa46-1c9317386c6c",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 50,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 300,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 350,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 600,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 650,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 900,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 950,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1200,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1250,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": {
+                "h": 120,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "59e37674-8723-4c4e-a975-cd1cb6d83d18",
+        "paramId": "strobe",
+        "zones": [
+          "all-movers"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 120,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "bpmRef": 135,
+      "attackMs": 0,
+      "strobeHz": 10
+    },
+    "cognitiveDNA": {
+      "archetype": "strobe",
+      "genome": {
+        "aggression": 0.941,
+        "chaos": 0.762,
+        "organicity": 0.115
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "drop",
+        "climax"
+      ],
+      "energyZone": {
+        "min": "peak",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.79,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.5,
+        "vibeBonus": 0.15
+      },
+      "gpuCost": 0.2,
+      "fatigueImpact": 0.6,
+      "minDurationMs": 800,
+      "cooldownMs": 10000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": null,
+        "minimumEnergy": 0.7
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 10,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:5ce60d871b4d6435de2c471ed436825ed1d223d6d511e2a840d18c13092db19d"
+}

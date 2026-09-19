@@ -42,6 +42,8 @@ const VALID_ZONE_TARGETS = new Set([
   'front','back','floor','movers-left','movers-right','strobe','air','ambient',
   'unassigned','all','all-pars','all-movers','pars','movers',
   'all-left','all-right','left','right',
+  // Compuestos estéreo canónicos (zone-node-router.ts: front-left, back-right…)
+  'front-left','front-right','back-left','back-right','floor-left','floor-right',
 ])
 const STROBE_MAX_HZ = 25
 
@@ -1088,6 +1090,133 @@ const BLUEPRINTS = [
       gpuCost: 0.1, fatigueImpact: 0.08, minDurationMs: 4000, cooldownMs: 10000,
       isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
       zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.05 },
+    },
+  },
+
+  // ═══ LOTE 8 — CLUB (vibe 'techno-club', subdir 'techno') ═══
+  // Física asimétrica del perfil techno: colchón back-left (mid synths),
+  // cortes secos front-right (kick sniper). ADN asimétrico 3 decimales.
+
+  // ── EFECTO 25: CLUB HYPNOTIC BOUNCE — groove tech house ────────────────────
+  {
+    id: 'fx_club_hypnotic_bounce', name: 'Hypnotic Bounce', subdir: 'techno',
+    category: 'composite',
+    tags: ['club','tech-house','groove','hipnotico','bounce','techno','cyan','minimal'],
+    vibes: ['techno-club'], sections: ['verse','build','groove'],
+    energyZone: { min: 'active', max: 'active' },
+    // Utility: genoma asimétrico intacto (sin bias).
+    genome: { aggression: 0.513, chaos: 0.287, organicity: 0.731 },
+    archetype: 'utility', spatialBehavior: 'relative_offset',
+    spatialZones: ['back-left','front-right','all-movers'], mixBus: 'global', priority: 65,
+    durationMs: 2000, strobeHz: 0, isOneShot: true, bpmRef: 124,
+    dominantColor: { h: 180, s: 100, l: 40 },
+    buildTracks: () => [
+      // Colchón back-left: río de luz pulsando suave 0.4↔0.7 (2 respiraciones)
+      intensityTrack(['back-left'],
+        [kf(0, 0.4, 'linear'), kf(500, 0.7, 'linear'), kf(1000, 0.4, 'linear'),
+         kf(1500, 0.7, 'linear'), kf(2000, 0.4, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      // Kick sniper front-right: picos 0.8 con caída LINEAR a 0 en 80ms
+      // (diente de sierra) — 4 golpes al compás cada 500ms
+      intensityTrack(['front-right'],
+        [kf(0, 0.8, 'linear'), kf(80, 0, 'linear'),
+         kf(500, 0.8, 'linear'), kf(580, 0, 'linear'),
+         kf(1000, 0.8, 'linear'), kf(1080, 0, 'linear'),
+         kf(1500, 0.8, 'linear'), kf(1580, 0, 'linear'), kf(2000, 0, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      // Cyan profundo → azul oscuro LINEAR sobre 2000ms
+      colorTrack(['all'],
+        [kf(0, { h:180, s:100, l:40 }, 'linear'), kf(2000, { h:240, s:100, l:30 }, 'linear')]),
+      // Tilt respiración: 0.1 → -0.1 → 0.1 triángulo seamless en movers
+      tiltTrack(['all-movers'],
+        [kf(0, 0.1, 'linear'), kf(1000, -0.1, 'linear'), kf(2000, 0.1, 'linear')],
+        { phaseConfig: NO_PHASE }),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.8, energyMultiplier: 1.15, vibeBonus: 0.15 },
+      gpuCost: 0.25, fatigueImpact: 0.3, minDurationMs: 1500, cooldownMs: 5000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: false,
+      zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: 0.35 },
+    },
+  },
+
+  // ── EFECTO 26: CLUB ACID RISER — túnel ascendente hacia el drop ────────────
+  {
+    id: 'fx_club_acid_riser', name: 'Acid Riser', subdir: 'techno',
+    category: 'composite',
+    tags: ['club','acid','riser','buildup','tunel','edm','techno','magenta','tension'],
+    vibes: ['techno-club'], sections: ['buildup','build'],
+    // Spec 'buildup→intense': 'buildup' no es EnergyZoneId canónico (es una
+    // sección). Mapeado a 'active→intense' (span 2) — cubre la subida al drop.
+    energyZone: { min: 'active', max: 'intense' },
+    genome: { aggression: 0.784, chaos: 0.419, organicity: 0.352 },
+    archetype: 'utility', spatialBehavior: 'relative_offset',
+    spatialZones: ['all-movers','all'], mixBus: 'global', priority: 78,
+    durationMs: 4000, strobeHz: 0, isOneShot: true, bpmRef: 128,
+    dominantColor: { h: 300, s: 100, l: 40 },
+    buildTracks: () => [
+      // Rampa de intensidad 0.2 → 0.95 en todas las zonas (adrenalina)
+      intensityTrack(['all'], [kf(0, 0.2, 'linear'), kf(4000, 0.95, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      // Magenta ácido → blanco cegador LINEAR agresivo
+      colorTrack(['all'],
+        [kf(0, { h:300, s:100, l:40 }, 'linear'), kf(4000, { h:0, s:0, l:100 }, 'linear')]),
+      // Túnel: movers-left converge desde -0.5, movers-right desde +0.5 → 0
+      panTrack(['movers-left'], [kf(0, -0.5, 'linear'), kf(4000, 0, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      panTrack(['movers-right'], [kf(0, 0.5, 'linear'), kf(4000, 0, 'linear')],
+        { phaseConfig: NO_PHASE }),
+      // Tilt: rampa 0 → 0.8 (apuntando al cielo al llegar el drop)
+      tiltTrack(['all-movers'], [kf(0, 0, 'linear'), kf(4000, 0.8, 'linear')],
+        { phaseConfig: NO_PHASE }),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.85, energyMultiplier: 1.4, vibeBonus: 0.15 },
+      gpuCost: 0.3, fatigueImpact: 0.45, minDurationMs: 3000, cooldownMs: 8000,
+      isStrobe: false, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.5 },
+    },
+  },
+
+  // ── EFECTO 27: CLUB BERLIN DROP — violencia industrial estroboscópica ──────
+  {
+    id: 'fx_club_berlin_drop', name: 'Berlin Drop', subdir: 'techno',
+    category: 'physical',
+    tags: ['club','berlin','drop','industrial','strobe','hard','techno','toxico'],
+    vibes: ['techno-club'], sections: ['drop','climax'],
+    energyZone: { min: 'peak', max: 'peak' },
+    // Spec pide archetype 'impact': NO canónico (fallback utility al cargar).
+    // Emitido 'strobe': genoma {0.941,0.762,0.115} pasa el bias LIMPIO
+    // (A≥0.75, C≥0.4, O≤0.35) y casa con los latigazos mecánicos pedidos.
+    genome: { aggression: 0.941, chaos: 0.762, organicity: 0.115 },
+    archetype: 'strobe', spatialBehavior: 'static',
+    spatialZones: ['air','front-right','all-movers'], mixBus: 'global', priority: 92,
+    // R3: strobe exige Hz — hold 50ms ≈ 10Hz mecánico en los 7R
+    durationMs: 1500, strobeHz: 10, isOneShot: true, bpmRef: 135,
+    dominantColor: { h: 120, s: 100, l: 50 },
+    buildTracks: () => [
+      // 5 latigazos binarios cada 300ms: 1.0 con hold 50ms → caída a 0
+      // en air (cuchillas espectrales) + front-right
+      intensityTrack(['air','front-right'],
+        [kf(0, 1), kf(50, 0), kf(300, 1), kf(350, 0), kf(600, 1), kf(650, 0),
+         kf(900, 1), kf(950, 0), kf(1200, 1), kf(1250, 0), kf(1500, 0)],
+        { phaseConfig: NO_PHASE }),
+      // Verde tóxico con destellos blancos puros en cada impacto (hold = cortes)
+      colorTrack(['all'],
+        [kf(0, { h:0, s:0, l:100 }), kf(50, { h:120, s:100, l:50 }),
+         kf(300, { h:0, s:0, l:100 }), kf(350, { h:120, s:100, l:50 }),
+         kf(600, { h:0, s:0, l:100 }), kf(650, { h:120, s:100, l:50 }),
+         kf(900, { h:0, s:0, l:100 }), kf(950, { h:120, s:100, l:50 }),
+         kf(1200, { h:0, s:0, l:100 }), kf(1250, { h:120, s:100, l:50 }),
+         kf(1500, { h:120, s:100, l:50 })]),
+      // Estrobo plano mecánico 10Hz en los movers (7R)
+      strobeTrack(['all-movers'], strobeFlat(1500)),
+    ],
+    simMeta: {
+      beautyWeights: { base: 0.9, energyMultiplier: 1.5, vibeBonus: 0.15 },
+      gpuCost: 0.2, fatigueImpact: 0.6, minDurationMs: 800, cooldownMs: 10000,
+      isStrobe: true, isDivineCandidate: false, isHeavyCandidate: true,
+      zScoreGuards: { requireRising: true, minimumZ: null, minimumEnergy: 0.7 },
     },
   },
 ]

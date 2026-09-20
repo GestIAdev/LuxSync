@@ -448,7 +448,7 @@ export function useMidiLearn() {
   // Using addEventListener instead of onmidimessage allows multiple consumers
   // (useMidiLearn + useMIDIClock + MIDIClockSlave) to coexist on the same input.
   const wiredInputsRef = useRef<Set<MIDIInput>>(new Set())
-  const stateChangeHandlerRef = useRef<(() => void) | null>(null)
+  const stateChangeHandlerRef = useRef<((e: Event) => void) | null>(null)
 
   const initMidi = useCallback(async () => {
     if (isInitializedRef.current) return
@@ -486,8 +486,14 @@ export function useMidiLearn() {
       wireInputs()
 
       // Re-wire on hot-plug
-      const stateHandler = () => {
-        console.log('[MidiLearn] 🔄 MIDI device change')
+      const stateHandler = (e: Event) => {
+        const port = (e as MIDIConnectionEvent).port
+        // Solo la reconexión de un INPUT dispara el relog — los eventos de
+        // disconnect/output también pasan por wireInputs() para podar puertos
+        // muertos del wiredInputsRef, pero sin ruido de consola.
+        if (port && port.type === 'input' && port.state === 'connected') {
+          console.log('[MidiMap] 🔄 Dispositivo MIDI reconectado en caliente')
+        }
         wireInputs()
       }
       stateChangeHandlerRef.current = stateHandler

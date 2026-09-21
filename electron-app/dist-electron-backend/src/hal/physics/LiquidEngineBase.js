@@ -392,7 +392,20 @@ export class LiquidEngineBase {
     // PUBLIC API
     // ─────────────────────────────────────────────────────────────────────
     applyBands(input) {
-        const { bands, sectionType = 'drop', isRealSilence, isAGCTrap, harshness = 0.45, flatness = 0.35, } = input;
+        const { bands, sectionType = 'drop', isRealSilence, isAGCTrap, } = input;
+        // 🩸 AMETRALLADORA FIX: NaN/Infinity guard — non-finite band values
+        // poison every downstream EMA (_ambientEMA, _vocalSustainEMA,
+        // avgMidProfiler, envelope avgSignal/avgSignalPeak, _fluxBaseline)
+        // PERMANENTLY — NaN propagates until process restart. Garbage = silence.
+        bands.subBass = Number.isFinite(bands.subBass) ? bands.subBass : 0;
+        bands.bass = Number.isFinite(bands.bass) ? bands.bass : 0;
+        bands.lowMid = Number.isFinite(bands.lowMid) ? bands.lowMid : 0;
+        bands.mid = Number.isFinite(bands.mid) ? bands.mid : 0;
+        bands.highMid = Number.isFinite(bands.highMid) ? bands.highMid : 0;
+        bands.treble = Number.isFinite(bands.treble) ? bands.treble : 0;
+        bands.ultraAir = Number.isFinite(bands.ultraAir) ? bands.ultraAir : 0;
+        const harshness = typeof input.harshness === 'number' && Number.isFinite(input.harshness) ? input.harshness : 0.45;
+        const flatness = typeof input.flatness === 'number' && Number.isFinite(input.flatness) ? input.flatness : 0.35;
         const now = Date.now();
         const p = this.profile;
         // ⚒️ WAVE 7749.86: Track BPM for rhythm gate beat-duration calculation
@@ -703,7 +716,9 @@ export class LiquidEngineBase {
             // because their WNS stays 0 on both frames.
             const rawSnareDelta = input.raw_snare_delta ?? 0;
             const photon = input.photon;
-            const spectralFlux = photon?.spectralFlux ?? 1; // fallback: allow if no photon
+            const _sf = photon?.spectralFlux ?? 1;
+            // 🩸 AMETRALLADORA FIX: non-finite flux would poison _fluxBaseline forever
+            const spectralFlux = Number.isFinite(_sf) ? _sf : 1; // fallback: allow if no photon
             const wns = photon?.whiteNoiseScore ?? 1; // fallback: allow if no photon
             const snareEnergy = input.snare_energy ?? 0;
             // WAVE 7749.21: OPUS AUDIT — capture for diagnostic log outside this block
@@ -1079,7 +1094,9 @@ export class LiquidEngineBase {
                 //   Hi-hat (Res=0.00): gate=0.3 → ghost reduced 70%
                 const ghostResGate = 0.3 + 0.7 * Math.max(0, Math.min(1, (residual - 0.05) / 0.15));
                 const trebleGhost = ghostRefractoryActive ? 0 : rawHhDelta * smartSef * ghostWeight * rhythmMult * ghostGateFactor * ghostResGate;
-                const snareDrive = Math.max(crackDrive, trebleGhost);
+                // 🩸 AMETRALLADORA FIX: non-finite drive would poison _snareEmaFast/Slow forever
+                const _snareDriveRaw = Math.max(crackDrive, trebleGhost);
+                const snareDrive = Number.isFinite(_snareDriveRaw) ? _snareDriveRaw : 0;
                 // ── TÉRMINO C: sin envolvente ───────────────────────────────────────
                 // snareDrive is per-frame and raw. The MACD does its own smoothing;
                 // pre-smoothing it (as snareEnergy did) is what killed the transient.

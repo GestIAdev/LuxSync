@@ -66,6 +66,16 @@ export class RollingStats {
      * @returns Estadísticas actualizadas incluyendo Z-Score
      */
     update(value) {
+        // 🩸 AMETRALLADORA FIX: NaN/Infinity guard — a single non-finite value
+        // poisons sum/sumSquares PERMANENTLY (NaN propagates through the rolling
+        // accumulators and never heals until reset/restart). Reject at the
+        // frontier and return the last healthy stats.
+        if (!Number.isFinite(value)) {
+            return this.cachedStats ?? {
+                mean: 0, stdDev: this.config.minStdDev,
+                min: 0, max: 0, current: 0, zScore: 0,
+            };
+        }
         // Si el buffer está lleno, necesitamos "olvidar" el valor más antiguo
         if (this.buffer.isFull) {
             const oldest = this.buffer.get(0);

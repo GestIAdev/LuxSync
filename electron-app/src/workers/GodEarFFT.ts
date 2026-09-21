@@ -1642,10 +1642,15 @@ class AGCTrustZone {
    * @returns Gain-adjusted value
    */
   process(bandId: string, rawValue: number, deltaMs: number): number {
+    // 🩸 AMETRALLADORA FIX: NaN/Infinity guard — must run BEFORE the isActive
+    // early-return and BEFORE the rolling sum. A single non-finite rawValue
+    // poisons rmsHistorySum permanently (NaN - evicted = NaN forever) and
+    // propagates downstream even with AGC bypassed.
+    if (!Number.isFinite(rawValue)) return 0;
     if (!this.isActive) {
       return rawValue;
     }
-    
+
     const config = AGC_CONFIG[bandId as keyof typeof AGC_CONFIG];
     if (!config) return rawValue;
     

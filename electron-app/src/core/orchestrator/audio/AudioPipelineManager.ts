@@ -114,6 +114,26 @@ export class AudioPipelineManager {
   private _staleSince = 0
   private _lastValidSnapshot: AudioDataSnapshot | null = null
 
+  // ---- Flatline Watchdog ----
+  // 🩸 AMETRALLADORA FIX: a suspended AudioContext makes getFloatTimeDomainData
+  // return the SAME buffer forever — the IPC stream stays alive, so
+  // arrival-based staleness (lastAudioTimestamp) never fires. This watchdog
+  // detects bit-identical consecutive buffers and forces silence downstream
+  // so Selene's V(t) starves and the fire loop breaks.
+  private static readonly FLATLINE_THRESHOLD_MS = 2000
+  private static readonly FLATLINE_SIG_SAMPLES = 32
+  private _flatlineSig = new Float64Array(AudioPipelineManager.FLATLINE_SIG_SAMPLES)
+  private _flatlineRms = NaN
+  private _flatlineLen = -1
+  private _flatlineSince = 0
+  private _flatlineActive = false
+  private _silenceBuffer: Float32Array | null = null
+  // Same vector on the audioFrame path (frontend-computed bass/mid/treble/energy)
+  private _frameSig = new Float64Array(4)
+  private _frameSigInit = false
+  private _frameFlatlineSince = 0
+  private _frameFlatlineActive = false
+
   // ---- Beat Detection ----
   beatDetector: BeatDetector | null = null
   readonly syncSmoother = new SyncSmoother()
@@ -160,6 +180,60 @@ export class AudioPipelineManager {
         this._silenceFrameCount = 0  // audio returned — reset counter only
       }
     }
+  }
+
+  /**
+   * 🩸 AMETRALLADORA FIX: FLATLINE WATCHDOG (buffer path).
+   *
+   * Compares a 32-point strided signature + RMS checksum of each incoming
+   * buffer against the previous one. A suspended AudioContext replays the
+   * last captured block verbatim → bit-identical consecutive buffers.
+   * After FLATLINE_THRESHOLD_MS of identical non-silent data, returns true
+   * and the caller feeds a silence buffer — Selene's V(t) starves and the
+   * firing loop breaks. Self-heals instantly when real signal resumes.
+   *
+   * Zero-alloc: signature stored in a preallocated Float64Array.
+   */
+  private _isFlatlinedBuffer(buffer: Float32Array): boolean {
+    const len = buffer.length
+    if (len === 0) return false
+    const N = AudioPipelineManager.FLATLINE_SIG_SAMPLES
+    const stride = Math.max(1, Math.floor(len / N))
+
+    let rms = 0
+    let identical = this._flatlineLen === len
+    for (let i = 0, k = 0; k < N && i < len; i += stride, k++) {
+      const v = buffer[i]
+      rms += v * v
+      if (identical && v !== this._flatlineSig[k]) identical = false
+      this._flatlineSig[k] = v
+    }
+    this._flatlineLen = len
+
+    const same = identical && Math.abs(rms - this._flatlineRms) < 1e-9
+    this._flatlineRms = rms
+
+    // True digital silence (rms≈0) is legitimate silence, not a flatline
+    // threat — exempt it so quiet sections never trigger the watchdog.
+    if (!same || rms < 1e-6) {
+      this._flatlineSince = 0
+      this._flatlineActive = false
+      return false
+    }
+
+    const now = Date.now()
+    if (this._flatlineSince === 0) {
+      this._flatlineSince = now
+      return false
+    }
+    if (now - this._flatlineSince > AudioPipelineManager.FLATLINE_THRESHOLD_MS) {
+      if (!this._flatlineActive) {
+        this._flatlineActive = true
+        console.warn(`[AudioPipeline] 🧊 FLATLINE — identical audio buffer for >${AudioPipelineManager.FLATLINE_THRESHOLD_MS}ms (suspended AudioContext?) — forcing silence until signal changes`)
+      }
+      return true
+    }
+    return false
   }
   // �🔧 WAVE 7002.4 (T2): Track last BPM passed to setBpm() to avoid redundant calls
   lastSetBpm = 0
@@ -350,11 +424,37 @@ export class AudioPipelineManager {
   processAudioFrame(data: Record<string, unknown>): void {
     if (!this.ctx.brain) return
 
-    const bass = typeof data.bass === 'number' ? data.bass : this.lastAudioData.bass
-    const mid = typeof data.mid === 'number' ? data.mid : this.lastAudioData.mid
-    const high = typeof data.treble === 'number' ? data.treble :
+    let bass = typeof data.bass === 'number' ? data.bass : this.lastAudioData.bass
+    let mid = typeof data.mid === 'number' ? data.mid : this.lastAudioData.mid
+    let high = typeof data.treble === 'number' ? data.treble :
                  typeof data.high === 'number' ? data.high : this.lastAudioData.high
-    const energy = typeof data.energy === 'number' ? data.energy : this.lastAudioData.energy
+    let energy = typeof data.energy === 'number' ? data.energy : this.lastAudioData.energy
+
+    // 🩸 AMETRALLADORA FIX: FLATLINE WATCHDOG (frame path) — under a
+    // suspended AudioContext, getByteFrequencyData yields identical tuples
+    // forever. >2s of an identical non-silent signature = frozen analyser →
+    // force silence so lastAudioData decays instead of pinning energy high.
+    const frameIdentical = this._frameSigInit
+      && bass === this._frameSig[0] && mid === this._frameSig[1]
+      && high === this._frameSig[2] && energy === this._frameSig[3]
+    this._frameSig[0] = bass; this._frameSig[1] = mid
+    this._frameSig[2] = high; this._frameSig[3] = energy
+    this._frameSigInit = true
+    if (frameIdentical && energy > 0.01) {
+      const now = Date.now()
+      if (this._frameFlatlineSince === 0) {
+        this._frameFlatlineSince = now
+      } else if (now - this._frameFlatlineSince > AudioPipelineManager.FLATLINE_THRESHOLD_MS) {
+        if (!this._frameFlatlineActive) {
+          this._frameFlatlineActive = true
+          console.warn(`[AudioPipeline] 🧊 FLATLINE — identical audio frame for >${AudioPipelineManager.FLATLINE_THRESHOLD_MS}ms (suspended AudioContext?) — forcing silence until signal changes`)
+        }
+        bass = 0; mid = 0; high = 0; energy = 0
+      }
+    } else {
+      this._frameFlatlineSince = 0
+      this._frameFlatlineActive = false
+    }
 
     this.lastAudioData = {
       bass,
@@ -418,6 +518,16 @@ export class AudioPipelineManager {
     // WAVE 3424: Reset grace hold state on fresh audio
     this._staleSince = 0
     this._lastValidSnapshot = null
+
+    // 🩸 AMETRALLADORA FIX: FLATLINE WATCHDOG — if the upstream AudioContext
+    // suspended, the analyser replays the identical buffer forever. Feed a
+    // silence buffer instead so bands/epicness/V(t) decay to calm.
+    if (this._isFlatlinedBuffer(buffer)) {
+      if (!this._silenceBuffer || this._silenceBuffer.length !== buffer.length) {
+        this._silenceBuffer = new Float32Array(buffer.length)
+      }
+      buffer = this._silenceBuffer
+    }
 
     if (this.ctx.trinity) {
       const _matrix = this.ctx.trinity.getAudioMatrix()

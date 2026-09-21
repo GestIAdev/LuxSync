@@ -184,6 +184,12 @@ export class LiquidEnvelope {
     const c = this.config
     const s = this.state
 
+    // 🩸 AMETRALLADORA FIX: NaN/Infinity guard — a non-finite signal would
+    // poison avgSignal / avgSignalPeak / lastSignal permanently (EMAs never
+    // recover from NaN). Treat garbage as silence: envelope decays calmly.
+    if (!Number.isFinite(signal)) signal = 0
+    if (!Number.isFinite(morphFactor)) morphFactor = 0.5
+
     // ═══════════════════════════════════════════════════════════════════
     // 1. VELOCITY GATE — Cinemática de ataque puro
     //    Herencia: WAVE 2380/2381/2386 (attack-only trigger + Undertow)

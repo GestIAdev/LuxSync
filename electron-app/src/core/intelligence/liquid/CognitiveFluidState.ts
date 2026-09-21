@@ -77,12 +77,19 @@ export interface FluidStateInput {
 // Utilidades
 // ═══════════════════════════════════════════════════════════════════════════
 
+// 🩸 AMETRALLADORA FIX: non-finite sanitizer — a NaN/Infinity input poisons
+// every EMA permanently (NaN propagates through accumulators and never heals
+// until process restart). Garbage collapses to silence, not corruption.
+function fin(x: number): number {
+  return Number.isFinite(x) ? x : 0
+}
+
 function clamp01(x: number): number {
-  return x < 0 ? 0 : x > 1 ? 1 : x
+  return !Number.isFinite(x) ? 0 : x < 0 ? 0 : x > 1 ? 1 : x
 }
 
 function clamp(x: number, lo: number, hi: number): number {
-  return x < lo ? lo : x > hi ? hi : x
+  return !Number.isFinite(x) ? lo : x < lo ? lo : x > hi ? hi : x
 }
 
 function sigmoid(x: number): number {
@@ -203,20 +210,25 @@ export class CognitiveFluidState {
    */
   update(input: FluidStateInput, now: number): void {
     const p = this.profile
-    const dt = this._lastTimestamp > 0 ? Math.min((now - this._lastTimestamp) / 1000, 0.1) : 0
+    // 🩸 AMETRALLADORA FIX: sanitize the raw inputs before they can poison
+    // the EMA accumulators (_temperature, _rmsEnergy, _peakEnergyWindow,
+    // _impact, _epicness). dt guarded too — a NaN timestamp would freeze
+    // _timeSinceIgnition and wedge the V(t) refractory permanently.
+    const rawEnergy = fin(input.rawEnergy)
+    const dt = this._lastTimestamp > 0 ? Math.min(fin((now - this._lastTimestamp) / 1000), 0.1) : 0
     this._lastTimestamp = now
 
     // ─────────────────────────────────────────────────────────
     // 1. Temperatura Θ(t) — EMA rápida de energía
     // ─────────────────────────────────────────────────────────
-    this._temperature += ALPHA_TEMP * (input.rawEnergy - this._temperature)
+    this._temperature += ALPHA_TEMP * (rawEnergy - this._temperature)
 
     // ─────────────────────────────────────────────────────────
     // 2. Energía RMS y pico para Factor de Cresta
     // ─────────────────────────────────────────────────────────
-    this._rmsEnergy += ALPHA_RMS * (input.rawEnergy - this._rmsEnergy)
-    if (input.rawEnergy > this._peakEnergyWindow) {
-      this._peakEnergyWindow = input.rawEnergy
+    this._rmsEnergy += ALPHA_RMS * (rawEnergy - this._rmsEnergy)
+    if (rawEnergy > this._peakEnergyWindow) {
+      this._peakEnergyWindow = rawEnergy
     } else {
       // Decay exponencial del pico (vida media ~350ms)
       this._peakEnergyWindow *= Math.pow(0.5, dt / 0.35)
@@ -239,7 +251,7 @@ export class CognitiveFluidState {
     // Fallback to legacy 1D formula when no evidence:
     //   I(t) = w_z·ẑ + w_cf·CF̂ + w_e·Ê
     // ─────────────────────────────────────────────────────────
-    const eHat = input.rawEnergy / Math.max(input.energyMaxHistoric, 0.01)
+    const eHat = rawEnergy / Math.max(fin(input.energyMaxHistoric), 0.01)
 
     if (input.acousticReality) {
       const ar = input.acousticReality
@@ -262,10 +274,10 @@ export class CognitiveFluidState {
       this._impact += alphaI * (rawImpact - this._impact)
       this._diagFrame++
     } else {
-      const zHat = Math.tanh(input.zScore / p.z_ref)
+      const zHat = Math.tanh(fin(input.zScore) / p.z_ref)
       // Absolute Energy Gate: CF must not inject into I(t) when absolute
       // energy is below 0.15 — prevents lone piano notes from spoofing drops
-      const cfContribution = input.rawEnergy > 0.15 ? p.w_cf * cfHat : 0
+      const cfContribution = rawEnergy > 0.15 ? p.w_cf * cfHat : 0
       const rawImpact = clamp01(p.w_z * zHat + cfContribution + p.w_e * eHat)
       const alphaI = rawImpact > this._impact ? ALPHA_IMPACT_UP : ALPHA_IMPACT_DOWN
       this._impact += alphaI * (rawImpact - this._impact)
@@ -276,10 +288,10 @@ export class CognitiveFluidState {
     // ─────────────────────────────────────────────────────────
     const d = input.descriptors
     this._viscosity = clamp01(
-      p.w_m * d.melodicity +
-      p.w_f * input.spectralFlatness +
-      p.w_h * input.harmonicDensity -
-      p.w_p * d.percussiveness,
+      p.w_m * fin(d.melodicity) +
+      p.w_f * fin(input.spectralFlatness) +
+      p.w_h * fin(input.harmonicDensity) -
+      p.w_p * fin(d.percussiveness),
     )
 
     // ─────────────────────────────────────────────────────────
@@ -359,7 +371,7 @@ export class CognitiveFluidState {
       this._epicness = 0
       this._smoothedPhaseMod = 0.5
     } else {
-      const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40)
+      const energyFactor = clamp01((rawEnergy - 0.30) / 0.40)
       // 🔬 WAVE 7542: Lowered from 0.50 → 0.35.
       // With tension=0.45 (typical climax), effectiveTension was 0.225.
       // baseEpicness = (impact - 0.225) / (1 - 0.225) = (0.42 - 0.225) / 0.775 = 0.252

@@ -137,6 +137,8 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
   const peakRef = useRef(0)
   const isBufferBusyRef = useRef(false)
   const lastBufferSendRef = useRef(0)
+  // 🩸 AMETRALLADORA FIX: pending resume-retry timer (cleared on cleanup)
+  const resumeRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
   // ═══════════════════════════════════════════════════════════════════════
   // ENUMERATE DEVICES
@@ -180,6 +182,11 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
       clearInterval(metricsLoopRef.current)
       metricsLoopRef.current = null
     }
+    // 🩸 AMETRALLADORA FIX: cancel any pending resume retry
+    if (resumeRetryRef.current) {
+      clearTimeout(resumeRetryRef.current)
+      resumeRetryRef.current = null
+    }
 
     // Disconnect audio nodes
     if (sourceNodeRef.current) {
@@ -195,6 +202,8 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
 
     // P2.14 FIX: Await AudioContext.close() to ensure full release before null
     if (audioContextRef.current) {
+      // 🩸 AMETRALLADORA FIX: detach state listener before intentional close
+      audioContextRef.current.onstatechange = null
       try {
         await audioContextRef.current.close()
       } catch {
@@ -212,7 +221,29 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
     setIsActive(false)
     setMetrics({ level: 0, hasSignal: false, peak: 0 })
   }, [])
-  
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩸 AMETRALLADORA FIX: CONTEXT RESUME WITH BOUNDED RETRY
+  // A USB audio driver hiccup can suspend the AudioContext silently — the
+  // analyser then replays its last captured block forever (frozen-loud
+  // data → Selene machine-gun). resume() may fail while the driver is
+  // still renegotiating, so retry with linear backoff (5 attempts max).
+  // ═══════════════════════════════════════════════════════════════════════
+  const resumeContextWithRetry = useCallback((ctx: AudioContext) => {
+    let attempts = 0
+    const tryResume = () => {
+      if (ctx.state !== 'suspended') return // running → done; closed → dead
+      attempts++
+      void ctx.resume().catch(() => { /* driver still renegotiating */ })
+      if (attempts < 5) {
+        resumeRetryRef.current = setTimeout(tryResume, 300 * attempts)
+      } else {
+        console.error('[LiveAudio] ❌ AudioContext still SUSPENDED after 5 resume attempts — audio pipeline dead until restart')
+      }
+    }
+    tryResume()
+  }, [])
+
   // ═══════════════════════════════════════════════════════════════════════
   // PROCESSING LOOP — Feeds GodEar via IPC
   // ═══════════════════════════════════════════════════════════════════════
@@ -222,6 +253,10 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
     processLoopRef.current = setInterval(() => {
       const analyser = analyserRef.current
       if (!analyser || isBufferBusyRef.current) return
+      // 🩸 AMETRALLADORA FIX: a suspended/closed AudioContext makes the
+      // analyser return its last captured block forever — cut the IPC feed
+      // at the root so frozen-loud data never reaches Selene.
+      if (audioContextRef.current?.state !== 'running') return
       
       const now = performance.now()
       if (now - lastBufferSendRef.current < BUFFER_SEND_INTERVAL) return
@@ -274,6 +309,8 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
     metricsLoopRef.current = setInterval(() => {
       const analyser = analyserRef.current
       if (!analyser) return
+      // 🩸 AMETRALLADORA FIX: same frozen-data guard for the UI meter loop
+      if (audioContextRef.current?.state !== 'running') return
       
       if (!timeDomainBufferRef.current) {
         timeDomainBufferRef.current = new Float32Array(analyser.fftSize) as Float32Array<ArrayBuffer>
@@ -351,7 +388,21 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
       // ── Build audio processing chain ──
       const audioContext = new AudioContext({ sampleRate: 44100 })
       audioContextRef.current = audioContext
-      
+
+      // 🩸 AMETRALLADORA FIX: monitor context state — hardware/driver
+      // hiccups suspend the context mid-session with zero fanfare, and the
+      // analyser keeps returning its last captured block forever.
+      audioContext.onstatechange = () => {
+        if (audioContext.state === 'suspended') {
+          console.warn('[LiveAudio] ⚠️ AudioContext SUSPENDED mid-session — attempting resume')
+          resumeContextWithRetry(audioContext)
+        } else if (audioContext.state === 'closed') {
+          console.warn('[LiveAudio] ⚠️ AudioContext CLOSED unexpectedly')
+        } else {
+          console.log(`[LiveAudio] 🎧 AudioContext → ${audioContext.state}`)
+        }
+      }
+
       if (audioContext.state === 'suspended') {
         await audioContext.resume()
       }
@@ -398,7 +449,7 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
       console.error('[LiveAudio] ❌ Capture failed:', message)
       cleanup()
     }
-  }, [cleanup, selectedDeviceId, startProcessing, enumerateDevices])
+  }, [cleanup, selectedDeviceId, startProcessing, enumerateDevices, resumeContextWithRetry])
   
   // ═══════════════════════════════════════════════════════════════════════
   // STOP CAPTURE

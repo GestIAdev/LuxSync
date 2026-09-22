@@ -23,6 +23,9 @@
 
 import { create } from 'zustand'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
+import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
+import { createDefaultProject } from '../model/AsteriaProject'
+import { computeRigFingerprint } from '../model/rigFingerprint'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -109,6 +112,39 @@ export interface AsteriaStore extends AsteriaCamera {
   pokeEnabled: boolean
   setPokeEnabled: (on: boolean) => void
 
+  // ── WAVE 8030-P3: EL DOCUMENTO — Gesture Stack no destructivo ──
+
+  /**
+   * El proyecto Asteria — persiste en `clip.asteria` (D-4 embebido).
+   * Documento (no UI): cada mutación crea una nueva referencia de
+   * `project` y de `stack` — los suscriptores de React (Gesture Stack
+   * UI) re-renderizan solo cuando la receta cambia.
+   */
+  project: AsteriaProject
+  /** Carga un proyecto desde un `.lfx` abierto (reemplazo completo). */
+  setProject: (project: AsteriaProject) => void
+  /** Documento nuevo: pila con el único gesto `base` identidad. */
+  resetProject: () => void
+  /**
+   * Empuja un gesto a la CIMA de la pila (final del array — el
+   * fieldEngine evalúa en orden y los últimos mezclan sobre los primeros,
+   * como las capas de Photoshop).
+   */
+  addGesture: (gesture: Gesture) => void
+  /**
+   * Merge paramétrico no destructivo: aplica un patch sobre el gesto
+   * con ese `id` (edición en vivo — sliders del inspector). No-op si
+   * el id no existe.
+   */
+  updateGesture: (id: string, patch: Partial<Gesture>) => void
+  /** Retira un gesto de la pila por id. */
+  removeGesture: (id: string) => void
+  /**
+   * Reordena la pila: mueve el gesto `id` al índice `toIndex`
+   * (0 = fondo). Clampeado al rango válido.
+   */
+  moveGesture: (id: string, toIndex: number) => void
+
   /** Merge parcial de cámara con clamp de zoom. */
   setCamera: (cam: Partial<AsteriaCamera>) => void
   /** Pan gestual: desplaza la vista por un delta en PÍXELES de pantalla. */
@@ -149,7 +185,24 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
   canvasH: 0,
   nodeAtlas: null,
 
-  setNodeAtlas: (atlas) => set({ nodeAtlas: atlas }),
+  setNodeAtlas: (atlas) =>
+    set((s) => {
+      // 🜨 WAVE 8030-P3: sella la huella del rig SOLO en proyectos nuevos
+      // (fingerprint vacía). Un proyecto cargado de un .lfx conserva la
+      // suya — la diferencia con el atlas vivo ES el Rig Drift Report.
+      if (atlas && s.project.rigFingerprint === '') {
+        return {
+          nodeAtlas: atlas,
+          project: {
+            ...s.project,
+            rigFingerprint: computeRigFingerprint(
+              atlas.entries.map((e) => e.nodeId),
+            ),
+          },
+        }
+      }
+      return { nodeAtlas: atlas }
+    }),
 
   activeToolId: 'select',
   setActiveTool: (id) => set({ activeToolId: id }),
@@ -194,6 +247,54 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
 
   pokeEnabled: true,
   setPokeEnabled: (on) => set({ pokeEnabled: on }),
+
+  project: createDefaultProject(),
+  setProject: (project) => set({ project }),
+  resetProject: () =>
+    set((s) => ({
+      project: createDefaultProject(
+        // El documento nuevo nace sobre el rig actual si el atlas ya llegó.
+        s.nodeAtlas
+          ? computeRigFingerprint(s.nodeAtlas.entries.map((e) => e.nodeId))
+          : '',
+      ),
+    })),
+
+  addGesture: (gesture) =>
+    set((s) => ({
+      project: { ...s.project, stack: [...s.project.stack, gesture] },
+    })),
+
+  updateGesture: (id, patch) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        stack: s.project.stack.map((g) =>
+          g.id === id ? ({ ...g, ...patch } as Gesture) : g,
+        ),
+      },
+    })),
+
+  removeGesture: (id) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        stack: s.project.stack.filter((g) => g.id !== id),
+      },
+    })),
+
+  moveGesture: (id, toIndex) =>
+    set((s) => {
+      const stack = s.project.stack
+      const from = stack.findIndex((g) => g.id === id)
+      if (from < 0) return {}
+      const to = Math.max(0, Math.min(stack.length - 1, toIndex))
+      if (to === from) return {}
+      const next = stack.slice()
+      const [g] = next.splice(from, 1)
+      next.splice(to, 0, g)
+      return { project: { ...s.project, stack: next } }
+    }),
 
   setCamera: (cam) =>
     set((s) => ({

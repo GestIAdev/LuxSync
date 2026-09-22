@@ -229,3 +229,26 @@ export interface AsteriaProject extends AsteriaProjectEnvelope {
 
 export const ASTERIA_DEFAULT_COHORT_BUDGET = 16
 export const ASTERIA_DEFAULT_STRATEGY: CompileStrategy = 'auto'
+/** El campo se aplica por defecto al dimmer — el parámetro universal del rig. */
+export const ASTERIA_DEFAULT_TARGET_PARAMS: readonly HephParamId[] = ['intensity']
+export const ASTERIA_DEFAULT_LUT_SOURCE: LutSource = { kind: 'preset', name: 'default' }
+/** El gesto suelo de todo proyecto nuevo: campo uniforme identidad. */
+export const ASTERIA_BASE_GESTURE_ID = 'base'
+
+/**
+ * Proyecto nuevo: pila con un único gesto `base` (identidad — el campo
+ * arranca plano y cada herramienta empuja capas encima). La huella del
+ * rig se inyecta al crearlo (vacía si el atlas aún no ha llegado — el
+ * store la sella en el primer `setNodeAtlas`).
+ */
+export function createDefaultProject(rigFingerprint = ''): AsteriaProject {
+  return {
+    version: 1,
+    stack: [{ kind: 'base', id: ASTERIA_BASE_GESTURE_ID, delayMs: 0, gain: 1 }],
+    strategy: ASTERIA_DEFAULT_STRATEGY,
+    targetParams: ASTERIA_DEFAULT_TARGET_PARAMS,
+    lutSource: ASTERIA_DEFAULT_LUT_SOURCE,
+    cohortBudget: ASTERIA_DEFAULT_COHORT_BUDGET,
+    rigFingerprint,
+  }
+}

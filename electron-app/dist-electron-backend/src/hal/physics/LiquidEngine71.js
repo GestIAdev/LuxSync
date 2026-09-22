@@ -130,9 +130,19 @@ export class LiquidEngine71 extends LiquidEngineBase {
                 moverRightIntensity: neutral,
                 strobeActive: false,
                 strobeIntensity: 0,
-                floorIntensity: 0,
+                // 🌊 HOTFIX PALETA CHILLOUT: Floor — bioluminiscencia del lecho marino.
+                // Antes: floorIntensity=0 → uplights de suelo en negro permanente.
+                // Ahora: max(ambient passthrough, morphFactor×0.30). El morphFactor
+                // llega del ChillAmbientEngine [0.20, 0.80] → piso residual [0.06, 0.24]
+                // que respira con la marea. Cero reactividad musical (pureAmbient):
+                // el lecho marino brilla solo, como debe ser.
+                floorIntensity: Math.max(ambientIntensity, frame.morphFactor * 0.30),
                 ambientIntensity: ambientIntensity,
-                airIntensity: 0,
+                // 🌊 MISMO HOTFIX: Air — bruma auroral sobre el lecho. Mismo mecanismo
+                // que floor pero un pelín más tenue (×0.25): el cielo no debe competir
+                // con la bioluminiscencia del suelo. Passthrough de envAir por si un
+                // destello de treble supera el piso residual.
+                airIntensity: Math.max(airIntensity, frame.morphFactor * 0.25),
                 frontParIntensity: neutral,
                 backParIntensity: neutral,
                 moverIntensityL: neutral,

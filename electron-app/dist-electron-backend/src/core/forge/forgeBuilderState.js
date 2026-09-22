@@ -453,10 +453,10 @@ function expandChannelsToMaxIndex(state, indices) {
 function defaultLabelFor(family) {
     const labels = {
         COLOR: 'Color',
-        IMPACT: 'Intensidad',
-        KINETIC: 'Posición',
-        BEAM: 'Haz',
-        ATMOSPHERE: 'Atmósfera',
+        IMPACT: 'Intensity',
+        KINETIC: 'Position',
+        BEAM: 'Beam',
+        ATMOSPHERE: 'Extras',
     };
     return labels[String(family)] ?? String(family);
 }

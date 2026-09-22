@@ -819,17 +819,15 @@ function drawHelixFixture(ctx, x, y, fixture, baseRadius, beatBoost, frameTime) 
     const bladeB = zoneColorOrFallback(fixture.bAmbient, allZonesZero, b);
     const sprite = getHelixSprite(hubR, hubG, hubB, bladeR, bladeG, bladeB);
     const size = baseRadius * 2.8;
-    // 🩸 WAVE 7761.6.12 (Fase 6.12 — OPACIDAD ESTRICTA): el alpha se basa
-    // ÚNICAMENTE en la luminancia real del sprite (hub + aspas). Si el color
-    // es 0 (negro por la Ley del Fotón), alpha = 0 → sprite invisible → solo
-    // queda el chasis gris del drawOffFixture (Chasis Inmortal). Si hay color
-    // real, alpha = spriteIntensity + 0.25 + beatBoost. Eliminada la lógica
-    // de effectiveIntensity (Fase 6.8) que usaba el dimmer maestro y hacía
-    // visibles los sprites negros.
+    // 🩸 WAVE 7761.6.15 (Fase 6.15 — COMPUERTA AND): El alpha exige estrictamente
+    // Intensidad Maestra (>0) Y Crominancia Real (>0). Esto evita tanto los
+    // "encendidos sin música" (color base de la Vibe filtrándose) como los
+    // "agujeros negros" (sprites negros opacos tapando el chasis). El color
+    // pasa puro desde el projector (1.0) y el Canvas decide la opacidad final.
     const maxSpriteLuminance = Math.max(hubR, hubG, hubB, bladeR, bladeG, bladeB);
     const spriteIntensity = maxSpriteLuminance / 255;
-    const alpha = spriteIntensity > 0.01
-        ? clamp(spriteIntensity + 0.25 + beatBoost, 0, 1)
+    const alpha = (intensity > 0.02 && spriteIntensity > 0.01)
+        ? clamp(intensity + 0.25 + beatBoost, 0, 1)
         : 0;
     // 🩸 WAVE 7761.6.3 (Fase 6.3): Rotación CONTINUA unidireccional.
     // rotation es 0-255 DMX (0 = STOP, 255 = velocidad máxima CW).
@@ -862,7 +860,14 @@ function drawDiamondFixture(ctx, x, y, fixture, baseRadius, beatBoost) {
     // el sprite, el diamante alcanza área on-canvas ≈ círculo PAR (1.63·br²
     // vs 1.54·br²). Solo vértices no basta: rr/sprite ≤ 0.5 (clipping).
     const size = baseRadius * 2.4;
-    const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1);
+    // 🩸 WAVE 7761.6.15 (Fase 6.15 — COMPUERTA AND): misma lógica que
+    // drawHelixFixture. El alpha exige Intensidad Maestra (>0) Y Crominancia
+    // Real (>0) para evitar haces negros y encendidos sin música.
+    const maxSpriteLuminance = Math.max(r, g, b);
+    const spriteIntensity = maxSpriteLuminance / 255;
+    const alpha = (intensity > 0.02 && spriteIntensity > 0.01)
+        ? clamp(intensity + 0.25 + beatBoost, 0, 1)
+        : 0;
     const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
     ctx.save();
     ctx.translate(x, y);
@@ -881,7 +886,13 @@ function drawLaserFixture(ctx, x, y, fixture, baseRadius, beatBoost) {
     const sprite = getLaserBarSprite(r, g, b);
     const w = baseRadius * 3.4;
     const h = baseRadius * 1.1;
-    const alpha = clamp(intensity + 0.25 + beatBoost, 0, 1);
+    // 🩸 WAVE 7761.6.15 (Fase 6.15 — COMPUERTA AND): misma lógica que
+    // drawHelixFixture y drawDiamondFixture.
+    const maxSpriteLuminance = Math.max(r, g, b);
+    const spriteIntensity = maxSpriteLuminance / 255;
+    const alpha = (intensity > 0.02 && spriteIntensity > 0.01)
+        ? clamp(intensity + 0.25 + beatBoost, 0, 1)
+        : 0;
     const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
     ctx.save();
     ctx.translate(x, y);

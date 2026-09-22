@@ -164,15 +164,15 @@ export class AetherUIProjector {
                 const bRaw = ch['b'] ?? ch['blue'];
                 if (rRaw !== undefined || gRaw !== undefined || bRaw !== undefined) {
                     // 🌊 WAVE 4695: Luminance-chrominance decoupling.
-                    // 🩸 WAVE 7761.6.12 (Fase 6.12 — FALLBACK MANUAL): Si no hay música
-                    // (ausencia de brightness del L0), el nodo COLOR hereda la
-                    // intensidad maestra de la máquina (que el usuario levanta con el
-                    // fader manual del Washer) en lugar de un 0.0 ciego. Así el color
-                    // manual funciona sin música: el usuario levanta el dimmer del
-                    // Washer → fixture.dimmer sube → localDimmer sube → el color del
-                    // Beam se proyecta. Con música, L0 envía brightness explícito y
-                    // este fallback no se activa (?? solo cae si es undefined/null).
-                    const localDimmer = ch['brightness'] ?? ch['dimmer'] ?? (hasImpactDimmer ? (fixture.dimmer / 255) : 0.0);
+                    // 🩸 WAVE 7761.6.15 (Fase 6.15 — RESOLUCIÓN DE CARRERA): El color pasa
+                    // puro si hay nodo IMPACT (1.0); el Canvas decidirá la opacidad final
+                    // con una compuerta AND. Esto restaura el comportamiento clásico
+                    // (cf06df97) donde hasImpactDimmer ? 1.0 era una constante calculada
+                    // al inicio del loop, independiente del orden de iteración COLOR→IMPACT.
+                    // El fallback anterior `fixture.dimmer / 255` (Fase 6.12) dependía de
+                    // que el IMPACT node ya se hubiera procesado, pero el COLOR node se
+                    // procesa primero → fixture.dimmer = 0 → localDimmer = 0 → haces negros.
+                    const localDimmer = ch['brightness'] ?? ch['dimmer'] ?? (hasImpactDimmer ? 1.0 : 0.0);
                     const chromaScale = localDimmer * strobeMask;
                     const projectedR = toDmx((rRaw ?? 0) * chromaScale);
                     const projectedG = toDmx((gRaw ?? 0) * chromaScale);

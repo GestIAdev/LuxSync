@@ -119,9 +119,9 @@ export const TECHNO_PROFILE = {
     //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
     envelopeHighMid: {
         name: 'Back L (Mid Synths)',
-        gateOn: 0.15, // OPERACIÓN: Luz Líquida — baja la compuerta para capturar colas de voces
-        boost: 1.5,
-        crushExponent: 1.0, // OPERACIÓN: Linealidad pura para suavizar el pulso atmosférico
+        gateOn: 0.08, // AGC-COMPENSATION: 0.15→0.08 — abre con medios débiles post-AGC
+        boost: 2.8, // AGC-COMPENSATION: 1.5→2.8 — mayor pegada al disparar
+        crushExponent: 0.80, // AGC-COMPENSATION: 1.0→0.80 — expansión logarítmica, engorda sintes de baja amplitud
         // ⚒️ WAVE 7777: RÍOS DE LUZ — Back L de "punch cortado" a stream continuo.
         // El WAVE 7776 dio punch pero el synth se veía quebrado en cientos de pedacitos.
         // Ahora subimos la viscosidad matemática sin romper la dinámica:
@@ -137,8 +137,8 @@ export const TECHNO_PROFILE = {
         //   sube → gate cierra sin corte brusco. Se mantiene del WAVE 7776.
         decayBase: 0.75,
         decayRange: 0.10,
-        maxIntensity: 0.85,
-        squelchBase: 0.28, // OPERACIÓN: Mantiene a raya el barro de los graves
+        maxIntensity: 0.95, // AGC-COMPENSATION: 0.85→0.95 — más techo para el canal de medios
+        squelchBase: 0.12, // AGC-COMPENSATION: 0.28→0.12 — suelo de silencio reducido, medios atenuados pasan
         squelchSlope: 0.10,
         ghostCap: 0.00, // WAVE 3492: 0.05->0.00 — negro entre golpes
         gateMargin: 0.005,
@@ -187,7 +187,7 @@ export const TECHNO_PROFILE = {
     // Esto deja pasar la base armónica de synths sin comer el pico percutivo del kick.
     // ═══════════════════════════════════════════════════════════════
     backLLowMidWeight: 0.0, // WAVE 2430: original no usaba lowMid
-    backLMidWeight: 0.85, // OPERACIÓN: Devolvemos el cuerpo del sinte — potencia sin asfixia
+    backLMidWeight: 1.15, // AGC-COMPENSATION: 0.85→1.15 — succiona más energía del mid para compensar el corte del AGC
     backLTrebleSub: -0.3, // WAVE 8009.3: 0.0→-0.3 — inyectar 30% treble para hi-hats sutiles del minimal
     backLBassSub: 0.0, // OPERACIÓN: Aislamiento estricto del bajo (0.0) para evitar fuga de bombo
     // ═══════════════════════════════════════════════════════════════
@@ -377,8 +377,8 @@ export const TECHNO_PROFILE = {
     overrides41: {
         // ── BACK PAR: el Látigo debe ganarle al Coro en max() ──────────
         envelopeHighMid: {
-            maxIntensity: 0.60, // WAVE 2520: 0.85→0.60 — cap por debajo del pico del snare
-            decayBase: 0.45, // WAVE 2520: 0.62→0.45 — colchón libera entre golpes
+            maxIntensity: 0.80, // AGC-COMPENSATION: 0.60→0.80 — relaja el cuello de botella del max() en 4.1
+            decayBase: 0.55, // AGC-COMPENSATION: 0.45→0.55 — no se apaga tan en seco en 4.1
         },
         envelopeSnare: {
             gateOn: 0.22, // WAVE 2520: 0.28→0.22 — más sensible en compactación

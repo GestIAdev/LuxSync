@@ -5,7 +5,7 @@
  */
 
 import React, { useCallback } from 'react'
-import { NodeFamily, cellKeyDeviceId } from '../../../stores/programmer-types'
+import { NodeFamily, cellKeyDeviceId, cellKeyNodePath } from '../../../stores/programmer-types'
 import type { CapabilityContext, CellKey } from '../../../stores/programmer-types'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { humanizeCellId } from './cellLabels'
@@ -307,34 +307,43 @@ export interface IntensityBodyProps {
 const SUB_DIMMER_COLOR = '#ffd700'
 
 interface SubDimmerRowProps {
-  /** CellKey de la sub-celda dimmer (índice > 0 del grupo). */
-  readonly cellKey: CellKey
-  /** CellKey maestra (índice 0) — para detectar filas cross-device. */
+  /** CellKeys homólogas de UNA ruta de nodo (ej. `impact-14` de N fixtures). */
+  readonly cellKeys: readonly CellKey[]
+  /** CellKey maestra (ruta del índice 0) — para detectar filas cross-device. */
   readonly masterKey: CellKey
 }
 
 /**
  * Fila compacta de dimmer secundario — misma estructura DOM y clases CSS que
  * `PhantomChannelRow` de ExtrasAggregator (phantom-row + intensity-slider-container).
- * Cada fila lee/escribe SOLO su propia cellKey (control individual, no Hive Mind).
+ * Cada fila representa UNA ruta de nodo dentro del perfil del fixture. Si la
+ * selección incluye varios fixtures multicelda, la fila escribe en todos los
+ * homólogos de esa ruta (Hive Mind por ruta, no por índice plano).
  */
-const SubDimmerRow: React.FC<SubDimmerRowProps> = ({ cellKey, masterKey }) => {
-  const ov = useProgrammerStore(s => s.cellOverrides.get(cellKey))
-  const descriptor = useProgrammerStore(s => s.cellRegistry.get(cellKey))
+const SubDimmerRow: React.FC<SubDimmerRowProps> = ({ cellKeys, masterKey }) => {
+  const repKey = cellKeys[0] ?? masterKey
+  const ov = useProgrammerStore(s => s.cellOverrides.get(repKey))
+  const descriptor = useProgrammerStore(s => s.cellRegistry.get(repKey))
 
   const dimmer = ov?.payload.family === NodeFamily.IMPACT && ov.payload.data.dimmer !== undefined
     ? Math.round(ov.payload.data.dimmer * 100)
     : null
   const value = dimmer ?? 0
 
-  const suffix = cellKey.slice(cellKey.indexOf(':') + 1)
-  const sameDevice = cellKeyDeviceId(cellKey) === cellKeyDeviceId(masterKey)
-  const baseLabel = descriptor?.channelLabel ?? humanizeCellId(suffix)
-  const label = sameDevice ? baseLabel : `${cellKeyDeviceId(cellKey)} · ${baseLabel}`
+  const deviceCount = new Set(cellKeys.map(k => cellKeyDeviceId(k))).size
+  const repDevice = cellKeyDeviceId(repKey)
+  const baseLabel = descriptor?.channelLabel ?? humanizeCellId(cellKeyNodePath(repKey))
+  const label = deviceCount > 1
+    ? `${baseLabel} ×${deviceCount}`
+    : repDevice === cellKeyDeviceId(masterKey)
+      ? baseLabel
+      : `${repDevice} · ${baseLabel}`
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useProgrammerStore.getState().setCellImpact(cellKey, 'dimmer', Number(e.target.value))
-  }, [cellKey])
+    const store = useProgrammerStore.getState()
+    const v = Number(e.target.value)
+    for (const k of cellKeys) store.setCellImpact(k, 'dimmer', v)
+  }, [cellKeys])
 
   return (
     <div className="phantom-row">
@@ -363,12 +372,29 @@ const SubDimmerRow: React.FC<SubDimmerRowProps> = ({ cellKey, masterKey }) => {
 }
 
 export const IntensityBody: React.FC<IntensityBodyProps> = ({ primaryKey, allCellKeys, nodeIds }) => {
-  // ── División lógica de canales dimmer ─────────────────────────────────────
-  // masterDimmer: índice 0 del grupo (UI completa con Limitador).
-  // subDimmers:   índice > 0 (sub-dimmers de celdas individuales — ej. Gold 1/2/3
-  //               del Tungsten). Se renderizan como filas compactas estilo Extras.
+  // ── División lógica de canales dimmer POR RUTA DE NODO ────────────────────
+  // Los cellKeys del grupo se particionan por la ruta jerárquica del nodo
+  // dentro del perfil del fixture (sufijo tras "deviceId:"):
+  //   · Misma ruta en devices distintos → NODOS HOMÓLOGOS → merge bajo el
+  //     control maestro. Seleccionar 4 PARs = 1 slider, SIN sub-dimmers.
+  //   · Rutas distintas → celdas hijas del fixture → SUB-DIMMERS (ej. Gold
+  //     1/2/3 del Tungsten). Cada fila mergea sus homólogos cross-device.
   const masterDimmer = allCellKeys[0] ?? primaryKey
-  const subDimmers = allCellKeys.slice(1)
+  const masterPath = cellKeyNodePath(masterDimmer)
+
+  const subDimmerGroups: CellKey[][] = []
+  const groupByPath = new Map<string, CellKey[]>()
+  for (const key of allCellKeys) {
+    const path = cellKeyNodePath(key)
+    if (path === masterPath) continue
+    let g = groupByPath.get(path)
+    if (!g) {
+      g = []
+      groupByPath.set(path, g)
+      subDimmerGroups.push(g)
+    }
+    g.push(key)
+  }
 
   const ov = useProgrammerStore(s => s.cellOverrides.get(masterDimmer))
   const data = ov?.payload.family === NodeFamily.IMPACT ? ov.payload.data : {}
@@ -498,13 +524,13 @@ export const IntensityBody: React.FC<IntensityBodyProps> = ({ primaryKey, allCel
         {hasStrobe && <div className="override-badge strobe-override">STROBE MANUAL</div>}
       </div>
 
-      {/* SUB-DIMMERS — celdas individuales del grupo (índice > 0).
+      {/* SUB-DIMMERS — rutas de nodo hijas del fixture (multicelda).
           Renderizado compacto idéntico a las filas phantom de Extras. */}
-      {subDimmers.length > 0 && (
+      {subDimmerGroups.length > 0 && (
         <div className="extras-aggregator__phantom-section">
           <div className="extras-aggregator__section-header">SUB-DIMMERS</div>
-          {subDimmers.map(key => (
-            <SubDimmerRow key={key} cellKey={key} masterKey={masterDimmer} />
+          {subDimmerGroups.map(keys => (
+            <SubDimmerRow key={keys[0] ?? masterDimmer} cellKeys={keys} masterKey={masterDimmer} />
           ))}
         </div>
       )}

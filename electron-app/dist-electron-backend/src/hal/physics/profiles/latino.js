@@ -100,12 +100,18 @@ export const LATINO_PROFILE = {
     //              La caja del reggaeton RESPIRA más que el snare techno.
     envelopeSnare: {
         name: 'Back R (TAcka del Dembow)',
-        gateOn: 0.40, // WAVE 6050: endurecimiento bastante del gate para Back R
-        boost: 3.5,
+        // 💊 VITAMINAS BACK R: el canal perdía redobles (gate duro) y los que
+        //   detectaba carecían de pegada visual post-gate.
+        //   gateOn 0.40→0.32 (-20%): atrapa snares sutiles/a contratiempo.
+        //   boost 3.5→4.8 (+1.3): cualquier golpe que cruce el gate expande violento.
+        //   maxIntensity 0.85→1.0: headroom total para el latigazo.
+        //   squelchBase/squelchSlope INTOCABLES (piso de ruido confirmado correcto).
+        gateOn: 0.32, // VITAMINAS: 0.40→0.32 (-20%) — sensibilidad al snare
+        boost: 4.8, // VITAMINAS: 3.5→4.8 (+1.3) — pegada post-gate
         crushExponent: 1.0,
         decayBase: 0.72,
         decayRange: 0.10,
-        maxIntensity: 0.85,
+        maxIntensity: 1.0, // VITAMINAS: 0.85→1.0 — sin techo al latigazo
         squelchBase: 0.03,
         squelchSlope: 0.15,
         ghostCap: 0.00, // WAVE 7749.57: 0.04→0.00 — sin ghostcaps en ningún perfil
@@ -426,12 +432,15 @@ export const LATINO_PROFILE = {
         //   boost 2.5→3.2: más latigazo visual post-ataque.
         //   decayBase 0.60→0.50: caída más rápida — impacto eléctrico, no fangoso.
         envelopeSnare: {
-            gateOn: 0.45, // V&S: 0.55→0.45 — captar más redobles tras el ajuste del AGC
+            // 💊 VITAMINAS BACK R (mismo hotfix que el base): -20% gate, +1.3 boost.
+            //   squelchBase 0.45 intocable (piso de ruido confirmado).
+            gateOn: 0.36, // VITAMINAS: 0.45→0.36 (-20%) — redobles en 4.1 también
             squelchBase: 0.45, // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
             decayBase: 0.50, // V&S: 0.60→0.50 — caída eléctrica, menos fangosa
             decayRange: 0.10,
             ghostCap: 0.00, // WAVE 7749.57: 0.01→0.00 — sin ghostcaps en ningún perfil
-            boost: 3.2, // V&S: 2.5→3.2 — más latigazo visual post-ataque
+            boost: 4.5, // VITAMINAS: 3.2→4.5 (+1.3) — latigazo violento post-gate
+            maxIntensity: 1.0, // VITAMINAS: explícito — sin techo en 4.1
         },
         // WAVE 3457: sidechain exterminado también en overrides 4.1
         sidechainDepth: 0.00,

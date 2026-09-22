@@ -74,6 +74,21 @@ export const cellKeyDeviceId = (cellKey: CellKey): DeviceId => {
   return idx >= 0 ? (cellKey as string).slice(0, idx) : (cellKey as string)
 }
 
+/**
+ * Extrae la ruta del nodo (sufijo Aether) desde una CellKey.
+ *
+ * Dos cellKeys con la MISMA ruta en devices distintos son NODOS HOMÓLOGOS
+ * (ej. `par-1:impact` y `par-2:impact`) — deben hacer merge bajo un único
+ * control maestro. Rutas DISTINTAS dentro del mismo device son celdas hijas
+ * (ej. `tungsten:impact-14` = anillo Gold 1) — esas sí pueblan SUB-DIMMERS.
+ *
+ * Llamar solo en frío — no en hot path.
+ */
+export const cellKeyNodePath = (cellKey: CellKey): string => {
+  const idx = (cellKey as string).indexOf(':')
+  return idx >= 0 ? (cellKey as string).slice(idx + 1) : ''
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PAYLOADS POR FAMILIA — Valores normalizados 0-1, sparse (omit = no override)
 // ─────────────────────────────────────────────────────────────────────────────

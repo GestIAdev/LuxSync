@@ -25,7 +25,13 @@ import { create } from 'zustand'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
 import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
 import { createDefaultProject } from '../model/AsteriaProject'
-import { computeRigFingerprint } from '../model/rigFingerprint'
+import {
+  computeRigDrift,
+  discardOrphans,
+  remapByProximity,
+  sealRig,
+  type RigDrift,
+} from '../model/rigDrift'
 import type { CompileReport } from '../compiler/AsteriaCompiler'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -163,6 +169,30 @@ export interface AsteriaStore extends AsteriaCamera {
   lastCompileReport: CompileReport | null
   setCompileReport: (report: CompileReport | null) => void
 
+  // ── WAVE 8050 (M3): RIG DRIFT — el escenario cambió entre sesiones ──
+
+  /**
+   * Reporte de drift activo: nodos de la pila que ya no existen +
+   * nodos nuevos sin asignar. null = rig íntegro (o sin huella).
+   * Mientras sea != null el compilador NO recompila — nunca un
+   * recompile silencioso sobre un campo mutilado (blueprint §Pers.).
+   */
+  rigDrift: RigDrift | null
+  /** Recalcula el drift desde (project, nodeAtlas) — automático en
+   *  setProject/setNodeAtlas. */
+  refreshRigDrift: () => void
+  /** Acción del banner: hereda coreografía al nuevo nodo más cercano. */
+  resolveDriftRemap: () => void
+  /** Acción del banner: elimina los ids muertos de máscaras/entries. */
+  resolveDriftDiscard: () => void
+  /**
+   * Acción del banner: abre el proyecto en solo lectura — el drift
+   * sigue pendiente (compilación bloqueada) y las mutaciones del
+   * Gesture Stack quedan congeladas hasta resolver.
+   */
+  driftReadOnly: boolean
+  setDriftReadOnly: (on: boolean) => void
+
   /** Merge parcial de cámara con clamp de zoom. */
   setCamera: (cam: Partial<AsteriaCamera>) => void
   /** Pan gestual: desplaza la vista por un delta en PÍXELES de pantalla. */
@@ -208,18 +238,21 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       // 🜨 WAVE 8030-P3: sella la huella del rig SOLO en proyectos nuevos
       // (fingerprint vacía). Un proyecto cargado de un .lfx conserva la
       // suya — la diferencia con el atlas vivo ES el Rig Drift Report.
-      if (atlas && s.project.rigFingerprint === '') {
-        return {
-          nodeAtlas: atlas,
-          project: {
-            ...s.project,
-            rigFingerprint: computeRigFingerprint(
-              atlas.entries.map((e) => e.nodeId),
-            ),
-          },
-        }
+      let project = s.project
+      if (atlas && project.rigFingerprint === '') {
+        project = { ...project, ...sealRig(atlas) }
       }
-      return { nodeAtlas: atlas }
+      // 🜨 WAVE 8050 (M3): el drift se recalcula con cada atlas — un
+      // re-patch en caliente también es un cambio de escenario.
+      const rigDrift = computeRigDrift(project, atlas)
+      return {
+        nodeAtlas: atlas,
+        project,
+        rigDrift,
+        // 'Solo lectura' sobrevive a un refresh del atlas mientras el
+        // drift siga sin resolver — la decisión del operador no se pisa.
+        driftReadOnly: rigDrift !== null && s.driftReadOnly,
+      }
     }),
 
   activeToolId: 'select',
@@ -278,42 +311,66 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
     set((s) => (s.surgeonDeviceId === deviceId ? {} : { surgeonDeviceId: deviceId })),
 
   project: createDefaultProject(),
-  setProject: (project) => set({ project }),
+  setProject: (project) =>
+    set((s) => {
+      // 🜨 WAVE 8050 (M3): cargar un documento ajeno dispara el drift —
+      // su huella describe OTRO rig. Si coincide, rigDrift = null.
+      const rigDrift = computeRigDrift(project, s.nodeAtlas)
+      return {
+        project,
+        rigDrift,
+        driftReadOnly: rigDrift !== null && s.driftReadOnly,
+      }
+    }),
   resetProject: () =>
     set((s) => ({
-      project: createDefaultProject(
+      project: {
+        ...createDefaultProject(),
         // El documento nuevo nace sobre el rig actual si el atlas ya llegó.
-        s.nodeAtlas
-          ? computeRigFingerprint(s.nodeAtlas.entries.map((e) => e.nodeId))
-          : '',
-      ),
+        ...(s.nodeAtlas ? sealRig(s.nodeAtlas) : {}),
+      },
+      rigDrift: null,
+      driftReadOnly: false,
     })),
 
   addGesture: (gesture) =>
-    set((s) => ({
-      project: { ...s.project, stack: [...s.project.stack, gesture] },
-    })),
+    set((s) =>
+      s.driftReadOnly
+        ? {}
+        : {
+            project: { ...s.project, stack: [...s.project.stack, gesture] },
+          },
+    ),
 
   updateGesture: (id, patch) =>
-    set((s) => ({
-      project: {
-        ...s.project,
-        stack: s.project.stack.map((g) =>
-          g.id === id ? ({ ...g, ...patch } as Gesture) : g,
-        ),
-      },
-    })),
+    set((s) =>
+      s.driftReadOnly
+        ? {}
+        : {
+            project: {
+              ...s.project,
+              stack: s.project.stack.map((g) =>
+                g.id === id ? ({ ...g, ...patch } as Gesture) : g,
+              ),
+            },
+          },
+    ),
 
   removeGesture: (id) =>
-    set((s) => ({
-      project: {
-        ...s.project,
-        stack: s.project.stack.filter((g) => g.id !== id),
-      },
-    })),
+    set((s) =>
+      s.driftReadOnly
+        ? {}
+        : {
+            project: {
+              ...s.project,
+              stack: s.project.stack.filter((g) => g.id !== id),
+            },
+          },
+    ),
 
   moveGesture: (id, toIndex) =>
     set((s) => {
+      if (s.driftReadOnly) return {}
       const stack = s.project.stack
       const from = stack.findIndex((g) => g.id === id)
       if (from < 0) return {}
@@ -327,6 +384,52 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
 
   lastCompileReport: null,
   setCompileReport: (report) => set({ lastCompileReport: report }),
+
+  // ── WAVE 8050 (M3): RIG DRIFT ──
+
+  rigDrift: null,
+  refreshRigDrift: () =>
+    set((s) => ({ rigDrift: computeRigDrift(s.project, s.nodeAtlas) })),
+
+  resolveDriftRemap: () =>
+    set((s) => {
+      if (!s.rigDrift || !s.nodeAtlas) return {}
+      const r = remapByProximity(s.project, s.nodeAtlas, s.rigDrift)
+      return {
+        project: r.project,
+        rigDrift: null,
+        driftReadOnly: false,
+        // Los unmappable se reportan en el reporte de compilación — el
+        // operador ve qué ids quedaron colgados sin posición sellada.
+        lastCompileReport: r.unmappable.length
+          ? {
+              strategy: 'lambda',
+              trackIds: [],
+              keyframeCount: 0,
+              overrideCount: 0,
+              nodesCovered: 0,
+              devicesTargeted: 0,
+              bytes: 0,
+              warnings: [
+                `RIG_REMAP_PARTIAL — ${r.unmappable.length} nodo(s) sin posición sellada: ${r.unmappable.join(', ')}`,
+              ],
+            }
+          : s.lastCompileReport,
+      }
+    }),
+
+  resolveDriftDiscard: () =>
+    set((s) => {
+      if (!s.rigDrift || !s.nodeAtlas) return {}
+      return {
+        project: discardOrphans(s.project, s.nodeAtlas, s.rigDrift),
+        rigDrift: null,
+        driftReadOnly: false,
+      }
+    }),
+
+  driftReadOnly: false,
+  setDriftReadOnly: (on) => set({ driftReadOnly: on }),
 
   setCamera: (cam) =>
     set((s) => ({

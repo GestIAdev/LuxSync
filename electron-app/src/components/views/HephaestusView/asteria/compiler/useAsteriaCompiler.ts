@@ -60,8 +60,30 @@ export function useAsteriaCompiler(): void {
     let timer: ReturnType<typeof setTimeout> | null = null
 
     const flush = () => {
-      const { nodeAtlas, project } = useAsteriaStore.getState()
+      const { nodeAtlas, project, rigDrift, driftReadOnly } =
+        useAsteriaStore.getState()
       if (!nodeAtlas) return
+
+      // 🜨 WAVE 8050 (M3): NUNCA un recompile silencioso con drift
+      // pendiente — el campo mutilado hornearía tracks erróneos.
+      // El HUD recibe un reporte honesto en lugar de pistas.
+      if (rigDrift !== null || driftReadOnly) {
+        useAsteriaStore.getState().setCompileReport({
+          strategy: 'lambda',
+          trackIds: [],
+          keyframeCount: 0,
+          overrideCount: 0,
+          nodesCovered: 0,
+          devicesTargeted: 0,
+          bytes: 0,
+          warnings: [
+            rigDrift !== null
+              ? `RIG_DRIFT — ${rigDrift.missing.length} nodo(s) perdido(s), ${rigDrift.unassigned.length} sin asignar — resuelve el banner para compilar`
+              : 'READ_ONLY — proyecto abierto en solo lectura',
+          ],
+        })
+        return
+      }
 
       // ③ Engine recreado si el atlas cambió de referencia
       if (engineAtlasRef.current !== nodeAtlas) {

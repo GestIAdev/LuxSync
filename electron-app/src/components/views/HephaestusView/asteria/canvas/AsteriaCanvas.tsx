@@ -47,6 +47,14 @@ export const AsteriaCanvas: React.FC = () => {
   // Cursor por herramienta (cambio raro — suscripción React segura)
   const activeToolId = useAsteriaStore((s) => s.activeToolId)
 
+  // 🜨 WAVE 8050 (M3): banner de Rig Drift — suscripciones React,
+  //  cambia solo al abrir documento / re-patchar el rig.
+  const rigDrift = useAsteriaStore((s) => s.rigDrift)
+  const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
+  const resolveDriftRemap = useAsteriaStore((s) => s.resolveDriftRemap)
+  const resolveDriftDiscard = useAsteriaStore((s) => s.resolveDriftDiscard)
+  const setDriftReadOnly = useAsteriaStore((s) => s.setDriftReadOnly)
+
   // Contexto inyectado a las tools — referencias estables, nada de React
   const toolCtx = useMemo<AsteriaToolContext>(() => ({
     transform: getWorldTransform,
@@ -236,6 +244,54 @@ export const AsteriaCanvas: React.FC = () => {
         }}
         onContextMenu={(e) => e.preventDefault()}
       />
+
+      {/* 🜨 WAVE 8050 (M3): BANNER DE RIG DRIFT — el rig cambió entre
+          sesiones. Compilación bloqueada hasta que el operador decida:
+          nunca un recompile silencioso (blueprint §Persistencia). */}
+      {rigDrift && !driftReadOnly && (
+        <div className="asteria-drift-banner" role="alert">
+          <div className="asteria-drift-banner__title">
+            ⚠ El rig ha cambiado
+          </div>
+          <div className="asteria-drift-banner__body">
+            {rigDrift.missing.length} nodos de esta pila ya no existen ·{' '}
+            {rigDrift.unassigned.length} nodos nuevos sin asignar
+          </div>
+          <div className="asteria-drift-banner__actions">
+            <button
+              type="button"
+              className="asteria-drift-btn asteria-drift-btn--primary"
+              onClick={resolveDriftRemap}
+            >
+              Remapear por proximidad
+            </button>
+            <button
+              type="button"
+              className="asteria-drift-btn"
+              onClick={resolveDriftDiscard}
+            >
+              Descartar huérfanos
+            </button>
+            <button
+              type="button"
+              className="asteria-drift-btn"
+              onClick={() => setDriftReadOnly(true)}
+            >
+              Solo lectura
+            </button>
+          </div>
+        </div>
+      )}
+      {rigDrift && driftReadOnly && (
+        <button
+          type="button"
+          className="asteria-drift-chip"
+          title="Proyecto en solo lectura — compilación y gestos bloqueados. Clic para resolver el drift."
+          onClick={() => setDriftReadOnly(false)}
+        >
+          🔒 SOLO LECTURA · rig drift pendiente
+        </button>
+      )}
     </div>
   )
 }

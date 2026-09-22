@@ -2887,3 +2887,92 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
+
+/* ── WAVE 8050 (M3): banner de Rig Drift ── */
+
+.asteria-drift-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  min-width: 340px;
+  max-width: 90%;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 179, 71, 0.6);
+  border-radius: 8px;
+  background: rgba(18, 14, 8, 0.95);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 179, 71, 0.15);
+  font-family: 'Consolas', 'Monaco', monospace;
+  backdrop-filter: blur(4px);
+}
+
+.asteria-drift-banner__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffb347;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.asteria-drift-banner__body {
+  font-size: 11px;
+  color: #d8dcff;
+  margin-bottom: 10px;
+}
+
+.asteria-drift-banner__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.asteria-drift-btn {
+  padding: 5px 10px;
+  border: 1px solid rgba(123, 92, 255, 0.35);
+  border-radius: 5px;
+  background: rgba(16, 16, 26, 0.9);
+  color: #8b8fa8;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.asteria-drift-btn:hover {
+  border-color: rgba(123, 92, 255, 0.7);
+  color: #d8dcff;
+}
+
+.asteria-drift-btn--primary {
+  border-color: rgba(255, 179, 71, 0.6);
+  color: #ffd9a0;
+}
+
+.asteria-drift-btn--primary:hover {
+  border-color: #ffb347;
+  background: rgba(255, 179, 71, 0.12);
+}
+
+.asteria-drift-chip {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 179, 71, 0.5);
+  border-radius: 6px;
+  background: rgba(18, 14, 8, 0.92);
+  color: #ffd9a0;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.asteria-drift-chip:hover {
+  border-color: #ffb347;
+  background: rgba(255, 179, 71, 0.14);
+}

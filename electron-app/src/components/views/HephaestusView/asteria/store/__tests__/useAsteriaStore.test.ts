@@ -9,6 +9,7 @@ import { useAsteriaStore, type NodeAtlas } from '../useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
 import type { Gesture, WaveGesture } from '../../model/AsteriaProject'
 import { createDefaultProject } from '../../model/AsteriaProject'
+import { sealRig } from '../../model/rigDrift'
 
 function mkAtlas(nodeIds: string[]): NodeAtlas {
   const entries = nodeIds.map(
@@ -122,5 +123,130 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
     const after = useAsteriaStore.getState().project
     expect(after).not.toBe(before)
     expect(after.stack).not.toBe(before.stack)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 8050 (M3): RIG DRIFT — sello de posiciones, detección y acciones
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Atlas con posiciones XZ distintas (para el remap por proximidad). */
+function mkAtlasPos(pairs: [string, number, number][]): NodeAtlas {
+  const entries = pairs.map(
+    ([nodeId, x, z]): NodeAtlasEntry => ({
+      nodeId,
+      deviceId: nodeId.split(':')[0],
+      cellSuffix: nodeId.includes(':')
+        ? nodeId.slice(nodeId.indexOf(':') + 1)
+        : nodeId,
+      family: 'IMPACT',
+      zoneId: 'front',
+      position: { x, y: 0, z },
+      role: 'cell',
+    }),
+  )
+  return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+}
+
+/** Proyecto "de otra sesión": sellado sobre oldRig, pila que usa `ids`. */
+function foreignProject(oldRig: NodeAtlas, ids: readonly string[]) {
+  return {
+    ...createDefaultProject(),
+    ...sealRig(oldRig),
+    stack: [
+      { kind: 'base' as const, id: 'base', delayMs: 0, gain: 1 },
+      {
+        kind: 'wave' as const, id: 'w1', op: 'replace' as const,
+        mask: { nodeIds: ids }, emitter: { x: 0, z: 0 },
+        shape: 'point' as const, speedMps: 8,
+      },
+    ],
+  }
+}
+
+describe('🜨 AsteriaStore — Rig Drift (WAVE 8050-M3)', () => {
+  const oldRig = mkAtlasPos([['fx-a:impact', 0, 0], ['fx-b:impact', 1, 0]])
+
+  beforeEach(() => {
+    useAsteriaStore.setState({
+      project: createDefaultProject(),
+      nodeAtlas: null,
+      rigDrift: null,
+      driftReadOnly: false,
+      lastCompileReport: null,
+    })
+  })
+
+  test('setNodeAtlas sella nodePositions junto a la huella', () => {
+    useAsteriaStore.getState().setNodeAtlas(
+      mkAtlasPos([['fx-a:impact', 3, -2]]),
+    )
+    const p = useAsteriaStore.getState().project
+    expect(p.nodePositions?.['fx-a:impact']).toEqual({ x: 3, z: -2 })
+  })
+
+  test('setProject con huella ajena + atlas nuevo → rigDrift poblado', () => {
+    const s = useAsteriaStore.getState()
+    // Orden real: atlas del rig NUEVO ya llegó, luego se carga el proyecto
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0], ['fx-c:impact', 1.1, 0]]))
+    s.setProject(foreignProject(oldRig, ['fx-a:impact', 'fx-b:impact']))
+    const st = useAsteriaStore.getState()
+    expect(st.rigDrift).not.toBeNull()
+    expect(st.rigDrift!.missing).toEqual(['fx-b:impact'])
+    expect(st.rigDrift!.unassigned).toEqual(['fx-c:impact'])
+  })
+
+  test('resolveDriftRemap: el nodo perdido hereda al nuevo más cercano', () => {
+    const s = useAsteriaStore.getState()
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0], ['fx-c:impact', 1.1, 0]]))
+    s.setProject(foreignProject(oldRig, ['fx-a:impact', 'fx-b:impact']))
+    useAsteriaStore.getState().resolveDriftRemap()
+    const st = useAsteriaStore.getState()
+    expect(st.rigDrift).toBeNull()
+    const w = st.project.stack.find((g) => g.id === 'w1')
+    expect((w as WaveGesture).mask.nodeIds).toEqual([
+      'fx-a:impact', 'fx-c:impact',
+    ])
+    // La huella se reselló al rig nuevo → futuro setNodeAtlas no repite drift
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0], ['fx-c:impact', 1.1, 0]]))
+    expect(useAsteriaStore.getState().rigDrift).toBeNull()
+  })
+
+  test('resolveDriftDiscard: los huérfanos salen de la pila', () => {
+    const s = useAsteriaStore.getState()
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0]]))
+    s.setProject(foreignProject(oldRig, ['fx-a:impact', 'fx-b:impact']))
+    useAsteriaStore.getState().resolveDriftDiscard()
+    const st = useAsteriaStore.getState()
+    expect(st.rigDrift).toBeNull()
+    const w = st.project.stack.find((g) => g.id === 'w1')
+    expect((w as WaveGesture).mask.nodeIds).toEqual(['fx-a:impact'])
+  })
+
+  test('solo lectura: las mutaciones del stack son no-op', () => {
+    const s = useAsteriaStore.getState()
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0]]))
+    s.setProject(foreignProject(oldRig, ['fx-b:impact']))
+    useAsteriaStore.getState().setDriftReadOnly(true)
+    const frozen = useAsteriaStore.getState().project
+    useAsteriaStore.getState().addGesture(wave('w2'))
+    useAsteriaStore.getState().removeGesture('w1')
+    useAsteriaStore.getState().updateGesture('base', { gain: 0.1 })
+    useAsteriaStore.getState().moveGesture('w1', 0)
+    expect(useAsteriaStore.getState().project).toBe(frozen)
+    // Y el drift sigue sin resolver (la decisión fue solo lectura)
+    expect(useAsteriaStore.getState().rigDrift).not.toBeNull()
+  })
+
+  test('solo lectura sobrevive a un refresh del atlas mientras el drift persista', () => {
+    const s = useAsteriaStore.getState()
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0]]))
+    s.setProject(foreignProject(oldRig, ['fx-b:impact']))
+    useAsteriaStore.getState().setDriftReadOnly(true)
+    // Re-fetch del atlas (mismo rig nuevo, referencia nueva)
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0]]))
+    const st = useAsteriaStore.getState()
+    expect(st.driftReadOnly).toBe(true)
+    expect(st.rigDrift).not.toBeNull()
   })
 })

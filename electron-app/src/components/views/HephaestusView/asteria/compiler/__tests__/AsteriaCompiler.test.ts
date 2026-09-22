@@ -202,20 +202,84 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     ).toBe(true)
   })
 
-  test('Λ-Ride: reutiliza la curva de un track Forge existente', () => {
+  test('Λ-Ride: la curva emitida es estructuralmente IDÉNTICA a la fuente (Gate 8050)', () => {
+    const clip = makeClip()
     const project = {
       ...createDefaultProject('x'),
       lutSource: { kind: 'ride' as const, trackId: 'forge-track-01' },
     }
     const out = compile({
-      atlas: makeAtlas(), field: makeField(), clip: makeClip(),
+      atlas: makeAtlas(), field: makeField(), clip,
       project,
     })
     expect(out.report.strategy).toBe('ride')
-    expect(out.tracks[0].id).toBe('ast_intensity_ride_0')
-    // La curva es la del track fuente (triángulo de 3 kf), no el pulso Λ
-    expect(out.tracks[0].curve.keyframes).toHaveLength(3)
-    expect(out.tracks[0].curve.keyframes[1].value).toBe(1)
+    expect(out.tracks).toHaveLength(1) // una única pista nueva + bus
+    const t = out.tracks[0]
+    expect(t.id).toBe('ast_intensity_ride_0')
+    // Comparación estructural: keyframes byte-a-byte idénticos a la
+    // fuente Forge — la Vía Λ no sintetiza, solo inyecta direcciones.
+    const src = clip.tracks[0].curve
+    expect(t.curve.keyframes).toEqual(src.keyframes)
+    expect(t.curve.range).toEqual(src.range)
+    expect(t.curve.valueType).toBe(src.valueType)
+    expect(t.curve.mode).toBe(src.mode)
+    // Deep-clone: cero alias al clip vivo (mutar la pista no toca Forge)
+    expect(t.curve).not.toBe(src)
+    expect(t.curve.keyframes[0]).not.toBe(src.keyframes[0])
+    // El bus de direcciones va sobre la curva prestada
+    expect(Object.keys(t.phaseOverrides!).length).toBe(3)
+  })
+
+  test('Λ-Frozen: glifo estático (canal gain) sobre Vía Λ → aviso verbatim', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'lambda' as const,
+      stack: [
+        { kind: 'base' as const, id: 'base', delayMs: 0, gain: 1 },
+        {
+          kind: 'glyph' as const, id: 'g1', op: 'replace' as const,
+          text: 'LUX', mask: { nodeIds: ['fx-a:petal-l:impact'] },
+          transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+          channel: 'gain' as const, antialias: true,
+        },
+      ],
+    }
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip: makeClip(),
+      project,
+    })
+    expect(
+      out.report.warnings.some(
+        (w) =>
+          w.startsWith('LAMBDA_FROZEN_DRIFT') &&
+          w.includes(
+            'Λ-Frozen: imagen estática por escalado de duración — drift 3,3 %/disparo',
+          ),
+      ),
+    ).toBe(true)
+  })
+
+  test('Λ-Frozen NO avisa con glifo en canal delay (texto en movimiento)', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'lambda' as const,
+      stack: [
+        { kind: 'base' as const, id: 'base', delayMs: 0, gain: 1 },
+        {
+          kind: 'glyph' as const, id: 'g1', op: 'replace' as const,
+          text: 'LUX', mask: { nodeIds: ['fx-a:petal-l:impact'] },
+          transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+          channel: 'delay' as const, antialias: true,
+        },
+      ],
+    }
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip: makeClip(),
+      project,
+    })
+    expect(
+      out.report.warnings.some((w) => w.startsWith('LAMBDA_FROZEN_DRIFT')),
+    ).toBe(false)
   })
 
   test('Λ-Ride con trackId inexistente → warning + fallback a pulso', () => {

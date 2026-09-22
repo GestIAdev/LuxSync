@@ -221,6 +221,13 @@ export interface AsteriaProject extends AsteriaProjectEnvelope {
   readonly lutSource: LutSource
   /** K máximo de cohortes para strategy 'cohort' (default 16). */
   readonly cohortBudget: number
+  /**
+   * 🜨 WAVE 8050 (M3): posiciones XZ selladas al crear el documento —
+   * sin ellas el remapeo por proximidad post-Rig Drift no sabría dónde
+   * ESTABA un nodo perdido. Opcional (proyectos viejos no la traen —
+   * esos nodos se reportan `unmappable`).
+   */
+  readonly nodePositions?: Readonly<Record<string, { readonly x: number; readonly z: number }>>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

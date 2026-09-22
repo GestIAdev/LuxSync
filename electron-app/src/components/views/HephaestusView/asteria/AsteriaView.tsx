@@ -29,6 +29,7 @@ import { AsteriaCanvas } from './canvas/AsteriaCanvas'
 import { useNodeAtlas } from './canvas/useNodeAtlas'
 import { useAsteriaTouch } from './preview/useAsteriaTouch'
 import { useAsteriaCompiler } from './compiler/useAsteriaCompiler'
+import { useAsteriaRigDrift } from './compiler/useAsteriaRigDrift'
 import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
 import { getTool } from './tools/ToolRegistry'
 import {
@@ -62,6 +63,7 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
   const { atlas, loading, error } = useNodeAtlas()
   useAsteriaTouch()
   useAsteriaCompiler()
+  useAsteriaRigDrift() // 🜨 WAVE 8050 M3: clip.asteria → proyecto + drift
 
   const activeToolId = useAsteriaStore((s) => s.activeToolId)
   const setActiveTool = useAsteriaStore((s) => s.setActiveTool)

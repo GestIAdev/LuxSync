@@ -303,6 +303,24 @@ export function compile(input: CompileInput): CompileOutput {
     )
   }
 
+  // ── Λ-Frozen (§3.2): un glifo ESTÁTICO (canal gain) disparado con
+  //    Vía Λ solo puede vivir por el truco de escalado de duración —
+  //    mesetas + D≫vida del disparo + one-shot. Deriva real por disparo:
+  //    el aviso va verbatim al HUD, nunca silencioso. 'ride' también es
+  //    Λ (una curva compartida): strategy resuelto 'lambda' lo cubre.
+  if (
+    strategy === 'lambda' &&
+    project.stack.some(
+      (g) =>
+        g.kind === 'glyph' &&
+        (g.channel === 'gain' || g.channel === 'both'),
+    )
+  ) {
+    warnings.push(
+      'LAMBDA_FROZEN_DRIFT — Λ-Frozen: imagen estática por escalado de duración — drift 3,3 %/disparo',
+    )
+  }
+
   // ── Λ-Ride (§8.2): la curva esculpida en Forge es la base de TODAS las
   //    estrategias — el compilador no sintetiza, solo inyecta geometría ──
   let rideCurve: HephCurve | null = null

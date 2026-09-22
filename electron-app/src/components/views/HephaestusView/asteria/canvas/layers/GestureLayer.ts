@@ -19,6 +19,7 @@
 import type { WorldTransform } from '../useWorldTransform'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import { gesturePreview } from '../../tools/ToolRegistry'
+import { rasterizeText, glyphRectMeters, GLYPH_ROWS } from '../../model/glyphRaster'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -146,6 +147,44 @@ export function drawGestureLayer(
     ctx.beginPath()
     ctx.arc(toSX(lx), toSY(lz), Math.max(rPx, 3), 0, Math.PI * 2)
     ctx.stroke()
+  }
+
+  // 🜨 WAVE 8050 (T5): rect del Glyph Stamper — el operador ve el área
+  // del texto (ancho real del bitmap × alto scaleM) + el canal destino.
+  const gl = gesturePreview.glyph
+  if (gl) {
+    const bmp = rasterizeText(gl.text)
+    const { widthM } = glyphRectMeters(bmp, gl.scaleM)
+    const cx = toSX(gl.x)
+    const cy = toSY(gl.z)
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.rotate((gl.rotDeg * Math.PI) / 180)
+    const w = widthM * cam.zoom
+    const h = gl.scaleM * cam.zoom
+    ctx.fillRect(-w / 2, -h / 2, w, h)
+    ctx.strokeRect(-w / 2, -h / 2, w, h)
+    // Retícula 5×7: las filas de la fuente — la unidad de legibilidad
+    ctx.setLineDash([2, 4])
+    ctx.strokeStyle = 'rgba(123, 92, 255, 0.4)'
+    const cellPx = h / GLYPH_ROWS
+    ctx.beginPath()
+    for (let r = 1; r < GLYPH_ROWS; r++) {
+      ctx.moveTo(-w / 2, -h / 2 + r * cellPx)
+      ctx.lineTo(w / 2, -h / 2 + r * cellPx)
+    }
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.strokeStyle = COLOR_GESTURE
+    ctx.fillStyle = 'rgba(230, 225, 255, 0.85)'
+    ctx.font = '10px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(
+      `"${gl.text}" · ${gl.channel.toUpperCase()}`,
+      0, -h / 2 - 6,
+    )
+    ctx.fillStyle = COLOR_GESTURE_FILL
+    ctx.restore()
   }
 
   if (!atlas) return

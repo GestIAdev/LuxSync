@@ -35,6 +35,8 @@ import {
   MCC_CELL_AVAILABLE,
   MCC_CELL_UNAVAILABLE_TOOLTIP,
 } from './mccCapability'
+import { measureGlyphLegibility } from './model/glyphRaster'
+import type { GlyphGesture } from './model/AsteriaProject'
 import './tools' // side-effect: puebla TOOL_REGISTRY
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +51,7 @@ export interface AsteriaViewProps {
 }
 
 const TOOL_ORDER: readonly AsteriaToolId[] = [
-  'select', 'lasso', 'radial', 'chrono', 'cell',
+  'select', 'lasso', 'radial', 'chrono', 'cell', 'glyph',
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -71,6 +73,16 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
   const stack = useAsteriaStore((s) => s.project.stack)
   const compileReport = useAsteriaStore((s) => s.lastCompileReport)
   const surgeonDeviceId = useAsteriaStore((s) => s.surgeonDeviceId)
+
+  // 🜨 WAVE 8050 (T5): legibilidad del último gesto glyph del stack —
+  // el HUD de resolución efectiva (Gate 8050: aviso honesto, jamás
+  // una promesa falsa de texto legible).
+  const lastGlyph = [...stack].reverse().find(
+    (g): g is GlyphGesture => g.kind === 'glyph',
+  )
+  const glyphLegibility = lastGlyph
+    ? measureGlyphLegibility(atlas, lastGlyph)
+    : null
 
   // ── Hotkeys de herramientas: V / L / R ──
   useEffect(() => {
@@ -187,6 +199,28 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
             ) : (
               <div className="asteria-rail__muted">
                 doble clic en un fixture compuesto
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 🜨 WAVE 8050 (T5): HUD de legibilidad del glifo — resolución
+            efectiva bajo el área del texto; aviso honesto por debajo
+            del umbral de la fuente 5×7. */}
+        {lastGlyph && glyphLegibility && (
+          <div className="asteria-rail__section">
+            <div className="asteria-rail__title">GLYPH</div>
+            <div className="asteria-rail__stat">
+              "{lastGlyph.text ?? ''}" · {lastGlyph.channel.toUpperCase()}
+            </div>
+            <div className="asteria-rail__muted">
+              {glyphLegibility.nodesPerMeter.toFixed(1)} nodos/m ·{' '}
+              {glyphLegibility.rowsResolved}/7 filas ·{' '}
+              {glyphLegibility.colsResolved} cols
+            </div>
+            {!glyphLegibility.legible && (
+              <div className="asteria-rail__error">
+                ⚠ Resolución insuficiente para texto legible
               </div>
             )}
           </div>

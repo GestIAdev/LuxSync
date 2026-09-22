@@ -37,6 +37,11 @@ export interface GesturePreview {
   radial: { cx: number; cz: number; r: number } | null
   /** 🜨 T3 Chrono-Brush: trazo en curso — array plano [x0,z0,…] + radio. */
   chrono: { pts: number[]; radiusM: number } | null
+  /** 🜨 T5 Glyph Stamper: rect del texto en curso (centro + alto + canal). */
+  glyph: {
+    x: number; z: number; scaleM: number; rotDeg: number
+    text: string; channel: 'delay' | 'gain'
+  } | null
 }
 
 /** Singleton mutable — las tools escriben, GestureLayer lee. */
@@ -45,6 +50,7 @@ export const gesturePreview: GesturePreview = {
   lasso: null,
   radial: null,
   chrono: null,
+  glyph: null,
 }
 
 /** Limpia toda la geometría de gesto (al soltar / cambiar de herramienta). */
@@ -53,6 +59,7 @@ export function clearGesturePreview(): void {
   gesturePreview.lasso = null
   gesturePreview.radial = null
   gesturePreview.chrono = null
+  gesturePreview.glyph = null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

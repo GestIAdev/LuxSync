@@ -30,8 +30,8 @@
  *   slice  → bucketing por eje (x/z/radius/angle/dmx/zone) + shuffleSeed
  *            con paridad hash01 de PhaseConfigPro + simetría
  *   noise  → value-noise fBm por posición → delay orgánico
- * Pendiente: glyph (raster de texto/SVG) — resuelve su máscara de
- * cobertura (mask[i]=1).
+ *   glyph  → cobertura del texto 5×7 → gain (imagen quieta) o delay
+ *            (barrido 1 m/s por columna — WAVE 8050)
  *
  * @module HephaestusView/asteria/model/fieldEngine
  * ═══════════════════════════════════════════════════════════════════════════
@@ -45,6 +45,7 @@ import type {
   BaseGesture,
   WaveGesture,
   ChronoGesture,
+  GlyphGesture,
   SliceGesture,
   ManualGesture,
   NoiseGesture,
@@ -52,6 +53,13 @@ import type {
   BlendOp,
   FieldChannel,
 } from './AsteriaProject'
+import {
+  rasterizeText,
+  sampleGlyphCoverage,
+  worldToGlyphCell,
+  GLYPH_DELAY_MS_PER_M,
+  type GlyphBitmap,
+} from './glyphRaster'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIELD SNAPSHOT — el campo evaluado (buffers compartidos del engine)
@@ -191,6 +199,12 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
   // Scratch para chrono: arc-length acumulado del trazo. Crece al trazo
   // más largo visto — se aloca on-demand UNA vez, no por evaluate.
   let chronoArcLen = new Float32Array(0)
+
+  // Caché del bitmap de glifo (una entrada): rasterizar cuesta µs pero
+  // el texto rara vez cambia entre evaluates — se re-rasteriza solo si
+  // cambia el string. El buffer crece al texto más largo visto.
+  let glyphBuf = new Uint8Array(0)
+  let glyphCache: { text: string; bmp: GlyphBitmap } | null = null
 
   // Scratch para slice: escalar por eje de cada nodo (evita re-cómputo
   // entre el pase de min/max y el de cuantización).
@@ -456,6 +470,51 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     }
   }
 
+  /**
+   * GLYPH (§T5 — WAVE 8050): el texto 5×7 muestreado por posición.
+   *   channel 'gain'  → gain = cobertura [0,1] (imagen quieta — Vía B)
+   *   channel 'delay' → delay = distancia local-X desde el borde
+   *                     izquierdo × 1000 ms/m (barrido 1 m/s — Vía Λ)
+   *   threshold       → meseta dura {0,1}; antialias → bilinear
+   * Solo los píxeles cubiertos (cov>0) reclaman el nodo — el overlay de
+   * cobertura dibuja exactamente la forma del texto.
+   * El bitmap se cachea por string — re-raster solo si cambia el texto.
+   */
+  function applyGlyph(g: GlyphGesture): void {
+    const text = g.text ?? ''
+    if (text.length === 0) return
+    const cnt = resolveMask(g.mask)
+    if (cnt === 0) return
+
+    if (glyphCache === null || glyphCache.text !== text) {
+      if (glyphBuf.length < text.length * 6 * 7) {
+        glyphBuf = new Uint8Array(text.length * 6 * 7)
+      }
+      glyphCache = { text, bmp: rasterizeText(text, glyphBuf) }
+    }
+    const bmp = glyphCache.bmp
+    const cellM = g.transform.scaleM / bmp.rows
+    const writesDelay = g.channel !== 'gain'
+    const writesGain = g.channel !== 'delay'
+
+    for (let k = 0; k < cnt; k++) {
+      const i = scratchIdx[k]
+      if (!hasPosition[i]) continue
+      const cov = sampleGlyphCoverage(posX[i], posZ[i], g, bmp)
+      if (cov <= 0) continue
+      // u (celdas desde el borde izq.) → metros → delay del barrido
+      const { u } = worldToGlyphCell(posX[i], posZ[i], g, bmp)
+      const d = u * cellM * GLYPH_DELAY_MS_PER_M
+      blendInto(
+        delayMs, gain, i, g.op,
+        writesDelay ? d : 0,
+        writesGain ? cov : 1,
+        g.channel,
+      )
+      mask[i] = 1
+    }
+  }
+
   function evaluate(stack: readonly Gesture[]): FieldSnapshot {
     // Reset a la identidad: delay 0, gain 1, sin cobertura
     delayMs.fill(0)
@@ -483,11 +542,17 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         case 'noise':
           applyNoise(gesture)
           break
+        case 'glyph':
+          applyGlyph(gesture)
+          break
 
-        // glyph — última misión: por ahora solo se resuelve la HUELLA
-        // (mask) — el canvas ya visualiza qué nodos cubre el gesto.
         default: {
-          const cnt = resolveMask(gesture.mask)
+          // Futuro kind: resuelve solo la huella (mask) — el canvas ya
+          // visualiza qué nodos cubre el gesto. La unión es exhaustiva
+          // hoy — el cast defensivo protege contra kinds futuros.
+          const gm = (gesture as { mask?: NodeMask }).mask
+          if (!gm) break
+          const cnt = resolveMask(gm)
           for (let k = 0; k < cnt; k++) mask[scratchIdx[k]] = 1
           break
         }

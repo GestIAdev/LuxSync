@@ -44,7 +44,8 @@ export interface NodeAtlas {
 }
 
 /** Herramientas del Lienzo Táctico (WAVE 8020 + 8040B: chrono ✎ · cell ✜). */
-export type AsteriaToolId = 'select' | 'lasso' | 'radial' | 'chrono' | 'cell'
+export type AsteriaToolId =
+  | 'select' | 'lasso' | 'radial' | 'chrono' | 'cell' | 'glyph'
 
 /** Límites de zoom en píxeles por metro. */
 export const ASTERIA_ZOOM_MIN = 4

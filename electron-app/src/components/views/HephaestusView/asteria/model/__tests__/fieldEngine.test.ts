@@ -60,7 +60,9 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     expect(Array.from(snap.mask)).toEqual([1, 1, 1, 1])
   })
 
-  test('kind sin implementar: resuelve máscara de cobertura, sin tocar valores', () => {
+  test('glyph (WAVE 8050): nodos fuera del rect del texto no se cubren', () => {
+    // 'LX' en (0,0) scaleM=1 → rect ≈ 1.57×1 m centrado; fx-1 (-2,-1) y
+    // fx-2 (1.5,2) quedan fuera → cobertura 0 → máscara 0.
     const stack: Gesture[] = [
       {
         kind: 'glyph', id: 'g1', op: 'replace', text: 'LX',
@@ -70,9 +72,52 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
       },
     ]
     const snap = evaluateStack(stack, makeAtlas())
-    expect(Array.from(snap.mask)).toEqual([1, 0, 1, 0])
-    // La matemática del glyph llega después — los valores siguen en identidad
+    expect(Array.from(snap.mask)).toEqual([0, 0, 0, 0])
     expect(Array.from(snap.delayMs)).toEqual([0, 0, 0, 0])
+  })
+
+  // ── GLYPH (§T5/WAVE 8050): cobertura → gain / barrido → delay ──
+
+  test('glyph gain: la cobertura del píxel escribe gain; fuera → sin cubrir', () => {
+    // Atlas: a en (0,0) → celda (2,3) del tallo de 'I'; b en (-0.4,0)
+    // → celda (0,3) vacía. 'I' scaleM=1.4 → celda 0.2 m.
+    const atlas: NodeAtlas = {
+      entries: [entry('a:cell', 0, 0), entry('b:cell', -0.4, 0)],
+      byNodeId: new Map(),
+    }
+    const stack: Gesture[] = [
+      {
+        kind: 'glyph', id: 'g1', op: 'replace', text: 'I',
+        mask: { nodeIds: ['a:cell', 'b:cell'] },
+        transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+        channel: 'gain', antialias: false,
+      },
+    ]
+    const snap = evaluateStack(stack, atlas)
+    expect(snap.gain[0]).toBe(1)      // sobre el tallo
+    expect(snap.gain[1]).toBe(1)      // fuera → identidad (no pisado)
+    expect(Array.from(snap.mask)).toEqual([1, 0])
+    expect(snap.delayMs[0]).toBe(0)   // canal gain no toca delay
+  })
+
+  test('glyph delay: barrido — delay = u·celda·1000 ms (1 m/s)', () => {
+    // a en x=0 → u=2.5 celdas → 0.5 m desde el borde → 500 ms
+    const atlas: NodeAtlas = {
+      entries: [entry('a:cell', 0, 0)],
+      byNodeId: new Map(),
+    }
+    const stack: Gesture[] = [
+      {
+        kind: 'glyph', id: 'g1', op: 'replace', text: 'I',
+        mask: { nodeIds: ['a:cell'] },
+        transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+        channel: 'delay', antialias: false,
+      },
+    ]
+    const snap = evaluateStack(stack, atlas)
+    expect(snap.delayMs[0]).toBeCloseTo(500, 3)
+    expect(snap.gain[0]).toBe(1) // canal delay no toca gain
+    expect(snap.mask[0]).toBe(1)
   })
 
   // ── WAVE (§5.2/T4): delay = dist/speed·1000 ──

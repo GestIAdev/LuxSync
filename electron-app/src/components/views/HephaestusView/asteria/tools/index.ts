@@ -11,13 +11,15 @@ import { LassoTool } from './LassoTool'
 import { RadialTool } from './RadialTool'
 import { ChronoBrushTool } from './ChronoBrushTool'
 import { CellSurgeonTool } from './CellSurgeonTool'
+import { GlyphTool } from './GlyphTool'
 
 registerTool(SelectTool)
 registerTool(LassoTool)
 registerTool(RadialTool)
 registerTool(ChronoBrushTool) // T3 ✎ — WAVE 8040B
 registerTool(CellSurgeonTool) // T7 ✜ — WAVE 8040B
+registerTool(GlyphTool)       // T5 A — WAVE 8050
 
-export { SelectTool, LassoTool, RadialTool, ChronoBrushTool, CellSurgeonTool }
+export { SelectTool, LassoTool, RadialTool, ChronoBrushTool, CellSurgeonTool, GlyphTool }
 export { getTool, TOOL_REGISTRY, gesturePreview, clearGesturePreview } from './ToolRegistry'
 export type { AsteriaTool, AsteriaToolContext, GesturePreview } from './ToolRegistry'

@@ -123,12 +123,26 @@ export interface IGovernorCondition {
 }
 
 /**
+ * 🌊 CURVE GOVERNOR — atenuación exponencial para fixtures ópticamente
+ * excesivos en valores bajos (ej. beams con lente colimadora).
+ * output = ceiling · input^exponent, en dominio normalizado [0,1].
+ */
+export interface IGovernorCurve {
+  /** Techo absoluto del output normalizado [0.0-1.0]. Default 1.0. */
+  readonly ceiling?: number
+  /** Exponente de la curva [1.0-5.0]. Default 2.0 (cuadrática). */
+  readonly exponent?: number
+}
+
+/**
  * Transformación física aplicada cuando la condición de la regla hace match.
- * forceByte tiene precedencia sobre mapToRange. clampMin se aplica al final.
+ * Precedencia: forceByte > curve > mapToRange. clampMin se aplica al final.
  */
 export interface IGovernorAction {
   /** Sobreescribir con un byte DMX fijo [0-255]. Máxima precedencia. */
   readonly forceByte?: number
+  /** Curva exponencial: output = ceiling · input^exponent → byte. */
+  readonly curve?: IGovernorCurve
   /** Re-mapear el input normalizado [0,1] al rango DMX físico [min, max]. */
   readonly mapToRange?: readonly [number, number]
   /** Si el byte calculado es > 0 pero < clampMin, elevarlo a clampMin. */

@@ -55,11 +55,13 @@ function formatGovernorRule(rule: IGovernorRule): string {
   const condition = lo + (lo && hi ? ' ' : '') + hi
   const action = rule.then.forceByte !== undefined
     ? `=${rule.then.forceByte}`
-    : rule.then.clampMin !== undefined
-      ? `≥${rule.then.clampMin}`
-      : rule.then.mapToRange !== undefined
-        ? `→[${rule.then.mapToRange[0]}-${rule.then.mapToRange[1]}]`
-        : '?'
+    : rule.then.curve !== undefined
+      ? `x^${rule.then.curve.exponent ?? 2}·ceil${rule.then.curve.ceiling ?? 1}`
+      : rule.then.clampMin !== undefined
+        ? `≥${rule.then.clampMin}`
+        : rule.then.mapToRange !== undefined
+          ? `→[${rule.then.mapToRange[0]}-${rule.then.mapToRange[1]}]`
+          : '?'
   return `${intent}${condition ? `(${condition})` : ''}${action}`
 }
 
@@ -311,6 +313,9 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                         }
                         const parseByte = (raw: string): number =>
                           Math.min(255, Math.max(0, parseInt(raw) || 0))
+                        // 🌊 CURVE GOVERNOR: exponent domain [1,5], default 2
+                        const parseExp = (raw: string): number =>
+                          Math.min(5, Math.max(1, parseFloat(raw) || 2))
                         return (
                           <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', flexWrap: 'wrap' }}>
                             <span style={{ color: 'rgba(255,255,255,0.35)', minWidth: '14px' }}>{ri + 1}.</span>
@@ -342,7 +347,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                             <span style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
                             <select
                               className="gov-rule-select"
-                              value={rule.then.forceByte !== undefined ? 'forceByte' : rule.then.mapToRange !== undefined ? 'mapToRange' : 'clampMin'}
+                              value={rule.then.forceByte !== undefined ? 'forceByte' : rule.then.curve !== undefined ? 'curve' : rule.then.mapToRange !== undefined ? 'mapToRange' : 'clampMin'}
                               title="Action applied on match"
                               onChange={(e) => {
                                 const kind = e.target.value
@@ -350,13 +355,16 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                                   ...r,
                                   then: kind === 'forceByte'
                                     ? { forceByte: r.then.forceByte ?? 255 }
-                                    : kind === 'mapToRange'
-                                      ? { mapToRange: r.then.mapToRange ?? ([0, 255] as [number, number]) }
-                                      : { clampMin: r.then.clampMin ?? 64 },
+                                    : kind === 'curve'
+                                      ? { curve: r.then.curve ?? { ceiling: 1.0, exponent: 2.0 } }
+                                      : kind === 'mapToRange'
+                                        ? { mapToRange: r.then.mapToRange ?? ([0, 255] as [number, number]) }
+                                        : { clampMin: r.then.clampMin ?? 64 },
                                 }))
                               }}
                             >
                               <option value="forceByte">forceByte</option>
+                              <option value="curve">curve</option>
                               <option value="mapToRange">mapToRange</option>
                               <option value="clampMin">clampMin</option>
                             </select>
@@ -375,6 +383,26 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                                 style={numStyle}
                                 onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, clampMin: parseByte(e.target.value) } }))}
                               />
+                            )}
+                            {rule.then.curve !== undefined && (
+                              <>
+                                <span style={{ color: 'rgba(255,255,255,0.4)' }}>x^</span>
+                                <input
+                                  type="number" min="1" max="5" step="0.1"
+                                  defaultValue={rule.then.curve.exponent ?? 2.0}
+                                  title="curve exponent [1-5] — 2.0 = quadratic (flattens the low end)"
+                                  style={numStyle}
+                                  onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, curve: { ...r.then.curve, exponent: parseExp(e.target.value) } } }))}
+                                />
+                                <span style={{ color: 'rgba(255,255,255,0.4)' }}>ceil</span>
+                                <input
+                                  type="number" min="0" max="1" step="0.05"
+                                  defaultValue={rule.then.curve.ceiling ?? 1.0}
+                                  title="curve ceiling [0-1] — absolute normalized output cap"
+                                  style={numStyle}
+                                  onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, curve: { ...r.then.curve, ceiling: parseNorm(e.target.value) } } }))}
+                                />
+                              </>
                             )}
                             {rule.then.mapToRange !== undefined && (
                               <>

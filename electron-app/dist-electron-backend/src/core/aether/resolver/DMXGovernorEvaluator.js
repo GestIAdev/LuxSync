@@ -96,9 +96,24 @@ export function applyDMXGovernors(govMap, channelOffset, channelType, normalized
         // forceByte: máxima precedencia, retorno inmediato.
         if (act.forceByte !== undefined)
             return act.forceByte;
-        // mapToRange: re-mapear input normalizado al rango físico declarado.
         let result = computedByte;
-        if (act.mapToRange !== undefined) {
+        // 🌊 CURVE GOVERNOR: atenuación exponencial en dominio normalizado.
+        //   outNorm = ceiling · input^exponent  →  byte = round(outNorm · 255)
+        // Para fixtures ópticamente excesivos en valores bajos (beams con
+        // lente colimadora): exponent=2 aplana el tercio inferior, ceiling
+        // capa el máximo absoluto. Precede a mapToRange (excluyentes);
+        // clampMin sigue aplicando sobre el resultado.
+        if (act.curve !== undefined) {
+            const inN = normalized < 0 ? 0 : normalized > 1 ? 1 : normalized;
+            const cRaw = act.curve.ceiling ?? 1.0;
+            const eRaw = act.curve.exponent ?? 2.0;
+            // Clamp a límites absolutos del esquema antes de escalar a 255.
+            const ceiling = cRaw < 0 ? 0 : cRaw > 1 ? 1 : cRaw;
+            const exponent = eRaw < 1 ? 1 : eRaw > 5 ? 5 : eRaw;
+            result = Math.round(ceiling * Math.pow(inN, exponent) * 255);
+        }
+        else if (act.mapToRange !== undefined) {
+            // mapToRange: re-mapear input normalizado al rango físico declarado.
             result = Math.round(act.mapToRange[0] + normalized * (act.mapToRange[1] - act.mapToRange[0]));
         }
         // clampMin: elevar el suelo físico si hay intent activo.

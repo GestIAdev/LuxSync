@@ -282,6 +282,13 @@ export interface IGovernorRule {
   }
   readonly then: {
     readonly forceByte?: number
+    /** 🌊 CURVE GOVERNOR: output = ceiling · input^exponent → byte.
+     *  ceiling [0-1] default 1.0, exponent [1-5] default 2.0.
+     *  Debe mantenerse en sincronía con core/aether/device.ts::IGovernorAction. */
+    readonly curve?: {
+      readonly ceiling?: number
+      readonly exponent?: number
+    }
     readonly mapToRange?: readonly [number, number]
     readonly clampMin?: number
   }

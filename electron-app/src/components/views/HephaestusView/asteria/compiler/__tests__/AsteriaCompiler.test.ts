@@ -7,7 +7,7 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { compile, ASTERIA_TRACK_PREFIX } from '../AsteriaCompiler'
+import { compile, injectAstTracks, isAsteriaTrack, ASTERIA_TRACK_PREFIX } from '../AsteriaCompiler'
 import { synthesizeLambda } from '../lutSynth'
 import { serializeHephClip } from '../../../../../../core/hephaestus/types'
 import type {
@@ -282,5 +282,58 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     expect(r.curve.keyframes[4].timeMs).toBe(4000)
     expect(r.curve.keyframes[4].value).toBe(0) // cierre C⁰
     expect(r.devicesTargeted).toBe(3)
+  })
+
+  // ── injectAstTracks — sustitución quirúrgica (WAVE 8030-P7) ──
+
+  test('injectAstTracks: reemplaza SOLO ast_*, Forge intacto, embebe proyecto', () => {
+    const clip = makeClip()
+    const prevAst: HephTrack = {
+      id: 'ast_intensity_lambda_0',
+      paramId: 'intensity',
+      zones: ['all'],
+      curve: {
+        paramId: 'intensity', valueType: 'number', range: [0, 1],
+        defaultValue: 0, mode: 'absolute',
+        keyframes: [{ timeMs: 0, value: 0, interpolation: 'hold' }],
+      },
+    }
+    clip.tracks.push(prevAst)
+
+    const project = createDefaultProject('sha1:fp')
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip, project,
+    })
+    const next = injectAstTracks(clip, out.tracks, project)
+
+    // El ast_ viejo fue reemplazado por el nuevo (mismo id, contenido nuevo)
+    const asts = next.tracks.filter((t) => isAsteriaTrack(t.id))
+    expect(asts).toHaveLength(1)
+    expect(asts[0].phaseOverrides?.['fx-b'].offsetMs).toBe(500)
+    // Forge intacto — misma referencia de track
+    expect(next.tracks.find((t) => t.id === 'forge-track-01'))
+      .toBe(clip.tracks[0])
+    // La receta viaja embebida (D-4)
+    expect(next.asteria).toBe(project)
+    // Clip original inmutable
+    expect(clip.asteria).toBeUndefined()
+    expect(clip.tracks.filter((t) => isAsteriaTrack(t.id))).toHaveLength(1)
+  })
+
+  test('injectAstTracks con stack vacío compilado elimina los ast_*', () => {
+    const clip = makeClip()
+    clip.tracks.push({
+      id: 'ast_intensity_lambda_0',
+      paramId: 'intensity',
+      zones: ['all'],
+      curve: {
+        paramId: 'intensity', valueType: 'number', range: [0, 1],
+        defaultValue: 0, mode: 'absolute',
+        keyframes: [{ timeMs: 0, value: 0, interpolation: 'hold' }],
+      },
+    })
+    const next = injectAstTracks(clip, [], createDefaultProject('x'))
+    expect(next.tracks).toHaveLength(1) // solo forge-track-01
+    expect(next.tracks[0].id).toBe('forge-track-01')
   })
 })

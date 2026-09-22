@@ -26,6 +26,7 @@ import type { NodeAtlasEntry } from '../../../../../core/aether/types'
 import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
 import { createDefaultProject } from '../model/AsteriaProject'
 import { computeRigFingerprint } from '../model/rigFingerprint'
+import type { CompileReport } from '../compiler/AsteriaCompiler'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -144,6 +145,14 @@ export interface AsteriaStore extends AsteriaCamera {
    * (0 = fondo). Clampeado al rango válido.
    */
   moveGesture: (id: string, toIndex: number) => void
+
+  /**
+   * 🜨 WAVE 8030-P7: último reporte del compilador Λ (useAsteriaCompiler).
+   * El rail lo muestra como HUD de presupuesto — bytes, pistas, warnings.
+   * null = aún no se ha compilado (o la compilación está deshabilitada).
+   */
+  lastCompileReport: CompileReport | null
+  setCompileReport: (report: CompileReport | null) => void
 
   /** Merge parcial de cámara con clamp de zoom. */
   setCamera: (cam: Partial<AsteriaCamera>) => void
@@ -295,6 +304,9 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       next.splice(to, 0, g)
       return { project: { ...s.project, stack: next } }
     }),
+
+  lastCompileReport: null,
+  setCompileReport: (report) => set({ lastCompileReport: report }),
 
   setCamera: (cam) =>
     set((s) => ({

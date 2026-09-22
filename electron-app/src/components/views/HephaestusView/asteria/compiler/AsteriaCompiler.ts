@@ -76,6 +76,35 @@ export interface CompileOutput {
 /** Prefijo de propiedad Asteria — el consumidor solo reemplaza ast_*. */
 export const ASTERIA_TRACK_PREFIX = 'ast_'
 
+/** ¿Pista propiedad de Asteria? (para la sustitución quirúrgica). */
+export function isAsteriaTrack(trackId: string): boolean {
+  return trackId.startsWith(ASTERIA_TRACK_PREFIX)
+}
+
+/**
+ * Sustitución quirúrgica (§8.1): devuelve un clip nuevo con los tracks
+ * ast_* reemplazados por los compilados y `clip.asteria` actualizado al
+ * proyecto vivo (D-4 — la receta viaja dentro del .lfx). Los tracks
+ * manuales de Forge quedan INTACTOS — solo se filtran los ast_*.
+ *
+ * Función pura — el caller decide si va por `mutate` (historial) o
+ * `replaceClipTransient` (live-compile sin ensuciar el undo).
+ */
+export function injectAstTracks(
+  clip: HephAutomationClipV3,
+  compiled: readonly HephTrack[],
+  project: AsteriaProject,
+): HephAutomationClipV3 {
+  return {
+    ...clip,
+    asteria: project,
+    tracks: [
+      ...clip.tracks.filter((t) => !isAsteriaTrack(t.id)),
+      ...compiled,
+    ],
+  }
+}
+
 /** Params que la Vía Λ puede emitir hoy: numéricos, curva sintetizable. */
 const LAMBDA_SAFE_PARAMS: ReadonlySet<HephParamId> = new Set([
   'intensity', 'white', 'amber', 'speed', 'zoom', 'focus', 'iris',

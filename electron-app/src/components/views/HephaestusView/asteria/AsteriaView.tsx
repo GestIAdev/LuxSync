@@ -28,6 +28,7 @@ import type { TemporalActions } from '../types/HephaestusShared'
 import { AsteriaCanvas } from './canvas/AsteriaCanvas'
 import { useNodeAtlas } from './canvas/useNodeAtlas'
 import { useAsteriaTouch } from './preview/useAsteriaTouch'
+import { useAsteriaCompiler } from './compiler/useAsteriaCompiler'
 import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
 import { getTool } from './tools/ToolRegistry'
 import './tools' // side-effect: puebla TOOL_REGISTRY
@@ -52,6 +53,7 @@ const TOOL_ORDER: readonly AsteriaToolId[] = ['select', 'lasso', 'radial']
 export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
   const { atlas, loading, error } = useNodeAtlas()
   useAsteriaTouch()
+  useAsteriaCompiler()
 
   const activeToolId = useAsteriaStore((s) => s.activeToolId)
   const setActiveTool = useAsteriaStore((s) => s.setActiveTool)
@@ -60,6 +62,8 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
   const selectionCount = useAsteriaStore((s) => s.selectionNodeIds.size)
   const hoverCount = useAsteriaStore((s) => s.hoverNodeIds.size)
   const touchLive = selectionCount + hoverCount
+  const stack = useAsteriaStore((s) => s.project.stack)
+  const compileReport = useAsteriaStore((s) => s.lastCompileReport)
 
   // ── Hotkeys de herramientas: V / L / R ──
   useEffect(() => {
@@ -141,6 +145,40 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
         <div className="asteria-rail__section">
           <div className="asteria-rail__title">SELECCIÓN</div>
           <div className="asteria-rail__stat">{selectionCount} nodos</div>
+        </div>
+
+        {/* 🜨 WAVE 8030-P7: Gesture Stack + HUD de compilación Λ */}
+        <div className="asteria-rail__section">
+          <div className="asteria-rail__title">GESTURE STACK</div>
+          {[...stack].reverse().map((g) => (
+            <div key={g.id} className="asteria-rail__muted">
+              {g.kind.toUpperCase()} · {g.id}
+            </div>
+          ))}
+        </div>
+
+        <div className="asteria-rail__section">
+          <div className="asteria-rail__title">COMPILE Λ</div>
+          {compileReport ? (
+            <>
+              <div className="asteria-rail__stat">
+                {(compileReport.bytes / 1024).toFixed(1)} KB ·{' '}
+                {compileReport.trackIds.length} pista(s)
+              </div>
+              <div className="asteria-rail__muted">
+                {compileReport.devicesTargeted} fixtures ·{' '}
+                {compileReport.overrideCount} offsets ·{' '}
+                {compileReport.strategy}
+              </div>
+              {compileReport.warnings.map((w) => (
+                <div key={w} className="asteria-rail__error">
+                  ⚠ {w}
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="asteria-rail__muted">sin compilar</div>
+          )}
         </div>
 
         {touchLive > 0 && pokeEnabled && (

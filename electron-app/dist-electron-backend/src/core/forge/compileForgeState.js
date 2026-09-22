@@ -440,7 +440,11 @@ export function buildCompleteFixture(state) {
         wheels: state.wheels,
         physics: state.physics,
         capabilities: deriveCapabilitiesUnified(state.channels, state.wheels, state.physics),
-        dmxGovernors: state.dmxGovernors.length > 0 ? [...state.dmxGovernors] : undefined,
+        // 🩸 STORE SYNC FIX: emit the state array verbatim — [] is the honest
+        // "no governors" representation (runtime treats it identically to
+        // undefined via `?? []`), while collapsing to undefined let stale
+        // baseFixture governors resurrect after a user deletion.
+        dmxGovernors: [...state.dmxGovernors],
         aetherCells,
     };
     if (nodeGraph) {

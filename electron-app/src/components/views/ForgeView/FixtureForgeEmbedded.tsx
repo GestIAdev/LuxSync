@@ -510,7 +510,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       type: state.meta.type || baseFixture.type,
       channels: syncedChannels,
       channelCount: syncedChannels.length,
-      dmxGovernors: state.dmxGovernors.length > 0 ? [...state.dmxGovernors] : baseFixture.dmxGovernors ?? [],
+      // 🩸 STORE SYNC FIX: state.dmxGovernors is authoritative — an EMPTY
+      // array means "user deleted all governors", not "unset". Falling back
+      // to baseFixture here resurrected deleted rules on reload.
+      dmxGovernors: [...state.dmxGovernors],
       physics: statePhysics ? {
         motorType: statePhysics.motorType as any,
         maxAcceleration: statePhysics.maxAcceleration,

@@ -19,56 +19,10 @@
 
 import React, { useEffect, useRef } from 'react'
 import { useAsteriaStore } from '../store/useAsteriaStore'
-import {
-  getWorldTransform,
-  visibleWorldRect,
-  type WorldTransform,
-} from './useWorldTransform'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DRAW — P1 DEBUG GRID (reemplazada por layers/GridLayer en WAVE 8010-P2)
-// ═══════════════════════════════════════════════════════════════════════════
-
-function drawDebugGrid(ctx: CanvasRenderingContext2D, t: WorldTransform): void {
-  const { minX, minZ, maxX, maxZ } = visibleWorldRect(t)
-
-  // ── Grid cada 1 m (solo en el rango visible — culling gratis) ──
-  ctx.lineWidth = 1
-  for (let x = Math.floor(minX); x <= Math.ceil(maxX); x++) {
-    const major = x % 5 === 0
-    ctx.strokeStyle = major
-      ? 'rgba(123, 92, 255, 0.22)'
-      : 'rgba(123, 92, 255, 0.07)'
-    const sx = (x - t.cam.panX) * t.cam.zoom + t.canvasW / 2
-    ctx.beginPath()
-    ctx.moveTo(sx, 0)
-    ctx.lineTo(sx, t.canvasH)
-    ctx.stroke()
-  }
-  for (let z = Math.floor(minZ); z <= Math.ceil(maxZ); z++) {
-    const major = z % 5 === 0
-    ctx.strokeStyle = major
-      ? 'rgba(123, 92, 255, 0.22)'
-      : 'rgba(123, 92, 255, 0.07)'
-    const sy = (z - t.cam.panY) * t.cam.zoom + t.canvasH / 2
-    ctx.beginPath()
-    ctx.moveTo(0, sy)
-    ctx.lineTo(t.canvasW, sy)
-    ctx.stroke()
-  }
-
-  // ── Retícula del origen del mundo (0, 0) — smoke test de la proyección ──
-  const ox = (0 - t.cam.panX) * t.cam.zoom + t.canvasW / 2
-  const oy = (0 - t.cam.panY) * t.cam.zoom + t.canvasH / 2
-  ctx.strokeStyle = 'rgba(123, 92, 255, 0.8)'
-  ctx.lineWidth = 1.5
-  ctx.beginPath()
-  ctx.moveTo(ox - 8, oy)
-  ctx.lineTo(ox + 8, oy)
-  ctx.moveTo(ox, oy - 8)
-  ctx.lineTo(ox, oy + 8)
-  ctx.stroke()
-}
+import { getWorldTransform } from './useWorldTransform'
+import { drawGridLayer } from './layers/GridLayer'
+import { drawNodeLayer } from './layers/NodeLayer'
+import { drawFeedbackLayer } from './layers/FeedbackLayer'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -119,9 +73,12 @@ export const AsteriaCanvas: React.FC = () => {
       ctx.fillStyle = '#07070c'
       ctx.fillRect(0, 0, t.canvasW, t.canvasH)
 
-      // WAVE 8010-P2: aquí entran las capas (grid → halo → cells →
-      // gesture ghosts → gizmos → isóconas). P1 dibuja solo la debug grid.
-      drawDebugGrid(ctx, t)
+      // WAVE 8010-P2: pipeline de capas en orden estricto.
+      // El atlas se lee por getState() — referencia estable, zero React cost.
+      const atlas = useAsteriaStore.getState().nodeAtlas
+      drawGridLayer(ctx, t)
+      drawNodeLayer(ctx, t, atlas)
+      drawFeedbackLayer(ctx, t, atlas)
 
       raf = requestAnimationFrame(tick)
     }

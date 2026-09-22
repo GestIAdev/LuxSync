@@ -34,16 +34,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
+import { useAsteriaStore, type NodeAtlas } from '../store/useAsteriaStore'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** El atlas consumible: array plano + índice O(1) por nodeId. */
-export interface NodeAtlas {
-  readonly entries: readonly NodeAtlasEntry[]
-  readonly byNodeId: ReadonlyMap<string, NodeAtlasEntry>
-}
+// NodeAtlas { entries, byNodeId } vive en useAsteriaStore — es la forma del
+// estado del store (capa inferior). Re-export para no romper consumidores.
+export type { NodeAtlas }
 
 export interface UseNodeAtlasResult {
   /** Atlas del grafo real. null hasta la primera carga exitosa. */
@@ -85,7 +84,10 @@ const TOPOLOGY_RELOAD_DEBOUNCE_MS = 200
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useNodeAtlas(): UseNodeAtlasResult {
-  const [atlas, setAtlas] = useState<NodeAtlas | null>(null)
+  // WAVE 8010-P2: el atlas vive en el store — única fuente de verdad.
+  // React se suscribe aquí (HUD/consumidores); el RAF lee getState()
+  // directamente, sin pasar por el reconciler.
+  const atlas = useAsteriaStore((s) => s.nodeAtlas)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -123,7 +125,7 @@ export function useNodeAtlas(): UseNodeAtlasResult {
           (result && typeof result.error === 'string' && result.error) ||
           'Respuesta inválida de lux:aether:getNodeAtlas'
         setError(msg)
-        setAtlas(null)
+        useAsteriaStore.getState().setNodeAtlas(null)
         return
       }
 
@@ -134,11 +136,11 @@ export function useNodeAtlas(): UseNodeAtlasResult {
           byNodeId.set(entry.nodeId, entry)
         }
       }
-      setAtlas({ entries: result.atlas, byNodeId })
+      useAsteriaStore.getState().setNodeAtlas({ entries: result.atlas, byNodeId })
     } catch (err) {
       if (gen !== fetchGenRef.current) return
       setError(err instanceof Error ? err.message : String(err))
-      setAtlas(null)
+      useAsteriaStore.getState().setNodeAtlas(null)
     } finally {
       if (gen === fetchGenRef.current && !silent) setLoading(false)
     }

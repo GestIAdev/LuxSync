@@ -22,10 +22,22 @@
  */
 
 import { create } from 'zustand'
+import type { NodeAtlasEntry } from '../../../../../core/aether/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🜨 WAVE 8010-P2: el Node Atlas consumible por las capas del canvas.
+ * `useNodeAtlas` lo construye UNA vez por fetch (patch-time) y lo deposita
+ * aquí — las capas RAF lo leen via `useAsteriaStore.getState().nodeAtlas`
+ * como REFERENCIA ESTABLE, sin suscripciones ni re-renders de React.
+ */
+export interface NodeAtlas {
+  readonly entries: readonly NodeAtlasEntry[]
+  readonly byNodeId: ReadonlyMap<string, NodeAtlasEntry>
+}
 
 /** Límites de zoom en píxeles por metro. */
 export const ASTERIA_ZOOM_MIN = 4
@@ -46,6 +58,16 @@ export interface AsteriaStore extends AsteriaCamera {
   /** Tamaño CSS del canvas en píxeles (lo fija el ResizeObserver). */
   canvasW: number
   canvasH: number
+
+  /**
+   * 🜨 WAVE 8010-P2: fotografía del NodeGraph real (WAVE 8000) depositada
+   * por useNodeAtlas. Referencia estable entre fetches — las capas de
+   * dibujo la consumen por getState() dentro del RAF (zero React cost).
+   * null = atlas aún no cargado o fetch fallido.
+   */
+  nodeAtlas: NodeAtlas | null
+  /** Deposita el atlas tras un fetch exitoso (patch-time only). */
+  setNodeAtlas: (atlas: NodeAtlas | null) => void
 
   /** Merge parcial de cámara con clamp de zoom. */
   setCamera: (cam: Partial<AsteriaCamera>) => void
@@ -85,6 +107,9 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
   zoom: ASTERIA_ZOOM_DEFAULT,
   canvasW: 0,
   canvasH: 0,
+  nodeAtlas: null,
+
+  setNodeAtlas: (atlas) => set({ nodeAtlas: atlas }),
 
   setCamera: (cam) =>
     set((s) => ({

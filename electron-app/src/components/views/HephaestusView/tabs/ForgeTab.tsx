@@ -21,6 +21,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { CurveEditor } from '../CurveEditor'
 import { ParameterLane, PARAM_META, ALL_PARAM_IDS, PARAM_CATEGORIES } from '../ParameterLane'
+import { isAsteriaTrack } from '../asteria/compiler/AsteriaCompiler'
 import type { ParamCategory } from '../ParameterLane'
 import { HephaestusToolbar } from '../HephaestusToolbar'
 import { getCategoryIcon, generateShapeInWindow } from '../curveTemplates'
@@ -404,6 +405,11 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   const updateCurve = useCallback((paramId: HephParamId | null, updater: (curve: HephCurve) => HephCurve) => {
     const trackId = useHephaestusEditorStore.getState().selection.activeTrackId
     if (!trackId) return
+    // 🔒 WAVE 8090 (M3): pistas ast_* son propiedad de Asteria — read-only.
+    // Editar su curva es trabajo muerto: el próximo recompile la regenera.
+    // Esta guardia única cubre canvas drags, keyframe ops, context menu,
+    // templates y mode changes — todos los caminos pasan por aquí.
+    if (isAsteriaTrack(trackId)) return
     const store = useHephaestusEditorStore.getState()
     const isDragging = store._dragSnapshot !== null
     const buildNext = (prev: HephAutomationClipV3): HephAutomationClipV3 => {
@@ -863,6 +869,9 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   }, [clip.durationMs, clip.spatialZones, selectTrack])
 
   const handleRemoveTrack = useCallback((trackId: string) => {
+    // 🔒 8090-M3: las pistas ast_* no se borran desde Forge — el
+    // recompile de Asteria las recrearía; se gestionan desde el stack.
+    if (isAsteriaTrack(trackId)) return
     removeTrackFromStore(trackId)
     // ⚒️ OOM GUARD: read post-removal state via getState() — keeps this
     // callback referentially stable so memoized ParameterLane skips
@@ -881,6 +890,8 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   }, [duplicateTrackFromStore, selectTrack])
 
   const handleTrackZonesChange = useCallback((trackId: string, zones: ZoneTarget[]) => {
+    // 🔒 8090-M3: zones de ast_* las calcula Asteria en cada recompile.
+    if (isAsteriaTrack(trackId)) return
     setTrackZonesFromStore(trackId, zones)
   }, [setTrackZonesFromStore])
 

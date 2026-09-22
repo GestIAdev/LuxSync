@@ -119,7 +119,8 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     expect(t.zones).toEqual(['all'])                    // G5
     expect(t.blendMode).toBe('replace')
     expect(t.paramId).toBe('intensity')
-    expect(t.dimmerScale).toBe(1)
+    // WAVE 8090-M1: dimmerScale era dead write — ya no se emite
+    expect(t.dimmerScale).toBeUndefined()
     // A1: spreadDeg=1 — el bus de overrides no puede morir
     expect(t.phaseConfig?.spreadDeg).toBe(1)
     // G5/invariante: keyframes no vacío, ASC, dentro de [0,D]
@@ -474,7 +475,7 @@ function makeCohortAtlas(): NodeAtlas {
 }
 
 describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () => {
-  test('cohort: K cohortes por gain → pista por cohorte con dimmerScale', () => {
+  test('cohort: K cohortes por gain → pista por cohorte con gain horneado (8090-M1)', () => {
     const field: FieldSnapshot = {
       count: 4,
       delayMs: new Float32Array([0, 100, 200, 300]),
@@ -496,8 +497,18 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
       'ast_intensity_cohort_1',
     ])
     // Percentiles sobre [0.5,0.5,1,1] → cohort0 gain≈0.5, cohort1 gain=1
-    expect(out.tracks[0].dimmerScale).toBeCloseTo(0.5, 3)
-    expect(out.tracks[1].dimmerScale).toBeCloseTo(1, 3)
+    // WAVE 8090-M1: el gain se hornea en los keyframes (intensity incluido)
+    // — dimmerScale era dead write, ya no se emite.
+    const peak0 = Math.max(
+      ...out.tracks[0].curve.keyframes.map((k) => k.value as number),
+    )
+    const peak1 = Math.max(
+      ...out.tracks[1].curve.keyframes.map((k) => k.value as number),
+    )
+    expect(peak0).toBeCloseTo(0.5, 3)
+    expect(peak1).toBeCloseTo(1, 3)
+    expect(out.tracks[0].dimmerScale).toBeUndefined()
+    expect(out.tracks[1].dimmerScale).toBeUndefined()
     // Zonas recortadas por cohorte — nunca vacío (G5)
     expect(out.tracks[0].zones).toEqual(['front', 'back'])
     // Overrides absolutos clavan los miembros (enteros, [0,D])
@@ -585,7 +596,7 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
     expect(out.report.overrideCount).toBe(0)
   })
 
-  test('mcc: gain por celda → dimmerScale en intensity', () => {
+  test('mcc: gain por celda → horneado en keyframes de intensity (8090-M1)', () => {
     const field: FieldSnapshot = {
       count: 4,
       delayMs: new Float32Array([0, 0, 0, 0]),
@@ -596,8 +607,18 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
     const out = compile({
       atlas: makeAtlas(), field, clip: makeClip(), project,
     })
-    expect(out.tracks[1].dimmerScale).toBeCloseTo(0.5, 3)
-    expect(out.tracks[0].dimmerScale).toBe(1)
+    // El motor lee los keyframes ya escalados — sin depender del campo
+    // muerto dimmerScale (auditoría 8080-M3).
+    const peak1 = Math.max(
+      ...out.tracks[1].curve.keyframes.map((k) => k.value as number),
+    )
+    const peak0 = Math.max(
+      ...out.tracks[0].curve.keyframes.map((k) => k.value as number),
+    )
+    expect(peak1).toBeCloseTo(0.5, 3)
+    expect(peak0).toBe(1)
+    expect(out.tracks[0].dimmerScale).toBeUndefined()
+    expect(out.tracks[1].dimmerScale).toBeUndefined()
   })
 
   test("auto: distinción intra-fixture → mcc; gain sin celda → cohort", () => {

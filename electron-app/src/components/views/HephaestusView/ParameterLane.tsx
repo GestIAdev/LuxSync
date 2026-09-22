@@ -19,6 +19,7 @@ import type { HephCurve, HephParamId, ZoneTarget } from '../../../core/hephaestu
 export { STEPPED_PARAM_SLOTS, isSteppedParam, getSteppedSlots } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import { SmartZoneSelector, getZoneBadgeText, getZoneBadgeIcon } from './SmartZoneSelector'
+import { isAsteriaTrack } from './asteria/compiler/AsteriaCompiler'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PARAM METADATA — Exported for use in other components
@@ -182,6 +183,11 @@ export const ParameterLane = React.memo(function ParameterLane({
   onTrackZonesChange,
 }: ParameterLaneProps) {
   const meta = PARAM_META[paramId] ?? { label: paramId.toUpperCase(), color: '#888', icon: '●' }
+  // 🔒 WAVE 8090 (M3): pistas ast_* son propiedad de Asteria — read-only.
+  // El próximo recompile destruye cualquier edición manual sobre ellas;
+  // la protección es honesta: curva/zonas/ borrado bloqueados, duplicar
+  // permitido (la copia UUID pierde el prefijo → se convierte en manual).
+  const isAst = isAsteriaTrack(trackId)
   const [showZonePopover, setShowZonePopover] = useState(false)
   const zoneBadgeRef = useRef<HTMLButtonElement>(null)
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null)
@@ -252,6 +258,14 @@ export const ParameterLane = React.memo(function ParameterLane({
         {/* Row 1: param name + mode abbreviation */}
         <div className="param-lane__label-row" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span className="param-lane__label">{meta.label}</span>
+          {isAst && (
+            <span
+              title="Pista generada por Asteria — read-only (se regenera al recompilar). Duplica para editar una copia."
+              style={{ fontSize: '9px', flexShrink: 0, cursor: 'help' }}
+            >
+              🔒
+            </span>
+          )}
           <span className="param-lane__mode-abbr" style={{
             fontSize: '8px',
             fontWeight: 600,
@@ -266,13 +280,17 @@ export const ParameterLane = React.memo(function ParameterLane({
       </div>
       <MiniCurvePreview curve={curve} color={meta.color} />
 
-      {/* Zone badge — absolute positioned, spans full lane width */}
+      {/* Zone badge — absolute positioned, spans full lane width.
+          🔒 8090-M3: en pistas ast_* el targeting es read-only (Asteria
+          lo recalcula en cada recompile — editarlo sería trabajo muerto). */}
       {onTrackZonesChange && (
         <button
           ref={zoneBadgeRef}
           className="param-lane__zone-badge"
-          onClick={openPopover}
-          title="Click to edit zone targeting for this track"
+          onClick={isAst ? (e) => e.stopPropagation() : openPopover}
+          title={isAst
+            ? '🔒 Zonas gestionadas por Asteria — read-only'
+            : 'Click to edit zone targeting for this track'}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -284,7 +302,7 @@ export const ParameterLane = React.memo(function ParameterLane({
             fontSize: '8px',
             fontWeight: 600,
             color: isActive ? '#ff8c42' : '#777',
-            cursor: 'pointer',
+            cursor: isAst ? 'default' : 'pointer',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -316,12 +334,14 @@ export const ParameterLane = React.memo(function ParameterLane({
           <span
             className="param-lane__duplicate"
             onClick={handleDuplicate}
-            title={`Duplicate ${meta.label} track`}
+            title={isAst
+              ? `Detach — duplicate ${meta.label} as an editable manual track`
+              : `Duplicate ${meta.label} track`}
           >
             ⧉
           </span>
         )}
-        {onRemove && (
+        {onRemove && !isAst && (
           <span
             className="param-lane__delete"
             onClick={handleRemove}

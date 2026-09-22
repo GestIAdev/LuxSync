@@ -9,7 +9,8 @@
  * per-nodo requiere Vía B: agrupar los nodos cubiertos en K ≤ cohortBudget
  * cohortes de gain similar; cada cohorte compila a UNA pista con la curva
  * maestra rotada por el retardo representativo y escalada por el gain
- * representativo (`dimmerScale` en intensity / valores horneados en el resto).
+ * representativo horneado en los keyframes (WAVE 8090-M1: intensity
+ * incluido — `dimmerScale` era dead write, el runtime jamás lo leyó).
  *
  * CUANTIZACIÓN POR PERCENTILES (§8.3-1: "percentiles, no uniforme"):
  * los nodos cubiertos se ordenan por gain y se cortan en K cubos de
@@ -30,7 +31,7 @@ import type { NodeAtlasEntry } from '../../../../../core/aether/types'
 export interface GainCohort {
   /**
    * Nivel de gain representativo del cubo (media de sus miembros).
-   * Vía B lo aplica vía `dimmerScale` (intensity) o horneado en keyframes.
+   * Vía B lo aplica horneado en los keyframes de la curva de la cohorte.
    */
   readonly gain: number
 

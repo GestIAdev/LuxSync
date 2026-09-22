@@ -41,6 +41,7 @@ import type { PhaseConfigPro } from '../../../../core/hephaestus/phase/PhaseConf
 import type { PhaseOverride } from '../../../../core/hephaestus/phase/PhaseOverride'
 import { resolveZoneTags } from '../../../../core/zones/ZoneMapper'
 import { getZoneBadgeText, getZoneBadgeIcon } from '../SmartZoneSelector'
+import { isAsteriaTrack } from '../asteria/compiler/AsteriaCompiler'
 import type { EffectZone } from '../../../../core/effects/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,6 +99,11 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
   }, [clip, activeTrackId])
 
   const activePhaseOverrides = activeTrack?.phaseOverrides
+
+  // 🔒 WAVE 8090 (M3): las pistas ast_* son propiedad de Asteria —
+  // read-only en el Lab. Editar su phaseConfig/overrides es trabajo
+  // muerto: el próximo recompile las regenera desde el Gesture Stack.
+  const activeTrackIsAst = activeTrack !== null && isAsteriaTrack(activeTrack.id)
 
   // Resolve fixture IDs for the active track's zones
   const phaseFixtureIds = useMemo(() => {
@@ -239,9 +245,10 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
           >
             {clip?.tracks.map(t => {
               const zoneText = getZoneBadgeText(t.zones as EffectZone[])
+              const ast = isAsteriaTrack(t.id)
               return (
               <option key={t.id} value={t.id} style={{ background: '#0a0a0f', color: '#FF6B2B', fontSize: '11px', fontFamily: '"Rajdhani", sans-serif' }}>
-                {t.paramId.toUpperCase()} — {zoneText}
+                {ast ? '🔒 ' : ''}{t.paramId.toUpperCase()} — {zoneText}
               </option>
               )
             }) ?? <option value="">No tracks</option>}
@@ -276,6 +283,19 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
             <span style={{ color: 'rgba(255,107,43,0.4)', fontSize: '9px' }}>
               ({activeTrack.paramId.toUpperCase()})
             </span>
+            {activeTrackIsAst && (
+              <span
+                title="Pista generada por Asteria — read-only: el próximo recompile regenera esta curva desde el Gesture Stack"
+                style={{
+                  marginLeft: 'auto',
+                  color: '#7b5cff',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                }}
+              >
+                🔒 ASTERIA
+              </span>
+            )}
           </div>
         )}
 
@@ -283,7 +303,7 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
           <PhaseControls
             config={activePhaseConfig}
             onPhaseChange={handlePhaseChange}
-            disabled={isSaving}
+            disabled={isSaving || activeTrackIsAst}
             spatialBehavior={clip?.cognitiveDNA?.spatialBehavior}
             onSpatialBehaviorChange={handleSpatialBehaviorChange}
             fixtureIds={phaseFixtureIds}

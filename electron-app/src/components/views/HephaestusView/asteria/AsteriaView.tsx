@@ -282,7 +282,9 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
             <>
               <div className="asteria-rail__stat">
                 {(compileReport.bytes / 1024).toFixed(1)} KB ·{' '}
-                {compileReport.trackIds.length} pista(s)
+                {compileReport.trackIds.length} pista(s) ·{' '}
+                {compileReport.nodesCovered} nodos ·{' '}
+                {compileReport.keyframeCount} kfs
               </div>
               <div className="asteria-rail__muted">
                 {compileReport.devicesTargeted} fixtures ·{' '}

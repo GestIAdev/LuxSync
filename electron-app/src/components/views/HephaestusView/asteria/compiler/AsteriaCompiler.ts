@@ -168,8 +168,10 @@ function cloneCurve(src: HephCurve, paramId: HephParamId): HephCurve {
 
 /**
  * Escala los valores de una curva numérica por `gain`, clampeando al
- * `range` declarado (Vía B §8.3-2: para params != intensity el gain se
- * hornea en los keyframes; para intensity va por `dimmerScale`).
+ * `range` declarado. WAVE 8090 (M1): el gain se hornea en los keyframes
+ * para TODOS los params, intensity incluido — `track.dimmerScale` era
+ * un DEAD WRITE (el runtime jamás lo leyó; auditoría 8080-M3). El
+ * motor recibe la curva ya escalada — cero dependencia del campo muerto.
  */
 function bakeGainIntoCurve(curve: HephCurve, gain: number): HephCurve {
   if (curve.valueType !== 'number' || gain === 1) return curve
@@ -372,7 +374,6 @@ export function compile(input: CompileInput): CompileOutput {
         paramId: param,
         zones: ['all'], // G5 — nunca vacío
         curve,
-        dimmerScale: param === 'intensity' ? 1 : undefined,
         blendMode: 'replace',
         phaseConfig: { ...ASTERIA_PHASE_CONFIG }, // A1: spreadDeg=1 despierta el bus
         phaseOverrides: { ...lambda.overrides },
@@ -472,8 +473,9 @@ function emitTargetParams(
 /**
  * VÍA B — cohortes (§8.3): K ≤ cohortBudget cubos por percentiles de gain.
  * Por cohorte × parámetro: curva maestra rotada por el delay representativo,
- * escalada por el gain representativo (`dimmerScale` en intensity, valores
- * horneados en el resto). Targeting = zones ∪ overrides `absolute` que
+ * escalada por el gain representativo horneado en los keyframes
+ * (WAVE 8090-M1: intensity también — `dimmerScale` era dead write).
+ * Targeting = zones ∪ overrides `absolute` que
  * CLAVAN cada fixture miembro a su delay exacto (offset = delay_dev − d̄
  * mod D — la curva ya lleva d̄ horneado).
  * COHORT_ZONE_SPILL: si una zona de la cohorte alcanza fixtures ajenos, o
@@ -598,13 +600,12 @@ function emitCohortTracks(
     const gain = Math.min(1, Math.max(0, c.gain))
     for (const param of params) {
       let curve = rotateCurveCyclic(baseCurveFor(param), c.delayMs, D)
-      if (param !== 'intensity') curve = bakeGainIntoCurve(curve, gain)
+      curve = bakeGainIntoCurve(curve, gain)
       tracks.push({
         id: `${ASTERIA_TRACK_PREFIX}${param}_cohort_${ci}`,
         paramId: param,
         zones: (zones.length > 0 ? zones : ['all']) as readonly ZoneTarget[],
         curve,
-        dimmerScale: param === 'intensity' ? gain : undefined,
         blendMode: 'replace',
         phaseConfig: { ...ASTERIA_PHASE_CONFIG },
         phaseOverrides: overrides,
@@ -648,13 +649,12 @@ function emitMccTracks(
     const gain = Math.min(1, Math.max(0, field.gain[i]))
     for (const param of params) {
       let curve = rotateCurveCyclic(baseCurveFor(param), field.delayMs[i], D)
-      if (param !== 'intensity') curve = bakeGainIntoCurve(curve, gain)
+      curve = bakeGainIntoCurve(curve, gain)
       tracks.push({
         id: `${ASTERIA_TRACK_PREFIX}${param}_mcc_${i}`,
         paramId: param,
         zones: ['all'], // G5 — el filtro real lo hace `cell` (Δ3)
         curve,
-        dimmerScale: param === 'intensity' ? gain : undefined,
         blendMode: 'replace',
         cell: e.nodeId, // Δ1+Δ3: match exacto por id completo
       })

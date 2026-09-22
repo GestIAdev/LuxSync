@@ -2751,7 +2751,15 @@
 .asteria-view {
   display: grid;
   grid-template-columns: 56px 1fr 260px;
+  /* Fila única que llena el alto — sin ella la fila implícita 'auto'
+     mediría por contenido y el canvas no llegaría abajo. */
+  grid-template-rows: minmax(0, 1fr);
+  /* 🜨 WAVE 8055-FIX: el Tier 3 host tiene height:100% (fila 1fr del
+     grid .heph-view) — esta vista hereda el alto completo, igual que
+     sus pestañas hermanas (ForgeTab/LabTab usan height:100% en su
+     root). flex:1 se conserva por si el host pasa a flex. */
   flex: 1;
+  height: 100%;
   min-height: 0;
   min-width: 0;
   /* 🜨 WAVE 8055: fondo base cyberpunk — oscuro profundo como Genesis */

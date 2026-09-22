@@ -46,7 +46,7 @@ import { applyDMXGovernors, buildGovernorLookupMap } from './DMXGovernorEvaluato
 import type { NodeId, DeviceId, ColorMixingType, ColorWheelDefinition } from '../types'
 import type { INodeGraph } from '../node-graph'
 import type { ArbitratedNodeMap, IDMXPacket, INodeResolver } from '../intent-bus'
-import type { INodeChannelDef, IColorNodeData, IKineticNodeData } from '../capability-node'
+import type { INodeChannelDef, IColorNodeData, IKineticNodeData, AnyNodeData } from '../capability-node'
 import type { TransferCurve } from '../types'
 import { NodeFamily } from '../types'
 import { getColorTranslator } from '../../../hal/translation/ColorTranslator'
@@ -753,7 +753,7 @@ export class NodeResolver implements INodeResolver {
       if (!node) continue
 
       if (this._forgeGraphs.has(node.deviceId)) {
-        this._accumulateForgeNodeValues(nodeId, node.deviceId, channelValues)
+        this._accumulateForgeNodeValues(nodeId, node.deviceId, channelValues, node)
         continue
       }
 
@@ -829,13 +829,17 @@ export class NodeResolver implements INodeResolver {
 
     const baseAddr = device.dmxAddress - 1  // 1-based → 0-indexed
 
-    // 1. Collect all channels across all nodes of this device for dep resolution
-    const allChannels: { type: string; dmxOffset: number }[] = []
+    // 1. Collect all channels across all nodes of this device for dep resolution.
+    //    Each entry carries its owning nodeId + zoneId so dep resolution can
+    //    scope the search (multi-cell isolation) instead of hijacking the
+    //    first channel of the same type fixture-wide.
+    const allChannels: { type: string; dmxOffset: number; nodeId: NodeId; zoneId: string }[] = []
     for (const nodeId of nodeIds) {
       const node = this._graph.getNodeData(nodeId)
       if (!node) continue
+      const zoneId = String(node.zoneId ?? '')
       for (const ch of node.channels) {
-        allChannels.push({ type: ch.type, dmxOffset: ch.dmxOffset })
+        allChannels.push({ type: ch.type, dmxOffset: ch.dmxOffset, nodeId, zoneId })
       }
     }
 
@@ -844,6 +848,7 @@ export class NodeResolver implements INodeResolver {
     for (const nodeId of nodeIds) {
       const node = this._graph.getNodeData(nodeId)
       if (!node) continue
+      const sourceZoneId = String(node.zoneId ?? '')
 
       for (const ch of node.channels) {
         if (!ch.ignitionDeps || ch.ignitionDeps.length === 0) continue
@@ -855,12 +860,33 @@ export class NodeResolver implements INodeResolver {
           // sobre targetChannelType. Sin esto, Array.find() por tipo siempre
           // resuelve al primer canal coincidente, rompiendo fixtures con
           // múltiples canales del mismo tipo (ej: Tungsten con 5 dimmers).
-          let target: { type: string; dmxOffset: number } | undefined
+          //
+          // RESOLUTION ORDER (multi-cell isolation):
+          //   1. dep.targetDmxOffset — exact channel index (explicit pin)
+          //   2. Same-cell: a channel of that type inside the SOURCE node
+          //   3. Same-zone: a channel of that type in a node sharing zoneId
+          //      (e.g. wash-color 'ambient' → wash-impact's dimmer)
+          //   4. Legacy global first-match (warn — ambiguous across cells)
+          let target: (typeof allChannels)[number] | undefined
           if (typeof dep.targetDmxOffset === 'number') {
             target = allChannels.find(c => c.dmxOffset === dep.targetDmxOffset)
           }
           if (!target) {
+            target = allChannels.find(c => c.nodeId === nodeId && c.type === dep.targetChannelType)
+          }
+          if (!target && sourceZoneId) {
+            target = allChannels.find(c => c.zoneId === sourceZoneId && c.type === dep.targetChannelType)
+          }
+          if (!target) {
             target = allChannels.find(c => c.type === dep.targetChannelType)
+            if (target) {
+              console.warn(
+                `[NodeResolver] ⚠️ Ignition dep "${dep.targetChannelType}" for ` +
+                `"${ch.type}" @${String(nodeId)} resolved CROSS-CELL to ` +
+                `${String(target.nodeId)} offset ${target.dmxOffset} — ` +
+                `set targetChannelIndex in the fixture to pin it exactly.`
+              )
+            }
           }
           if (!target) {
             console.warn(
@@ -1025,12 +1051,26 @@ export class NodeResolver implements INodeResolver {
     nodeId: NodeId,
     deviceId: DeviceId,
     channelValues: Readonly<Record<string, number>>,
+    node: AnyNodeData,
   ): void {
     let record = this._forgeAccumValues.get(deviceId)
     if (!record) {
       record = this._acquireForgeValueRecord()
       this._forgeAccumValues.set(deviceId, record)
     }
+
+    // 🌊 VIRTUAL DIMMING (Forge path): la ruta clásica escala r/g/b por
+    // 'brightness' dentro de _translateColor (L2261). En Forge el intent
+    // 'brightness' no tiene input_dmx equivalente y se descartaba — los
+    // nodos COLOR sin dimmer físico salían a intensidad plena sin modular.
+    // Aplicamos la misma multiplicación aquí, ANTES del evaluador, solo
+    // cuando el nodo carece de canal 'dimmer' físico (los que lo tienen
+    // reciben 'dimmer', no 'brightness', por contrato del adapter).
+    const brightnessRaw = channelValues['brightness']
+    const virtualDim =
+      brightnessRaw !== undefined && Number.isFinite(brightnessRaw)
+        ? (node.channels.some(ch => ch.type === DIMMER_CHANNEL) ? 1.0 : brightnessRaw)
+        : 1.0
 
     // WAVE 7122.1: Cross-Cell Isolation — prefix channel keys with the cell
     // suffix extracted from nodeId so that homonymous channels in different
@@ -1045,8 +1085,16 @@ export class NodeResolver implements INodeResolver {
     const cellSuffix = colonIdx >= 0 ? nodeId.substring(colonIdx + 1) : ''
 
     for (const key in channelValues) {
-      const value = channelValues[key]
+      let value = channelValues[key]
       if (!Number.isFinite(value)) continue
+
+      // Virtual dimming: scale emission color channels by 'brightness'.
+      // color_wheel is excluded — it's a slot selector, not intensity;
+      // scaling it would jump to a wrong slot (classic _translateColor
+      // doesn't scale it either).
+      if (virtualDim !== 1.0 && key !== CH_COLOR_WHEEL && ELECTRONIC_COLOR_CHANNELS.has(key)) {
+        value *= virtualDim
+      }
 
       if (cellSuffix && compiled) {
         const prefixedKey = `${cellSuffix}:${key}`

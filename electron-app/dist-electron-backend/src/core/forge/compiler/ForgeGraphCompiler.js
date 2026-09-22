@@ -21,9 +21,42 @@
  * @version WAVE 4552
  */
 // ═══════════════════════════════════════════════════════════════════════════
-// OPCODE MAPPING — ForgeNodeType → numeric opcode
-// Must stay in sync with OPCODE_TABLE in evaluator/opcodes.ts
+// CHANNEL FAMILY SETS — mirror of NodeExtractionPipeline's classification
+// (COLOR/IMPACT/KINETIC/BEAM_CHANNEL_TYPES). MUST STAY IN SYNC: the Aether
+// nodeId for a cell is `${deviceId}:${aetherNodeId ?? familySuffix(type)}`,
+// and NodeResolver prefixes intent keys with that same suffix.
 // ═══════════════════════════════════════════════════════════════════════════
+const FORGE_COLOR_CHANNEL_TYPES = new Set([
+    'red', 'green', 'blue', 'white', 'amber', 'uv',
+    'cyan', 'magenta', 'yellow', 'color_wheel',
+]);
+const FORGE_IMPACT_CHANNEL_TYPES = new Set([
+    'dimmer', 'strobe', 'shutter',
+]);
+const FORGE_KINETIC_CHANNEL_TYPES = new Set([
+    'pan', 'pan_fine', 'tilt', 'tilt_fine', 'speed', 'rotation',
+]);
+const FORGE_BEAM_CHANNEL_TYPES = new Set([
+    'focus', 'zoom', 'frost', 'iris',
+    'gobo', 'gobo_rotation', 'prism', 'prism_rotation',
+    'scale_x', 'scale_y', 'rot_x', 'rot_y',
+]);
+/**
+ * Full ChannelType domain (FixtureDefinition.ts) — channelKeys in this set
+ * are cell-scopable (prefixed `${cell}:${key}`). Abstract/ingenio keys
+ * ('level', 'factor', custom signal names…) stay bare — they're passthrough
+ * wires fed by direct injection, not by per-cell intents.
+ */
+const FORGE_CHANNEL_KEYS = new Set([
+    ...FORGE_COLOR_CHANNEL_TYPES,
+    ...FORGE_IMPACT_CHANNEL_TYPES,
+    ...FORGE_KINETIC_CHANNEL_TYPES,
+    ...FORGE_BEAM_CHANNEL_TYPES,
+    // CONTROL / INGENIOS / ATMOSPHERE / FIRE / FALLBACK
+    'dimmer_fine', 'macro', 'control', 'custom', 'unknown',
+    'emission_gate', 'smoke_pump', 'smoke_density', 'fan_speed',
+    'fire_valve', 'fire_ignite',
+]);
 const OPCODE_MAP = {
     input_dmx: 1,
     input_audio_band: 2,
@@ -250,6 +283,10 @@ export class ForgeGraphCompiler {
         let energyInputIndex = -1;
         let timeInputIndex = -1;
         const outputs = [];
+        // 🧩 MULTI-CELL ISOLATION: resolve which aether cell (aetherNodeId) each
+        // input_dmx feeds, so bare channelKeys ('dimmer' ×5) become strict
+        // per-cell keys ('impact-20:dimmer', 'wash-impact:dimmer', ...).
+        const inputOwnerCells = ForgeGraphCompiler._collectInputOwnerCells(flatGraph, nodeMap);
         for (const nodeId of executionOrder) {
             const node = nodeMap.get(nodeId);
             switch (node.type) {
@@ -258,8 +295,32 @@ export class ForgeGraphCompiler {
                     const outPort = node.outputs[0];
                     if (outPort) {
                         const wireIdx = portIndexMap.get(`${nodeId}:out:${outPort.id}`);
-                        if (wireIdx !== undefined)
-                            inputMap.set(cfg.channelKey, wireIdx);
+                        if (wireIdx !== undefined) {
+                            const rawKey = cfg.channelKey;
+                            if (rawKey.includes(':')) {
+                                // Already cell-scoped (compileForgeState-built graphs)
+                                inputMap.set(rawKey, wireIdx);
+                            }
+                            else {
+                                const owners = FORGE_CHANNEL_KEYS.has(rawKey)
+                                    ? inputOwnerCells.get(nodeId)
+                                    : undefined;
+                                if (owners && owners.length > 0) {
+                                    // Strict cell prefix — one entry per owning cell. If a
+                                    // single wire feeds multiple cells, the LAST registered
+                                    // prefix wins at injection (inherent single-wire limit).
+                                    for (const owner of owners) {
+                                        inputMap.set(`${owner}:${rawKey}`, wireIdx);
+                                    }
+                                }
+                                else {
+                                    // Ownerless passthrough OR abstract (non-channel) key —
+                                    // e.g. 'level'/'factor' inputs inside ingenio graphs,
+                                    // injected verbatim by tests/tooling.
+                                    inputMap.set(rawKey, wireIdx);
+                                }
+                            }
+                        }
                     }
                     break;
                 }
@@ -341,6 +402,77 @@ export class ForgeGraphCompiler {
             timeInputIndex,
             outputs,
         };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIVATE — Multi-Cell Isolation (input_dmx owner resolution)
+    //
+    // For each input_dmx node, walk its outgoing edges to every reachable
+    // output_dmx node and collect the owning cell id (`aetherNodeId`, or the
+    // family suffix inferred from the output's channelType — same rule as
+    // NodeExtractionPipeline._inferAetherSuffix). Result keys the inputMap
+    // as `${cell}:${channelKey}` so homonymous channels in different cells
+    // (e.g. 5 'dimmer' inputs) no longer collide on one wire.
+    // ═══════════════════════════════════════════════════════════════════════
+    static _collectInputOwnerCells(flatGraph, nodeMap) {
+        // adjacency: sourceNode → [targetNode]
+        const adjacency = new Map();
+        for (const e of flatGraph.edges) {
+            const list = adjacency.get(e.sourceNode);
+            if (list)
+                list.push(e.targetNode);
+            else
+                adjacency.set(e.sourceNode, [e.targetNode]);
+        }
+        const owners = new Map();
+        for (const node of flatGraph.nodes) {
+            if (node.type !== 'input_dmx')
+                continue;
+            // BFS over reachable outputs — covers direct edges AND math/proc chains
+            const found = [];
+            const seen = new Set([node.id]);
+            const queue = [node.id];
+            while (queue.length > 0) {
+                const cur = queue.shift();
+                const targets = adjacency.get(cur);
+                if (!targets)
+                    continue;
+                for (const t of targets) {
+                    if (seen.has(t))
+                        continue;
+                    seen.add(t);
+                    const tn = nodeMap.get(t);
+                    if (!tn)
+                        continue;
+                    if (tn.type === 'output_dmx') {
+                        const oc = tn.config;
+                        const cell = oc.aetherNodeId ?? ForgeGraphCompiler._inferCellSuffix(oc.channelType);
+                        if (cell && !found.includes(cell))
+                            found.push(cell);
+                    }
+                    queue.push(t);
+                }
+            }
+            if (found.length > 0)
+                owners.set(node.id, found);
+        }
+        return owners;
+    }
+    /**
+     * Mirror of NodeExtractionPipeline._inferAetherSuffix — applied when an
+     * output_dmx lacks an explicit aetherNodeId. The aether nodeId is built
+     * as `${deviceId}:${suffix}` on BOTH sides, so the suffixes must agree.
+     */
+    static _inferCellSuffix(channelType) {
+        const t = channelType.toLowerCase().trim();
+        if (FORGE_COLOR_CHANNEL_TYPES.has(t))
+            return 'color';
+        if (FORGE_IMPACT_CHANNEL_TYPES.has(t))
+            return 'impact';
+        if (FORGE_KINETIC_CHANNEL_TYPES.has(t))
+            return 'kinetic';
+        if (FORGE_BEAM_CHANNEL_TYPES.has(t))
+            return 'beam';
+        return 'atmosphere';
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE — Inline compound_ingenio nodes (WAVE 4552)

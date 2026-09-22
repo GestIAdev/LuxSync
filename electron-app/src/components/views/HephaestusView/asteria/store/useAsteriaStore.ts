@@ -39,6 +39,9 @@ export interface NodeAtlas {
   readonly byNodeId: ReadonlyMap<string, NodeAtlasEntry>
 }
 
+/** Herramientas de selección del Lienzo Táctico (WAVE 8020). */
+export type AsteriaToolId = 'select' | 'lasso' | 'radial'
+
 /** Límites de zoom en píxeles por metro. */
 export const ASTERIA_ZOOM_MIN = 4
 export const ASTERIA_ZOOM_MAX = 600
@@ -68,6 +71,43 @@ export interface AsteriaStore extends AsteriaCamera {
   nodeAtlas: NodeAtlas | null
   /** Deposita el atlas tras un fetch exitoso (patch-time only). */
   setNodeAtlas: (atlas: NodeAtlas | null) => void
+
+  // ── WAVE 8020: EL TACTO — herramienta, selección, hover, poke ──
+
+  /** Herramienta activa del toolbox. */
+  activeToolId: AsteriaToolId
+  setActiveTool: (id: AsteriaToolId) => void
+
+  /**
+   * Selección persistente de nodeIds (marquee/lasso/radial committed).
+   * Nueva referencia de Set solo cuando el contenido cambia.
+   */
+  selectionNodeIds: ReadonlySet<string>
+  /** Reemplaza o une (additive = Shift) la selección. */
+  setSelection: (nodeIds: Iterable<string>, additive?: boolean) => void
+
+  /**
+   * Nodos bajo el cursor (hover). El setter dedupe por firma — el
+   * pointermove puede llamar a 60 Hz sin churn de React.
+   */
+  hoverNodeIds: ReadonlySet<string>
+  setHover: (nodeIds: Iterable<string>) => void
+
+  /**
+   * Preview fantasma de selección durante un drag de herramienta
+   * (marquee/lasso/radial en vivo). Se dibuja distinto al commit
+   * (GestureLayer) y se descarta al soltar — no entra a `selection`
+   * hasta el commit con semántica Shift-additive correcta.
+   */
+  previewNodeIds: ReadonlySet<string>
+  setPreview: (nodeIds: Iterable<string>) => void
+
+  /**
+   * Kill-switch del Protocolo Poke (seguridad L3++ — el poke pisa todo
+   * menos Blackout). false = el tacto no publica al backend.
+   */
+  pokeEnabled: boolean
+  setPokeEnabled: (on: boolean) => void
 
   /** Merge parcial de cámara con clamp de zoom. */
   setCamera: (cam: Partial<AsteriaCamera>) => void
@@ -110,6 +150,50 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
   nodeAtlas: null,
 
   setNodeAtlas: (atlas) => set({ nodeAtlas: atlas }),
+
+  activeToolId: 'select',
+  setActiveTool: (id) => set({ activeToolId: id }),
+
+  selectionNodeIds: new Set<string>(),
+  setSelection: (nodeIds, additive = false) =>
+    set((s) => {
+      const next = additive ? new Set(s.selectionNodeIds) : new Set<string>()
+      for (const id of nodeIds) next.add(id)
+      // Dedupe por tamaño+contenido: misma selección → misma referencia
+      if (next.size === s.selectionNodeIds.size) {
+        let same = true
+        for (const id of next) if (!s.selectionNodeIds.has(id)) { same = false; break }
+        if (same) return {}
+      }
+      return { selectionNodeIds: next }
+    }),
+
+  hoverNodeIds: new Set<string>(),
+  setHover: (nodeIds) =>
+    set((s) => {
+      const arr = Array.from(nodeIds)
+      if (arr.length === s.hoverNodeIds.size) {
+        let same = true
+        for (const id of arr) if (!s.hoverNodeIds.has(id)) { same = false; break }
+        if (same) return {}
+      }
+      return { hoverNodeIds: new Set(arr) }
+    }),
+
+  previewNodeIds: new Set<string>(),
+  setPreview: (nodeIds) =>
+    set((s) => {
+      const arr = Array.from(nodeIds)
+      if (arr.length === s.previewNodeIds.size) {
+        let same = true
+        for (const id of arr) if (!s.previewNodeIds.has(id)) { same = false; break }
+        if (same) return {}
+      }
+      return { previewNodeIds: new Set(arr) }
+    }),
+
+  pokeEnabled: true,
+  setPokeEnabled: (on) => set({ pokeEnabled: on }),
 
   setCamera: (cam) =>
     set((s) => ({

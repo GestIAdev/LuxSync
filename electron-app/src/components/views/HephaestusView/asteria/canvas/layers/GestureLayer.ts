@@ -1,0 +1,147 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🜨 GESTURE LAYER — WAVE 8020: TINTA DEL GESTO + ANILLOS DE SELECCIÓN
+ *
+ * Capa superior del pipeline. Dibuja:
+ *   - El gesto EN CURSO leyendo `gesturePreview` (mutable, zero React):
+ *     marquee rectangular, trazo del lasso, círculo del radial.
+ *   - Anillos de SELECCIÓN committed (sólidos) y de PREVIEW fantasma
+ *     (punteados, medio alpha) sobre los nodos.
+ *   - Anillo de HOVER (acento brillante) — lo que el Poke va a tocar.
+ *
+ * Todo se lee por referencia estable dentro del RAF — esta capa jamás
+ * toca React.
+ *
+ * @module HephaestusView/asteria/canvas/layers/GestureLayer
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+import type { WorldTransform } from '../useWorldTransform'
+import type { NodeAtlas } from '../../store/useAsteriaStore'
+import { gesturePreview } from '../../tools/ToolRegistry'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ───────────────────────────────────────────────────────────────────────────
+
+const COLOR_GESTURE = 'rgba(123, 92, 255, 0.9)'
+const COLOR_GESTURE_FILL = 'rgba(123, 92, 255, 0.08)'
+const COLOR_SELECTED = 'rgba(230, 225, 255, 0.95)'
+const COLOR_PREVIEW = 'rgba(123, 92, 255, 0.55)'
+const COLOR_HOVER = 'rgba(255, 255, 255, 0.9)'
+const CULL_MARGIN_PX = 16
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Anillo sobre cada nodo del set que tenga posición. */
+function drawNodeRings(
+  ctx: CanvasRenderingContext2D,
+  t: WorldTransform,
+  atlas: NodeAtlas,
+  nodeIds: ReadonlySet<string>,
+  radius: number,
+  dashed: boolean,
+): void {
+  if (nodeIds.size === 0) return
+  const { canvasW, canvasH, cam } = t
+  const halfW = canvasW / 2
+  const halfH = canvasH / 2
+
+  if (dashed) ctx.setLineDash([3, 3])
+  ctx.beginPath()
+  for (const id of nodeIds) {
+    const entry = atlas.byNodeId.get(id)
+    const pos = entry?.position
+    if (!pos) continue
+    const sx = (pos.x - cam.panX) * cam.zoom + halfW
+    const sy = (pos.z - cam.panY) * cam.zoom + halfH
+    if (
+      sx < -CULL_MARGIN_PX || sx > canvasW + CULL_MARGIN_PX ||
+      sy < -CULL_MARGIN_PX || sy > canvasH + CULL_MARGIN_PX
+    ) {
+      continue
+    }
+    ctx.moveTo(sx + radius, sy)
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2)
+  }
+  ctx.stroke()
+  if (dashed) ctx.setLineDash([])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DRAW
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function drawGestureLayer(
+  ctx: CanvasRenderingContext2D,
+  t: WorldTransform,
+  atlas: NodeAtlas | null,
+  selection: ReadonlySet<string>,
+  preview: ReadonlySet<string>,
+  hover: ReadonlySet<string>,
+): void {
+  const { cam, canvasW, canvasH } = t
+  const halfW = canvasW / 2
+  const halfH = canvasH / 2
+  const toSX = (wx: number) => (wx - cam.panX) * cam.zoom + halfW
+  const toSY = (wz: number) => (wz - cam.panY) * cam.zoom + halfH
+
+  // ── Gesto en curso ────────────────────────────────────────────────────
+  ctx.strokeStyle = COLOR_GESTURE
+  ctx.fillStyle = COLOR_GESTURE_FILL
+  ctx.lineWidth = 1.2
+
+  if (gesturePreview.marquee) {
+    const m = gesturePreview.marquee
+    const x = toSX(m.x0)
+    const y = toSY(m.z0)
+    const w = (m.x1 - m.x0) * cam.zoom
+    const h = (m.z1 - m.z0) * cam.zoom
+    ctx.fillRect(x, y, w, h)
+    ctx.strokeRect(x, y, w, h)
+  }
+
+  if (gesturePreview.lasso && gesturePreview.lasso.length >= 4) {
+    const pts = gesturePreview.lasso
+    ctx.beginPath()
+    ctx.moveTo(toSX(pts[0]), toSY(pts[1]))
+    for (let i = 2; i < pts.length; i += 2) {
+      ctx.lineTo(toSX(pts[i]), toSY(pts[i + 1]))
+    }
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+  }
+
+  if (gesturePreview.radial) {
+    const g = gesturePreview.radial
+    const rPx = g.r * cam.zoom
+    ctx.beginPath()
+    ctx.arc(toSX(g.cx), toSY(g.cz), Math.max(rPx, 2), 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    // Regla del radio en metros — el operador VE la unidad real
+    ctx.fillStyle = 'rgba(230, 225, 255, 0.75)'
+    ctx.font = '10px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(`${g.r.toFixed(2)} m`, toSX(g.cx), toSY(g.cz) - Math.max(rPx, 2) - 6)
+    ctx.fillStyle = COLOR_GESTURE_FILL
+  }
+
+  if (!atlas) return
+
+  // ── Anillos de estado sobre los nodos ─────────────────────────────────
+  ctx.lineWidth = 1.3
+  ctx.strokeStyle = COLOR_PREVIEW
+  drawNodeRings(ctx, t, atlas, preview, 7.5, true)
+
+  ctx.strokeStyle = COLOR_SELECTED
+  ctx.lineWidth = 1.6
+  drawNodeRings(ctx, t, atlas, selection, 8, false)
+
+  ctx.strokeStyle = COLOR_HOVER
+  ctx.lineWidth = 1.8
+  drawNodeRings(ctx, t, atlas, hover, 9, false)
+}

@@ -27,6 +27,10 @@ import {
   type CalibrationEntry,
 } from '../../../core/aether/glass/CalibrationSAB'
 import type { HephPreviewData } from './useHephPreview'
+// 🜨 WAVE 8020: la capa L3++ tiene UN solo escritor — el CalibrationBus.
+// useLiveCalibration es productor 'clip'; el Protocolo Poke de Asteria es
+// productor 'touch' con prioridad LTP por nodeId.
+import { asteriaCalibrationBus } from './asteria/preview/CalibrationBus'
 
 const FPS_44_MS = 1000 / 44
 
@@ -50,7 +54,6 @@ export function useLiveCalibration(
 ): UseLiveCalibrationReturn {
   const [isActive, setIsActive] = useState(false)
   const isActiveRef = useRef(false)
-  const writeCalibrationFnRef = useRef<((entries: ReadonlyArray<CalibrationEntry>) => void) | null>(null)
   const rafRef = useRef<number>(0)
   const lastTickTimeRef = useRef<number>(0)
   const clipRef = useRef(clip)
@@ -85,12 +88,6 @@ export function useLiveCalibration(
 
     const evs = trackEvaluatorsRef.current
     if (!evs) {
-      rafRef.current = requestAnimationFrame(calibrationTick)
-      return
-    }
-
-    const writeCalibration = writeCalibrationFnRef.current
-    if (!writeCalibration) {
       rafRef.current = requestAnimationFrame(calibrationTick)
       return
     }
@@ -262,8 +259,9 @@ export function useLiveCalibration(
       }
     }
 
-    // Write to SAB via preload bridge
-    writeCalibration(entries)
+    // 🜨 WAVE 8020: publicar como fuente 'clip' del CalibrationBus —
+    // el bus coalesce a 1 IPC/frame y fusiona con el Poke (LTP touch>clip).
+    asteriaCalibrationBus.setClipEntries(entries)
 
     rafRef.current = requestAnimationFrame(calibrationTick)
   }, [])
@@ -272,6 +270,8 @@ export function useLiveCalibration(
     if (isActiveRef.current) return
 
     // Initialize calibration SAB via preload (SAB lives in preload, never crosses contextBridge)
+    // 🜨 WAVE 8020: el bridge real lo usa el CalibrationBus — aquí solo
+    // validamos que la carretera IPC existe antes de activar el tick.
     const initCalibration = window.luxsync?.initCalibration
     const writeCalibration = window.luxsync?.writeCalibration
     if (!initCalibration || !writeCalibration) {
@@ -281,7 +281,6 @@ export function useLiveCalibration(
     }
 
     initCalibration()
-    writeCalibrationFnRef.current = writeCalibration
     isActiveRef.current = true
     setIsActive(true)
     lastTickTimeRef.current = 0
@@ -301,11 +300,14 @@ export function useLiveCalibration(
       rafRef.current = 0
     }
 
+    // 🜨 WAVE 8020: vaciar la fuente 'clip' del bus (el merge cae a
+    // solo-touch o a vacío → clearCalibration si no hay poke activo)
+    asteriaCalibrationBus.setClipEntries([])
+
     // Clear calibration SAB via preload bridge
     if (window.luxsync?.clearCalibration) {
       window.luxsync.clearCalibration()
     }
-    writeCalibrationFnRef.current = null
 
     // Notify main process
     if (window.luxsync?.disableCalibration) {

@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🜨 ASTERIA VIEW — WAVE 8010-P2: ORQUESTADOR DEL LIENZO TÁCTICO
+ * 🜨 ASTERIA VIEW — WAVE 8020: EL TACTO (SELECCIÓN + PROTOCOLO POKE)
  *
  * Layout interno del Pixel Mapper (blueprint §Arquitectura):
  *
@@ -9,28 +9,31 @@
  *   │ (56px)   │      <AsteriaCanvas />       │  (260px)       │
  *   └──────────┴──────────────────────────────┴────────────────┘
  *
- * P2: monta useNodeAtlas (fetch del NodeGraph real, WAVE 8000) — el atlas
- * se deposita en useAsteriaStore y las capas del canvas lo leen por
- * getState() dentro del RAF (zero React cost). El rail muestra de momento
- * el estado del atlas como HUD mínimo; las herramientas y el Gesture
- * Stack llegan en waves posteriores.
+ * WAVE 8020:
+ *   - Toolbox con Select (V) · Lasso (L) · Radial (R) + kill-switch POKE.
+ *   - useAsteriaTouch montado: hover ∪ selección → CalibrationBus →
+ *     L3++ real. Heartbeat 400 ms, fade-out 180 ms, Esc libera.
+ *   - El rail muestra atlas + conteo de selección + badge POKE ACTIVO.
  *
- * `preview` (HephPreviewReturn) y `temporalActions` ya entran por props —
- * son el contrato con la shell de Hephaestus y alimentarán la TimeBar /
- * AUDITION en waves posteriores. P2 no los consume aún.
+ * `preview`/`temporalActions` entran por contrato con la shell — la
+ * TimeBar / AUDITION llegan en waves posteriores.
  *
  * @module HephaestusView/asteria/AsteriaView
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { HephPreviewReturn } from '../useHephPreview'
 import type { TemporalActions } from '../types/HephaestusShared'
 import { AsteriaCanvas } from './canvas/AsteriaCanvas'
 import { useNodeAtlas } from './canvas/useNodeAtlas'
+import { useAsteriaTouch } from './preview/useAsteriaTouch'
+import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
+import { getTool } from './tools/ToolRegistry'
+import './tools' // side-effect: puebla TOOL_REGISTRY
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES
+// TYPES & CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface AsteriaViewProps {
@@ -40,23 +43,79 @@ export interface AsteriaViewProps {
   temporalActions: TemporalActions
 }
 
+const TOOL_ORDER: readonly AsteriaToolId[] = ['select', 'lasso', 'radial']
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
   const { atlas, loading, error } = useNodeAtlas()
+  useAsteriaTouch()
+
+  const activeToolId = useAsteriaStore((s) => s.activeToolId)
+  const setActiveTool = useAsteriaStore((s) => s.setActiveTool)
+  const pokeEnabled = useAsteriaStore((s) => s.pokeEnabled)
+  const setPokeEnabled = useAsteriaStore((s) => s.setPokeEnabled)
+  const selectionCount = useAsteriaStore((s) => s.selectionNodeIds.size)
+  const hoverCount = useAsteriaStore((s) => s.hoverNodeIds.size)
+  const touchLive = selectionCount + hoverCount
+
+  // ── Hotkeys de herramientas: V / L / R ──
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) return
+      const key = e.key.toLowerCase()
+      for (const id of TOOL_ORDER) {
+        const tool = getTool(id)
+        if (tool?.hotkey === key) {
+          setActiveTool(id)
+          return
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [setActiveTool])
 
   return (
     <div className="asteria-view">
-      {/* ── TOOLBOX — WAVE 8020: Chrono-Brush · Wavefront · Glyph ·
-              Slicer · Bisturí Celular · Noise ── */}
-      <div className="asteria-toolbox" aria-label="Asteria tools" />
+      {/* ── TOOLBOX ── */}
+      <div className="asteria-toolbox" aria-label="Asteria tools">
+        {TOOL_ORDER.map((id) => {
+          const tool = getTool(id)
+          if (!tool) return null
+          const active = activeToolId === id
+          return (
+            <button
+              key={id}
+              type="button"
+              className={`asteria-tool-btn ${active ? 'active' : ''}`}
+              title={`${tool.label} (${tool.hotkey.toUpperCase()})`}
+              onClick={() => setActiveTool(id)}
+            >
+              <span className="asteria-tool-btn__icon">{tool.icon}</span>
+            </button>
+          )
+        })}
+        <div className="asteria-toolbox__spacer" />
+        <button
+          type="button"
+          className={`asteria-tool-btn asteria-tool-btn--poke ${pokeEnabled ? 'active' : ''}`}
+          title={`POKE ${pokeEnabled ? 'ON' : 'OFF'} — tacto físico por L3++ (kill-switch)`}
+          onClick={() => setPokeEnabled(!pokeEnabled)}
+        >
+          <span className="asteria-tool-btn__icon">⚡</span>
+        </button>
+      </div>
 
       {/* ── LIENZO TÁCTICO ── */}
       <AsteriaCanvas />
 
-      {/* ── GESTURE STACK / inspector — HUD del atlas hasta el Stack ── */}
+      {/* ── RAIL: atlas + selección + badge POKE ── */}
       <div className="asteria-side-rail" aria-label="Gesture stack">
         <div className="asteria-rail__section">
           <div className="asteria-rail__title">NODE ATLAS</div>
@@ -78,6 +137,15 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
             <div className="asteria-rail__muted">sin datos del grafo</div>
           )}
         </div>
+
+        <div className="asteria-rail__section">
+          <div className="asteria-rail__title">SELECCIÓN</div>
+          <div className="asteria-rail__stat">{selectionCount} nodos</div>
+        </div>
+
+        {touchLive > 0 && pokeEnabled && (
+          <div className="asteria-poke-badge">⚡ POKE ACTIVO · {touchLive} nodos</div>
+        )}
       </div>
     </div>
   )

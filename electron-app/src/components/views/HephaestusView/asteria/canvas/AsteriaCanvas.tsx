@@ -55,6 +55,11 @@ export const AsteriaCanvas: React.FC = () => {
       useAsteriaStore.getState().setSelection(ids, additive),
     setHover: (ids) => useAsteriaStore.getState().setHover(ids),
     previewSelection: (ids) => useAsteriaStore.getState().setPreview(ids),
+    // 🜨 WAVE 8040B: servicios de las tools de pintura/cirugía
+    selection: () => useAsteriaStore.getState().selectionNodeIds,
+    addGesture: (g) => useAsteriaStore.getState().addGesture(g),
+    setSurgeonDevice: (dev) => useAsteriaStore.getState().setSurgeonDevice(dev),
+    fitRect: (cx, cz, w, d, m) => useAsteriaStore.getState().fitRect(cx, cz, w, d, m),
   }), [])
 
   // ── ResizeObserver: backing store ×DPR + tamaño CSS al store ──
@@ -216,7 +221,19 @@ export const AsteriaCanvas: React.FC = () => {
         onPointerCancel={endPointer}
         onPointerLeave={() => useAsteriaStore.getState().setHover([])}
         onWheel={onWheel}
-        onDoubleClick={() => useAsteriaStore.getState().resetCamera()}
+        onDoubleClick={(e) => {
+          // 🜨 8040B: la tool activa puede reclamar el doble clic
+          // (Cell Surgeon abre el inspector celular); si no, reset cámara.
+          const t = getTool(useAsteriaStore.getState().activeToolId)
+          if (t?.onDoubleClick) {
+            const rect = e.currentTarget.getBoundingClientRect()
+            t.onDoubleClick(
+              e.clientX - rect.left, e.clientY - rect.top, e.nativeEvent, toolCtx,
+            )
+          } else {
+            useAsteriaStore.getState().resetCamera()
+          }
+        }}
         onContextMenu={(e) => e.preventDefault()}
       />
     </div>

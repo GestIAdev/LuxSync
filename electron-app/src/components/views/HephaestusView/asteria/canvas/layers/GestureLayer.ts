@@ -130,6 +130,24 @@ export function drawGestureLayer(
     ctx.fillStyle = COLOR_GESTURE_FILL
   }
 
+  // 🜨 WAVE 8040B (T3): trazo del Chrono-Brush — polilínea + radio del
+  // pincel en el último punto (el operador ve el ancho de cobertura).
+  const ch = gesturePreview.chrono
+  if (ch && ch.pts.length >= 4) {
+    ctx.beginPath()
+    ctx.moveTo(toSX(ch.pts[0]), toSY(ch.pts[1]))
+    for (let i = 2; i < ch.pts.length; i += 2) {
+      ctx.lineTo(toSX(ch.pts[i]), toSY(ch.pts[i + 1]))
+    }
+    ctx.stroke()
+    const lx = ch.pts[ch.pts.length - 2]
+    const lz = ch.pts[ch.pts.length - 1]
+    const rPx = ch.radiusM * cam.zoom
+    ctx.beginPath()
+    ctx.arc(toSX(lx), toSY(lz), Math.max(rPx, 3), 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
   if (!atlas) return
 
   // ── Anillos de estado sobre los nodos ─────────────────────────────────

@@ -43,8 +43,8 @@ export interface NodeAtlas {
   readonly byNodeId: ReadonlyMap<string, NodeAtlasEntry>
 }
 
-/** Herramientas de selección del Lienzo Táctico (WAVE 8020). */
-export type AsteriaToolId = 'select' | 'lasso' | 'radial'
+/** Herramientas del Lienzo Táctico (WAVE 8020 + 8040B: chrono ✎ · cell ✜). */
+export type AsteriaToolId = 'select' | 'lasso' | 'radial' | 'chrono' | 'cell'
 
 /** Límites de zoom en píxeles por metro. */
 export const ASTERIA_ZOOM_MIN = 4
@@ -112,6 +112,14 @@ export interface AsteriaStore extends AsteriaCamera {
    */
   pokeEnabled: boolean
   setPokeEnabled: (on: boolean) => void
+
+  /**
+   * 🜨 WAVE 8040B (T7): deviceId del fixture expandido por el Cell
+   * Surgeon — null = modo normal. La banda de estado y la tool lo leen;
+   * las tools lo escriben via ctx.setSurgeonDevice.
+   */
+  surgeonDeviceId: string | null
+  setSurgeonDevice: (deviceId: string | null) => void
 
   // ── WAVE 8030-P3: EL DOCUMENTO — Gesture Stack no destructivo ──
 
@@ -214,7 +222,14 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
     }),
 
   activeToolId: 'select',
-  setActiveTool: (id) => set({ activeToolId: id }),
+  // Al cambiar de herramienta se cierra cualquier cirugía celular abierta
+  // (la tool no ve el store en cancel() — la higiene vive aquí).
+  setActiveTool: (id) =>
+    set((s) =>
+      s.activeToolId === id
+        ? {}
+        : { activeToolId: id, surgeonDeviceId: null },
+    ),
 
   selectionNodeIds: new Set<string>(),
   setSelection: (nodeIds, additive = false) =>
@@ -256,6 +271,10 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
 
   pokeEnabled: true,
   setPokeEnabled: (on) => set({ pokeEnabled: on }),
+
+  surgeonDeviceId: null,
+  setSurgeonDevice: (deviceId) =>
+    set((s) => (s.surgeonDeviceId === deviceId ? {} : { surgeonDeviceId: deviceId })),
 
   project: createDefaultProject(),
   setProject: (project) => set({ project }),

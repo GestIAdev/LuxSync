@@ -22,6 +22,7 @@
 
 import type { WorldTransform } from '../canvas/useWorldTransform'
 import type { NodeAtlas, AsteriaToolId } from '../store/useAsteriaStore'
+import type { Gesture } from '../model/AsteriaProject'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GESTURE PREVIEW — geometría del gesto en curso (mutable, leída por RAF)
@@ -34,6 +35,8 @@ export interface GesturePreview {
   lasso: number[] | null
   /** Radio expansivo: centro + radio en metros. */
   radial: { cx: number; cz: number; r: number } | null
+  /** 🜨 T3 Chrono-Brush: trazo en curso — array plano [x0,z0,…] + radio. */
+  chrono: { pts: number[]; radiusM: number } | null
 }
 
 /** Singleton mutable — las tools escriben, GestureLayer lee. */
@@ -41,6 +44,7 @@ export const gesturePreview: GesturePreview = {
   marquee: null,
   lasso: null,
   radial: null,
+  chrono: null,
 }
 
 /** Limpia toda la geometría de gesto (al soltar / cambiar de herramienta). */
@@ -48,6 +52,7 @@ export function clearGesturePreview(): void {
   gesturePreview.marquee = null
   gesturePreview.lasso = null
   gesturePreview.radial = null
+  gesturePreview.chrono = null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,6 +71,20 @@ export interface AsteriaToolContext {
   setHover: (nodeIds: Iterable<string>) => void
   /** Preview de selección en vivo durante el drag (marquee/radial). */
   previewSelection: (nodeIds: Iterable<string>) => void
+  /** 🜨 8040B: selección committed actual (snapshot del store). */
+  selection: () => ReadonlySet<string>
+  /** 🜨 8040B: empuja un gesto al Gesture Stack (no destructivo). */
+  addGesture: (gesture: Gesture) => void
+  /** 🜨 8040B (T7): expande/cierra el inspector celular de un fixture. */
+  setSurgeonDevice: (deviceId: string | null) => void
+  /** 🜨 8040B (T7): encuadra un rect del mundo (expansión del bisturí). */
+  fitRect: (
+    centerX: number,
+    centerZ: number,
+    widthM: number,
+    depthM: number,
+    marginPx?: number,
+  ) => void
 }
 
 export interface AsteriaTool {
@@ -81,6 +100,8 @@ export interface AsteriaTool {
   onPointerDown?(sx: number, sy: number, e: PointerEvent | React.PointerEvent, ctx: AsteriaToolContext): void
   onPointerMove?(sx: number, sy: number, e: PointerEvent | React.PointerEvent, ctx: AsteriaToolContext): void
   onPointerUp?(sx: number, sy: number, e: PointerEvent | React.PointerEvent, ctx: AsteriaToolContext): void
+  /** 🜨 8040B (T7): doble clic sobre el lienzo (Cell Surgeon expande). */
+  onDoubleClick?(sx: number, sy: number, e: MouseEvent | React.MouseEvent, ctx: AsteriaToolContext): void
   /** Cancela/limpia el gesto en curso (cambio de herramienta, Esc). */
   cancel?(): void
 }

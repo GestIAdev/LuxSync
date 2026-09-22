@@ -31,6 +31,10 @@ import { useAsteriaTouch } from './preview/useAsteriaTouch'
 import { useAsteriaCompiler } from './compiler/useAsteriaCompiler'
 import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
 import { getTool } from './tools/ToolRegistry'
+import {
+  MCC_CELL_AVAILABLE,
+  MCC_CELL_UNAVAILABLE_TOOLTIP,
+} from './mccCapability'
 import './tools' // side-effect: puebla TOOL_REGISTRY
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -44,7 +48,9 @@ export interface AsteriaViewProps {
   temporalActions: TemporalActions
 }
 
-const TOOL_ORDER: readonly AsteriaToolId[] = ['select', 'lasso', 'radial']
+const TOOL_ORDER: readonly AsteriaToolId[] = [
+  'select', 'lasso', 'radial', 'chrono', 'cell',
+]
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -64,6 +70,7 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
   const touchLive = selectionCount + hoverCount
   const stack = useAsteriaStore((s) => s.project.stack)
   const compileReport = useAsteriaStore((s) => s.lastCompileReport)
+  const surgeonDeviceId = useAsteriaStore((s) => s.surgeonDeviceId)
 
   // ── Hotkeys de herramientas: V / L / R ──
   useEffect(() => {
@@ -157,8 +164,36 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
           ))}
         </div>
 
+        {/* 🜨 WAVE 8040B (T7): banda de estado del Cell Surgeon — §T7
+            exige MCC-Cell/MCC-Z explícito, nunca una promesa falsa. */}
+        {(activeToolId === 'cell' || surgeonDeviceId !== null) && (
+          <div className="asteria-rail__section">
+            <div className="asteria-rail__title">CELL SURGEON</div>
+            <div
+              className={`asteria-rail__stat ${MCC_CELL_AVAILABLE ? '' : 'asteria-rail__muted'}`}
+              title={MCC_CELL_AVAILABLE ? undefined : MCC_CELL_UNAVAILABLE_TOOLTIP}
+            >
+              {MCC_CELL_AVAILABLE ? 'MCC-Cell · Δ1–Δ3' : 'MCC-Z · por zona'}
+            </div>
+            {surgeonDeviceId ? (
+              <>
+                <div className="asteria-rail__muted">🔪 {surgeonDeviceId}</div>
+                <div className="asteria-rail__muted">
+                  {atlas?.entries.filter((e) => e.deviceId === surgeonDeviceId)
+                    .length ?? 0}{' '}
+                  celdas
+                </div>
+              </>
+            ) : (
+              <div className="asteria-rail__muted">
+                doble clic en un fixture compuesto
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="asteria-rail__section">
-          <div className="asteria-rail__title">COMPILE Λ</div>
+          <div className="asteria-rail__title">COMPILE</div>
           {compileReport ? (
             <>
               <div className="asteria-rail__stat">

@@ -63,14 +63,15 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
   test('kind sin implementar: resuelve máscara de cobertura, sin tocar valores', () => {
     const stack: Gesture[] = [
       {
-        kind: 'noise', id: 'n1', op: 'replace', seed: 7, scaleM: 1,
-        amountMs: 50, octaves: 2,
+        kind: 'glyph', id: 'g1', op: 'replace', text: 'LX',
         mask: { nodeIds: ['fx-1:impact', 'fx-2:petal-l:impact'] },
+        transform: { x: 0, z: 0, scaleM: 1, rotDeg: 0 },
+        channel: 'gain', antialias: true,
       },
     ]
     const snap = evaluateStack(stack, makeAtlas())
     expect(Array.from(snap.mask)).toEqual([1, 0, 1, 0])
-    // La matemática del noise llega después — los valores siguen en identidad
+    // La matemática del glyph llega después — los valores siguen en identidad
     expect(Array.from(snap.delayMs)).toEqual([0, 0, 0, 0])
   })
 
@@ -230,6 +231,113 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     ]
     const snap = evaluateStack(stack, makeAtlas())
     expect(snap.delayMs[2]).toBeCloseTo(350, 3) // 100 + 250
+  })
+
+  // ── SLICE (§5.2): bucketing por eje + simetría + shuffle ──
+
+  test('slice x linear: normaliza min/max → cuantiza → delay = ub·span', () => {
+    // fx-1 x=-2 (min), fx-2 x=1.5 (max). buckets=2 → fx-1 → 0, fx-2 → span.
+    const stack: Gesture[] = [
+      {
+        kind: 'slice', id: 's1', op: 'replace', axis: 'x',
+        buckets: 2, spanMs: 1000, symmetry: 'linear',
+        mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact'] },
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    expect(snap.delayMs[0]).toBe(0)
+    expect(snap.delayMs[1]).toBe(0)
+    expect(snap.delayMs[2]).toBe(1000)
+    expect(snap.mask[3]).toBe(0) // sin posición: eje espacial no lo cubre
+  })
+
+  test('slice dmx: orden de patch, cubre nodos SIN posición', () => {
+    // eje no-espacial: fx-3 (índice 3, sin position) también se rebana
+    const stack: Gesture[] = [
+      {
+        kind: 'slice', id: 's1', op: 'replace', axis: 'dmx',
+        buckets: 4, spanMs: 900, symmetry: 'linear',
+        mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact', 'fx-3:impact'] },
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    expect(snap.delayMs[0]).toBe(0)         // idx 0 → bucket 0
+    expect(snap.delayMs[3]).toBe(900)       // idx 3 → bucket 3 → ub 1
+    expect(snap.mask[3]).toBe(1)
+  })
+
+  test('slice zone: cubos por ordinal de zoneId', () => {
+    const e = [
+      entry('fx-1:impact', -2, -1),
+      { ...entry('fx-2:impact', 1.5, 2), zoneId: 'back' },
+    ]
+    const atlas: NodeAtlas = { entries: e, byNodeId: new Map(e.map((x) => [x.nodeId, x])) }
+    const stack: Gesture[] = [
+      {
+        kind: 'slice', id: 's1', op: 'replace', axis: 'zone',
+        buckets: 2, spanMs: 500, symmetry: 'linear',
+        mask: { nodeIds: ['fx-1:impact', 'fx-2:impact'] },
+      },
+    ]
+    const snap = evaluateStack(stack, atlas)
+    expect(snap.delayMs[0]).toBe(0)    // 'front' → ordinal 0
+    expect(snap.delayMs[1]).toBe(500)  // 'back'  → ordinal 1
+  })
+
+  test('slice center-out: cubo central = delay 0, extremos = span', () => {
+    const stack: Gesture[] = [
+      {
+        kind: 'slice', id: 's1', op: 'replace', axis: 'dmx',
+        buckets: 3, spanMs: 500, symmetry: 'center-out',
+        mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact'] },
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    // idx 0→b0(ub 0→|−1|=1→500) · idx1→b1(ub .5→0→0) · idx2→b2(ub 1→1→500)
+    expect(snap.delayMs[0]).toBe(500)
+    expect(snap.delayMs[1]).toBe(0)
+    expect(snap.delayMs[2]).toBe(500)
+  })
+
+  test('slice shuffleSeed: determinista y dentro de [0, span]', () => {
+    const mk = (): Gesture => ({
+      kind: 'slice', id: 's1', op: 'replace', axis: 'dmx',
+      buckets: 4, spanMs: 600, symmetry: 'linear', shuffleSeed: 42,
+      mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact', 'fx-3:impact'] },
+    })
+    const a = evaluateStack([mk()], makeAtlas())
+    const delays1 = Array.from(a.delayMs)
+    const b = evaluateStack([mk()], makeAtlas())
+    expect(Array.from(b.delayMs)).toEqual(delays1) // determinismo
+    for (const d of delays1) {
+      expect(d).toBeGreaterThanOrEqual(0)
+      expect(d).toBeLessThanOrEqual(600)
+    }
+  })
+
+  // ── NOISE (§5.2): fBm por posición → delay orgánico ──
+
+  test('noise: determinista por (seed, posición), acotado a [0, amountMs]', () => {
+    const mk = (seed: number): Gesture => ({
+      kind: 'noise', id: 'n1', op: 'replace', seed, scaleM: 1.5,
+      amountMs: 120, octaves: 2,
+      mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact', 'fx-3:impact'] },
+    })
+    const s1 = evaluateStack([mk(7)], makeAtlas())
+    const first = Array.from(s1.delayMs)
+    const s2 = evaluateStack([mk(7)], makeAtlas())
+    expect(Array.from(s2.delayMs)).toEqual(first) // determinismo
+    for (let i = 0; i < 3; i++) {
+      expect(s1.delayMs[i]).toBeGreaterThanOrEqual(0)
+      expect(s1.delayMs[i]).toBeLessThanOrEqual(120)
+      expect(s1.mask[i]).toBe(1)
+    }
+    expect(s1.mask[3]).toBe(0) // sin posición → sin ruido
+    // Seed distinta → campo distinto (al menos un nodo difiere)
+    const s3 = evaluateStack([mk(99)], makeAtlas())
+    expect(
+      first.some((d, i) => d !== s3.delayMs[i]),
+    ).toBe(true)
   })
 
   test('nodeIds huérfanos en máscara se ignoran (rig drift)', () => {

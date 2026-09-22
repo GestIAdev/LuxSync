@@ -67,7 +67,7 @@ export const DEFAULT_PHASE_CONFIG_PRO: Readonly<PhaseConfigPro> = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Hash determinista [0,1) — sin estado, reproducible. */
-function hash01(seed: number, k: number): number {
+export function hash01(seed: number, k: number): number {
   const x = Math.sin(k * 127.1 + seed * 311.7) * 43758.5453
   return x - Math.floor(x)   // fract
 }
@@ -77,7 +77,7 @@ function fract(x: number): number {
 }
 
 /** Simetría: [0,1] → [0,1] */
-function applySymmetry(u: number, mode: PhaseSymmetryMode): number {
+export function applySymmetry(u: number, mode: PhaseSymmetryMode): number {
   switch (mode) {
     case 'linear':     return u
     case 'mirror':     return 1 - Math.abs(2 * u - 1)  // pico al centro

@@ -297,10 +297,10 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                   <span className="drawer-hint">
                     <b>{channel.type.toUpperCase()}</b> governor — {activeGov ? `${activeGov.rules.length} rule(s)` : 'no rules'}
                   </span>
-                  {activeGov && (
-                    <div className="governor-rules-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      {activeGov.rules.map((rule, ri) => {
+                  <div className="governor-rules-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                      {(activeGov?.rules ?? []).map((rule, ri) => {
                         const gov = activeGov
+                        if (!gov) return null // unreachable — rows only exist when rules is non-empty
                         const setRules = (newRules: IGovernorRule[]) =>
                           dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: { ...gov, rules: newRules } })
                         const patchRule = (updater: (r: IGovernorRule) => IGovernorRule) =>
@@ -460,7 +460,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                       })}
                       <button
                         className="btn-governor-add-rule"
-                        title="Append a new rule (evaluated top-to-bottom, first match wins)"
+                        title="Append a new rule (evaluated top-to-bottom, first match wins) — creates the governor if none exists"
                         style={{ alignSelf: 'flex-start', background: 'rgba(245,158,11,0.12)', border: '1px dashed rgba(245,158,11,0.5)', color: '#fbbf24', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontSize: '10px', fontFamily: 'inherit' }}
                         onClick={() => {
                           const newRule: IGovernorRule = {
@@ -470,47 +470,30 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                           dispatch({
                             type: 'GOVERNOR_SET_FOR_CHANNEL',
                             channelIndex: idx,
-                            governor: { ...activeGov, rules: [...activeGov.rules, newRule] },
+                            governor: activeGov
+                              ? { ...activeGov, rules: [...activeGov.rules, newRule] }
+                              : {
+                                  channelIndex: idx,
+                                  description: `${channel.type.toUpperCase()} governor`,
+                                  rules: [newRule],
+                                },
                           })
                         }}
                       >
                         + Add rule
                       </button>
                     </div>
-                  )}
-                  {!activeGov && (
-                    <input
-                      type="number"
-                      min="0"
-                      max="255"
-                      autoFocus
-                      defaultValue={255}
-                      onChange={(e) => {
-                        const safeByte = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
-                        dispatch({
-                          type: 'GOVERNOR_SET_FOR_CHANNEL',
-                          channelIndex: idx,
-                          governor: {
-                            channelIndex: idx,
-                            description: `${channel.type.toUpperCase()} safety limit`,
-                            rules: [{
-                              when: { intentType: intentForChannel(channel.type), min: 0.85 },
-                              then: { forceByte: safeByte }
-                            }]
-                          }
-                        })
+                  {activeGov && (
+                    <button
+                      className="btn-drawer-kill"
+                      onClick={() => {
+                        dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: null })
+                        setEditingGovIdx(null)
                       }}
-                    />
+                    >
+                      ✕ Remove
+                    </button>
                   )}
-                  <button
-                    className="btn-drawer-kill"
-                    onClick={() => {
-                      dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: null })
-                      setEditingGovIdx(null)
-                    }}
-                  >
-                    ✕ Remove
-                  </button>
                 </div>
               )}
             </div>

@@ -139,6 +139,17 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
     useAsteriaStore.getState().resetProject()
     expect(useAsteriaStore.getState().selectedGestureId).toBeNull()
   })
+
+  test('8070-M2: setTargetParams muta el proyecto; [] se rechaza', () => {
+    const s = useAsteriaStore.getState()
+    s.setTargetParams(['intensity', 'pan'])
+    expect(useAsteriaStore.getState().project.targetParams).toEqual([
+      'intensity', 'pan',
+    ])
+    const before = useAsteriaStore.getState().project
+    s.setTargetParams([]) // el campo siempre apunta a algo — no-op
+    expect(useAsteriaStore.getState().project).toBe(before)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -263,5 +274,24 @@ describe('🜨 AsteriaStore — Rig Drift (WAVE 8050-M3)', () => {
     const st = useAsteriaStore.getState()
     expect(st.driftReadOnly).toBe(true)
     expect(st.rigDrift).not.toBeNull()
+  })
+
+  test('8070-M1: documento nuevo sin asteria → unlock + reset limpia todo', () => {
+    // Simula el path del hook: proyecto ajeno con drift + solo lectura
+    const s = useAsteriaStore.getState()
+    s.setNodeAtlas(mkAtlasPos([['fx-a:impact', 0, 0]]))
+    s.setProject(foreignProject(oldRig, ['fx-b:impact']))
+    s.setDriftReadOnly(true)
+    // El hook hace setDriftReadOnly(false) + resetProject()
+    s.setDriftReadOnly(false)
+    s.resetProject()
+    const st = useAsteriaStore.getState()
+    expect(st.project.stack).toHaveLength(1)
+    expect(st.project.stack[0].kind).toBe('base')
+    expect(st.rigDrift).toBeNull()
+    expect(st.driftReadOnly).toBe(false)
+    // Resellada al rig vivo — la huella describe el atlas actual
+    expect(st.project.rigFingerprint).toMatch(/^sha1:/)
+    expect(st.project.nodePositions?.['fx-a:impact']).toEqual({ x: 0, z: 0 })
   })
 })

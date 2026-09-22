@@ -324,6 +324,52 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     expect(out.tracks.every((t) => t.id.includes('_cohort_'))).toBe(true)
   })
 
+  test('AST_SHADOWS_FORGE (8070-M4): track Forge con mismo paramId+zona → aviso', () => {
+    // makeClip() tiene 'forge-track-01' = intensity + zones ['all'] —
+    // el ast_intensity_lambda lo enmascara con replace.
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip: makeClip(),
+      project: createDefaultProject('x'),
+    })
+    expect(
+      out.report.warnings.some(
+        (w) =>
+          w.startsWith('AST_SHADOWS_FORGE') && w.includes('forge-track-01'),
+      ),
+    ).toBe(true)
+  })
+
+  test('AST_SHADOWS_FORGE: paramId distinto o zona disjunta → silencio', () => {
+    const clip = makeClip()
+    // El track Forge apunta a 'zoom' — targetParams = ['intensity']
+    clip.tracks[0] = { ...clip.tracks[0], paramId: 'zoom' }
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip,
+      project: createDefaultProject('x'),
+    })
+    expect(
+      out.report.warnings.some((w) => w.startsWith('AST_SHADOWS_FORGE')),
+    ).toBe(false)
+  })
+
+  test('AST_SHADOWS_FORGE: misma param pero zona disjunta → silencio', () => {
+    const clip = makeClip()
+    clip.tracks[0] = {
+      ...clip.tracks[0],
+      zones: ['back'] as readonly ZoneTarget[],
+    }
+    // Cohort emite zonas derivadas del atlas ('front') → sin solape
+    const field = makeField()
+    field.gain[1] = 0.4
+    const out = compile({
+      atlas: makeAtlas(), field, clip,
+      project: { ...createDefaultProject('x'), strategy: 'cohort' as const },
+    })
+    expect(
+      out.report.warnings.some((w) => w.startsWith('AST_SHADOWS_FORGE')),
+    ).toBe(false)
+  })
+
   test('los tracks ast_* sobreviven serializeHephClip (whitelist)', () => {
     const clip = makeClip()
     const out = compile({

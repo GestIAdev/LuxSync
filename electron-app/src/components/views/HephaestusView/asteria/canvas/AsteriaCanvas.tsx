@@ -31,12 +31,13 @@ import { drawFeedbackLayer } from './layers/FeedbackLayer'
 import { drawGestureLayer } from './layers/GestureLayer'
 import { getTool, type AsteriaToolContext } from '../tools/ToolRegistry'
 import { nearestNodeToScreen } from '../tools/selection'
+import type { HephPreviewReturn } from '../../useHephPreview'
 import '../tools' // side-effect: puebla TOOL_REGISTRY
 
 /** Radio de pick del hover en px de pantalla. */
 const HOVER_PICK_RADIUS_PX = 12
 
-export const AsteriaCanvas: React.FC = () => {
+export const AsteriaCanvas: React.FC<{ preview?: HephPreviewReturn }> = ({ preview }) => {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null)
@@ -54,6 +55,13 @@ export const AsteriaCanvas: React.FC = () => {
   const resolveDriftRemap = useAsteriaStore((s) => s.resolveDriftRemap)
   const resolveDriftDiscard = useAsteriaStore((s) => s.resolveDriftDiscard)
   const setDriftReadOnly = useAsteriaStore((s) => s.setDriftReadOnly)
+
+  // 🜨 WAVE 8070 (M3): ref al previewDataRef del editor — el RAF lo lee
+  // cada frame sin suscripciones ni re-render (Zero React Cost).
+  const previewDataRef = useRef(preview?.previewDataRef)
+  useEffect(() => {
+    previewDataRef.current = preview?.previewDataRef
+  }, [preview])
 
   // Contexto inyectado a las tools — referencias estables, nada de React
   const toolCtx = useMemo<AsteriaToolContext>(() => ({
@@ -132,7 +140,7 @@ export const AsteriaCanvas: React.FC = () => {
       const s = useAsteriaStore.getState()
       drawGridLayer(ctx, t)
       drawNodeLayer(ctx, t, s.nodeAtlas)
-      drawFeedbackLayer(ctx, t, s.nodeAtlas)
+      drawFeedbackLayer(ctx, t, s.nodeAtlas, previewDataRef.current?.current)
       drawGestureLayer(ctx, t, s.nodeAtlas, s.selectionNodeIds, s.previewNodeIds, s.hoverNodeIds)
 
       raf = requestAnimationFrame(tick)

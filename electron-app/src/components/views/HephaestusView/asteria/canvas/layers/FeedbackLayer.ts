@@ -22,6 +22,7 @@
 import type { WorldTransform } from '../useWorldTransform'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import { getTransientFixture } from '../../../../../../stores/transientStore'
+import type { HephPreviewData } from '../../../useHephPreview'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -42,6 +43,10 @@ export function drawFeedbackLayer(
   ctx: CanvasRenderingContext2D,
   t: WorldTransform,
   atlas: NodeAtlas | null,
+  /** 🜨 WAVE 8070 (M3): previewDataRef.current del editor — fallback
+   *  cuando el transientStore no reporta actividad (scrub/playhead de
+   *  la barra de transporte del Tier 1). Prioridad: live siempre gana. */
+  preview?: HephPreviewData | null,
 ): void {
   if (!atlas) return
 
@@ -49,6 +54,7 @@ export function drawFeedbackLayer(
   const halfW = canvasW / 2
   const halfH = canvasH / 2
   const entries = atlas.entries
+  const previewFixtures = preview?.fixtures
 
   const baseHaloPx = Math.min(
     HALO_MAX_PX,
@@ -76,16 +82,33 @@ export function drawFeedbackLayer(
     // no por nodeId (celda). Todas las celdas del mismo aparato comparten
     // su estado DMX — el nodo aporta la posición, el fixture la luz.
     const fx = getTransientFixture(entry.deviceId)
-    if (!fx) continue
 
-    const dimmer = typeof fx.dimmer === 'number' ? fx.dimmer : 0
-    if (dimmer <= 0 || fx.active === false) continue
+    let dimmer255 = 0
+    let r = 255
+    let g = 255
+    let b = 255
+    if (fx && fx.active !== false && typeof fx.dimmer === 'number' && fx.dimmer > 0) {
+      dimmer255 = fx.dimmer
+      const col = fx.color
+      r = typeof col?.r === 'number' ? col.r : 255
+      g = typeof col?.g === 'number' ? col.g : 255
+      b = typeof col?.b === 'number' ? col.b : 255
+    } else if (previewFixtures) {
+      // 🜨 WAVE 8070 (M3): sin verdad viva → el scrub/audition del editor.
+      // Búsqueda lineal sin allocs (nada de Map por frame — Zero-Alloc).
+      for (let j = 0; j < previewFixtures.length; j++) {
+        const pf = previewFixtures[j]
+        if (pf.fixtureId !== entry.deviceId || pf.dimmer <= 0) continue
+        dimmer255 = pf.dimmer
+        r = pf.r
+        g = pf.g
+        b = pf.b
+        break
+      }
+    }
+    if (dimmer255 <= 0) continue
 
-    const intensity = dimmer > 255 ? 1 : dimmer / 255
-    const col = fx.color
-    const r = typeof col?.r === 'number' ? col.r : 255
-    const g = typeof col?.g === 'number' ? col.g : 255
-    const b = typeof col?.b === 'number' ? col.b : 255
+    const intensity = dimmer255 > 255 ? 1 : dimmer255 / 255
 
     // Halo radial — escala con intensidad (un dimmer bajo apenas respira)
     const haloPx = baseHaloPx * (0.45 + 0.55 * intensity)

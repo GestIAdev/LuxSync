@@ -33,6 +33,7 @@ import {
   type RigDrift,
 } from '../model/rigDrift'
 import type { CompileReport } from '../compiler/AsteriaCompiler'
+import type { HephParamId } from '../../../../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -167,6 +168,12 @@ export interface AsteriaStore extends AsteriaCamera {
    */
   selectedGestureId: string | null
   setSelectedGesture: (id: string | null) => void
+  /**
+   * 🜨 WAVE 8070 (M2): params Heph a los que el compilador aplica el
+   * campo (`project.targetParams` — intensity, pan, tilt, zoom…).
+   * Nunca vacío: el campo siempre tiene que apuntar a algo.
+   */
+  setTargetParams: (params: readonly HephParamId[]) => void
 
   /**
    * 🜨 WAVE 8030-P7: último reporte del compilador Λ (useAsteriaCompiler).
@@ -405,6 +412,13 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
   selectedGestureId: null,
   setSelectedGesture: (id) =>
     set((s) => (s.selectedGestureId === id ? {} : { selectedGestureId: id })),
+
+  setTargetParams: (params) =>
+    set((s) =>
+      s.driftReadOnly || params.length === 0
+        ? {}
+        : { project: { ...s.project, targetParams: params } },
+    ),
 
   lastCompileReport: null,
   setCompileReport: (report) => set({ lastCompileReport: report }),

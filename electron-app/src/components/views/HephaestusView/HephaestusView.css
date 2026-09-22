@@ -3044,6 +3044,45 @@
   cursor: not-allowed;
 }
 
+/* ── WAVE 8070 (M2): chips de TARGET ── */
+
+.asteria-target-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.asteria-target-chip {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(16, 16, 26, 0.7);
+  color: #5a5f78;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.asteria-target-chip:hover:not(:disabled) {
+  border-color: rgba(123, 92, 255, 0.55);
+  color: #d8dcff;
+}
+
+.asteria-target-chip.active {
+  border-color: #7b5cff;
+  background: rgba(123, 92, 255, 0.2);
+  color: #d8dcff;
+  box-shadow: 0 0 8px rgba(123, 92, 255, 0.3);
+}
+
+.asteria-target-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── WAVE 8050 (M3): banner de Rig Drift ── */
 
 .asteria-drift-banner {

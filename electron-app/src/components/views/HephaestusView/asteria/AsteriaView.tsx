@@ -33,6 +33,7 @@ import { useAsteriaRigDrift } from './compiler/useAsteriaRigDrift'
 import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
 import { getTool } from './tools/ToolRegistry'
 import { GestureStackPanel } from './GestureStackPanel'
+import type { HephParamId } from '../../../../core/hephaestus/types'
 import {
   MCC_CELL_AVAILABLE,
   MCC_CELL_UNAVAILABLE_TOOLTIP,
@@ -56,11 +57,28 @@ const TOOL_ORDER: readonly AsteriaToolId[] = [
   'select', 'lasso', 'radial', 'chrono', 'cell', 'glyph',
 ]
 
+/**
+ * 🜨 WAVE 8070 (M2): params ofrecidos en el rail — subestricto de
+ * LAMBDA_SAFE_PARAMS (numéricos con curva sintetizable). 'color' no
+ * entra: la Vía Λ solo emite curvas numéricas.
+ */
+const TARGET_PARAM_CHOICES: readonly { id: HephParamId; label: string }[] = [
+  { id: 'intensity', label: 'DIM' },
+  { id: 'white', label: 'WHT' },
+  { id: 'amber', label: 'AMB' },
+  { id: 'pan', label: 'PAN' },
+  { id: 'tilt', label: 'TILT' },
+  { id: 'zoom', label: 'ZOOM' },
+  { id: 'focus', label: 'FOCUS' },
+  { id: 'iris', label: 'IRIS' },
+  { id: 'speed', label: 'SPD' },
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
+export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
   const { atlas, loading, error } = useNodeAtlas()
   useAsteriaTouch()
   useAsteriaCompiler()
@@ -76,6 +94,9 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
   const stack = useAsteriaStore((s) => s.project.stack)
   const compileReport = useAsteriaStore((s) => s.lastCompileReport)
   const surgeonDeviceId = useAsteriaStore((s) => s.surgeonDeviceId)
+  const targetParams = useAsteriaStore((s) => s.project.targetParams)
+  const setTargetParams = useAsteriaStore((s) => s.setTargetParams)
+  const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
 
   // 🜨 WAVE 8050 (T5): legibilidad del último gesto glyph del stack —
   // el HUD de resolución efectiva (Gate 8050: aviso honesto, jamás
@@ -139,7 +160,7 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
       </div>
 
       {/* ── LIENZO TÁCTICO ── */}
-      <AsteriaCanvas />
+      <AsteriaCanvas preview={preview} />
 
       {/* ── RAIL: atlas + selección + badge POKE ── */}
       <div className="asteria-side-rail" aria-label="Gesture stack">
@@ -171,6 +192,36 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
 
         {/* 🜨 WAVE 8055: panel de capas (selección/eliminar/reset) */}
         <GestureStackPanel />
+
+        {/* 🜨 WAVE 8070 (M2): TARGET — a qué canales DMX aplica el
+            campo. Toggle multi-selección; nunca vacío (el store lo
+            rechaza). En solo-lectura queda congelado. */}
+        <div className="asteria-rail__section">
+          <div className="asteria-rail__title">TARGET</div>
+          <div className="asteria-target-chips">
+            {TARGET_PARAM_CHOICES.map(({ id, label }) => {
+              const on = targetParams.includes(id)
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={`asteria-target-chip ${on ? 'active' : ''}`}
+                  disabled={driftReadOnly}
+                  title={`${id}${on ? ' — activo' : ''}`}
+                  onClick={() =>
+                    setTargetParams(
+                      on
+                        ? targetParams.filter((p) => p !== id)
+                        : [...targetParams, id],
+                    )
+                  }
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {/* 🜨 WAVE 8040B (T7): banda de estado del Cell Surgeon — §T7
             exige MCC-Cell/MCC-Z explícito, nunca una promesa falsa. */}

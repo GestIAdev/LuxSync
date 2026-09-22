@@ -389,6 +389,26 @@ export function compile(input: CompileInput): CompileOutput {
   }
   tracks = validated
 
+  // ── AST_SHADOWS_FORGE (WAVE 8070-M4): los ast_* se inyectan AL FINAL
+  //    de clip.tracks con blendMode 'replace' — en runtime funden sobre
+  //    cualquier track manual que comparta (paramId, zona). El operador
+  //    debe saber que su curva de Forge queda enmascarada, no borrada.
+  const shadowed = new Map<string, string[]>() // forgeTrackId → astTrackIds
+  for (const ast of tracks) {
+    for (const forge of clip.tracks) {
+      if (isAsteriaTrack(forge.id) || forge.paramId !== ast.paramId) continue
+      if (!zonesOverlap(forge.zones, ast.zones)) continue
+      const list = shadowed.get(forge.id)
+      if (list) list.push(ast.id)
+      else shadowed.set(forge.id, [ast.id])
+    }
+  }
+  for (const [forgeId, astIds] of shadowed) {
+    warnings.push(
+      `AST_SHADOWS_FORGE '${forgeId}' — curva manual enmascarada por ${astIds.join(', ')} (replace)`,
+    )
+  }
+
   let keyframeCount = 0
   for (const t of tracks) keyframeCount += t.curve.keyframes.length
   if (tracks.length === 0) {
@@ -408,6 +428,17 @@ export function compile(input: CompileInput): CompileOutput {
   }
 
   return { tracks, report }
+}
+
+/** ¿Las zonas de dos tracks se solapan? 'all' cubre todo; ausencia = 'all'. */
+function zonesOverlap(
+  a: readonly ZoneTarget[] | undefined,
+  b: readonly ZoneTarget[] | undefined,
+): boolean {
+  const A: readonly ZoneTarget[] = a && a.length > 0 ? a : (['all'] as ZoneTarget[])
+  const B: readonly ZoneTarget[] = b && b.length > 0 ? b : (['all'] as ZoneTarget[])
+  if (A.includes('all') || B.includes('all')) return true
+  return A.some((z) => B.includes(z))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

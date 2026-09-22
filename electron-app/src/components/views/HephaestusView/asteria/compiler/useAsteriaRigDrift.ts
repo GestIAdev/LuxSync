@@ -65,9 +65,18 @@ export function useAsteriaRigDrift(): void {
       if (clipId === lastClipId) return
       lastClipId = clipId
       const loaded = foreignProject(clip)
+      const asteria = useAsteriaStore.getState()
       if (loaded !== null) {
         // setProject recalcula rigDrift internamente (store)
-        useAsteriaStore.getState().setProject(loaded)
+        asteria.setProject(loaded)
+      } else {
+        // 🜨 WAVE 8070 (M1): el documento nuevo NO trae receta espacial —
+        // la pila del archivo anterior NO puede sobrevivir: la próxima
+        // mutación la hornearía en este .lfx (contaminación cruzada).
+        // El candado solo-lectura pertenece al documento anterior — se
+        // libera antes del reset (es swap de documento, no mutación).
+        asteria.setDriftReadOnly(false)
+        asteria.resetProject()
       }
     }
 

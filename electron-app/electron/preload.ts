@@ -1633,6 +1633,27 @@ const luxApi = {
      */
     fireTungstenNuke: (args: { target: string; release?: boolean; value?: number }) =>
       ipcRenderer.send('lux:aether:fireTungstenNuke', args),
+
+    /**
+     * 🜨 WAVE 8000 (ASTERIA): Node Atlas — dump one-shot de la topología REAL
+     * del NodeGraph del main process (sub-nodos, celdas, pétalos sintéticos,
+     * posiciones en metros). Lectura patch-time; recargar via onTopologyChanged.
+     */
+    getNodeAtlas: () =>
+      ipcRenderer.invoke('lux:aether:getNodeAtlas'),
+
+    /**
+     * 🜨 WAVE 8000 (ASTERIA): suscripción a cambios de topología del NodeGraph.
+     * Se dispara tras cada setFixtures / batch de posiciones exitoso. El
+     * consumidor debe debouncear el reload — el evento puede ráfagar durante
+     * un arrastre (setFixtures dispara por cada updateFixturePosition).
+     * Retorna la función de unsubscribe.
+     */
+    onTopologyChanged: (callback: (summary: { timestamp: number }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, summary: { timestamp: number }) => callback(summary)
+      ipcRenderer.on('lux:aether:topology_changed', handler)
+      return () => ipcRenderer.removeListener('lux:aether:topology_changed', handler)
+    },
   },
 
   // ============================================

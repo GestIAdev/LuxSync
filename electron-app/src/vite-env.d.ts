@@ -1076,6 +1076,26 @@ declare global {
         overrides?: Record<string, Record<string, number> | null>
         error?: string
       }>
+
+      /**
+       * 🜨 WAVE 8000 (ASTERIA): Node Atlas — topología espacial one-shot del
+       * NodeGraph del main process (sub-nodos, celdas, pétalos sintéticos de
+       * 15cm, posiciones en METROS). Patch-time only — nunca a 44Hz.
+       */
+      getNodeAtlas: () => Promise<{
+        success: boolean
+        atlas: import('./core/aether/types').NodeAtlasEntry[]
+        error?: string
+      }>
+
+      /**
+       * 🜨 WAVE 8000 (ASTERIA): suscripción a lux:aether:topology_changed.
+       * El consumidor debe debouncear el reload (el evento ráfaga durante
+       * arrastres). Retorna la función de unsubscribe.
+       */
+      onTopologyChanged: (
+        callback: (summary: { timestamp: number }) => void,
+      ) => () => void
     }
     
       // ═══════════════════════════════════════════════════════════════════════════

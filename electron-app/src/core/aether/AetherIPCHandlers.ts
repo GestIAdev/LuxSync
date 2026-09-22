@@ -30,7 +30,9 @@ import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 import { aetherKineticEngine } from './AetherKineticEngine'
 import type { NativeKineticPattern } from './AetherKineticEngine'
 import type { IKineticNodeData } from './capability-node'
-import { NodeFamily } from './types'
+import { NodeFamily, type NodeAtlasEntry } from './types'
+// 🜨 WAVE 8000 (ASTERIA): broadcast del evento de refresco del Node Atlas
+import { broadcastAetherTopologyChanged } from './ingestion/SpatialRegistrar'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -129,6 +131,19 @@ function resolveNodeIdToAll(nodeId: string): string[] {
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 🜨 WAVE 8000 (ASTERIA): familias iteradas por el Node Atlas.
+ * Las 5 NodeFamily del grafo, en orden canónico fijo — el orden del array
+ * resultante es determinista y sirve de base para el rigFingerprint.
+ */
+const ATLAS_FAMILIES: readonly NodeFamily[] = [
+  NodeFamily.COLOR,
+  NodeFamily.IMPACT,
+  NodeFamily.KINETIC,
+  NodeFamily.BEAM,
+  NodeFamily.ATMOSPHERE,
+]
 
 /**
  * Registra los handlers IPC del Aether Programmer.
@@ -1404,6 +1419,12 @@ export function registerAetherIPCHandlers(): void {
           : Object.values(fixtures as Record<string, any>)
         const orchestrator = getTitanOrchestrator()
         const liquidLayout = orchestrator.setFixtures(fixtureArray, stageBounds)
+        // 🜨 WAVE 8000 (ASTERIA): la topología del NodeGraph acaba de cambiar
+        // (posiciones, altas/bajas, resync completo) — avisar al renderer para
+        // que recargue el Node Atlas. Este handler es el CAMINO REAL de
+        // sincronización (stageStore/TitanSyncBridge → setFixtures); el
+        // broadcast es best-effort y el reload del renderer va debounced.
+        broadcastAetherTopologyChanged()
         return { success: true, fixtureCount: fixtureArray.length, liquidLayout }
       } catch (err) {
         console.error('[AetherIPC] setFixtures error:', err)
@@ -1411,6 +1432,54 @@ export function registerAetherIPCHandlers(): void {
       }
     }
   )
+
+  // ── 🜨 WAVE 8000: NODE ATLAS — topología espacial del NodeGraph (ASTERIA) ──
+
+  /**
+   * 🜨 WAVE 8000 (ASTERIA): one-shot dump de la topología REAL del NodeGraph.
+   *
+   * Itera las 5 familias via getView() (zero-alloc, dense arrays) y mapea
+   * cada ICapabilityNode a un NodeAtlasEntry plano, serializable por IPC.
+   * El `cellSuffix` se corta del nodeId tras el PRIMER ':' (el deviceId no
+   * contiene ':'), preservando sufijos compuestos tipo "golden-master".
+   *
+   * CIERRA LA BRECHA de SPATIAL_AWARENESS_AUDIT §3.4: el renderer nunca pudo
+   * ver posiciones por NODO (celdas, pétalos sintéticos de 15cm) — solo
+   * centros de fixture vía stageStore.
+   *
+   * PATCH-TIME ONLY: nunca invocar desde el hot path de 44Hz. El renderer
+   * recarga vía lux:aether:topology_changed (ver broadcastAetherTopologyChanged).
+   */
+  ipcMain.handle('lux:aether:getNodeAtlas', () => {
+    try {
+      const orchestrator = getTitanOrchestrator()
+      const graph = orchestrator.getAetherNodeGraph()
+
+      const atlas: NodeAtlasEntry[] = []
+      for (const family of ATLAS_FAMILIES) {
+        graph.getView(family).forEach((node) => {
+          const sep = node.nodeId.indexOf(':')
+          atlas.push({
+            nodeId: node.nodeId,
+            deviceId: node.deviceId,
+            cellSuffix: sep >= 0 ? node.nodeId.slice(sep + 1) : node.nodeId,
+            family: node.family,
+            zoneId: node.zoneId,
+            position: node.position
+              ? { x: node.position.x, y: node.position.y, z: node.position.z }
+              : undefined,
+            role: node.role,
+            customLabel: node.profileMeta?.customLabel,
+          })
+        })
+      }
+
+      return { success: true, atlas }
+    } catch (err) {
+      console.error('[AetherIPC] getNodeAtlas error:', err)
+      return { success: false, atlas: [] as NodeAtlasEntry[], error: String(err) }
+    }
+  })
 
   // ── G1: TUNGSTEN GOLDEN NUKE (WAVE 4699.2) ───────────────────────────────
 

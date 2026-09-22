@@ -161,6 +161,15 @@ export interface ISpatialRegistrar {
    * fixtures) para evitar N callbacks de topología.
    */
   batch(fn: () => void): void
+
+  /**
+   * 🜨 WAVE 8000 (ASTERIA): registra el listener del evento consolidado
+   * `topology_changed` (patch time). El callback se dispara al final de
+   * cada register/update/unregister — o UNA sola vez al finalizar un
+   * batch() completo. Un listener a la vez; no hay API de remove (reset
+   * con un no-op). Primer consumidor: broadcast IPC del Node Atlas.
+   */
+  setTopologyChangedListener(cb: () => void): void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -659,6 +668,51 @@ export class SpatialRegistrar implements ISpatialRegistrar {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8000 — TOPOLOGY BROADCAST (refresh del Node Atlas de ASTERIA)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Canal IPC del evento de refresco del Node Atlas (main → renderer).
+ * Payload mínimo: timestamp. El renderer recarga el atlas completo via
+ * `lux:aether:getNodeAtlas` — el evento es solo el "dirty flag".
+ */
+export const AETHER_TOPOLOGY_CHANGED_CHANNEL = 'lux:aether:topology_changed'
+
+/**
+ * 🜨 WAVE 8000 (ASTERIA): emite `lux:aether:topology_changed` a TODAS las
+ * ventanas del renderer para que refresquen el Node Atlas.
+ *
+ * LAZY REQUIRE de electron: este módulo es core puro y debe seguir siendo
+ * importable en vitest (node env, sin Electron) — el require diferido
+ * replica el patrón ya usado en connectStageStoreToSpatialRegistrar con
+ * el stageStore. Best-effort total: si electron no está disponible o el
+ * renderer fue destruido mid-flight, el evento se pierde silenciosamente
+ * (el hook consumidor expone refresh() manual como red de seguridad).
+ *
+ * PATCH-TIME ONLY — nunca invocar desde el hot path de 44Hz.
+ */
+export function broadcastAetherTopologyChanged(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as typeof import('electron')
+    const windows = electron.BrowserWindow?.getAllWindows?.() ?? []
+    const payload = { timestamp: Date.now() }
+    for (const win of windows) {
+      if (!win || win.isDestroyed?.() || !win.webContents || win.webContents.isDestroyed?.()) {
+        continue
+      }
+      try {
+        win.webContents.send(AETHER_TOPOLOGY_CHANGED_CHANNEL, payload)
+      } catch {
+        // Renderer disposed entre el check y el send — no es error crítico
+      }
+    }
+  } catch {
+    // electron no disponible (tests / node puro) — no-op
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // STAGE STORE LISTENER — Sincronización automática con el Stagebuilder
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -691,6 +745,17 @@ export function connectStageStoreToSpatialRegistrar(
   nodeGraph:  INodeGraph,
   target:     IAetherRegistrationTarget,
 ): () => void {
+  // 🜨 WAVE 8000 (ASTERIA): el evento interno topology_changed del registrar
+  // se convierte en broadcast IPC hacia el renderer (refresco del Node
+  // Atlas). Se usa el punto de extensión diseñado para esto —
+  // setTopologyChangedListener — en lugar de llamar al broadcast a mano:
+  //   • batch() ya consolida: UN solo evento por batch de posiciones
+  //     (WAVE 4735.3), el timing exacto que Asteria necesita.
+  //   • Cubre también register/unregister/updateDevicePosition fuera del
+  //     store-sync — cualquier cambio de topología avisa al renderer.
+  // Sin listeners previos que pisar (punto de extensión sin consumidores).
+  registrar.setTopologyChangedListener(broadcastAetherTopologyChanged)
+
   // Importación lazy del stageStore para evitar ciclos de dependencia circulares.
   // El stageStore importa tipos de stage (ShowFileV2), no de Aether.
   // Este archivo de Aether no debe importar de stores en el top-level.
@@ -732,6 +797,8 @@ export function connectStageStoreToSpatialRegistrar(
       // 🌍 WAVE 4735.3 FORENSIC: Batch position updates so topology_changed
       // fires exactly once after ALL updates + neighbor rebuild.
       // Previously updateDevicePosition() emitted one event per fixture.
+      // El propio batch() dispara el topology_changed consolidado → el
+      // listener de WAVE 8000 hace el broadcast IPC (ver arriba).
       if (anyPositionChanged) {
         registrar.batch(() => {
           for (const f of changedFixtures) {
@@ -743,5 +810,10 @@ export function connectStageStoreToSpatialRegistrar(
     },
   )
 
-  return unsubscribe
+  return () => {
+    unsubscribe()
+    // Reset del listener a no-op: el broadcast IPC muere con la conexión.
+    // (No existe API de remove — el contrato es "un listener a la vez".)
+    registrar.setTopologyChangedListener(() => {})
+  }
 }

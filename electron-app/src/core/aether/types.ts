@@ -514,3 +514,46 @@ export interface EnvelopeState {
   /** Velocidad de cambio (para modelos de inercia/spring) */
   readonly velocity: number
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NODE ATLAS — WAVE 8000 (ASTERIA): Topología espacial del NodeGraph expuesta
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🜨 WAVE 8000 (ASTERIA — Pixel Mapper Inverso): entrada del Node Atlas.
+ *
+ * Fotografía ONE-SHOT, plana y serializable por IPC, de un nodo del
+ * NodeGraph del main process. Cierra la brecha de SPATIAL_AWARENESS_AUDIT
+ * §3.4: ningún handler `lux:*` exponía la tabla de posiciones por NODO al
+ * renderer — solo centros de fixture vía `stageStore.fixtures`.
+ *
+ * CONTRATO:
+ * - `nodeId` es el handle EXACTO que aceptan el NodeArbiter (L2/L3++) y el
+ *   path de calibración de TickEngine. Es la llave de targeting celular.
+ * - `cellSuffix` es el segmento tras el PRIMER ':' del nodeId (el deviceId
+ *   nunca contiene ':'). Ej.: "petal-l", "impact", "golden-master".
+ * - `position` está en METROS absolutos (convención Crystal Box) e incluye
+ *   el offset de pétalos sintéticos (anillo de 0.15m) cuando aplica —
+ *   geometría que SOLO existe en el NodeGraph del backend.
+ *   Ausente ⇒ nodo guerrilla/sin colocar (fuera de efectos espaciales).
+ * - Lectura patch-time via `lux:aether:getNodeAtlas`. NUNCA en el hot path
+ *   de 44Hz. El renderer recarga vía `lux:aether:topology_changed`.
+ */
+export interface NodeAtlasEntry {
+  /** NodeId canónico: "<deviceId>:<cellSuffix>". Handle universal de targeting. */
+  readonly nodeId: NodeId
+  /** Device físico contenedor (= FixtureV2.id). */
+  readonly deviceId: DeviceId
+  /** Segmento del nodeId tras el primer ':' — la llave de celda (MCC). */
+  readonly cellSuffix: string
+  /** NodeFamily del nodo ('COLOR' | 'IMPACT' | 'KINETIC' | 'BEAM' | 'ATMOSPHERE'). */
+  readonly family: string
+  /** Zona canónica asignada (routing compuesto del HephaestusAetherAdapter). */
+  readonly zoneId: string
+  /** Posición en METROS absolutos. Undefined ⇒ nodo sin colocar. */
+  readonly position?: { x: number; y: number; z: number }
+  /** Rol semántico ('primary' | 'accent' | 'ambient' | ...). */
+  readonly role: string
+  /** Etiqueta de celda asignada por la Forja (profileMeta.customLabel). */
+  readonly customLabel?: string
+}

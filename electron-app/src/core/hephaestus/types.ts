@@ -487,6 +487,34 @@ export interface HephTrack {
   phaseOverrides?: import('./phase/PhaseOverride').PhaseOverrideMap
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ASTERIA PROJECT — WAVE 8000: Persistencia del Gesture Stack (Pixel Mapper)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🜨 WAVE 8000 (ASTERIA — Pixel Mapper Inverso): proyecto embebido en el clip.
+ *
+ * Decisión D-4 del Cónclave: EMBEBIDO. El `.lfx` debe ser autocontenido —
+ * un proyecto de Asteria compartible viaja DENTRO del clip, sin sidecars.
+ * El campo es opaco para runtime, linter y loader (ninguno lo inspecciona);
+ * `serializeHephClip` lo clona profundo para que sobreviva al guardado
+ * estricto (whitelist).
+ *
+ * WAVE 8000 solo declara el contrato mínimo (version + huella del rig).
+ * Las fases posteriores (8030+) extienden este tipo con el Gesture Stack,
+ * la estrategia de compilación y el presupuesto de cohortes.
+ */
+export interface AsteriaProject {
+  /** Versión del esquema de proyecto Asteria. Literal 1. */
+  readonly version: 1
+  /**
+   * Huella determinista del rig contra el que se pintó el proyecto
+   * (hash de los nodeIds del atlas en orden canónico). Base del Rig
+   * Drift Report — detecta remapeos cuando el rig cambia entre sesiones.
+   */
+  readonly rigFingerprint: string
+}
+
 /**
  * ⚒️ WAVE 4848 — Automation Clip V3.0 (Multicelular).
  *
@@ -555,6 +583,13 @@ export interface HephAutomationClipV3 {
 
   /** Discriminador para LfxFileLoader. Literal exacto '3.0'. */
   schemaVersion: '3.0'
+
+  // ── ASTERIA (WAVE 8000 — Pixel Mapper Inverso, opcional) ──
+  /**
+   * 🜨 Proyecto del Pixel Mapper embebido en el clip. Ver `AsteriaProject`.
+   * Invisible para runtime/linter/loader — solo el editor de Asteria lo lee.
+   */
+  asteria?: AsteriaProject
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -694,6 +729,10 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
     simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
     safetyDeclaration: clip.safetyDeclaration ? JSON.parse(JSON.stringify(clip.safetyDeclaration)) : undefined,
     executionHints: clip.executionHints ? JSON.parse(JSON.stringify(clip.executionHints)) : undefined,
+    // 🜨 WAVE 8000 (ASTERIA — D-4 EMBEBIDO): el serializador es un whitelist;
+    // sin esta línea, clip.asteria se descarta EN SILENCIO al guardar. El
+    // deep-clone JSON rompe la referencia a Immer y asegura serialización limpia.
+    asteria: clip.asteria ? JSON.parse(JSON.stringify(clip.asteria)) as AsteriaProject : undefined,
     schemaVersion: '3.0',
   };
 }

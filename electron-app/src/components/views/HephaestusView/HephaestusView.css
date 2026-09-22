@@ -2742,3 +2742,42 @@
     flex-shrink: 0;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🜨 ASTERIA — WAVE 8010-P1: LIENZO TÁCTICO (Pixel Mapper)
+   Layout: toolbox 56px | canvas 1fr | gesture-stack rail 260px
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.asteria-view {
+  display: grid;
+  grid-template-columns: 56px 1fr 260px;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  background: #07070c;
+}
+
+.asteria-toolbox {
+  border-right: 1px solid rgba(123, 92, 255, 0.18);
+  background: rgba(10, 10, 16, 0.9);
+  /* WAVE 8010-P2: tool buttons (Chrono-Brush, Wavefront, Glyph, Slicer,
+     Bisturí, Noise) */
+}
+
+.asteria-canvas-host {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.asteria-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.asteria-side-rail {
+  border-left: 1px solid rgba(123, 92, 255, 0.18);
+  background: rgba(10, 10, 16, 0.9);
+  /* WAVE 8010-P2: Gesture Stack inspector */
+}

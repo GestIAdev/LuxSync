@@ -15,6 +15,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { NewClipModal } from './NewClipModal'
 import { SafetyStrip } from './safety/SafetyStrip'
 import { ForgeTab } from './tabs/ForgeTab'
+import { AsteriaTab } from './tabs/AsteriaTab'
 import { LabTab } from './tabs/LabTab'
 import { GenesisLabView } from './GenesisLab/GenesisLabView'
 import type { TemporalActions, HephViewport } from './types/HephaestusShared'
@@ -77,7 +78,7 @@ const HephaestusView: React.FC = () => {
   const [showLibrary, setShowLibrary] = useState(true)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [showNewClipModal, setShowNewClipModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'sculpt' | 'lab' | 'genesis'>('sculpt')
+  const [activeTab, setActiveTab] = useState<'sculpt' | 'lab' | 'genesis' | 'asteria'>('sculpt')
 
   // ── Editable Header State ──
   const [isEditingName, setIsEditingName] = useState(false)
@@ -681,12 +682,34 @@ const HephaestusView: React.FC = () => {
           >
             🧬 GENESIS
           </button>
+          {/* 🜨 WAVE 8010: ASTERIA — Tactical Canvas (Pixel Mapper) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('asteria')}
+            className="heph-subnav__tab heph-subnav__tab--asteria"
+            style={{
+              padding: '3px 14px',
+              border: 'none',
+              borderRadius: '3px',
+              background: activeTab === 'asteria' ? '#7b5cff' : 'transparent',
+              color: activeTab === 'asteria' ? '#fff' : '#888',
+              textShadow: activeTab === 'asteria' ? '0 0 8px rgba(123,92,255,0.6)' : 'none',
+              cursor: 'pointer',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            🜨 ASTERIA
+          </button>
         </div>
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: '9px', color: '#444', letterSpacing: '0.08em' }}>
           {activeTab === 'sculpt' && 'SCULPT MODE — Curve Editor & Parameter Lanes'}
           {activeTab === 'lab' && 'LABORATORY — Phase Rack & DNA Profiler'}
           {activeTab === 'genesis' && 'GENESIS — Genetic Laboratory & Evolution Engine'}
+          {activeTab === 'asteria' && 'ASTERIA — Tactical Canvas & Pixel Mapper'}
         </span>
       </nav>
 
@@ -709,6 +732,11 @@ const HephaestusView: React.FC = () => {
 
         {activeTab === 'genesis' && (
           <GenesisLabView />
+        )}
+
+        {/* 🜨 WAVE 8010: ASTERIA — Tactical Canvas (Inverse Pixel Mapper) */}
+        {activeTab === 'asteria' && (
+          <AsteriaTab preview={preview} temporalActions={temporalActions} />
         )}
       </div>
 

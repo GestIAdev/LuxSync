@@ -32,6 +32,7 @@ import { useAsteriaCompiler } from './compiler/useAsteriaCompiler'
 import { useAsteriaRigDrift } from './compiler/useAsteriaRigDrift'
 import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
 import { getTool } from './tools/ToolRegistry'
+import { GestureStackPanel } from './GestureStackPanel'
 import {
   MCC_CELL_AVAILABLE,
   MCC_CELL_UNAVAILABLE_TOOLTIP,
@@ -168,15 +169,8 @@ export const AsteriaView: React.FC<AsteriaViewProps> = (_props) => {
           <div className="asteria-rail__stat">{selectionCount} nodos</div>
         </div>
 
-        {/* 🜨 WAVE 8030-P7: Gesture Stack + HUD de compilación Λ */}
-        <div className="asteria-rail__section">
-          <div className="asteria-rail__title">GESTURE STACK</div>
-          {[...stack].reverse().map((g) => (
-            <div key={g.id} className="asteria-rail__muted">
-              {g.kind.toUpperCase()} · {g.id}
-            </div>
-          ))}
-        </div>
+        {/* 🜨 WAVE 8055: panel de capas (selección/eliminar/reset) */}
+        <GestureStackPanel />
 
         {/* 🜨 WAVE 8040B (T7): banda de estado del Cell Surgeon — §T7
             exige MCC-Cell/MCC-Z explícito, nunca una promesa falsa. */}

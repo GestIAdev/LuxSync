@@ -36,6 +36,7 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
     useAsteriaStore.setState({
       project: createDefaultProject(),
       nodeAtlas: null,
+      selectedGestureId: null,
     })
   })
 
@@ -123,6 +124,20 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
     const after = useAsteriaStore.getState().project
     expect(after).not.toBe(before)
     expect(after.stack).not.toBe(before.stack)
+  })
+
+  test('8055: addGesture selecciona la capa nueva; removeGesture la limpia', () => {
+    useAsteriaStore.getState().addGesture(wave('w1'))
+    expect(useAsteriaStore.getState().selectedGestureId).toBe('w1')
+    useAsteriaStore.getState().removeGesture('w1')
+    expect(useAsteriaStore.getState().selectedGestureId).toBeNull()
+  })
+
+  test('8055: resetProject limpia la selección de capa', () => {
+    useAsteriaStore.getState().setSelectedGesture('base')
+    expect(useAsteriaStore.getState().selectedGestureId).toBe('base')
+    useAsteriaStore.getState().resetProject()
+    expect(useAsteriaStore.getState().selectedGestureId).toBeNull()
   })
 })
 

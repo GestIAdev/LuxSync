@@ -160,6 +160,13 @@ export interface AsteriaStore extends AsteriaCamera {
    * (0 = fondo). Clampeado al rango válido.
    */
   moveGesture: (id: string, toIndex: number) => void
+  /**
+   * 🜨 WAVE 8055: gesto seleccionado en el panel del stack — la "capa
+   * activa" del inspector. null = ninguna. No es una mutación del
+   * documento (no la bloquea el modo solo-lectura).
+   */
+  selectedGestureId: string | null
+  setSelectedGesture: (id: string | null) => void
 
   /**
    * 🜨 WAVE 8030-P7: último reporte del compilador Λ (useAsteriaCompiler).
@@ -320,18 +327,26 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
         project,
         rigDrift,
         driftReadOnly: rigDrift !== null && s.driftReadOnly,
+        // Documento nuevo → la selección de capa no sobrevive
+        selectedGestureId: null,
       }
     }),
   resetProject: () =>
-    set((s) => ({
-      project: {
-        ...createDefaultProject(),
-        // El documento nuevo nace sobre el rig actual si el atlas ya llegó.
-        ...(s.nodeAtlas ? sealRig(s.nodeAtlas) : {}),
-      },
-      rigDrift: null,
-      driftReadOnly: false,
-    })),
+    set((s) => {
+      // 🜨 WAVE 8055: solo lectura también congela el reset — tirar el
+      // documento cargado ES una mutación destructiva.
+      if (s.driftReadOnly) return {}
+      return {
+        project: {
+          ...createDefaultProject(),
+          // El documento nuevo nace sobre el rig actual si el atlas ya llegó.
+          ...(s.nodeAtlas ? sealRig(s.nodeAtlas) : {}),
+        },
+        rigDrift: null,
+        driftReadOnly: false,
+        selectedGestureId: null,
+      }
+    }),
 
   addGesture: (gesture) =>
     set((s) =>
@@ -339,6 +354,8 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
         ? {}
         : {
             project: { ...s.project, stack: [...s.project.stack, gesture] },
+            // La capa nueva queda activa en el inspector (como Photoshop)
+            selectedGestureId: gesture.id,
           },
     ),
 
@@ -365,6 +382,9 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
               ...s.project,
               stack: s.project.stack.filter((g) => g.id !== id),
             },
+            // Si el gesto eliminado era el seleccionado, limpia la capa
+            selectedGestureId:
+              s.selectedGestureId === id ? null : s.selectedGestureId,
           },
     ),
 
@@ -381,6 +401,10 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       next.splice(to, 0, g)
       return { project: { ...s.project, stack: next } }
     }),
+
+  selectedGestureId: null,
+  setSelectedGesture: (id) =>
+    set((s) => (s.selectedGestureId === id ? {} : { selectedGestureId: id })),
 
   lastCompileReport: null,
   setCompileReport: (report) => set({ lastCompileReport: report }),

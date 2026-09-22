@@ -529,24 +529,31 @@ const HephaestusView: React.FC = () => {
 
         {/* BLOQUE DERECHO: File System + Global State */}
         <div style={{ display: 'flex', alignItems: 'center', height: '100%', gap: '8px' }}>
-          <button
-            className={`heph-header__btn heph-header__btn--temporal ${!temporal.canUndo ? 'heph-header__btn--disabled' : ''}`}
-            onClick={temporalActions.undo}
-            disabled={!temporal.canUndo}
-            title={`Undo (Ctrl+Z)${temporal.canUndo ? ` — ${temporal.undoDepth} steps` : ''}`}
-          >
-            ↩
-          </button>
-          <button
-            className={`heph-header__btn heph-header__btn--temporal ${!temporal.canRedo ? 'heph-header__btn--disabled' : ''}`}
-            onClick={temporalActions.redo}
-            disabled={!temporal.canRedo}
-            title={`Redo (Ctrl+Shift+Z)${temporal.canRedo ? ` — ${temporal.redoDepth} steps` : ''}`}
-          >
-            ↪
-          </button>
+          {/* 🜨 WAVE 8055: en Asteria el undo/redo global del CLIP no aplica —
+              la pila de gestos es no destructiva y vive fuera del historial
+              del clip. Ocultar los botones evita confusión de scope. */}
+          {activeTab !== 'asteria' && (
+            <>
+              <button
+                className={`heph-header__btn heph-header__btn--temporal ${!temporal.canUndo ? 'heph-header__btn--disabled' : ''}`}
+                onClick={temporalActions.undo}
+                disabled={!temporal.canUndo}
+                title={`Undo (Ctrl+Z)${temporal.canUndo ? ` — ${temporal.undoDepth} steps` : ''}`}
+              >
+                ↩
+              </button>
+              <button
+                className={`heph-header__btn heph-header__btn--temporal ${!temporal.canRedo ? 'heph-header__btn--disabled' : ''}`}
+                onClick={temporalActions.redo}
+                disabled={!temporal.canRedo}
+                title={`Redo (Ctrl+Shift+Z)${temporal.canRedo ? ` — ${temporal.redoDepth} steps` : ''}`}
+              >
+                ↪
+              </button>
 
-          <span style={{ color: '#333' }}>│</span>
+              <span style={{ color: '#333' }}>│</span>
+            </>
+          )}
 
           <div className="heph-header__load-show">
             <button

@@ -120,6 +120,23 @@ interface ResolvedTrack {
   zones?: readonly string[]
 
   /**
+   * 🧬 WAVE 8040 (Δ1): ID de celda dentro de un fixture multicell.
+   * Activado desde `HephTrack.cell` (reservado en v3.0). Cuando presente,
+   * dos tracks que apunten al mismo (fixture, paramId) con `cell` distinto
+   * NO colapsan en el blend map — cada celda mantiene salida independiente.
+   */
+  cell?: string
+
+  /**
+   * 🧬 WAVE 8040 (Δ1): Sufijo de blend-key PRECALCULADO en patch-time.
+   * `':' + paramId + (cell ? '#' + cell : '')`. El hot-path solo concatena
+   * `fixtureId + blendSuffix` — una sola concatenación por muestra, igual
+   * coste que antes. Sin `cell` produce el mismo key que el código legado
+   * (`fixtureId:paramId`) → compatibilidad bit-exacta con shows V3.
+   */
+  blendSuffix: string
+
+  /**
    * 🧬 AUDIT P0-B: Override de color constante.
    * Si definido y paramId === 'color' → suplanta el output evaluado de la curva.
    * Ahora el runtime respeta colorOverride igual que el preview/kernel.
@@ -209,6 +226,10 @@ export interface HephFixtureOutput {
   clipId?: string
   // 🧩 COMPOUND ROUTING: source track zone tags for zone-aware node routing in HephaestusAetherAdapter.
   trackZones?: readonly string[]
+  // 🧬 WAVE 8040 (Δ2): celda objetivo dentro de un fixture multicell.
+  // HephaestusAetherAdapter lo usa como discriminador exacto ANTES del
+  // zone matching (Δ3). Ausente → routing por zona bit-compatible con V3.
+  cell?: string
   // WAVE 7172: Si true, el adapter suprime IK spatial targets para este fixture.
   silenceSpatial?: boolean
 }
@@ -257,9 +278,11 @@ export class HephaestusRuntime {
 
   /**
    * 🧬 WAVE 7035: Blend map for intra-clip blendMode fusion.
-   * Key: `${fixtureId}:${paramName}` → Value: index into outputBuffer.
-   * Cleared per-clip in tickActive(). Enables max/replace/add/multiply
-   * blending when multiple tracks of the same paramId target the same fixture.
+   * Key: `${fixtureId}${track.blendSuffix}` → Value: index into outputBuffer.
+   * blendSuffix = `:paramId` + `#cell` opcional (WAVE 8040 Δ1, precalculado
+   * en _buildResolvedTrack). Cleared per-clip in tickActive(). Enables
+   * max/replace/add/multiply blending when multiple tracks of the same
+   * paramId target the same fixture.
    */
   private _blendMap: Map<string, number> = new Map()
   
@@ -682,7 +705,10 @@ export class HephaestusRuntime {
     trackZones: readonly string[] | undefined,
     silenceSpatial?: boolean,
   ): void {
-    const blendKey = fixtureId + ':' + paramName
+    // 🧬 WAVE 8040 (Δ1): blendSuffix precalculado en _buildResolvedTrack.
+    // Incluye '#<cell>' cuando el track es celular → independencia por celda
+    // sin coste extra en hot-path (una concatenación, como antes).
+    const blendKey = fixtureId + track.blendSuffix
     const existingIdx = this._blendMap.get(blendKey)
 
     if (track.valueType === 'color') {
@@ -716,7 +742,7 @@ export class HephaestusRuntime {
         this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, 0, rgb, undefined, 0, this._normRgbBuf)
         return
       }
-      this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones, silenceSpatial)
+      this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones, silenceSpatial, track.cell)
       this._blendMap.set(blendKey, this.outputCursor - 1)
     } else {
       const rawValue = evaluator.getValue(paramName, timeMs)
@@ -730,7 +756,7 @@ export class HephaestusRuntime {
         this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, scaledValue, undefined, fine, withIntensity, undefined)
         return
       }
-      this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones, silenceSpatial)
+      this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones, silenceSpatial, track.cell)
       this._blendMap.set(blendKey, this.outputCursor - 1)
     }
   }
@@ -843,6 +869,7 @@ export class HephaestusRuntime {
     clipId?: string,
     trackZones?: readonly string[],
     silenceSpatial?: boolean,
+    cell?: string,
   ): void {
     // Auto-grow if needed (rare — only if capacity estimate was wrong)
     if (this.outputCursor >= this.outputCapacity) {
@@ -860,7 +887,10 @@ export class HephaestusRuntime {
     out.clipId = clipId
     out.trackZones = trackZones
     out.silenceSpatial = silenceSpatial
-    // 🩹 WAVE 4995: Protect Memory Reference
+    // � WAVE 8040 (Δ2): mutación in-place sobre el slot prealocado —
+    // asignar `undefined` también limpia residuos del frame anterior.
+    out.cell = cell
+    // �🩹 WAVE 4995: Protect Memory Reference
     // Only copy color values if the track actually provides them.
     // Do not destroy the pre-allocated references when processing non-color params.
     if (rgb) {
@@ -978,7 +1008,7 @@ export class HephaestusRuntime {
       if (trackPhase != null && topLevelPhaseConfig == null) {
         topLevelPhaseConfig = trackPhase
       }
-      tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, stretchFactor, t.zones, t.phaseOverrides, t.colorOverride))
+      tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, stretchFactor, t.zones, t.phaseOverrides, t.colorOverride, t.cell))
     }
 
     return { tracks, phaseConfig: topLevelPhaseConfig }
@@ -1001,6 +1031,7 @@ export class HephaestusRuntime {
     zones?: readonly string[],
     phaseOverrides?: PhaseOverrideMap,
     colorOverride?: HSL,
+    cell?: string,
   ): ResolvedTrack {
     // 🌊 WAVE 7160: Clone + rescale keyframes when stretchFactor !== 1.
     // Critical: must NOT mutate the original clip's curve (cached, shared).
@@ -1032,6 +1063,10 @@ export class HephaestusRuntime {
       fixturePhases,
       blendMode: blendMode ?? _defaultBlendModeFor(paramId),
       zones,
+      cell,
+      // 🧬 WAVE 8040 (Δ1): sufijo de blend-key horneado una vez aquí.
+      // Sin cell → ':paramId' (idéntico al legado); con cell → ':paramId#cell'.
+      blendSuffix: ':' + paramId + (cell !== undefined ? '#' + cell : ''),
       colorOverride,
     }
   }

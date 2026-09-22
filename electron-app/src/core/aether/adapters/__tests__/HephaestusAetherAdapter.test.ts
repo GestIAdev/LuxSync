@@ -482,7 +482,145 @@ describe('HephaestusAetherAdapter — Forge Tests (WAVE 3522)', () => {
 
   describe('Pool zero-alloc — comportamiento de reutilizacion', () => {
 
-    test('Los intents del pool reciclan valores entre frames sin mezclarlos', () => {
+  // ─────────────────────────────────────────────────────────────────────
+  // 🧬 WAVE 8040 (Δ3) — Cell routing: match exacto por celda antes de zona
+  // ─────────────────────────────────────────────────────────────────────
+
+  describe('WAVE 8040 Δ3 — Cell routing (compound fixtures)', () => {
+
+    function makeZonedNodeData(nodeId: NodeId, family: NodeFamily, zoneId: string): AnyNodeData {
+      const nd = makeNodeData(nodeId, family)
+      ;(nd as any).zoneId = zoneId
+      return nd
+    }
+
+    test('output.cell enruta SOLO al nodo cuyo sufijo coincide (petal-l)', () => {
+      const petalL = 'tungsten-1:petal-l' as NodeId
+      const petalR = 'tungsten-1:petal-r' as NodeId
+      const graph = makeGraphMock(
+        { 'tungsten-1': [petalL, petalR] },
+        {
+          [petalL]: makeNodeData(petalL, NodeFamily.IMPACT),
+          [petalR]: makeNodeData(petalR, NodeFamily.IMPACT),
+        },
+      )
+      const arbiter = makeArbiterSpy()
+      const adapter = new HephaestusAetherAdapter(graph)
+
+      adapter.ingest(
+        [makeOutput({ fixtureId: 'tungsten-1', parameter: 'intensity', normalizedValue: 0.66, cell: 'petal-l' })],
+        arbiter,
+      )
+
+      const intents = arbiter.capturedHeph[0]
+      expect(intents).toHaveLength(1)
+      expect(intents[0].nodeId).toBe(petalL)
+      expect(intents[0].values.dimmer).toBeCloseTo(0.66)
+    })
+
+    test('cell sin match → silencio honesto (sin leak a otras celdas ni fallback de intensity)', () => {
+      const petalL = 'tungsten-1:petal-l' as NodeId
+      const petalR = 'tungsten-1:petal-r' as NodeId
+      const colorN = 'tungsten-1:color'   as NodeId
+      const graph = makeGraphMock(
+        { 'tungsten-1': [petalL, petalR, colorN] },
+        {
+          [petalL]: makeNodeData(petalL, NodeFamily.IMPACT),
+          [petalR]: makeNodeData(petalR, NodeFamily.IMPACT),
+          [colorN]: makeNodeData(colorN, NodeFamily.COLOR),
+        },
+      )
+      const arbiter = makeArbiterSpy()
+      const adapter = new HephaestusAetherAdapter(graph)
+
+      adapter.ingest(
+        [makeOutput({ fixtureId: 'tungsten-1', parameter: 'intensity', normalizedValue: 0.9, cell: 'petal-x' })],
+        arbiter,
+      )
+
+      // petal-x no existe → cero intents. El COLOR-ONLY fallback NO debe
+      // volcar el intensity a todos los nodos color (sería leak celular).
+      expect(arbiter.capturedHeph[0]).toHaveLength(0)
+    })
+
+    test('cell ignorando zones: el discriminador celular precede al zone matching', () => {
+      const petalL = 'tungsten-1:petal-l' as NodeId
+      const petalR = 'tungsten-1:petal-r' as NodeId
+      const graph = makeGraphMock(
+        { 'tungsten-1': [petalL, petalR] },
+        {
+          // petal-r está en zona 'flash'; el track pide cell petal-r con
+          // zones ambient — el cell match manda sobre la zona del nodo.
+          [petalL]: makeZonedNodeData(petalL, NodeFamily.IMPACT, 'ambient'),
+          [petalR]: makeZonedNodeData(petalR, NodeFamily.IMPACT, 'flash'),
+        },
+      )
+      const arbiter = makeArbiterSpy()
+      const adapter = new HephaestusAetherAdapter(graph)
+
+      adapter.ingest(
+        [makeOutput({
+          fixtureId: 'tungsten-1', parameter: 'intensity', normalizedValue: 0.5,
+          cell: 'petal-r', trackZones: ['ambient'],
+        })],
+        arbiter,
+      )
+
+      const intents = arbiter.capturedHeph[0]
+      expect(intents).toHaveLength(1)
+      expect(intents[0].nodeId).toBe(petalR)
+    })
+
+    test('sin cell → zone routing legacy bit-compatible', () => {
+      const petalL = 'tungsten-1:petal-l' as NodeId
+      const petalR = 'tungsten-1:petal-r' as NodeId
+      const graph = makeGraphMock(
+        { 'tungsten-1': [petalL, petalR] },
+        {
+          [petalL]: makeZonedNodeData(petalL, NodeFamily.IMPACT, 'ambient'),
+          [petalR]: makeZonedNodeData(petalR, NodeFamily.IMPACT, 'flash'),
+        },
+      )
+      const arbiter = makeArbiterSpy()
+      const adapter = new HephaestusAetherAdapter(graph)
+
+      adapter.ingest(
+        [makeOutput({ fixtureId: 'tungsten-1', parameter: 'intensity', normalizedValue: 0.5, trackZones: ['ambient'] })],
+        arbiter,
+      )
+
+      const intents = arbiter.capturedHeph[0]
+      expect(intents).toHaveLength(1)
+      expect(intents[0].nodeId).toBe(petalL)
+    })
+
+    test('fixture simple (1 nodo/familia): cell coincidente enruta, mismatch silencia', () => {
+      const nodeId = 'par-1:impact' as NodeId
+      const graph = makeGraphMock(
+        { 'par-1': [nodeId] },
+        { [nodeId]: makeNodeData(nodeId, NodeFamily.IMPACT) },
+      )
+      const arbiter = makeArbiterSpy()
+      const adapter = new HephaestusAetherAdapter(graph)
+
+      // Match: sufijo 'impact' === cell 'impact' → enruta
+      adapter.ingest(
+        [makeOutput({ fixtureId: 'par-1', parameter: 'intensity', normalizedValue: 0.7, cell: 'impact' })],
+        arbiter,
+      )
+      expect(arbiter.capturedHeph[0]).toHaveLength(1)
+      expect(arbiter.capturedHeph[0][0].nodeId).toBe(nodeId)
+
+      // Mismatch: cell 'petal-l' ≠ 'impact' → silencio
+      adapter.ingest(
+        [makeOutput({ fixtureId: 'par-1', parameter: 'intensity', normalizedValue: 0.7, cell: 'petal-l' })],
+        arbiter,
+      )
+      expect(arbiter.capturedHeph[1]).toHaveLength(0)
+    })
+  })
+
+  test('Los intents del pool reciclan valores entre frames sin mezclarlos', () => {
       const nodeId = 'fixture-001:impact' as NodeId
       const graph  = makeGraphMock(
         { 'fixture-001': [nodeId] },

@@ -134,19 +134,40 @@ export class HephaestusAetherAdapter {
       if (familyNodeIds.length === 1) {
         // Simple fixture: always route to the single family node (backward compat).
         const nodeId = familyNodeIds[0]
-        let intent = this._frameIntentMap.get(nodeId)
-        if (!intent) {
-          intent = this._acquireIntent(nodeId)
-          this._frameIntentMap.set(nodeId, intent)
-          this._frameIntents.push(intent as INodeIntent)
+        // 🧬 WAVE 8040 (Δ3): un track celular solo enruta si el sufijo del
+        // nodeId coincide — mismatch → silencio honesto, sin leak.
+        if (output.cell === undefined || _nodeCellMatches(nodeId, output.cell)) {
+          let intent = this._frameIntentMap.get(nodeId)
+          if (!intent) {
+            intent = this._acquireIntent(nodeId)
+            this._frameIntentMap.set(nodeId, intent)
+            this._frameIntents.push(intent as INodeIntent)
+          }
+          _populateValues(intent.values, param, output, behavior)
+          _foundNode = true
         }
-        _populateValues(intent.values, param, output, behavior)
-        _foundNode = true
       } else if (familyNodeIds.length > 1) {
         // Compound fixture: multiple nodes of the same family.
-        // Try zone-aware routing: match node.zoneId against track zones.
+        // 🧬 WAVE 8040 (Δ3): CELL ROUTING — match exacto por celda ANTES del
+        // match por zona. Si output.cell existe, SOLO los nodos cuyo sufijo
+        // lo iguala reciben el valor; no hay fallback a zona (una pista
+        // celular jamás debe filtrar a otras celdas).
+        if (output.cell !== undefined) {
+          for (let j = 0; j < familyNodeIds.length; j++) {
+            const nodeId = familyNodeIds[j]
+            if (!_nodeCellMatches(nodeId, output.cell)) continue // O(1), zero-alloc
+            let intent = this._frameIntentMap.get(nodeId)
+            if (!intent) {
+              intent = this._acquireIntent(nodeId)
+              this._frameIntentMap.set(nodeId, intent)
+              this._frameIntents.push(intent as INodeIntent)
+            }
+            _populateValues(intent.values, param, output, behavior)
+            _foundNode = true
+          }
+        }
         const trackZones = output.trackZones
-        if (trackZones && trackZones.length > 0) {
+        if (output.cell === undefined && trackZones && trackZones.length > 0) {
           for (let j = 0; j < familyNodeIds.length; j++) {
             const nodeId = familyNodeIds[j]
             const nd = this._graph.getNodeData(nodeId)!
@@ -166,7 +187,7 @@ export class HephaestusAetherAdapter {
         // Fallback: no zone info or no zone match.
         // 🧩 WAVE 5017: v2.1 compound fallback — avoid flash-node flood on clips
         // without trackZones. If the clip is NOT a strobe clip, skip flash nodes.
-        if (!_foundNode) {
+        if (!_foundNode && output.cell === undefined) {
           const isStrobeClip = output.clipId
             ? (this._registry.getEntry(output.clipId)?.simMeta?.isStrobe ?? false)
             : false
@@ -188,7 +209,9 @@ export class HephaestusAetherAdapter {
       }
 
       // ⚡ WAVE 4917: COLOR-ONLY BRIGHTNESS FALLBACK
-      if (!_foundNode && param === 'intensity') {
+      // 🧬 WAVE 8040 (Δ3): una pista celular sin match NO usa este fallback —
+      // volcar intensity a todos los nodos COLOR sería un leak entre celdas.
+      if (!_foundNode && param === 'intensity' && output.cell === undefined) {
         for (let j = 0; j < nodeIds.length; j++) {
           const nodeId = nodeIds[j]
           const nodeData = this._graph.getNodeData(nodeId)
@@ -533,4 +556,18 @@ function _nodeZoneInTrackZones(nodeZone: string, trackZones: readonly string[]):
     if (trackZones[i].toLowerCase().trim() === nz) return true
   }
   return false
+}
+
+/**
+ * 🧬 WAVE 8040 (Δ3): match EXACTO de celda — el segmento del nodeId tras el
+ * último ':' debe igualar `cell` (`dev:petal-l` ↔ cell 'petal-l').
+ * Equivalente a `nodeId.slice(nodeId.lastIndexOf(':') + 1) === cell` pero
+ * SIN alocación: `endsWith` + verificación del ':' en la frontera.
+ * nodeId sin ':' matchea solo si es idéntico a cell (slice(0) equivalence).
+ */
+function _nodeCellMatches(nodeId: string, cell: string): boolean {
+  const d = nodeId.length - cell.length
+  if (d < 0) return false
+  if (d === 0) return nodeId === cell
+  return nodeId.charCodeAt(d - 1) === 0x3a /* ':' */ && nodeId.endsWith(cell)
 }

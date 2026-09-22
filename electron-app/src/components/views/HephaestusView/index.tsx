@@ -13,6 +13,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { NewClipModal } from './NewClipModal'
+import { SaveAsModal } from './SaveAsModal'
 import { SafetyStrip } from './safety/SafetyStrip'
 import { ForgeTab } from './tabs/ForgeTab'
 import { AsteriaTab } from './tabs/AsteriaTab'
@@ -78,6 +79,7 @@ const HephaestusView: React.FC = () => {
   const [showLibrary, setShowLibrary] = useState(true)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [showNewClipModal, setShowNewClipModal] = useState(false)
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'sculpt' | 'lab' | 'genesis' | 'asteria'>('sculpt')
 
   // ── Editable Header State ──
@@ -202,7 +204,10 @@ const HephaestusView: React.FC = () => {
     }
   }, [clip, refreshMetadata, hasGateFailures, failingGates])
 
-  const handleSaveAs = useCallback(async () => {
+  // 📑 WAVE 8080 (M2): SAVE AS pide nombre real — el modal propone
+  // `${clip.name} (Copy)` pero el operador escribe el nombre exacto.
+  // window.prompt no existe en el renderer de Electron → modal bunker.
+  const handleSaveAs = useCallback(() => {
     if (!window.luxsync?.hephaestus?.save) {
       console.warn('[Hephaestus] IPC not available, cannot save')
       setSaveMessage('⚠️ Save not available (demo mode)')
@@ -216,11 +221,19 @@ const HephaestusView: React.FC = () => {
       return
     }
 
+    setShowSaveAsModal(true)
+  }, [hasGateFailures, failingGates])
+
+  const handleCloseSaveAsModal = useCallback(() => {
+    setShowSaveAsModal(false)
+  }, [])
+
+  const handleConfirmSaveAs = useCallback(async (newName: string) => {
     setIsSaving(true)
     try {
       const clonedClip = structuredClone(clip)
       clonedClip.id = crypto.randomUUID()
-      clonedClip.name = `${clip.name} (Copy)`
+      clonedClip.name = newName
 
       const serialized = serializeHephClip(clonedClip)
       const result = await window.luxsync.hephaestus.save(serialized)
@@ -240,7 +253,7 @@ const HephaestusView: React.FC = () => {
     } finally {
       setIsSaving(false)
     }
-  }, [clip, temporalActions, refreshMetadata, hasGateFailures, failingGates])
+  }, [clip, temporalActions, refreshMetadata])
 
   const handleLoad = useCallback(async (clipId: string) => {
     if (!window.luxsync?.hephaestus?.load) {
@@ -752,6 +765,14 @@ const HephaestusView: React.FC = () => {
         isOpen={showNewClipModal}
         onClose={handleCloseNewClipModal}
         onCreate={handleCreateClip}
+      />
+
+      {/* ═══ SAVE AS MODAL — nombre real, no '(Copy)' ciego ═══ */}
+      <SaveAsModal
+        isOpen={showSaveAsModal}
+        suggestedName={`${clip?.name ?? 'Clip'} (Copy)`}
+        onClose={handleCloseSaveAsModal}
+        onConfirm={handleConfirmSaveAs}
       />
     </div>
   )

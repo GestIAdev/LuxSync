@@ -3,7 +3,8 @@
  *
  * Gates del blueprint §8.1 verificados en test: zones no vacío (G5),
  * keyframes ASC no vacíos (G5/invariante), spreadDeg=1 (A1 — el canario),
- * overrides absolute + clamp + entero, sin strobe (G6), ids ast_*.
+ * overrides absolute + clamp + entero, ids ast_*.
+ * (WAVE 8080-M1: gate G6 de strobe retirado — el operador decide.)
  */
 
 import { describe, test, expect } from 'vitest'
@@ -297,7 +298,7 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     expect(out.tracks[0].curve.keyframes).toHaveLength(5) // pulso sintetizado
   })
 
-  test('strobe en targetParams → skipped (G6)', () => {
+  test('strobe en targetParams → compila como cualquier param (8080-M1, G6 retirado)', () => {
     const project = {
       ...createDefaultProject('x'),
       targetParams: ['intensity', 'strobe'] as const,
@@ -306,11 +307,11 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
       atlas: makeAtlas(), field: makeField(), clip: makeClip(),
       project,
     })
-    expect(out.tracks).toHaveLength(1)
-    expect(out.tracks[0].paramId).toBe('intensity')
+    expect(out.tracks).toHaveLength(2)
+    expect(out.tracks.map((t) => t.paramId)).toEqual(['intensity', 'strobe'])
     expect(
       out.report.warnings.some((w) => w.startsWith('STROBE_SKIPPED')),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   test('strategy explícita cohort → emite cohortes reales (no fallback Λ)', () => {

@@ -419,7 +419,11 @@ export type BlendMode = 'max' | 'replace' | 'add' | 'multiply'
  *   - zones.length >= 1  (track sin destino es error de Loader)
  *   - dimmerScale ∈ [0, 1]
  *   - Si paramId === 'color' y colorOverride definido → suplanta la curva
- *   - cell es RESERVADO v3.0 — Runtime no lo consume. Migrator no lo emite todavía.
+ *   - WAVE 8080 (auditoría): `cell` YA es consumido por el Runtime
+ *     (Δ1 blendSuffix + Δ3 _nodeCellMatches, HephaestusRuntime:1011/1069)
+ *     — el comentario anterior 'RESERVADO v3.0' quedó obsoleto.
+ *     `dimmerScale` en cambio es DEAD WRITE: se serializa pero NADIE
+ *     lo consume en runtime/preview (ver auditoría WAVE 8080-M3).
  */
 export interface HephTrack {
   /** ID estable del track (UUID v4 o slug determinista del migrator). */
@@ -437,6 +441,14 @@ export interface HephTrack {
   /**
    * Multiplicador del dimmer del fixture.
    * Solo semántico cuando paramId === 'intensity'. [0..1] Default 1.
+   *
+   * ⚠️ WAVE 8080-M3 (auditoría): DEAD WRITE — declarado, escrito por
+   * Asteria (cohort/MCC) y por setTrackDimmerScale, serializado al .lfx…
+   * pero NI HephaestusRuntime._buildResolvedTrack NI el preview NI
+   * ninguna UI lo leen. El único `dimmerScale` vivo del codebase es
+   * `calibration.dimmerScale` (NodeResolver:2630) — OTRO campo, del
+   * device, no del track. Hasta que el runtime lo consuma, el gain
+   * de cohortes sobre 'intensity' se pierde en silencio.
    */
   dimmerScale?: number
 
@@ -453,8 +465,11 @@ export interface HephTrack {
   blendMode?: BlendMode
 
   /**
-   * Forward-compat SOLO: ID de celda dentro de un fixture multicell.
-   * RESERVADO en v3.0 — Runtime no lo consume. Migrator no lo emite todavía.
+   * ID de celda dentro de un fixture multicell ('dev:cell' completo).
+   * CONSUMIDO por el Runtime (WAVE 8040 Δ1-Δ3): `_buildResolvedTrack`
+   * lo hornea en `blendSuffix` (independencia de blend por celda) y lo
+   * pasa a `writeOutput`/`_nodeCellMatches` (match exacto de nodeId).
+   * Asteria MCC-Cell lo emite; el migrator V2 no lo emite.
    */
   cell?: string
 

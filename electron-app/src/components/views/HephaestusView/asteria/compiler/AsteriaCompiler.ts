@@ -14,7 +14,6 @@
  *     runtime ignora TODOS los overrides en silencio: HephaestusRuntime:1049)
  *   - overrides mode 'absolute' — determinismo puro         (PhaseOverride:83)
  *   - offsetMs clamp [0, D] + entero                       (clamp runtime + bytes)
- *   - sin track 'strobe' salvo petición explícita          (G6)
  *   - reemplazo solo de tracks ast_*                       (coexistencia Forge)
  *
  * Estrategias (§4.3 — árbol de decisión):
@@ -32,7 +31,7 @@
  *
  * VALIDADOR ESTRUCTURAL: toda pista candidata pasa `validateAstTrack`
  * antes de salir — ids ast_*, zones no vacío, keyframes ASC en [0,D],
- * valores en range, overrides clampados/enteros, sin strobe. Una pista
+ * valores en range, overrides clampados/enteros. Una pista
  * que viola el contrato se rechaza con warning, jamás se inyecta.
  *
  * LIMITACIÓN Λ DECLARADA (§3.2): gain per-fixture no es expresable en
@@ -124,10 +123,15 @@ export function injectAstTracks(
   }
 }
 
-/** Params que la Vía Λ puede emitir hoy: numéricos, curva sintetizable. */
+/**
+ * Params que la Vía Λ puede emitir hoy: numéricos, curva sintetizable.
+ * WAVE 8080 (M1): 'strobe' admitido — el antiguo gate G6 era paternalismo;
+ * el operador decide a qué canal aplica su campo, el compilador obedece.
+ * 'color' sigue fuera: la Vía Λ solo emite curvas numéricas.
+ */
 const LAMBDA_SAFE_PARAMS: ReadonlySet<HephParamId> = new Set([
   'intensity', 'white', 'amber', 'speed', 'zoom', 'focus', 'iris',
-  'pan', 'tilt', 'scale_x', 'scale_y', 'rot_x', 'rot_y',
+  'pan', 'tilt', 'strobe', 'scale_x', 'scale_y', 'rot_x', 'rot_y',
   'gobo_rotation', 'smoke_pump', 'width', 'direction', 'globalComp',
 ])
 
@@ -215,14 +219,13 @@ function fieldDistinguishesCells(field: FieldSnapshot, atlas: NodeAtlas): boolea
 /**
  * VALIDADOR ESTRUCTURAL — la puerta que toda pista `ast_*` cruza antes
  * de inyectarse. Devuelve la razón de rechazo o null si es válida.
- * Reglas: prefijo ast_, zones no vacío, sin strobe (G6), keyframes no
+ * Reglas: prefijo ast_, zones no vacío, keyframes no
  * vacío + ASC + dentro de [0,D], valores numéricos en range,
  * dimmerScale ∈ [0,1], overrides enteros y en [0,D].
  */
 export function validateAstTrack(t: HephTrack, D: number): string | null {
   if (!t.id.startsWith(ASTERIA_TRACK_PREFIX)) return 'id sin prefijo ast_'
   if (t.zones.length === 0) return 'zones vacío (G5)'
-  if (t.paramId === 'strobe') return 'strobe (G6)'
   const kfs = t.curve.keyframes
   if (kfs.length === 0) return 'keyframes vacío (G5)'
   for (let i = 0; i < kfs.length; i++) {
@@ -446,8 +449,10 @@ function zonesOverlap(
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * targetParams filtrados por las reglas duras: strobe salta (G6) y los
- * params sin curva numérica se omiten — warnings emitidos UNA vez.
+ * targetParams filtrados por las reglas duras: los params sin curva
+ * numérica se omiten — warnings emitidos UNA vez. WAVE 8080 (M1):
+ * strobe compila como cualquier otro param numérico — el operador
+ * tiene la última palabra sobre su propio rig.
  */
 function emitTargetParams(
   project: AsteriaProject,
@@ -455,10 +460,6 @@ function emitTargetParams(
 ): HephParamId[] {
   const out: HephParamId[] = []
   for (const param of project.targetParams) {
-    if (param === 'strobe') {
-      warnings.push('STROBE_SKIPPED — G6: nunca sin petición explícita')
-      continue
-    }
     if (!LAMBDA_SAFE_PARAMS.has(param)) {
       warnings.push(`PARAM_SKIPPED '${param}' — requiere curva numérica`)
       continue

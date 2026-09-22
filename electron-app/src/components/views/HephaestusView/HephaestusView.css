@@ -1635,6 +1635,16 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* 📑 WAVE 8080 (M2): variante compacta para SaveAsModal — un solo
+   campo, sin la rejilla de dos columnas del NewClipModal. */
+.heph-bunker--saveas {
+  max-width: 420px;
+}
+
+.heph-bunker--saveas .heph-bunker__body {
+  padding: 18px 20px 6px;
+}
+
 /* ── Header ── */
 .heph-bunker__header {
   display: flex;

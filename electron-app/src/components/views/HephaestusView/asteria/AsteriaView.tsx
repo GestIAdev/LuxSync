@@ -61,6 +61,8 @@ const TOOL_ORDER: readonly AsteriaToolId[] = [
  * 🜨 WAVE 8070 (M2): params ofrecidos en el rail — subestricto de
  * LAMBDA_SAFE_PARAMS (numéricos con curva sintetizable). 'color' no
  * entra: la Vía Λ solo emite curvas numéricas.
+ * WAVE 8080 (M1): STB desbloqueado — el gate G6 era paternalismo;
+ * el operador decide si su campo pinta estrobo.
  */
 const TARGET_PARAM_CHOICES: readonly { id: HephParamId; label: string }[] = [
   { id: 'intensity', label: 'DIM' },
@@ -72,6 +74,7 @@ const TARGET_PARAM_CHOICES: readonly { id: HephParamId; label: string }[] = [
   { id: 'focus', label: 'FOCUS' },
   { id: 'iris', label: 'IRIS' },
   { id: 'speed', label: 'SPD' },
+  { id: 'strobe', label: 'STB' },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -65,6 +65,37 @@ const VALID_TIERS = ['DJ_FOUNDER', 'FULL_SUITE']
 // GATE 1 — HARDWARE FINGERPRINT
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔒 V-06 FIX: DETERMINISTIC PHYSICAL-ADAPTER ANCHOR
+//
+// ANTES: "primera interfaz con IPv4 no-interna" — la MAC cambiaba con el estado
+//        de la red (USB tethering/RNDIS, VPNs, adaptadores de VM secuestraban
+//        el hash y Gate 1 expulsaba al usuario legítimo).
+// AHORA: blacklist de interfaces virtuales/temporales + score de prioridad
+//        (físico cableado > inalámbrico > resto) + desempate alfabético.
+//        La MAC se toma de CUALQUIER dirección no-interna (IPv4 o IPv6), así
+//        un adaptador físico sin lease IPv4 sigue anclando el HWID.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const IFACE_BLACKLIST = [
+  'virtual', 'vmware', 'vethernet', 'hyper-v',
+  'bluetooth', 'rndis', 'tap', 'vpn', 'loopback',
+]
+
+/**
+ * Prioridad de anclaje por nombre de interfaz (case-insensitive, ya lowercased):
+ *   2 — físico cableado: 'ethernet', 'eth*', 'en*' (en0/enp3s0/ens33…)
+ *   1 — físico inalámbrico: 'wi-fi', 'wifi', 'wlan'
+ *   0 — resto (no-blacklisted)
+ * 'en'/'eth' requieren límite de palabra para no morder 'ethernet' ni nombres
+ * arbitrarios que contengan la subcadena.
+ */
+function ifacePriority(lname) {
+  if (/ethernet|\beth[a-z0-9]*|\ben[a-z0-9]*/i.test(lname)) return 2
+  if (/wi-?fi|wlan/i.test(lname)) return 1
+  return 0
+}
+
 /**
  * 🔒 V-04 FIX: Multi-metric hardware fingerprint.
  *
@@ -75,24 +106,39 @@ const VALID_TIERS = ['DJ_FOUNDER', 'FULL_SUITE']
  * @returns {string} SHA-256 hex hash del fingerprint compuesto
  */
 function getHardwareId() {
-  // 1. Primary MAC address (primera IPv4 no-internal)
+  // 1. Primary MAC — deterministic physical-adapter anchor (V-06).
   let mac = 'UNKNOWN_MAC'
   const interfaces = os.networkInterfaces()
+  const candidates = []
+
   for (const name of Object.keys(interfaces)) {
+    const lname = String(name).toLowerCase()
+    if (IFACE_BLACKLIST.some(b => lname.includes(b))) continue
+
     const addrs = interfaces[name]
     if (!addrs) continue
+
+    // La MAC vive en cada entrada de dirección; tomamos la primera entrada
+    // no-interna con MAC real (IPv4 o IPv6 — desacoplado del lease IPv4).
+    let ifaceMac = null
     for (const addr of addrs) {
-      if (
-        addr.family === 'IPv4' &&
-        !addr.internal &&
-        addr.mac &&
-        addr.mac !== '00:00:00:00:00:00'
-      ) {
-        mac = addr.mac.toLowerCase()
+      if (addr.internal) continue
+      if (addr.mac && addr.mac !== '00:00:00:00:00:00') {
+        ifaceMac = addr.mac.toLowerCase()
         break
       }
     }
-    if (mac !== 'UNKNOWN_MAC') break
+    if (!ifaceMac) continue
+
+    candidates.push({ name: lname, mac: ifaceMac, score: ifacePriority(lname) })
+  }
+
+  if (candidates.length > 0) {
+    // Prioridad desc → nombre asc: determinista e independiente del orden
+    // de enumeración del SO y de qué adaptador tenga IP activa.
+    candidates.sort((a, b) =>
+      (b.score - a.score) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    mac = candidates[0].mac
   }
 
   // 2. Hostname

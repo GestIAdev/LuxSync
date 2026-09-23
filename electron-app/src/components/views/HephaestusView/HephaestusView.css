@@ -3230,3 +3230,156 @@
   border-color: #ffb347;
   background: rgba(255, 179, 71, 0.14);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🜨 WAVE 8150-F2 — TRANSPORT DRAWER (overlay inferior del canvas)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.asteria-transport {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none; /* el hueco sin contenido deja pasar el drag del canvas */
+}
+
+.asteria-transport__strip,
+.asteria-transport__panel {
+  pointer-events: auto;
+}
+
+.asteria-transport__strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  padding: 0 8px;
+  background: rgba(10, 10, 14, 0.78);
+  border-top: 1px solid rgba(123, 92, 255, 0.25);
+  backdrop-filter: blur(4px);
+}
+
+.asteria-transport__track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 2px;
+  overflow: visible;
+}
+
+.asteria-transport__needle {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #b8a6ff;
+  box-shadow: 0 0 6px rgba(123, 92, 255, 0.8);
+  border-radius: 1px;
+}
+
+.asteria-transport__toggle {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid rgba(123, 92, 255, 0.35);
+  border-radius: 3px;
+  background: transparent;
+  color: #b8a6ff;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.asteria-transport__toggle:hover {
+  background: rgba(123, 92, 255, 0.15);
+  color: #e6e1ff;
+}
+
+.asteria-transport__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  background: rgba(10, 10, 14, 0.92);
+  border-top: 1px solid rgba(123, 92, 255, 0.2);
+  backdrop-filter: blur(6px);
+}
+
+.asteria-transport__buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asteria-transport__btn {
+  width: 30px;
+  height: 24px;
+  border: 1px solid rgba(123, 92, 255, 0.35);
+  border-radius: 4px;
+  background: rgba(123, 92, 255, 0.08);
+  color: #d8d0ff;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asteria-transport__btn:hover {
+  background: rgba(123, 92, 255, 0.2);
+  border-color: rgba(123, 92, 255, 0.6);
+}
+
+.asteria-transport__time {
+  margin-left: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 10px;
+  color: #8a84a8;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+.asteria-transport__scrub {
+  display: flex;
+}
+
+.asteria-transport__range {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.asteria-transport__range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 10px;
+  height: 16px;
+  border-radius: 2px;
+  background: #b8a6ff;
+  border: 1px solid rgba(123, 92, 255, 0.9);
+  box-shadow: 0 0 8px rgba(123, 92, 255, 0.7);
+  cursor: ew-resize;
+}
+
+.asteria-transport__range::-moz-range-thumb {
+  width: 10px;
+  height: 16px;
+  border-radius: 2px;
+  background: #b8a6ff;
+  border: 1px solid rgba(123, 92, 255, 0.9);
+  box-shadow: 0 0 8px rgba(123, 92, 255, 0.7);
+  cursor: ew-resize;
+}

@@ -26,6 +26,7 @@ import React, { useEffect } from 'react'
 import type { HephPreviewReturn } from '../useHephPreview'
 import type { TemporalActions } from '../types/HephaestusShared'
 import { AsteriaCanvas } from './canvas/AsteriaCanvas'
+import { AsteriaTransportDrawer } from './AsteriaTransportDrawer'
 import { useNodeAtlas } from './canvas/useNodeAtlas'
 import { useAsteriaTouch } from './preview/useAsteriaTouch'
 import { useAsteriaCompiler } from './compiler/useAsteriaCompiler'
@@ -172,7 +173,11 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
       </div>
 
       {/* ── LIENZO TÁCTICO ── */}
-      <AsteriaCanvas preview={preview} />
+      <AsteriaCanvas preview={preview}>
+        {/* 🜨 WAVE 8150-F2: drawer de transporte — overlay inferior del
+            canvas; el scrub alimenta FeedbackLayer vía previewDataRef */}
+        <AsteriaTransportDrawer preview={preview} />
+      </AsteriaCanvas>
 
       {/* ── RAIL: atlas + selección + badge POKE ── */}
       <div className="asteria-side-rail" aria-label="Gesture stack">

@@ -37,7 +37,11 @@ import '../tools' // side-effect: puebla TOOL_REGISTRY
 /** Radio de pick del hover en px de pantalla. */
 const HOVER_PICK_RADIUS_PX = 12
 
-export const AsteriaCanvas: React.FC<{ preview?: HephPreviewReturn }> = ({ preview }) => {
+export const AsteriaCanvas: React.FC<{
+  preview?: HephPreviewReturn
+  /** Overlays dentro del host (drift banner, transport drawer…). */
+  children?: React.ReactNode
+}> = ({ preview, children }) => {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null)
@@ -300,6 +304,10 @@ export const AsteriaCanvas: React.FC<{ preview?: HephPreviewReturn }> = ({ previ
           🔒 SOLO LECTURA · rig drift pendiente
         </button>
       )}
+
+      {/* 🜨 WAVE 8150-F2: overlays inyectados (Transport Drawer) — se
+          pintan por encima del canvas, dentro del host */}
+      {children}
     </div>
   )
 }

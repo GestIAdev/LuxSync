@@ -1792,13 +1792,19 @@
 }
 
 /* ── Category Grid ── */
+/* 🛡️ WAVE 8100 (M1): grid de 4 columnas fijas — antes era flex sin
+   wrap: 8 tiles flex:1 en ~360px ≈ 42px/tile y los labels largos
+   ('ATMOSPHERE', 'COMPOSITE') desbordaban en horizontal sobre la
+   columna TARGET ZONES. Grid 4×2 da ~85px por tile + contención dura. */
 .heph-bunker__cat-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
 .heph-bunker__cat-tile {
-  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   padding: 10px 4px;
   display: flex;
   flex-direction: column;
@@ -1835,6 +1841,11 @@
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  /* 🛡️ 8100-M1: jamás desbordar el tile — ellipsis honesto */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .heph-bunker__cat-tile--active .heph-bunker__cat-label {

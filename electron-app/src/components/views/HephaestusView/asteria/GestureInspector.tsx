@@ -468,8 +468,13 @@ const StrategyRows: React.FC = () => {
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
   // Pistas Forge candidatas a Ride — las ast_* nunca se ofrecen
   // (hacer ride de una curva sintética sería ruido recursivo).
-  const forgeTracks = useHephaestusEditorStore((s) =>
-    s.clip.tracks.filter((t) => !isAsteriaTrack(t.id)),
+  // Selector = referencia estable del array; el filter va en useMemo —
+  // un .filter() dentro del selector devuelve array nuevo en cada
+  // getSnapshot → bucle infinito de useSyncExternalStore.
+  const clipTracks = useHephaestusEditorStore((s) => s.clip.tracks)
+  const forgeTracks = React.useMemo(
+    () => clipTracks.filter((t) => !isAsteriaTrack(t.id)),
+    [clipTracks],
   )
 
   const value = lutSource.kind === 'ride' ? lutSource.trackId : ''

@@ -317,6 +317,11 @@ export const GestureInspector: React.FC = () => {
             onChange={(v) => patch({ antialias: v })}
           />
           <CheckRow
+            label="INVERT — el texto bloquea la luz (negro sobre blanco)"
+            checked={gesture.invert === true} disabled={ro}
+            onChange={(v) => patch({ invert: v || undefined })}
+          />
+          <CheckRow
             label="THRESHOLD — meseta dura {0,1}"
             checked={gesture.threshold !== undefined} disabled={ro}
             onChange={(v) =>

@@ -179,6 +179,35 @@ describe('🜨 glyphRaster — sampling por posición', () => {
     // x=0 → u=2.5 → centro del tallo → cov 1 ≥ 0.75 → 1
     expect(sampleGlyphCoverage(0, 0, g, bmp)).toBe(1)
   })
+
+  // 🜨 WAVE 8183 (M2): INVERT — texto negro sobre blanco
+  test('invert: el tallo se apaga, el fondo del rect se enciende', () => {
+    const g = glyph('L', { invert: true })
+    // Tallo de L (antes cov 1) → ahora 0 — la letra bloquea la luz
+    expect(sampleGlyphCoverage(-0.4, 0, g, L)).toBe(0)
+    // Celda apagada DENTRO del rect (antes cov 0) → ahora 1
+    expect(sampleGlyphCoverage(0.3, -0.5, g, L)).toBe(1)
+    // Fuera del rect sigue siendo 0 — el negativo no inunda la máscara
+    expect(sampleGlyphCoverage(-2, 0, g, L)).toBe(0)
+  })
+
+  test('invert respeta antialias: la cobertura fraccional se niega', () => {
+    const bmp = rasterizeText('I')
+    const g = glyph('I', { antialias: true, invert: true })
+    // x=0.06 → u=2.8 → AA cov 0.7 (borde del tallo) → invertido 0.3
+    expect(sampleGlyphCoverage(0.06, 0, g, bmp)).toBeCloseTo(0.3, 5)
+  })
+
+  test('invert + threshold: la meseta se aplica a la cobertura negada', () => {
+    const bmp = rasterizeText('I')
+    const g = glyph('I', { antialias: true, threshold: 0.75, invert: true })
+    // Borde cov 0.5 → invert 0.5 < 0.75 → 0
+    expect(sampleGlyphCoverage(-0.1, 0, g, bmp)).toBe(0)
+    // Tallo cov 1 → invert 0 < 0.75 → 0 (la letra se apaga)
+    expect(sampleGlyphCoverage(0, 0, g, bmp)).toBe(0)
+    // Fondo cov 0 → invert 1 ≥ 0.75 → 1 (el rect se enciende)
+    expect(sampleGlyphCoverage(-0.4, 0, g, bmp)).toBe(1)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

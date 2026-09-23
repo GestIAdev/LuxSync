@@ -155,6 +155,14 @@ export interface GlyphGesture {
   readonly threshold?: number
   readonly antialias: boolean
   /**
+   * 🜨 WAVE 8183 (M2): invierte el bitmap — "texto negro sobre blanco".
+   * La cobertura se niega DENTRO del rect del glifo (1 − cov antes del
+   * threshold): las letras no reclaman nodos y el fondo del rect sí.
+   * Fuera del rect sigue siendo 0 — la imagen invertida no inunda la
+   * máscara entera. undefined = false (texto clásico luz-sobre-oscuridad).
+   */
+  readonly invert?: boolean
+  /**
    * 🜨 WAVE 8181: multiplicador de la cobertura en el canal gain
    * (intensidad del texto estampado). undefined = 1. Solo afecta al
    * canal 'gain' — con channel 'delay' el glifo barre y no estampa.

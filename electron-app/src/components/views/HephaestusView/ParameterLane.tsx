@@ -260,7 +260,7 @@ export const ParameterLane = React.memo(function ParameterLane({
           <span className="param-lane__label">{meta.label}</span>
           {isAst && (
             <span
-              title="Pista generada por Asteria — read-only (se regenera al recompilar). Duplica para editar una copia."
+              title="Pista generada por Asteria — solo lectura (se sobrescribe al recompilar). Duplícala para editar una copia independiente."
               style={{ fontSize: '9px', flexShrink: 0, cursor: 'help' }}
             >
               🔒

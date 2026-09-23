@@ -142,6 +142,56 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     expect(snap.mask[0]).toBe(1)
   })
 
+  test('glyph invert (WAVE 8183): la letra escribe gain 0 — bloquea la luz', () => {
+    // 'I' scaleM=1.4 → rect 1.0×1.4: a sobre el tallo (col 2), b en la
+    // col 0 vacía DENTRO del rect, c fuera del rect.
+    const atlas: NodeAtlas = {
+      entries: [
+        entry('a:cell', 0, 0), entry('b:cell', -0.4, 0), entry('c:cell', -2, 0),
+      ],
+      byNodeId: new Map(),
+    }
+    const stack: Gesture[] = [
+      {
+        kind: 'glyph', id: 'g1', op: 'replace', text: 'I',
+        mask: { nodeIds: ['a:cell', 'b:cell', 'c:cell'] },
+        transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+        channel: 'gain', antialias: false, invert: true,
+      },
+    ]
+    const snap = evaluateStack(stack, atlas)
+    // a: letra invertida → reclamada con gain 0 (texto negro)
+    expect(snap.mask[0]).toBe(1)
+    expect(snap.gain[0]).toBe(0)
+    // b: fondo del rect invertido → reclamado con gain 1
+    expect(snap.mask[1]).toBe(1)
+    expect(snap.gain[1]).toBe(1)
+    // c: fuera del rect → el negativo no inunda la máscara
+    expect(snap.mask[2]).toBe(0)
+    expect(snap.gain[2]).toBe(1)
+  })
+
+  test('glyph invert + delay: el fondo barre, las letras quedan fuera del frente', () => {
+    const atlas: NodeAtlas = {
+      entries: [entry('a:cell', 0, 0), entry('b:cell', -0.4, 0)],
+      byNodeId: new Map(),
+    }
+    const stack: Gesture[] = [
+      {
+        kind: 'glyph', id: 'g1', op: 'replace', text: 'I',
+        mask: { nodeIds: ['a:cell', 'b:cell'] },
+        transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+        channel: 'delay', antialias: false, invert: true,
+      },
+    ]
+    const snap = evaluateStack(stack, atlas)
+    // a (letra): cov'=0 y canal delay → NO reclamada — la onda la esquiva
+    expect(snap.mask[0]).toBe(0)
+    // b (fondo): cov'=1 → reclamada, delay = u(0.5)·0.2m·1000 = 100 ms
+    expect(snap.mask[1]).toBe(1)
+    expect(snap.delayMs[1]).toBeCloseTo(100, 3)
+  })
+
   // ── WAVE (§5.2/T4): delay = dist/speed·1000 ──
 
   test('wave point: delay = dist euclídea / speedMps · 1000', () => {

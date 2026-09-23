@@ -496,7 +496,13 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
    *   channel 'delay' → delay = distancia local-X desde el borde
    *                     izquierdo × 1000 ms/m (barrido 1 m/s — Vía Λ)
    *   threshold       → meseta dura {0,1}; antialias → bilinear
-   * Solo los píxeles cubiertos (cov>0) reclaman el nodo — el overlay de
+   *   invert          → 🜨 8183: cov negada dentro del rect (fondo
+   *                     encendido, letras a oscuras). En canal gain los
+   *                     nodos del rect con cov'=0 SÍ se reclaman — el
+   *                     texto debe escribir gain 0 para bloquear la luz;
+   *                     en canal delay solo el fondo barre (las letras
+   *                     quedan congeladas fuera del frente).
+   * Solo los píxeles cubiertos reclaman el nodo — el overlay de
    * cobertura dibuja exactamente la forma del texto.
    * El bitmap se cachea por string — re-raster solo si cambia el texto.
    */
@@ -517,14 +523,19 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const writesDelay = g.channel !== 'gain'
     const writesGain = g.channel !== 'delay'
     const layerGain = g.gain ?? 1
+    const inv = g.invert === true
 
     for (let k = 0; k < cnt; k++) {
       const i = scratchIdx[k]
       if (!hasPosition[i]) continue
       const cov = sampleGlyphCoverage(posX[i], posZ[i], g, bmp)
-      if (cov <= 0) continue
       // u (celdas desde el borde izq.) → metros → delay del barrido
-      const { u } = worldToGlyphCell(posX[i], posZ[i], g, bmp)
+      const { u, v } = worldToGlyphCell(posX[i], posZ[i], g, bmp)
+      // 🜨 8183: invertido + canal gain → el rect entero reclama: las
+      // letras escriben gain 0 (bloqueo real), no "sin cobertura".
+      const insideRect =
+        inv && u >= 0 && u < bmp.cols && v >= 0 && v < bmp.rows
+      if (cov <= 0 && !(insideRect && writesGain)) continue
       const d = u * cellM * GLYPH_DELAY_MS_PER_M
       blendInto(
         delayMs, gain, i, g.op,

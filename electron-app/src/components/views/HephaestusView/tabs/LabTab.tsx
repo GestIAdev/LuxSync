@@ -285,7 +285,7 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
             </span>
             {activeTrackIsAst && (
               <span
-                title="Pista generada por Asteria — read-only: el próximo recompile regenera esta curva desde el Gesture Stack"
+                title="Pista generada por Asteria — solo lectura: la próxima recompilación regenera esta curva desde el Gesture Stack"
                 style={{
                   marginLeft: 'auto',
                   color: '#7b5cff',

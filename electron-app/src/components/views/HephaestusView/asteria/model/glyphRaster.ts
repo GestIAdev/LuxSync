@@ -211,6 +211,12 @@ export function glyphCoverageAA(
 /**
  * Cobertura del nodo en el glifo [0,1]: antialias bilinear o muestreo
  * duro; `threshold` (si definido) convierte a meseta {0,1}.
+ *
+ * 🜨 WAVE 8183 (M2): `invert` niega la cobertura SOLO dentro del rect
+ * del glifo (u∈[0,cols], v∈[0,rows]) ANTES del threshold — el texto
+ * bloquea la luz sobre fondo encendido sin inundar la máscara fuera
+ * del marco. Con invert=off la semántica es la de siempre (incluido el
+ * leve sangrado bilinear de AA en los bordes del bitmap).
  */
 export function sampleGlyphCoverage(
   x: number,
@@ -219,9 +225,14 @@ export function sampleGlyphCoverage(
   bitmap: GlyphBitmap,
 ): number {
   const { u, v } = worldToGlyphCell(x, z, g, bitmap)
-  const cov = g.antialias
+  let cov = g.antialias
     ? glyphCoverageAA(u, v, bitmap)
     : glyphCoverageHard(u, v, bitmap)
+  if (g.invert) {
+    const inside =
+      u >= 0 && u < bitmap.cols && v >= 0 && v < bitmap.rows
+    cov = inside ? 1 - cov : 0
+  }
   if (g.threshold !== undefined) return cov >= g.threshold ? 1 : 0
   return cov
 }

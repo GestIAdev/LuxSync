@@ -26,12 +26,14 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import { useAsteriaStore } from '../store/useAsteriaStore'
 import { getWorldTransform } from './useWorldTransform'
 import { drawGridLayer } from './layers/GridLayer'
-import { drawNodeLayer } from './layers/NodeLayer'
+import { drawCrystalBox, drawRulers } from './layers/CrystalBoxLayer'
+import { drawNodeLayer, drawHoverTag, getDeviceMeta } from './layers/NodeLayer'
 import { drawFeedbackLayer } from './layers/FeedbackLayer'
 import { drawGestureLayer } from './layers/GestureLayer'
 import { gestureGhostIds, gestureGhostColor } from '../model/gestureGhost'
 import { getTool, type AsteriaToolContext } from '../tools/ToolRegistry'
 import { nearestNodeToScreen } from '../tools/selection'
+import { useStageStore } from '../../../../../stores/stageStore'
 import type { HephPreviewReturn } from '../../useHephPreview'
 import '../tools' // side-effect: puebla TOOL_REGISTRY
 
@@ -169,14 +171,22 @@ export const AsteriaCanvas: React.FC<{
         ? gestureGhostIds(ghostGesture, s.nodeAtlas)
         : null
 
+      // 🜨 WAVE 8170: Crystal Box + meta de fixtures por getState() —
+      //    referencias estables, cero suscripciones React en el RAF.
+      const stage = useStageStore.getState().stage
+      const deviceMeta = getDeviceMeta(useStageStore.getState().fixtures)
+
       drawGridLayer(ctx, t)
-      drawNodeLayer(ctx, t, s.nodeAtlas)
+      drawCrystalBox(ctx, t, stage)          // sombreado fuera del mundo + perímetro
+      drawNodeLayer(ctx, t, s.nodeAtlas, deviceMeta)
       drawFeedbackLayer(ctx, t, s.nodeAtlas, previewDataRef.current?.current)
       drawGestureLayer(
         ctx, t, s.nodeAtlas, s.selectionNodeIds, s.previewNodeIds,
         s.hoverNodeIds, ghostIds,
         ghostGesture ? gestureGhostColor(ghostGesture) : null,
       )
+      drawRulers(ctx, t, stage)              // cromo screen-fixed — siempre encima
+      drawHoverTag(ctx, t, s.nodeAtlas, s.hoverNodeIds) // tag flotante (secundario al ghost)
 
       raf = requestAnimationFrame(tick)
     }

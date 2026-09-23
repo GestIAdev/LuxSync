@@ -3,7 +3,8 @@ import { useStageStore } from '../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useSnapStore } from '../../../../stores/snapStore'
 import { CANONICAL_ZONES } from '../../../../core/stage/ShowFileV2'
-import type { InstallationOrientation, CanonicalZone, FixtureV2 } from '../../../../core/stage/ShowFileV2'
+import type { InstallationOrientation, CanonicalZone } from '../../../../core/stage/ShowFileV2'
+import MassOpsSection from './MassOpsSection'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MultiInspector — Operaciones de grupo para multi-selección
@@ -20,7 +21,7 @@ interface MultiInspectorProps {
 
 export const MultiInspector: React.FC<MultiInspectorProps> = ({ selectedIds }) => {
   const fixtures = useStageStore(s => s.fixtures)
-  const removeFixture = useStageStore(s => s.removeFixture)
+  const removeFixtures = useStageStore(s => s.removeFixtures)
   const updateMultipleFixtures = useStageStore(s => s.updateMultipleFixtures)
   const batchUpdateFixtures = useStageStore(s => s.batchUpdateFixtures)
   const deselectAll = useSelectionStore(s => s.deselectAll)
@@ -129,8 +130,10 @@ export const MultiInspector: React.FC<MultiInspectorProps> = ({ selectedIds }) =
     batchUpdateFixtures(updates)
   }, [selectedFixtures, batchUpdateFixtures])
 
+  // 🏗️ WAVE 8130-F2: batch remove — UNA sync backend (era N llamadas a
+  // removeFixture → N setFixtures; con 60 clones seleccionados, flood).
   const handleDelete = () => {
-    selectedIds.forEach(id => removeFixture(id))
+    removeFixtures(selectedIds)
     deselectAll()
   }
 
@@ -229,6 +232,10 @@ export const MultiInspector: React.FC<MultiInspectorProps> = ({ selectedIds }) =
           </button>
         </div>
       </div>
+
+      {/* 🏗️ WAVE 8130-F2: Mass Operations — solo fixtures reales como
+          semillas (selectedIds puede contener rigs; selectedFixtures filtra) */}
+      <MassOpsSection seeds={selectedFixtures} />
 
       <div className="erebus-inspector-section">
         <div className="erebus-inspector-section-title">Fixture List</div>

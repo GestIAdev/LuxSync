@@ -59,6 +59,7 @@ import {
 } from '../core/stage/ShowFileV2'
 import { autoMigrate, parseLegacyScenes } from '../core/stage/ShowFileMigrator'
 import { ensureSystemGroups } from '../core/stage/DefaultGroupsService'
+import { deepCloneFixture } from '../core/stage/massOps'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -142,12 +143,26 @@ interface StageStoreActions {
   
   /** Add a new fixture */
   addFixture: (fixture: FixtureV2) => void
-  
+
+  /**
+   * 🏗️ WAVE 8130-F2 (M1): inyección MASIVA — push de N fixtures con
+   * UNA sola sincronización al backend (N×addFixture dispararía N
+   * setFixtures redundantes — y una sync por fixture es cómo nació el
+   * Amnesia Bug). Punto de entrada de las Mass Operations de Erebus.
+   */
+  addFixtures: (fixtures: FixtureV2[]) => void
+
   /** Duplicate a fixture by ID (new ID, offset position) */
   duplicateFixture: (id: string) => string | null
   
   /** Remove a fixture by ID */
   removeFixture: (id: string) => void
+
+  /**
+   * 🏗️ WAVE 8130-F2: borrado MASIVO — un filtrado + una sola sync.
+   * Sin esto, "Delete All" sobre 60 clones = 60 setFixtures seguidos.
+   */
+  removeFixtures: (ids: string[]) => void
   
   /** Update a fixture */
   updateFixture: (id: string, updates: Partial<FixtureV2>) => void
@@ -285,7 +300,7 @@ let idCounter = 0
  * Generate a unique ID based on timestamp and counter
  * NO Math.random() - Axioma Anti-Simulación
  */
-function generateId(prefix: string): string {
+export function generateId(prefix: string): string {
   const timestamp = Date.now().toString(36)
   const count = (++idCounter).toString(36)
   return `${prefix}-${timestamp}-${count}`
@@ -297,6 +312,21 @@ function generateId(prefix: string): string {
 
 // Check if we're in Electron environment
 const isElectron = typeof window !== 'undefined' && 'lux' in window
+
+/**
+ * 🏗️ WAVE 8130-F2 (M1): sync backend — UNA llamada por mutación batch.
+ * Extraído del patrón inline de addFixture/updateFixture (Amnesia Bug:
+ * las rutas duplicate/remove/batch nunca sincronizaban — el backend
+ * quedaba desfasado hasta recargar el show).
+ */
+function syncBackendFixtures(get: () => StageStore): void {
+  const lux = (window as any).lux
+  if (lux?.aether?.setFixtures) {
+    lux.aether
+      .setFixtures(get().fixtures, null)
+      .catch((err: any) => console.warn('[stageStore] Backend sync failed:', err))
+  }
+}
 
 /**
  * Get the persistence API from the preload bridge
@@ -738,6 +768,29 @@ export const useStageStore = create<StageStore>()(
       }
     },
 
+    /**
+     * 🏗️ WAVE 8130-F2 (M1): Batch insert — un push + UNA sola sync
+     * backend (N×addFixture dispararía N setFixtures redundantes).
+     * Punto de entrada de las Mass Operations de Erebus.
+     */
+    addFixtures: (newFixtures) => {
+      const { showFile } = get()
+      if (!showFile || newFixtures.length === 0) return
+
+      showFile.fixtures.push(...newFixtures)
+      get()._syncDerivedState()
+      get()._setDirty()
+      syncBackendFixtures(get)
+
+      console.log(`[stageStore] ➕ Mass-added ${newFixtures.length} fixtures`)
+    },
+
+    /**
+     * 🏗️ WAVE 8130-F2: deep-clone real (los objetos anidados ya no se
+     * comparten por referencia con el original) + generateId (anti-
+     * colisión en batches del mismo ms) + sync backend (el clon antes
+     * era invisible para Titan hasta recargar el show).
+     */
     duplicateFixture: (id) => {
       const { showFile } = get()
       if (!showFile) return null
@@ -745,39 +798,63 @@ export const useStageStore = create<StageStore>()(
       const original = showFile.fixtures.find(f => f.id === id)
       if (!original) return null
 
-      const newId = `fix-${Date.now()}`
-      const copy: FixtureV2 = {
-        ...original,
-        id: newId,
+      const newId = generateId('fix')
+      const copy = deepCloneFixture(original, newId, {
         name: `${original.name} (copy)`,
-        address: 0, // Reset DMX address — user must patch
         position: {
           x: original.position.x + 0.5,
           y: original.position.y,
           z: original.position.z + 0.5,
         },
-      }
+      })
       showFile.fixtures.push(copy)
       get()._syncDerivedState()
       get()._setDirty()
+      syncBackendFixtures(get)
       return newId
     },
-    
+
+    /**
+     * 🏗️ WAVE 8130-F2: sync backend — el borrado ahora llega a Titan
+     * (antes el backend seguía emitiendo a una fixture fantasma).
+     */
     removeFixture: (id) => {
       const { showFile } = get()
       if (!showFile) return
-      
+
       showFile.fixtures = showFile.fixtures.filter(f => f.id !== id)
-      
+
       // Remove from all groups
       for (const group of showFile.groups) {
         group.fixtureIds = group.fixtureIds.filter(fid => fid !== id)
       }
-      
+
       get()._syncDerivedState()
       get()._setDirty()
+      syncBackendFixtures(get)
     },
-    
+
+    /**
+     * 🏗️ WAVE 8130-F2: batch remove — filtra ids + limpia referencias de
+     * grupos + UNA sola sync backend. Es el pseudo-undo de las Mass
+     * Operations: "Delete All" sobre 60 clones ya no dispara 60
+     * setFixtures seguidos.
+     */
+    removeFixtures: (ids) => {
+      const { showFile } = get()
+      if (!showFile || ids.length === 0) return
+
+      const idSet = new Set(ids)
+      showFile.fixtures = showFile.fixtures.filter(f => !idSet.has(f.id))
+      for (const group of showFile.groups) {
+        group.fixtureIds = group.fixtureIds.filter(fid => !idSet.has(fid))
+      }
+
+      get()._syncDerivedState()
+      get()._setDirty()
+      syncBackendFixtures(get)
+    },
+
     updateFixture: (id, updates) => {
       const { showFile } = get()
       if (!showFile) return
@@ -917,6 +994,9 @@ export const useStageStore = create<StageStore>()(
 
       get()._syncDerivedState()
       get()._setDirty()
+      // 🏗️ WAVE 8130-F2: sync backend — Align/Distribute del MultiInspector
+      // movían fixtures solo en frontend; Titan conservaba posiciones viejas.
+      syncBackendFixtures(get)
     },
 
     // WAVE 7606: Batch edit — apply same partial to multiple fixtures
@@ -938,6 +1018,8 @@ export const useStageStore = create<StageStore>()(
 
       get()._syncDerivedState()
       get()._setDirty()
+      // 🏗️ WAVE 8130-F2: sync backend (misma clase de Amnesia Bug).
+      syncBackendFixtures(get)
     },
     
     reconcileFixturesWithProfile: (updatedProfile, previousProfileId) => {

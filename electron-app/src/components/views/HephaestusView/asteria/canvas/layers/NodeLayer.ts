@@ -74,6 +74,15 @@ export function nodeGlyphRadiusPx(zoom: number): number {
   return r < GLYPH_MIN_PX ? GLYPH_MIN_PX : r > GLYPH_MAX_PX ? GLYPH_MAX_PX : r
 }
 
+/**
+ * 🜨 WAVE 8172 (M1): fuente semidinámica — crece suavemente con el
+ * zoom (HiDPI/primer plano) pero clampeada a [12, 24] px: nunca queda
+ * ilegible al alejarse ni grotesca al acercarse.
+ */
+export function nodeLabelFontPx(zoom: number): number {
+  return Math.min(24, Math.max(12, Math.round(10 + zoom * 0.04)))
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DEVICE META — tipo+yaw por fixture, cacheado por referencia del array
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,6 +101,39 @@ let metaCache: {
 } | null = null
 
 /**
+ * 🜨 WAVE 8172 (M2): tipos con glifo propio — si `FixtureV2.type` ya es
+ * uno de estos, la heurística de ventilador JAMÁS lo toca: el diamante
+ * del mover y el doble anillo del PAR son intocables.
+ */
+const EXPLICIT_GLYPH_TYPES = new Set([
+  'moving-head', 'spot', 'scanner', 'laser',
+  'par', 'wash', 'strobe', 'blinder', 'bar',
+])
+
+/**
+ * Resuelve el tipo de glifo. Jerarquía:
+ *   1. type explícito ('fan' incluido) → se respeta siempre.
+ *   2. Tipo no concluyente ('effect','generic','custom','pyro'…) + la
+ *      palabra "fan" en name/model (el "Fan Tungsten" del operador) → fan.
+ *   3. Canal de motor continuo (fan/spin/rotat…) → fan (heurística).
+ *   4. Resto → type tal cual (cae al doble anillo en el dispatch).
+ */
+export function resolveGlyphType(f: FixtureV2): string {
+  const t = typeof f.type === 'string' ? f.type : 'generic'
+  if (t === 'fan') return 'fan'
+  if (EXPLICIT_GLYPH_TYPES.has(t)) return t
+  const nameModel = `${f.name ?? ''} ${f.model ?? ''}`
+  if (/fan/i.test(nameModel)) return 'fan'
+  const channels = f.channels
+  if (channels) {
+    for (const ch of channels) {
+      if (ch && /fan|spin|rotat/i.test(ch.name ?? '')) return 'fan'
+    }
+  }
+  return t
+}
+
+/**
  * deviceId → {type, yawRad}. La referencia del array `fixtures` ES la
  * clave: stageStore lo reemplaza entero al mutar → el cache invalida solo
  * y el hot path (RAF con ref estable) no aloca nada.
@@ -105,7 +147,7 @@ export function getDeviceMeta(
   for (const f of fixtures) {
     if (!f || typeof f.id !== 'string') continue
     map.set(f.id, {
-      type: typeof f.type === 'string' ? f.type : 'generic',
+      type: resolveGlyphType(f),
       yawRad: ((f.rotation?.yaw ?? 0) * Math.PI) / 180,
     })
   }
@@ -239,11 +281,11 @@ export function drawNodeLayer(
   const entries = atlas.entries
   const r = nodeGlyphRadiusPx(cam.zoom)
 
-  // Etiquetas solo con zoom cercano — fuente px FIJA, jamás escala con
-  // el mundo (WAVE 8171-M3: screen-space puro).
+  // Etiquetas solo con zoom cercano — fuente px con clamp estricto
+  // [12,24], jamás escala libre con la matriz del mundo (8171-M3/8172-M1).
   const drawLabels = cam.zoom >= 90
   if (drawLabels) {
-    ctx.font = '10px monospace'
+    ctx.font = `${nodeLabelFontPx(cam.zoom)}px monospace`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
   }
@@ -317,7 +359,7 @@ export function drawHoverTag(
     const sy = (pos.z - cam.panY) * cam.zoom + canvasH / 2
     const label = entry.customLabel ?? entry.cellSuffix
 
-    ctx.font = '12px monospace'
+    ctx.font = '14px monospace'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
     const w = ctx.measureText(label).width
@@ -325,18 +367,18 @@ export function drawHoverTag(
     // Placa: arriba-derecha del nodo, clamped al canvas
     const padX = 6
     const bx = Math.min(Math.max(sx + 12, 2), canvasW - w - padX * 2 - 2)
-    const by = Math.max(sy - 26, 4)
+    const by = Math.max(sy - 30, 4)
 
     ctx.fillStyle = 'rgba(7, 9, 16, 0.92)'
     ctx.strokeStyle = 'rgba(79, 216, 232, 0.55)'
     ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.rect(bx, by, w + padX * 2, 18)
+    ctx.rect(bx, by, w + padX * 2, 20)
     ctx.fill()
     ctx.stroke()
 
     ctx.fillStyle = 'rgba(200, 240, 255, 0.85)'
-    ctx.fillText(label, bx + padX, by + 13)
+    ctx.fillText(label, bx + padX, by + 15)
     break // un solo tag — el hover es de un único nodo
   }
 }

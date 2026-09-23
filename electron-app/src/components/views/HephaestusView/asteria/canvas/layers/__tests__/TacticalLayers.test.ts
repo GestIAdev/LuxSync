@@ -18,6 +18,8 @@ import {
   drawHoverTag,
   getDeviceMeta,
   nodeGlyphRadiusPx,
+  nodeLabelFontPx,
+  resolveGlyphType,
 } from '../NodeLayer'
 import type { WorldTransform } from '../../useWorldTransform'
 import type { NodeAtlas } from '../../../store/useAsteriaStore'
@@ -193,19 +195,85 @@ describe('🜨 WAVE 8171 — Iconography Polish', () => {
     expect(nodeGlyphRadiusPx(500)).toBe(22)
   })
 
-  test('etiquetas de zoom: fuente px fija (inmutable al mundo)', () => {
+  test('etiquetas de zoom: fuente semidinámica clampeada [12,24]', () => {
     const atlas = mkAtlas([entry('fx-a:cell', 'fx-a', 0, 0)])
     const { ctx } = fakeCtx()
     const tClose = { ...T, cam: { ...T.cam, zoom: 120 } } as WorldTransform
     drawNodeLayer(ctx, tClose, atlas, getDeviceMeta([]))
-    expect(ctx.font).toBe('10px monospace')
+    // zoom 120 → round(10 + 4.8) = 15 px
+    expect(ctx.font).toBe('15px monospace')
   })
 
-  test('hover tag: 12px monospace absoluto', () => {
+  test('nodeLabelFontPx: suelo 12, crece con zoom, techo 24', () => {
+    expect(nodeLabelFontPx(40)).toBe(12)   // 11.6 → suelo
+    expect(nodeLabelFontPx(200)).toBe(18)  // crece suave
+    expect(nodeLabelFontPx(500)).toBe(24)  // techo — jamás grotesca
+  })
+
+  test('hover tag: 14px monospace absoluto', () => {
     const atlas = mkAtlas([entry('fx-a:petal-l', 'fx-a', 0, 0)])
     const { ctx } = fakeCtx()
     drawHoverTag(ctx, T, atlas, new Set(['fx-a:petal-l']))
-    expect(ctx.font).toBe('12px monospace')
+    expect(ctx.font).toBe('14px monospace')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 8172-M2 — Fan matcher robusto
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('🜨 WAVE 8172 — Fan Tungsten matcher', () => {
+  const fxFull = (
+    id: string, type: string, name = '', model = '',
+    channels?: Array<{ index: number; name: string; type: string; is16bit: boolean }>,
+  ): FixtureV2 =>
+    ({
+      id, type, name, model, channels,
+      rotation: { pitch: 0, yaw: 0, roll: 0 },
+    }) as unknown as FixtureV2
+
+  test("type 'fan' explícito → hélice", () => {
+    expect(resolveGlyphType(fxFull('f1', 'fan'))).toBe('fan')
+  })
+
+  test("'Fan Tungsten' con type 'effect' → hélice por nombre", () => {
+    expect(
+      resolveGlyphType(fxFull('f2', 'effect', 'Fan Tungsten 01')),
+    ).toBe('fan')
+    // case-insensitive + model también cuenta
+    expect(
+      resolveGlyphType(fxFull('f3', 'generic', '', 'ADJ iFan 32')),
+    ).toBe('fan')
+  })
+
+  test('canal de motor continuo (rotation/spin) → hélice heurística', () => {
+    const fx = fxFull('f4', 'effect', 'Blower 9000', '', [
+      { index: 0, name: 'Blade Rotation', type: 'range', is16bit: false },
+    ])
+    expect(resolveGlyphType(fx)).toBe('fan')
+  })
+
+  test('RESTRICCIÓN: mover/PAR con "fan" en el nombre NO cambian de glifo', () => {
+    // Tipos explícitos son intocables por la heurística
+    expect(
+      resolveGlyphType(fxFull('m1', 'moving-head', 'Fantasy Spot')),
+    ).toBe('moving-head')
+    expect(resolveGlyphType(fxFull('p1', 'par', 'Fanny Wash'))).toBe('par')
+  })
+
+  test('render: mover sigue siendo diamante; fan-por-nombre dibuja aspas', () => {
+    const atlas = mkAtlas([
+      entry('mv:pan', 'mv', -1, 0),
+      entry('tw:air', 'tw', 1, 0),
+    ])
+    const meta = getDeviceMeta([
+      fxFull('mv', 'moving-head', 'Fan Killer'),   // nombre con 'fan' → NO
+      fxFull('tw', 'effect', 'Fan Tungsten'),      // effect + 'fan' → SÍ
+    ])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(ctx, T, atlas, meta)
+    expect(calls.lineTo).toBe(3) // solo el diamante del mover
+    expect(calls.arc).toBe(4)    // 3 aspas + hub del ventilador
   })
 })
 

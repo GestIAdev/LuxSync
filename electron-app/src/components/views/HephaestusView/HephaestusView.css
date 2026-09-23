@@ -3104,6 +3104,44 @@
   cursor: not-allowed;
 }
 
+/* ── WAVE 8120 (M1): selector de color del pulso CLR ── */
+
+.asteria-target-color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.asteria-target-color input[type='color'] {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  background: rgba(16, 16, 26, 0.7);
+  cursor: pointer;
+}
+
+.asteria-target-color input[type='color']:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.asteria-target-color input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.asteria-target-color input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.asteria-target-color__hex {
+  letter-spacing: 0.08em;
+}
+
 /* ── WAVE 8050 (M3): banner de Rig Drift ── */
 
 .asteria-drift-banner {

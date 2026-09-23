@@ -39,7 +39,10 @@ import {
   MCC_CELL_UNAVAILABLE_TOOLTIP,
 } from './mccCapability'
 import { measureGlyphLegibility } from './model/glyphRaster'
-import type { GlyphGesture } from './model/AsteriaProject'
+import {
+  ASTERIA_DEFAULT_TARGET_COLOR,
+  type GlyphGesture,
+} from './model/AsteriaProject'
 import './tools' // side-effect: puebla TOOL_REGISTRY
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -101,6 +104,10 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
   const surgeonDeviceId = useAsteriaStore((s) => s.surgeonDeviceId)
   const targetParams = useAsteriaStore((s) => s.project.targetParams)
   const setTargetParams = useAsteriaStore((s) => s.setTargetParams)
+  const targetColor =
+    useAsteriaStore((s) => s.project.targetColor) ??
+    ASTERIA_DEFAULT_TARGET_COLOR
+  const setTargetColor = useAsteriaStore((s) => s.setTargetColor)
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
 
   // 🜨 WAVE 8050 (T5): legibilidad del último gesto glyph del stack —
@@ -226,6 +233,22 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
               )
             })}
           </div>
+          {/* 🌈 WAVE 8120 (M1): con CLR activo, el operador elige el
+              color exacto — el pulso hornea su H/S y modula solo L. */}
+          {targetParams.includes('color') && (
+            <div className="asteria-target-color">
+              <input
+                type="color"
+                value={targetColor}
+                disabled={driftReadOnly}
+                onChange={(e) => setTargetColor(e.target.value)}
+                title="Color del pulso — H/S constantes, el campo modula Lightness"
+              />
+              <span className="asteria-rail__stat asteria-target-color__hex">
+                {targetColor.toUpperCase()}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 🜨 WAVE 8040B (T7): banda de estado del Cell Surgeon — §T7

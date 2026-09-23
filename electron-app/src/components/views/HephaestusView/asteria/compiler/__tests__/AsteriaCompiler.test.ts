@@ -673,18 +673,21 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// WAVE 8110 — Chromatic Injection: LUT arcoíris + gain→lightness
+// WAVE 8110/8120 — Chromatic Injection → pulso monocromático (Muerte al Arcoíris)
 // ═════════════════════════════════════════════════════════════════════════════
 
 type HslValue = { h: number; s: number; l: number }
 const hslOf = (kf: { value: number | HslValue }): HslValue =>
   kf.value as HslValue
+const peakL = (t: HephTrack): number =>
+  Math.max(...t.curve.keyframes.map((k) => hslOf(k).l))
 
-describe('🌈 AsteriaCompiler — Chromatic Injection (WAVE 8110)', () => {
-  test('Λ + color: ast_color_lambda con LUT HSL — barrido 0→360 en 7 kfs', () => {
+describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
+  test('Λ + color: pulso HSL — H/S del targetColor constantes, solo L pulsa', () => {
     const project = {
       ...createDefaultProject('x'),
       targetParams: ['color'] as const,
+      // default '#ff0000' → h=0, s=100, l=50
     }
     const out = compile({
       atlas: makeAtlas(), field: makeField(), clip: makeClip(), project,
@@ -694,29 +697,44 @@ describe('🌈 AsteriaCompiler — Chromatic Injection (WAVE 8110)', () => {
     expect(t.id).toBe('ast_color_lambda_0')
     expect(t.paramId).toBe('color')
     expect(t.curve.valueType).toBe('color')
-    expect(t.curve.range).toEqual([0, 360])
-    // 7 keyframes — segmentos de 60°: lerpHue (shortest-path) siempre
-    // avanza hacia adelante. Un único tramo 0→360 colapsaría (delta=0).
+    // 5 kfs — geometría trapezoidal del λ-pulse, no el barrido de hue
     const kfs = t.curve.keyframes
-    expect(kfs).toHaveLength(7)
-    for (let i = 0; i <= 6; i++) {
-      const hsl = hslOf(kfs[i])
-      expect(hsl.h).toBeCloseTo(i * 60, 5)
+    expect(kfs).toHaveLength(5)
+    // H/S constantes en TODOS los keyframes (delta hue = 0 — cero deriva)
+    for (const kf of kfs) {
+      const hsl = hslOf(kf)
+      expect(hsl.h).toBe(0)
       expect(hsl.s).toBe(100)
-      expect(hsl.l).toBe(50)
     }
-    // Cierre C⁰: rojo → rojo (hue 360 ≡ 0 mod 360)
-    expect(hslOf(kfs[0]).h).toBe(0)
-    expect(hslOf(kfs[6]).h % 360).toBe(0)
-    // Bus de direcciones intacto — offsets espaciales sobre el arcoíris
+    // El pulso es en Lightness: 0 → 50 → 50 → 0 → 0 (pico = color exacto)
+    expect(kfs.map((k) => hslOf(k).l)).toEqual([0, 50, 50, 0, 0])
+    expect((t.curve.defaultValue as HslValue).l).toBe(0) // reposo negro
+    // Bus de direcciones intacto — la ola enciende/apaga el color elegido
     expect(Object.keys(t.phaseOverrides!).length).toBe(3)
-    // Sin warnings de tipo — color es ciudadano de primera clase
     expect(
       out.report.warnings.some((w) => w.startsWith('PARAM_SKIPPED')),
     ).toBe(false)
   })
 
-  test('Λ multi-param: intensity emite λ-pulse numérica, color emite LUT', () => {
+  test('Λ + color: targetColor custom — H/S del hex horneados en el pulso', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      targetParams: ['color'] as const,
+      targetColor: '#0080ff', // azul azure → h≈210, s=100, l=50
+    }
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip: makeClip(), project,
+    })
+    const kfs = out.tracks[0].curve.keyframes
+    for (const kf of kfs) {
+      const hsl = hslOf(kf)
+      expect(hsl.h).toBe(210)
+      expect(hsl.s).toBe(100)
+    }
+    expect(Math.max(...kfs.map((k) => hslOf(k).l))).toBeCloseTo(50, 5)
+  })
+
+  test('Λ multi-param: intensity emite λ-pulse numérica, color emite pulso HSL', () => {
     const project = {
       ...createDefaultProject('x'),
       targetParams: ['intensity', 'color'] as const,
@@ -751,26 +769,19 @@ describe('🌈 AsteriaCompiler — Chromatic Injection (WAVE 8110)', () => {
       'ast_color_cohort_0',
       'ast_color_cohort_1',
     ])
-    // cohort0 gain≈0.5 → L horneada ≈ 25; cohort1 gain=1 → L=50.
-    // La LUT rota por delay — el horneado toca solo `l`, nunca `h`/`s`.
-    for (const kf of out.tracks[0].curve.keyframes) {
-      const hsl = hslOf(kf)
-      expect(hsl.l).toBeCloseTo(25, 5)
-      expect(hsl.s).toBe(100)
-    }
-    for (const kf of out.tracks[1].curve.keyframes) {
-      const hsl = hslOf(kf)
-      expect(hsl.l).toBeCloseTo(50, 5)
-      expect(hsl.s).toBe(100)
-    }
-    // Los keyframes horneados siguen siendo HSL válidos para blendRgb
-    for (const kf of out.tracks[0].curve.keyframes) {
-      const hsl = hslOf(kf)
-      expect(Number.isFinite(hsl.h)).toBe(true)
-      expect(Number.isFinite(hsl.s)).toBe(true)
-      expect(Number.isFinite(hsl.l)).toBe(true)
-      expect(hsl.l).toBeGreaterThanOrEqual(0)
-      expect(hsl.l).toBeLessThanOrEqual(100)
+    // cohort0 gain≈0.5 → pico L ≈ 25; cohort1 gain=1 → pico L=50.
+    // El horneado escala `l` de cada kf — la rotación por delay solo
+    // mueve la geometría temporal, nunca el tono.
+    expect(peakL(out.tracks[0])).toBeCloseTo(25, 5)
+    expect(peakL(out.tracks[1])).toBeCloseTo(50, 5)
+    for (const t of out.tracks) {
+      for (const kf of t.curve.keyframes) {
+        const hsl = hslOf(kf)
+        expect(hsl.h).toBe(0)     // rojo intacto
+        expect(hsl.s).toBe(100)
+        expect(hsl.l).toBeGreaterThanOrEqual(0)
+        expect(hsl.l).toBeLessThanOrEqual(100)
+      }
     }
   })
 
@@ -790,10 +801,8 @@ describe('🌈 AsteriaCompiler — Chromatic Injection (WAVE 8110)', () => {
       atlas: makeAtlas(), field, clip: makeClip(), project,
     })
     expect(out.tracks).toHaveLength(4)
-    const l0 = hslOf(out.tracks[0].curve.keyframes[0]).l
-    const l1 = hslOf(out.tracks[1].curve.keyframes[0]).l
-    expect(l0).toBeCloseTo(50, 5)  // gain 1 → L intacta
-    expect(l1).toBeCloseTo(25, 5)  // gain 0.5 → L×0.5 (fade a negro)
+    expect(peakL(out.tracks[0])).toBeCloseTo(50, 5)  // gain 1 → L intacta
+    expect(peakL(out.tracks[1])).toBeCloseTo(25, 5)  // gain 0.5 → L×0.5
     for (const t of out.tracks) {
       expect(t.curve.valueType).toBe('color')
       expect(t.cell).toBeDefined() // Δ1+Δ3 intactos sobre color
@@ -853,6 +862,6 @@ describe('🌈 AsteriaCompiler — Chromatic Injection (WAVE 8110)', () => {
     ).toBe(true)
     const fb = rideNumeric.tracks[0]
     expect(fb.curve.valueType).toBe('color')
-    expect(fb.curve.keyframes).toHaveLength(7) // LUT arcoíris, no el pulso
+    expect(fb.curve.keyframes).toHaveLength(5) // pulso monocromático
   })
 })

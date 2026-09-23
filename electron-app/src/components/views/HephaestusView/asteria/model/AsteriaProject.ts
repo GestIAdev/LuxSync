@@ -218,6 +218,14 @@ export interface AsteriaProject extends AsteriaProjectEnvelope {
   readonly strategy: CompileStrategy
   /** A qué parámetros Heph aplica el campo (dimmer, r/g/b, pan, tilt…). */
   readonly targetParams: readonly HephParamId[]
+  /**
+   * 🌈 WAVE 8120 (M1): color elegido por el operador para el canal
+   * 'color' — HEX '#rrggbb'. El sintetizador lo convierte en un pulso
+   * monocromático (H/S constantes, L en forma de pulso). Opcional:
+   * proyectos persistidos antes del 8120 no lo traen — el compilador
+   * cae a ASTERIA_DEFAULT_TARGET_COLOR.
+   */
+  readonly targetColor?: string
   readonly lutSource: LutSource
   /** K máximo de cohortes para strategy 'cohort' (default 16). */
   readonly cohortBudget: number
@@ -238,6 +246,8 @@ export const ASTERIA_DEFAULT_COHORT_BUDGET = 16
 export const ASTERIA_DEFAULT_STRATEGY: CompileStrategy = 'auto'
 /** El campo se aplica por defecto al dimmer — el parámetro universal del rig. */
 export const ASTERIA_DEFAULT_TARGET_PARAMS: readonly HephParamId[] = ['intensity']
+/** Color por defecto del canal 'color' — rojo puro (HEX '#rrggbb'). */
+export const ASTERIA_DEFAULT_TARGET_COLOR = '#ff0000'
 export const ASTERIA_DEFAULT_LUT_SOURCE: LutSource = { kind: 'preset', name: 'default' }
 /** El gesto suelo de todo proyecto nuevo: campo uniforme identidad. */
 export const ASTERIA_BASE_GESTURE_ID = 'base'
@@ -254,6 +264,7 @@ export function createDefaultProject(rigFingerprint = ''): AsteriaProject {
     stack: [{ kind: 'base', id: ASTERIA_BASE_GESTURE_ID, delayMs: 0, gain: 1 }],
     strategy: ASTERIA_DEFAULT_STRATEGY,
     targetParams: ASTERIA_DEFAULT_TARGET_PARAMS,
+    targetColor: ASTERIA_DEFAULT_TARGET_COLOR,
     lutSource: ASTERIA_DEFAULT_LUT_SOURCE,
     cohortBudget: ASTERIA_DEFAULT_COHORT_BUDGET,
     rigFingerprint,

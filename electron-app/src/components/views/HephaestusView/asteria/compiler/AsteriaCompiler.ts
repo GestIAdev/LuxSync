@@ -55,6 +55,7 @@ import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { AsteriaProject } from '../model/AsteriaProject'
 import type { FieldSnapshot } from '../model/fieldEngine'
 import { synthesizeColorLut, synthesizeLambda, synthesizeLambdaPulse } from './lutSynth'
+import { ASTERIA_DEFAULT_TARGET_COLOR } from '../model/AsteriaProject'
 import { rotateCurveCyclic } from './curveRotate'
 import { quantizeGainCohorts } from './cohortQuantizer'
 
@@ -376,7 +377,9 @@ export function compile(input: CompileInput): CompileOutput {
         return cloneCurve(rideCurve, param)
       }
     }
-    return param === 'color' ? synthesizeColorLut(D) : synthesizeLambdaPulse(param, D)
+    return param === 'color'
+      ? synthesizeColorLut(D, project.targetColor ?? ASTERIA_DEFAULT_TARGET_COLOR)
+      : synthesizeLambdaPulse(param, D)
   }
 
   // ── Emisión por estrategia ──

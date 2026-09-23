@@ -25,6 +25,7 @@
  */
 
 import type { HephCurve, HephKeyframe, HephParamId, HSL } from '../../../../../core/hephaestus/types'
+import { ASTERIA_DEFAULT_TARGET_COLOR } from '../model/AsteriaProject'
 import type { PhaseOverrideMap } from '../../../../../core/hephaestus/phase/PhaseOverride'
 import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { FieldSnapshot } from '../model/fieldEngine'
@@ -77,34 +78,80 @@ export function synthesizeLambdaPulse(
 }
 
 /**
- * 🌈 WAVE 8110 (M2): LUT de COLOR — barrido de arcoíris completo.
- *
- * Hue 0→360 sobre el dominio D con S=100 / L=50, cierre C⁰ (rojo→rojo).
- *
- * TRAMPA DE SEMÁNTICA REAL (CurveEvaluator.lerpHue — shortest-path):
- * un único segmento 0→360 colapsa (delta=360 → shortest path = 0 →
- * rojo estático). Por eso emitimos 7 keyframes a 60°: cada segmento
- * tiene delta=60 < 180 → la interpolación SIEMPRE avanza hacia
- * adelante por el arcoíris completo. Estructura idéntica a las curvas
- * `valueType:'color'` que la Forja produce a mano (range [0,360],
- * defaultValue HSL) — blendRgb las funde sin discriminación.
+ * HEX '#rrggbb' → HSL. Hex inválido → rojo puro (fallback honesto —
+ * nunca NaN en un keyframe que el runtime vaya a fundir).
  */
-export function synthesizeColorLut(durationMs: number): HephCurve {
-  const D = Math.max(1, durationMs)
-  const keyframes: HephKeyframe[] = []
-  for (let i = 0; i <= 6; i++) {
-    const hsl: HSL = { h: i * 60, s: 100, l: 50 }
-    keyframes.push({
-      timeMs: Math.round((D * i) / 6),
-      value: hsl,
-      interpolation: 'linear',
-    })
+export function hexToHsl(hex: string): HSL {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return { h: 0, s: 100, l: 50 }
+  const n = parseInt(m[1], 16)
+  const r = ((n >> 16) & 0xff) / 255
+  const g = ((n >> 8) & 0xff) / 255
+  const b = (n & 0xff) / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  let h = 0
+  let s = 0
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0)
+    else if (max === g) h = (b - r) / d + 2
+    else h = (r - g) / d + 4
+    h *= 60
   }
+  return {
+    h: Math.round(h),
+    s: Math.round(s * 1000) / 10,
+    l: Math.round(l * 1000) / 10,
+  }
+}
+
+/**
+ * 🌈 WAVE 8120 (M2): LUT de COLOR — PULSO MONOCROMÁTICO.
+ *
+ * Muerte al arcoíris: H y S del `targetColorHex` elegido CONSTANTES en
+ * todos los keyframes (lerpHue con delta=0 — cero deriva de tono).
+ * Solo Lightness varía con la MISMA geometría trapezoidal del λ-pulse
+ * numérico (attack 8% → hold 28% → release 42% → cierre C⁰ en D):
+ *
+ *   L: 0 → L_target → L_target → 0 → 0
+ *
+ * El pico es la L del color elegido — en el máximo del pulso el fixture
+ * muestra EXACTAMENTE ese color; el resto del ciclo funde a negro
+ * manteniendo tono/saturación. El desfase espacial (phaseOverrides)
+ * convierte el pulso en una ola que enciende y apaga el color por el
+ * rig. `bakeGainIntoCurve` sigue escalando L encima — la caída
+ * espacial (barrido radial, cohortes) funde aún más a negro.
+ *
+ * Estructura idéntica a las curvas `valueType:'color'` de la Forja
+ * (range [0,360], defaultValue HSL) — blendRgb las funde sin
+ * discriminación.
+ */
+export function synthesizeColorLut(
+  durationMs: number,
+  targetColorHex: string = ASTERIA_DEFAULT_TARGET_COLOR,
+): HephCurve {
+  const D = Math.max(1, durationMs)
+  const { h, s, l } = hexToHsl(targetColorHex)
+  const at = (t: number, light: number): HephKeyframe => ({
+    timeMs: t,
+    value: { h, s, l: light } satisfies HSL,
+    interpolation: 'linear',
+  })
+  const keyframes: HephKeyframe[] = [
+    at(0, 0),                                // reposo — negro
+    at(Math.round(D * 0.08), l),             // attack → color exacto
+    at(Math.round(D * 0.28), l),             // hold
+    at(Math.round(D * 0.42), 0),             // release → negro
+    at(D, 0),                                // cierre C⁰
+  ]
   return {
     paramId: 'color',
     valueType: 'color',
     range: [0, 360],
-    defaultValue: { h: 0, s: 100, l: 50 },
+    defaultValue: { h, s, l: 0 },
     keyframes,
     mode: 'absolute',
   }

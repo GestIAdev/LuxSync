@@ -174,6 +174,13 @@ export interface AsteriaStore extends AsteriaCamera {
    * Nunca vacío: el campo siempre tiene que apuntar a algo.
    */
   setTargetParams: (params: readonly HephParamId[]) => void
+  /**
+   * 🌈 WAVE 8120 (M1): color del canal 'color' — HEX '#rrggbb'.
+   * Persiste en `project.targetColor` → viaja dentro del `.lfx` con el
+   * resto de la receta. Rechaza formatos no-HEX y queda congelado en
+   * solo-lectura (drift).
+   */
+  setTargetColor: (color: string) => void
 
   /**
    * 🜨 WAVE 8030-P7: último reporte del compilador Λ (useAsteriaCompiler).
@@ -418,6 +425,13 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       s.driftReadOnly || params.length === 0
         ? {}
         : { project: { ...s.project, targetParams: params } },
+    ),
+
+  setTargetColor: (color) =>
+    set((s) =>
+      s.driftReadOnly || !/^#[0-9a-fA-F]{6}$/.test(color)
+        ? {}
+        : { project: { ...s.project, targetColor: color } },
     ),
 
   lastCompileReport: null,

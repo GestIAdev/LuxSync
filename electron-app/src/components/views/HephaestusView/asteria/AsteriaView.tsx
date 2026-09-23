@@ -55,7 +55,12 @@ export interface AsteriaViewProps {
 }
 
 const TOOL_ORDER: readonly AsteriaToolId[] = [
-  'select', 'lasso', 'radial', 'polygon', 'line', 'chrono', 'cell', 'glyph',
+  // Selección / geometría libre
+  'select', 'lasso', 'radial', 'polygon', 'line',
+  // Generadores de campo (WAVE 8182 — el arsenal completo del §7)
+  'wavefront', 'chrono', 'glyph', 'slicer', 'noise',
+  // Cirugía celular
+  'cell',
 ]
 
 /**
@@ -94,6 +99,8 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
   const setActiveTool = useAsteriaStore((s) => s.setActiveTool)
   const pokeEnabled = useAsteriaStore((s) => s.pokeEnabled)
   const setPokeEnabled = useAsteriaStore((s) => s.setPokeEnabled)
+  const heatEnabled = useAsteriaStore((s) => s.heatEnabled)
+  const setHeatEnabled = useAsteriaStore((s) => s.setHeatEnabled)
   const selectionCount = useAsteriaStore((s) => s.selectionNodeIds.size)
   const hoverCount = useAsteriaStore((s) => s.hoverNodeIds.size)
   const touchLive = selectionCount + hoverCount
@@ -185,6 +192,14 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
           )
         })}
         <div className="asteria-toolbox__spacer" />
+        <button
+          type="button"
+          className={`asteria-tool-btn asteria-tool-btn--heat ${heatEnabled ? 'active' : ''}`}
+          title={`HEAT ${heatEnabled ? 'ON' : 'OFF'} — mapa térmico del delay + isócronas 250/100 ms (FieldLayer)`}
+          onClick={() => setHeatEnabled(!heatEnabled)}
+        >
+          <span className="asteria-tool-btn__icon">🔥</span>
+        </button>
         <button
           type="button"
           className={`asteria-tool-btn asteria-tool-btn--poke ${pokeEnabled ? 'active' : ''}`}

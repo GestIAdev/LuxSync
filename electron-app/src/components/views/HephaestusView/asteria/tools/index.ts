@@ -14,6 +14,9 @@ import { CellSurgeonTool } from './CellSurgeonTool'
 import { GlyphTool } from './GlyphTool'
 import { PolygonTool } from './PolygonTool'
 import { LineTool } from './LineTool'
+import { WavefrontTool } from './WavefrontTool'
+import { SlicerTool } from './SlicerTool'
+import { NoiseTool } from './NoiseTool'
 
 registerTool(SelectTool)
 registerTool(LassoTool)
@@ -23,7 +26,10 @@ registerTool(LineTool)        // ╱ — WAVE 8150-F4
 registerTool(ChronoBrushTool) // T3 ✎ — WAVE 8040B
 registerTool(CellSurgeonTool) // T7 ✜ — WAVE 8040B
 registerTool(GlyphTool)       // T5 A — WAVE 8050
+registerTool(WavefrontTool)   // T4 〰 — WAVE 8182
+registerTool(SlicerTool)      // T6 ⋮ — WAVE 8182
+registerTool(NoiseTool)       // T8 ~ — WAVE 8182
 
-export { SelectTool, LassoTool, RadialTool, ChronoBrushTool, CellSurgeonTool, GlyphTool, PolygonTool, LineTool }
+export { SelectTool, LassoTool, RadialTool, ChronoBrushTool, CellSurgeonTool, GlyphTool, PolygonTool, LineTool, WavefrontTool, SlicerTool, NoiseTool }
 export { getTool, TOOL_REGISTRY, gesturePreview, clearGesturePreview } from './ToolRegistry'
 export type { AsteriaTool, AsteriaToolContext, GesturePreview } from './ToolRegistry'

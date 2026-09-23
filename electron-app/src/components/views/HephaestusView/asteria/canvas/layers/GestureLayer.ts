@@ -247,6 +247,46 @@ export function drawGestureLayer(
     ctx.lineCap = 'butt'
   }
 
+  // 🜨 WAVE 8182: WAVEFRONT — emisor anclado (crosshair + núcleo) y,
+  // si el drag fijó dirección, flecha del frente + etiqueta de grados.
+  const wv = gesturePreview.wave
+  if (wv) {
+    const ex = toSX(wv.x)
+    const ey = toSY(wv.z)
+    // crosshair del emisor
+    ctx.strokeStyle = 'rgba(92, 225, 255, 0.95)'
+    ctx.lineWidth = 1.4
+    ctx.beginPath()
+    ctx.arc(ex, ey, 6, 0, Math.PI * 2)
+    ctx.moveTo(ex - 10, ey)
+    ctx.lineTo(ex + 10, ey)
+    ctx.moveTo(ex, ey - 10)
+    ctx.lineTo(ex, ey + 10)
+    ctx.stroke()
+    if (wv.hasDir) {
+      const rad = (wv.dirDeg * Math.PI) / 180
+      const ax = Math.cos(rad)
+      const ay = Math.sin(rad)
+      const LEN = 34
+      const tx = ex + ax * LEN
+      const ty = ey + ay * LEN
+      ctx.beginPath()
+      ctx.moveTo(ex, ey)
+      ctx.lineTo(tx, ty)
+      ctx.moveTo(tx - ax * 7 - ay * 5, ty - ay * 7 + ax * 5)
+      ctx.lineTo(tx, ty)
+      ctx.lineTo(tx - ax * 7 + ay * 5, ty - ay * 7 - ax * 5)
+      ctx.stroke()
+      ctx.fillStyle = 'rgba(140, 235, 255, 0.8)'
+      ctx.font = '10px monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText(`${Math.round(wv.dirDeg)}°`, tx + ax * 14, ty + ay * 14 + 3)
+      ctx.fillStyle = COLOR_GESTURE_FILL
+    }
+    ctx.strokeStyle = COLOR_GESTURE
+    ctx.lineWidth = 1.2
+  }
+
   if (!atlas) return
 
   // ── 🜨 WAVE 8150-F4: GHOSTING DE CAPA — halo + anillo brillante del

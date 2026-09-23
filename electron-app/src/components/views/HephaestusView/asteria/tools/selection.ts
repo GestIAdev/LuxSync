@@ -149,6 +149,23 @@ export function nodesNearWorldSegment(
   return out
 }
 
+/**
+ * 🜨 WAVE 8182 (M3): máscara de commit para tools analíticas (Slicer,
+ * Noise). Cadena de fallback: nodos del rect dibujado → selección viva
+ * → todo el atlas. Devuelve [] si ni el atlas existe — el caller
+ * aborta el commit (un gesto con máscara vacía es ruido).
+ */
+export function commitMaskIds(
+  ctx: { selection: () => ReadonlySet<string>; atlas: () => NodeAtlas | null },
+  rectFound: ReadonlySet<string>,
+): string[] {
+  if (rectFound.size > 0) return [...rectFound]
+  const sel = ctx.selection()
+  if (sel.size > 0) return [...sel]
+  const atlas = ctx.atlas()
+  return atlas ? atlas.entries.map((en) => en.nodeId) : []
+}
+
 /** Nodos dentro de un radio en metros desde (cx, cz) del mundo. */
 export function nodesInWorldRadius(
   atlas: NodeAtlas | null,

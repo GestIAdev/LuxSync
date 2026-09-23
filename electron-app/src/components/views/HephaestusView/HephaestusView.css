@@ -2910,6 +2910,14 @@
   color: #ffd9a0;
 }
 
+/* 🜨 WAVE 8182: HEAT — toggle del FieldLayer (mapa térmico/isócronas) */
+.asteria-tool-btn--heat.active {
+  background: rgba(255, 92, 92, 0.16);
+  border-color: #ff6b6b;
+  box-shadow: 0 0 10px rgba(255, 92, 92, 0.35);
+  color: #ffb0a0;
+}
+
 .asteria-poke-badge {
   margin-top: 6px;
   padding: 4px 6px;

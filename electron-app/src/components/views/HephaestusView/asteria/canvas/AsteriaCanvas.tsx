@@ -28,6 +28,7 @@ import { getWorldTransform } from './useWorldTransform'
 import { drawGridLayer } from './layers/GridLayer'
 import { drawCrystalBox, drawRulers } from './layers/CrystalBoxLayer'
 import { drawNodeLayer, drawHoverTag, getDeviceMeta } from './layers/NodeLayer'
+import { drawFieldLayer } from './layers/FieldLayer'
 import { drawFeedbackLayer } from './layers/FeedbackLayer'
 import { drawGestureLayer } from './layers/GestureLayer'
 import { gestureGhostIds, gestureGhostColor } from '../model/gestureGhost'
@@ -179,6 +180,11 @@ export const AsteriaCanvas: React.FC<{
       drawGridLayer(ctx, t)
       drawCrystalBox(ctx, t, stage)          // sombreado fuera del mundo + perímetro
       drawNodeLayer(ctx, t, s.nodeAtlas, deviceMeta)
+      // 🜨 WAVE 8182 (M1): HEAT — mapa térmico del delay + isócronas.
+      //  Bajo Feedback: los halos físicos mandan sobre la tinta del campo.
+      if (s.heatEnabled) {
+        drawFieldLayer(ctx, t, s.nodeAtlas, s.fieldSnapshot)
+      }
       drawFeedbackLayer(ctx, t, s.nodeAtlas, previewDataRef.current?.current)
       drawGestureLayer(
         ctx, t, s.nodeAtlas, s.selectionNodeIds, s.previewNodeIds,

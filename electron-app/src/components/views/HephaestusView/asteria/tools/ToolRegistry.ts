@@ -49,6 +49,11 @@ export interface GesturePreview {
   polygon: { pts: number[]; hoverX: number; hoverZ: number } | null
   /** 🜨 8150-F4 Line: segmento en curso + media anchura de la banda. */
   line: { ax: number; az: number; bx: number; bz: number; halfWidthM: number } | null
+  /**
+   * 🜨 8182 Wavefront: emisor anclado (metros) + dirección del frente
+   * si el drag supera el umbral de click (hasDir → shape 'line').
+   */
+  wave: { x: number; z: number; dirDeg: number; hasDir: boolean } | null
 }
 
 /** Singleton mutable — las tools escriben, GestureLayer lee. */
@@ -60,6 +65,7 @@ export const gesturePreview: GesturePreview = {
   glyph: null,
   polygon: null,
   line: null,
+  wave: null,
 }
 
 /** Limpia toda la geometría de gesto (al soltar / cambiar de herramienta). */
@@ -71,6 +77,7 @@ export function clearGesturePreview(): void {
   gesturePreview.glyph = null
   gesturePreview.polygon = null
   gesturePreview.line = null
+  gesturePreview.wave = null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

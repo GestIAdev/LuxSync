@@ -33,6 +33,7 @@ import {
   type RigDrift,
 } from '../model/rigDrift'
 import type { CompileReport } from '../compiler/AsteriaCompiler'
+import type { FieldSnapshot } from '../model/fieldEngine'
 import type { HephParamId } from '../../../../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -51,10 +52,11 @@ export interface NodeAtlas {
 }
 
 /** Herramientas del Lienzo Táctico (WAVE 8020 + 8040B: chrono ✎ · cell ✜
- *  + 8150-F4: polygon ⬠ · line ╱). */
+ *  + 8150-F4: polygon ⬠ · line ╱ + 8182: wavefront 〰 · slicer ⋮ ·
+ *  noise ~ — el arsenal completo del blueprint §7). */
 export type AsteriaToolId =
   | 'select' | 'lasso' | 'radial' | 'chrono' | 'cell' | 'glyph'
-  | 'polygon' | 'line'
+  | 'polygon' | 'line' | 'wavefront' | 'slicer' | 'noise'
 
 /** Límites de zoom en píxeles por metro. */
 export const ASTERIA_ZOOM_MIN = 4
@@ -122,6 +124,24 @@ export interface AsteriaStore extends AsteriaCamera {
    */
   pokeEnabled: boolean
   setPokeEnabled: (on: boolean) => void
+
+  /**
+   * 🜨 WAVE 8182 (M1): toggle del FieldLayer — mapa térmico del delay
+   * + isócronas sobre el lienzo. true = el RAF dibuja el campo
+   * evaluado bajo los nodos (HEAT del blueprint §6.2).
+   */
+  heatEnabled: boolean
+  setHeatEnabled: (on: boolean) => void
+
+  /**
+   * 🜨 WAVE 8182 (M1): último FieldSnapshot evaluado por el compilador
+   * live. Referencia a los buffers COMPARTIDOS del engine — mutan
+   * in-place en cada evaluate(), así que la capa lee siempre los
+   * valores frescos sin re-setear el store (zero-alloc en el RAF).
+   * null = sin campo (sin atlas / drift pendiente / pre-compilación).
+   */
+  fieldSnapshot: FieldSnapshot | null
+  setFieldSnapshot: (snap: FieldSnapshot | null) => void
 
   /**
    * 🜨 WAVE 8040B (T7): deviceId del fixture expandido por el Cell
@@ -408,6 +428,13 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
 
   pokeEnabled: true,
   setPokeEnabled: (on) => set({ pokeEnabled: on }),
+
+  // 🜨 WAVE 8182: HEAT on por defecto — el campo es la razón del lienzo
+  heatEnabled: true,
+  setHeatEnabled: (on) => set({ heatEnabled: on }),
+
+  fieldSnapshot: null,
+  setFieldSnapshot: (snap) => set({ fieldSnapshot: snap }),
 
   surgeonDeviceId: null,
   setSurgeonDevice: (deviceId) =>

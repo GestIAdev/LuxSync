@@ -478,6 +478,58 @@ function makeCohortAtlas(): NodeAtlas {
   return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8190 — fixtures de familia: el planner filtra miembros por la
+// familia Aether del param (intensity→IMPACT, color→COLOR). Un atlas sin
+// nodos COLOR ya no recibe pistas color muertas — los tests de color
+// necesitan atlas con familia explícita.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Entry con familia explícita (zona 'front' salvo indicación). */
+function famEntry(
+  nodeId: string,
+  deviceId: string,
+  family: string,
+  zoneId = 'front',
+): NodeAtlasEntry {
+  return { ...entry(nodeId, deviceId), family, zoneId }
+}
+
+/** Espejo de makeAtlas pero familia COLOR — 4 nodos sobre 3 devices. */
+function makeColorAtlas(): NodeAtlas {
+  const entries = [
+    famEntry('fx-a:petal-l:color', 'fx-a', 'COLOR'),
+    famEntry('fx-a:petal-r:color', 'fx-a', 'COLOR'),
+    famEntry('fx-b:color', 'fx-b', 'COLOR'),
+    famEntry('fx-c:color', 'fx-c', 'COLOR'),
+  ]
+  return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+}
+
+/** Espejo de makeCohortAtlas en COLOR: a,b 'front' · c,d 'back'. */
+function makeColorCohortAtlas(): NodeAtlas {
+  const entries = [
+    famEntry('fx-a:color', 'fx-a', 'COLOR', 'front'),
+    famEntry('fx-b:color', 'fx-b', 'COLOR', 'front'),
+    famEntry('fx-c:color', 'fx-c', 'COLOR', 'back'),
+    famEntry('fx-d:color', 'fx-d', 'COLOR', 'back'),
+  ]
+  return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+}
+
+/** Atlas dual IMPACT+COLOR por device — para DIM+CLR decoupled. */
+function makeDualAtlas(): NodeAtlas {
+  const entries = [
+    entry('fx-a:impact', 'fx-a'),
+    famEntry('fx-a:color', 'fx-a', 'COLOR'),
+    entry('fx-b:impact', 'fx-b'),
+    famEntry('fx-b:color', 'fx-b', 'COLOR'),
+    entry('fx-c:impact', 'fx-c'),
+    famEntry('fx-c:color', 'fx-c', 'COLOR'),
+  ]
+  return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+}
+
 describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () => {
   test('cohort: K cohortes por gain → pista por cohorte con gain horneado (8090-M1)', () => {
     const field: FieldSnapshot = {
@@ -697,7 +749,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       // default '#ff0000' → h=0, s=100, l=50
     }
     const out = compile({
-      atlas: makeAtlas(), field: makeField(), clip: makeClip(), project,
+      atlas: makeColorAtlas(), field: makeField(), clip: makeClip(), project,
     })
     expect(out.tracks).toHaveLength(1)
     const t = out.tracks[0]
@@ -730,7 +782,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       targetColor: '#0080ff', // azul azure → h≈210, s=100, l=50
     }
     const out = compile({
-      atlas: makeAtlas(), field: makeField(), clip: makeClip(), project,
+      atlas: makeColorAtlas(), field: makeField(), clip: makeClip(), project,
     })
     const kfs = out.tracks[0].curve.keyframes
     for (const kf of kfs) {
@@ -741,18 +793,34 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     expect(Math.max(...kfs.map((k) => hslOf(k).l))).toBeCloseTo(50, 5)
   })
 
-  test('Λ multi-param: intensity emite λ-pulse numérica, color emite pulso HSL', () => {
+  test('Λ multi-param: intensity emite λ-pulse, color → ESTÁTICO (luminancia §2.4)', () => {
+    // 🜨 WAVE 8190 — Regla de Propiedad de Luminancia: con intensity
+    // activo, 'color' clasifica 'uniform-static' → 1 pista, 1 keyframe.
+    // El pulso temporal lo posee intensity; el color aporta solo el tono.
+    const field: FieldSnapshot = {
+      count: 6,
+      delayMs: new Float32Array([0, 0, 500, 500, 750, 750]),
+      gain: new Float32Array([1, 1, 1, 1, 1, 1]),
+      mask: new Uint8Array([1, 1, 1, 1, 1, 1]),
+    }
     const project = {
       ...createDefaultProject('x'),
       targetParams: ['intensity', 'color'] as const,
     }
     const out = compile({
-      atlas: makeAtlas(), field: makeField(), clip: makeClip(), project,
+      atlas: makeDualAtlas(), field, clip: makeClip(), project,
     })
     expect(out.tracks).toHaveLength(2)
+    expect(out.tracks[0].id).toBe('ast_intensity_lambda_0')
     expect(out.tracks[0].curve.valueType).toBe('number')
-    expect(out.tracks[1].curve.valueType).toBe('color')
-    expect(out.tracks[1].paramId).toBe('color')
+    expect(Object.keys(out.tracks[0].phaseOverrides!)).toHaveLength(3)
+    const ct = out.tracks[1]
+    expect(ct.id).toBe('ast_color_static_0')
+    expect(ct.paramId).toBe('color')
+    expect(ct.curve.valueType).toBe('color')
+    expect(ct.curve.keyframes).toHaveLength(1) // hold — sin envolvente
+    expect(hslOf(ct.curve.keyframes[0])).toEqual({ h: 0, s: 100, l: 50 })
+    expect(ct.phaseOverrides).toBeUndefined()  // constante — sin bus
   })
 
   test('cohort + color: gain horneado en Lightness — H/S intactos', () => {
@@ -769,7 +837,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       targetParams: ['color'] as const,
     }
     const out = compile({
-      atlas: makeCohortAtlas(), field, clip: makeClip(), project,
+      atlas: makeColorCohortAtlas(), field, clip: makeClip(), project,
     })
     expect(out.tracks).toHaveLength(2)
     expect(out.tracks.map((t) => t.id)).toEqual([
@@ -805,7 +873,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       targetParams: ['color'] as const,
     }
     const out = compile({
-      atlas: makeAtlas(), field, clip: makeClip(), project,
+      atlas: makeColorAtlas(), field, clip: makeClip(), project,
     })
     expect(out.tracks).toHaveLength(4)
     expect(peakL(out.tracks[0])).toBeCloseTo(50, 5)  // gain 1 → L intacta
@@ -836,7 +904,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       },
     })
     const rideColor = compile({
-      atlas: makeAtlas(), field: makeField(), clip,
+      atlas: makeColorAtlas(), field: makeField(), clip,
       project: {
         ...createDefaultProject('x'),
         targetParams: ['color'] as const,
@@ -855,7 +923,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     // b) Fuente numérica + target color: sin clone silencioso de basura —
     //    warning honesto y caída a la LUT sintética.
     const rideNumeric = compile({
-      atlas: makeAtlas(), field: makeField(), clip,
+      atlas: makeColorAtlas(), field: makeField(), clip,
       project: {
         ...createDefaultProject('x'),
         targetParams: ['color'] as const,
@@ -1246,5 +1314,144 @@ describe('🜨 WAVE 8186 — MCC-Device (Zone Spill Workaround)', () => {
     const t = round.tracks.find((x) => x.id === 'ast_intensity_mccd_0_0')!
     expect(t.cell).toBe('fx-a:impact') // c0={a,b} — orden de atlas
     expect(t.zones).toEqual(['all'])
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8190 — PLAN DE EMISIÓN (CRUX_RESOLUTION §2)
+// Gates: G-PLAN-DECOUPLE (1 color + N intensity) · G-BUDGET-150 (<60%)
+//        §2.6 higiene numérica (timeMs entero, valores ≤4 decimales)
+// ═════════════════════════════════════════════════════════════════════════════
+
+const LFX_MAX_BYTES = 256 * 1024 // espejo del límite del drawer (§8.4)
+
+/** Rig grande: N devices × {IMPACT, COLOR}, todos en 'front' — spill total
+ *  garantizado para cualquier partición de cohortes. */
+function bigDualAtlas(n: number): NodeAtlas {
+  const entries: NodeAtlasEntry[] = []
+  for (let i = 0; i < n; i++) {
+    entries.push(entry(`fx-${i}:impact`, `fx-${i}`))
+    entries.push(famEntry(`fx-${i}:color`, `fx-${i}`, 'COLOR'))
+  }
+  return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+}
+
+function bigField(n: number): FieldSnapshot {
+  return {
+    count: n * 2,
+    delayMs: Float32Array.from({ length: n * 2 }, (_, i) => (i * 137) % 4000),
+    gain: Float32Array.from({ length: n * 2 }, (_, i) => 0.4 + ((i * 31) % 60) / 100),
+    mask: new Uint8Array(n * 2).fill(1),
+  }
+}
+
+describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () => {
+  test('G-PLAN-DECOUPLE: DIM+CLR con spill total → 1 pista color + N quirúrgicas intensity', () => {
+    const N = 12
+    const atlas = bigDualAtlas(N)
+    const out = compile({
+      atlas,
+      field: bigField(N),
+      clip: makeClip(),
+      project: {
+        ...createDefaultProject('x'),
+        strategy: 'mcc-device' as const,
+        targetParams: ['intensity', 'color'] as const,
+      },
+    })
+    const colorTracks = out.tracks.filter((t) => t.paramId === 'color')
+    const intTracks = out.tracks.filter((t) => t.paramId === 'intensity')
+    // El decoupling: el color estático NO paga el multiplicador quirúrgico.
+    expect(colorTracks).toHaveLength(1)
+    expect(colorTracks[0].id).toBe('ast_color_static_0')
+    expect(colorTracks[0].curve.keyframes).toHaveLength(1)
+    expect(colorTracks[0].cell).toBeUndefined()
+    // Intensity sí: cada nodo IMPACT cubierto, pista cell-exacta.
+    expect(intTracks).toHaveLength(N)
+    expect(intTracks.every((t) => t.cell !== undefined)).toBe(true)
+    expect(intTracks.every((t) => t.id.includes('_mccd_'))).toBe(true)
+    // El reporte cuenta la acción, no la esconde.
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ISOLATED')),
+    ).toBe(true)
+  })
+
+  test('G-BUDGET-150: 150 fixtures DIM+CLR aislados → bytes < 60% del límite .lfx', () => {
+    const N = 150
+    const out = compile({
+      atlas: bigDualAtlas(N),
+      field: bigField(N),
+      clip: makeClip(),
+      project: {
+        ...createDefaultProject('x'),
+        strategy: 'mcc-device' as const,
+        targetParams: ['intensity', 'color'] as const,
+        cohortBudget: 16,
+      },
+    })
+    // Antes del planner: 150 int + 150 color = 300 pistas (~>60%).
+    // Ahora: 150 int quirúrgicas + 1 color estático.
+    expect(out.tracks.filter((t) => t.paramId === 'color')).toHaveLength(1)
+    expect(out.report.bytes).toBeLessThan(LFX_MAX_BYTES * 0.6)
+  })
+
+  test('§2.6 higiene numérica: timeMs enteros y valores ≤4 decimales tras rotar+escalar', () => {
+    const N = 12
+    const out = compile({
+      atlas: bigDualAtlas(N),
+      field: bigField(N),
+      clip: makeClip(),
+      project: {
+        ...createDefaultProject('x'),
+        strategy: 'mcc-device' as const,
+        targetParams: ['intensity'] as const,
+      },
+    })
+    for (const t of out.tracks) {
+      for (const kf of t.curve.keyframes) {
+        expect(Number.isInteger(kf.timeMs)).toBe(true)
+        if (typeof kf.value === 'number') {
+          // ≤4 decimales: v * 1e4 es entero (o dif de redondeo flotante)
+          expect(Math.abs(kf.value * 1e4 - Math.round(kf.value * 1e4))).toBeLessThan(1e-6)
+        }
+      }
+    }
+  })
+
+  test('decoupling real: el plano color no hereda las zonas de los nodos IMPACT', () => {
+    // Los nodos COLOR viven en 'back'; los IMPACT en 'front'. Bajo V1 la
+    // pista de cohorte color cubría las zonas de TODOS los miembros de la
+    // cohorte (incluido 'front' vía el impact hermano). Bajo el planner la
+    // membresía se filtra por familia → zonas = solo ['back'].
+    const entries = [
+      entry('fx-a:impact', 'fx-a'),                    // front
+      famEntry('fx-a:color', 'fx-a', 'COLOR', 'back'),
+      entry('fx-b:impact', 'fx-b'),                    // front
+      famEntry('fx-b:color', 'fx-b', 'COLOR', 'back'),
+    ]
+    const atlas: NodeAtlas = {
+      entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])),
+    }
+    const field: FieldSnapshot = {
+      count: 4,
+      delayMs: new Float32Array([0, 0, 500, 500]),
+      gain: new Float32Array([1, 1, 0.5, 0.5]),
+      mask: new Uint8Array([1, 1, 1, 1]),
+    }
+    const out = compile({
+      atlas, field, clip: makeClip(),
+      project: {
+        ...createDefaultProject('x'),
+        strategy: 'cohort' as const,
+        cohortBudget: 2,
+        targetParams: ['color'] as const, // animado — sin regla de luminancia
+      },
+    })
+    const colorTracks = out.tracks.filter((t) => t.paramId === 'color')
+    expect(colorTracks.length).toBeGreaterThan(0)
+    for (const t of colorTracks) {
+      expect(t.zones).toEqual(['back'])
+      expect(t.zones).not.toContain('front')
+    }
   })
 })

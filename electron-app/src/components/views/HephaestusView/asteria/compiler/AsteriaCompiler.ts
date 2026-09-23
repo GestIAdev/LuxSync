@@ -34,6 +34,13 @@
  * Λ-Ride (§8.2): lutSource.kind='ride' reutiliza la curva que el
  * operador esculpió en Forge como curva base de TODAS las estrategias.
  *
+ * 🜨 WAVE 8190 — PLAN DE EMISIÓN (CRUX_RESOLUTION §2): el bucle
+ * `params × cohortes` ciego murió. `planEmission` (emissionPlan.ts)
+ * clasifica cada parámetro por firma espacio-temporal y enruta cada
+ * clase de valor por separado — `emitRoute` (zoned/lambda/surgical) es
+ * la única puerta que empuja HephTracks. Regla de luminancia §2.4:
+ * 'color' + intensity activo → estático (1 kf), una sola pista.
+ *
  * VALIDADOR ESTRUCTURAL: toda pista candidata pasa `validateAstTrack`
  * antes de salir — ids ast_*, zones no vacío, keyframes ASC en [0,D],
  * valores en range, overrides clampados/enteros. Una pista
@@ -51,19 +58,26 @@ import type {
   HephCurve,
   HephParamId,
   HephTrack,
-  HSL,
   ZoneTarget,
 } from '../../../../../core/hephaestus/types'
-import type { PhaseConfigPro } from '../../../../../core/hephaestus/phase/PhaseConfigPro'
-import type { PhaseOverrideMap } from '../../../../../core/hephaestus/phase/PhaseOverride'
 import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
 import type { FieldSnapshot } from '../model/fieldEngine'
-import { synthesizeColorLut, synthesizeLambda, synthesizeLambdaPulse } from './lutSynth'
+import { synthesizeColorLut, synthesizeLambdaPulse } from './lutSynth'
 import { ASTERIA_DEFAULT_TARGET_COLOR } from '../model/AsteriaProject'
 import { measureGlyphLegibility } from '../model/glyphRaster'
-import { rotateCurveCyclic } from './curveRotate'
-import { quantizeGainCohorts } from './cohortQuantizer'
+import {
+  ASTERIA_TRACK_PREFIX,
+  emitPlans,
+  emitTargetParams,
+  isAsteriaTrack,
+  planEmission,
+} from './emissionPlan'
+
+// 🜨 WAVE 8190 — los símbolos de propiedad ast_* viven en emissionPlan;
+// re-exportados aquí para no romper los imports de la UI (ParameterLane,
+// ForgeTab, LabTab, GestureInspector).
+export { ASTERIA_TRACK_PREFIX, isAsteriaTrack } from './emissionPlan'
 
 /** Estrategia REAL emitida por el compilador (la que produce los tracks). */
 export type CompiledStrategy = 'lambda' | 'ride' | 'cohort' | 'mcc' | 'mcc-device'
@@ -99,14 +113,6 @@ export interface CompileOutput {
   readonly report: CompileReport
 }
 
-/** Prefijo de propiedad Asteria — el consumidor solo reemplaza ast_*. */
-export const ASTERIA_TRACK_PREFIX = 'ast_'
-
-/** ¿Pista propiedad de Asteria? (para la sustitución quirúrgica). */
-export function isAsteriaTrack(trackId: string): boolean {
-  return trackId.startsWith(ASTERIA_TRACK_PREFIX)
-}
-
 /**
  * Sustitución quirúrgica (§8.1): devuelve un clip nuevo con los tracks
  * ast_* reemplazados por los compilados y `clip.asteria` actualizado al
@@ -131,30 +137,6 @@ export function injectAstTracks(
   }
 }
 
-/**
- * Params que la Vía Λ puede emitir: numéricos (λ-pulse) o 'color'
- * (LUT arcoíris 🌈 WAVE 8110-M2).
- * WAVE 8080 (M1): 'strobe' admitido — el antiguo gate G6 era paternalismo;
- * el operador decide a qué canal aplica su campo, el compilador obedece.
- */
-const LAMBDA_SAFE_PARAMS: ReadonlySet<HephParamId> = new Set([
-  'intensity', 'white', 'amber', 'speed', 'zoom', 'focus', 'iris',
-  'pan', 'tilt', 'strobe', 'scale_x', 'scale_y', 'rot_x', 'rot_y',
-  'gobo_rotation', 'smoke_pump', 'width', 'direction', 'globalComp',
-  'color',
-])
-
-/** phaseConfig mínimo que despierta el bus de overrides (hallazgo A1). */
-const ASTERIA_PHASE_CONFIG: PhaseConfigPro = {
-  spreadDeg: 1, // ¡NUNCA 0! — con 0 los overrides mueren en silencio
-  symmetry: 'linear',
-  wings: 1,
-  blocks: 1,
-  shuffle: 0,
-  shuffleSeed: 1,
-  direction: 1,
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -173,53 +155,6 @@ function cloneCurve(src: HephCurve, paramId: HephParamId): HephCurve {
     })),
     range: [...src.range] as [number, number],
   }
-}
-
-/**
- * Escala los valores de una curva por `gain`. WAVE 8090 (M1): el gain
- * se hornea en los keyframes — `track.dimmerScale` era un DEAD WRITE
- * (el runtime jamás lo leyó; auditoría 8080-M3). El motor recibe la
- * curva ya escalada — cero dependencia del campo muerto.
- *
- * - 'number': v × gain, clamp al `range` declarado.
- * - 'color' 🌈 WAVE 8110 (M3): gain → canal Lightness (HSL `l` × gain,
- *   clamp [0,100]). La caída espacial se convierte en fundido a negro
- *   manteniendo H y S intactos — pureza de tono preservada. La forma
- *   del keyframe ({h,s,l}) queda idéntica a las curvas de la Forja —
- *   blendRgb las funde sin excepciones de tipado.
- */
-function bakeGainIntoCurve(curve: HephCurve, gain: number): HephCurve {
-  if (gain === 1) return curve
-  if (curve.valueType === 'color') {
-    return {
-      ...curve,
-      keyframes: curve.keyframes.map((kf) => {
-        const v = kf.value
-        if (typeof v !== 'object' || v === null || !('l' in v)) return kf
-        return {
-          ...kf,
-          value: { ...v, l: Math.min(100, Math.max(0, (v as HSL).l * gain)) },
-        }
-      }),
-    }
-  }
-  if (curve.valueType !== 'number') return curve
-  const [lo, hi] = curve.range
-  return {
-    ...curve,
-    keyframes: curve.keyframes.map((kf) => ({
-      ...kf,
-      value:
-        typeof kf.value === 'number'
-          ? Math.min(hi, Math.max(lo, kf.value * gain))
-          : kf.value,
-    })),
-  }
-}
-
-/** `m` normalizado a [0, D) — acepta negativos (override Δ relativo). */
-function modD(m: number, D: number): number {
-  return ((m % D) + D) % D
 }
 
 /**
@@ -413,58 +348,56 @@ export function compile(input: CompileInput): CompileOutput {
       : synthesizeLambdaPulse(param, D)
   }
 
-  // ── Emisión por estrategia ──
+  // ── Emisión por estrategia — 🜨 WAVE 8190: PLAN DE EMISIÓN ──
+  //    El multiplicador `params × cohortes` ciego murió: cada param
+  //    clasifica su firma y cada clase enruta por separado
+  //    (CRUX_RESOLUTION §2). La estrategia queda como sesgo global.
   let tracks: HephTrack[] = []
-  let reportStrategy: CompiledStrategy
-  let overrideCount = 0
-  let devicesTargeted = 0
+  const params = emitTargetParams(project, warnings)
 
-  if (strategy === 'cohort' || strategy === 'mcc-device') {
-    // 🜨 WAVE 8186 (VÍA A): 'mcc-device' = cohort pipeline con
-    // aislamiento quirúrgico — las cohortes que derraman se reemiten
-    // como pistas `cell = nodeId` por nodo miembro (squelch Δ3 en el
-    // adapter; zones=['all']). Las limpias quedan como cohortes puras.
-    const r = emitCohortTracks(
-      atlas, field, project, D, baseCurveFor, warnings,
-      strategy === 'mcc-device',
+  // §2.4 — Regla de Propiedad de Luminancia: intensity posee la
+  // envolvente; 'color' se emite estático (1 kf). Un ride de color
+  // explícito tiene precedencia sobre la regla (el operador esculpió
+  // esa curva a propósito).
+  const staticColor =
+    params.includes('intensity') &&
+    params.includes('color') &&
+    !(rideCurve !== null && rideCurve.valueType === 'color')
+
+  const planned = planEmission({
+    field,
+    atlas,
+    project,
+    params,
+    strategy,
+    D,
+    staticColor,
+    colorFlood: 'allow', // §2.5 — paridad V1; 'contain' llega con el modelo v2
+    warnings,
+  })
+
+  const reportStrategy: CompiledStrategy =
+    strategy === 'mcc'
+      ? 'mcc'
+      : strategy === 'lambda'
+        ? rideCurve !== null
+          ? 'ride'
+          : 'lambda'
+        : planned.isolatedCohorts > 0 || strategy === 'mcc-device'
+          ? 'mcc-device'
+          : 'cohort'
+  if (strategy === 'mcc-device' && planned.isolatedCohorts === 0) {
+    warnings.push(
+      'MCC_DEVICE_NO_SPILL — ninguna cohorte derramó; emisión cohorte pura',
     )
-    tracks = r.tracks
-    overrideCount = r.overrideCount
-    devicesTargeted = r.devicesTargeted
-    reportStrategy =
-      r.isolatedCohorts > 0 || strategy === 'mcc-device'
-        ? 'mcc-device'
-        : 'cohort'
-    if (strategy === 'mcc-device' && r.isolatedCohorts === 0) {
-      warnings.push(
-        'MCC_DEVICE_NO_SPILL — ninguna cohorte derramó; emisión cohorte pura',
-      )
-    }
-  } else if (strategy === 'mcc') {
-    const r = emitMccTracks(atlas, field, project, D, baseCurveFor, warnings)
-    tracks = r.tracks
-    devicesTargeted = r.devicesTargeted
-    reportStrategy = 'mcc'
-  } else {
-    // ── Vía Λ: bus de direcciones + una pista por targetParam ──
-    const lambda = synthesizeLambda(field, D, atlas)
-    reportStrategy = rideCurve !== null ? 'ride' : 'lambda'
-    overrideCount = Object.keys(lambda.overrides).length
-    devicesTargeted = lambda.devicesTargeted
-    let n = 0
-    for (const param of emitTargetParams(project, warnings)) {
-      const curve = baseCurveFor(param)
-      tracks.push({
-        id: `${ASTERIA_TRACK_PREFIX}${param}_${reportStrategy}_${n++}`,
-        paramId: param,
-        zones: ['all'], // G5 — nunca vacío
-        curve,
-        blendMode: 'replace',
-        phaseConfig: { ...ASTERIA_PHASE_CONFIG }, // A1: spreadDeg=1 despierta el bus
-        phaseOverrides: { ...lambda.overrides },
-      })
-    }
   }
+  const overrideCount = planned.overrideCount
+  const devicesTargeted = planned.devicesTargeted
+  emitPlans(
+    planned.plans,
+    { D, baseCurveFor, lambdaTag: reportStrategy === 'ride' ? 'ride' : 'lambda' },
+    tracks,
+  )
 
   // ── VALIDADOR ESTRUCTURAL — toda pista candidata cruza la puerta ──
   const validated: HephTrack[] = []
@@ -531,323 +464,5 @@ function zonesOverlap(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// EMISSION — params target + estrategias Cohort/MCC
+// EMISSION — movida a emissionPlan.ts (WAVE 8190 · Plan de Emisión §2)
 // ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * targetParams filtrados por las reglas duras: los params sin canal
- * sintetizable se omiten — warnings emitidos UNA vez. WAVE 8080 (M1):
- * strobe compila como cualquier otro param numérico; WAVE 8110 (M1):
- * 'color' compila con LUT HSL — el operador tiene la última palabra.
- */
-function emitTargetParams(
-  project: AsteriaProject,
-  warnings: string[],
-): HephParamId[] {
-  const out: HephParamId[] = []
-  for (const param of project.targetParams) {
-    if (!LAMBDA_SAFE_PARAMS.has(param)) {
-      warnings.push(`PARAM_SKIPPED '${param}' — sin canal sintetizable`)
-      continue
-    }
-    out.push(param)
-  }
-  return out
-}
-
-/**
- * 🜨 WAVE 8186 (VÍA A del COHORT_FORENSIC_AUDIT): familia Aether a la que
- * el adapter enruta cada paramId — espejo de `_paramFamily`
- * (HephaestusAetherAdapter:357). Necesaria para MCC-Device: `cell` solo
- * discrimina si apunta a un nodeId de la familia que el param alcanza.
- * null → param sin familia (engine-internal) — jamás produce intent;
- * se queda en la pista de cohorte (squelch innecesario, cero daño).
- */
-function paramNodeFamily(param: HephParamId): string | null {
-  switch (param) {
-    case 'intensity':
-    case 'strobe':
-      return 'IMPACT'
-    case 'color':
-    case 'white':
-    case 'amber':
-      return 'COLOR'
-    case 'pan':
-    case 'tilt':
-    case 'speed':
-      return 'KINETIC'
-    case 'zoom':
-    case 'focus':
-    case 'iris':
-    case 'gobo1':
-    case 'gobo2':
-    case 'prism':
-    case 'scale_x':
-    case 'scale_y':
-    case 'rot_x':
-    case 'rot_y':
-    case 'gobo_rotation':
-      return 'BEAM'
-    case 'smoke_pump':
-    case 'smoke_density':
-    case 'fan_speed':
-      return 'ATMOSPHERE'
-    default:
-      return null
-  }
-}
-
-/**
- * VÍA B — cohortes (§8.3): K ≤ cohortBudget cubos por percentiles de gain.
- * Por cohorte × parámetro: curva maestra rotada por el delay representativo,
- * escalada por el gain representativo horneado en los keyframes
- * (WAVE 8090-M1: intensity también — `dimmerScale` era dead write).
- * Targeting = zones ∪ overrides `absolute` que
- * CLAVAN cada fixture miembro a su delay exacto (offset = delay_dev − d̄
- * mod D — la curva ya lleva d̄ horneado).
- * COHORT_ZONE_SPILL: si una zona de la cohorte alcanza fixtures ajenos, o
- * un fixture miembro cae en zonas de otra cohorte, se reporta la lista
- * exacta de nodos afectados — nunca se esconde.
- *
- * 🜨 WAVE 8186 (MCC-Device, VÍA A del informe forense): con
- * `isolateSpilled=true`, cada cohorte que derrama se reemite como
- * pistas quirúrgicas por nodo miembro — `cell = e.nodeId` (match exacto
- * en `_nodeCellMatches`, d===0) + `zones:['all']`. El runtime emite un
- * output por fixture del rig; el adapter squelcha todos menos el nodeId
- * exacto. Delay horneado por nodo (rotateCurveCyclic), gain de cohorte
- * horneado en keyframes. En fixtures simples `e.nodeId` ES
- * `${deviceId}:${family}` — el formato del informe verbatim; en
- * compuestos cae a per-celda (MCC-Cell) sin código extra. Params sin
- * familia Aether (globalComp/width/direction) quedan en la pista de
- * cohorte — no producen intents, el spill no les aplica.
- */
-function emitCohortTracks(
-  atlas: NodeAtlas,
-  field: FieldSnapshot,
-  project: AsteriaProject,
-  D: number,
-  baseCurveFor: (param: HephParamId) => HephCurve,
-  warnings: string[],
-  isolateSpilled = false,
-): {
-  tracks: HephTrack[]
-  overrideCount: number
-  devicesTargeted: number
-  isolatedCohorts: number
-  isolatedNodes: number
-} {
-  const entries = atlas.entries
-  const cohorts = quantizeGainCohorts(field, entries, project.cohortBudget)
-  if (cohorts.length === 0) {
-    warnings.push('COHORT_EMPTY — sin nodos cubiertos que cuantizar')
-    return { tracks: [], overrideCount: 0, devicesTargeted: 0, isolatedCohorts: 0, isolatedNodes: 0 }
-  }
-
-  const params = emitTargetParams(project, warnings)
-  const indexByNodeId = new Map(entries.map((e, i) => [e.nodeId, i]))
-
-  // Índice zona → devices que poseen un nodo en ella (para el spill)
-  const devicesByZone = new Map<string, Set<string>>()
-  for (const e of entries) {
-    if (!e.zoneId) continue
-    let set = devicesByZone.get(e.zoneId)
-    if (!set) devicesByZone.set(e.zoneId, (set = new Set()))
-    set.add(e.deviceId)
-  }
-
-  // Targeting de cada cohorte: zones ∪ devices alcanzados
-  const memberDevices: Set<string>[] = []
-  const targetedDevices: Set<string>[] = []
-  const cohortZones: string[][] = []
-  for (const c of cohorts) {
-    const members = new Set<string>()
-    const zones: string[] = []
-    const zoneSet = new Set<string>()
-    for (const nid of c.nodeIds) {
-      const e = atlas.byNodeId.get(nid)
-      if (!e) continue
-      members.add(e.deviceId)
-      if (e.zoneId && !zoneSet.has(e.zoneId)) {
-        zoneSet.add(e.zoneId)
-        zones.push(e.zoneId)
-      }
-    }
-    const targeted = new Set<string>()
-    for (const z of zones) {
-      for (const dev of devicesByZone.get(z) ?? []) targeted.add(dev)
-    }
-    memberDevices.push(members)
-    targetedDevices.push(targeted)
-    cohortZones.push(zones)
-  }
-
-  const tracks: HephTrack[] = []
-  let overrideCount = 0
-  let isolatedCohorts = 0
-  let isolatedNodes = 0
-  const allMemberDevices = new Set<string>()
-  for (const m of memberDevices) for (const d of m) allMemberDevices.add(d)
-
-  for (let ci = 0; ci < cohorts.length; ci++) {
-    const c = cohorts[ci]
-    const members = memberDevices[ci]
-    const zones = cohortZones[ci]
-
-    // ── COHORT_ZONE_SPILL ──────────────────────────────────────────────
-    // a) todo nodo NO miembro situado en una zona usada por la cohorte
-    //    recibe su pista — incluidos nodos ajenos de fixtures miembro
-    const memberSet = new Set(c.nodeIds)
-    const spill = new Set<string>()
-    for (const e of entries) {
-      if (e.zoneId && zones.includes(e.zoneId) && !memberSet.has(e.nodeId)) {
-        spill.add(e.nodeId)
-      }
-    }
-    // b) fixtures miembros alcanzados TAMBIÉN por zonas de otras cohortes
-    //    → reciben dos pistas; el blend decide, sus nodos son afectados
-    for (let cj = 0; cj < cohorts.length; cj++) {
-      if (cj === ci) continue
-      for (const dev of members) {
-        if (!targetedDevices[cj].has(dev)) continue
-        for (const nid of c.nodeIds) {
-          const e = atlas.byNodeId.get(nid)
-          if (e && e.deviceId === dev) spill.add(nid)
-        }
-      }
-    }
-    if (spill.size > 0) {
-      const list = [...spill].slice(0, 8).join(', ')
-      warnings.push(
-        `COHORT_ZONE_SPILL c${ci} — ${spill.size} nodo(s) fuera del recorte de zonas: ${list}${spill.size > 8 ? ` +${spill.size - 8} más` : ''}`,
-      )
-    }
-
-    // ── Overrides: clavan cada fixture miembro a su delay exacto ──
-    //    Curva rotada por d̄ (media de la cohorte) + override absoluto
-    //    (delay_dev − d̄) mod D ⇒ C(t + delay_dev) exacto por fixture.
-    const devDelaySum = new Map<string, { s: number; n: number }>()
-    for (const nid of c.nodeIds) {
-      const e = atlas.byNodeId.get(nid)
-      const i = indexByNodeId.get(nid)
-      if (!e || i === undefined) continue
-      const acc = devDelaySum.get(e.deviceId) ?? { s: 0, n: 0 }
-      acc.s += field.delayMs[i]
-      acc.n++
-      devDelaySum.set(e.deviceId, acc)
-    }
-    const overrides: PhaseOverrideMap = {}
-    for (const [dev, acc] of devDelaySum) {
-      const devDelay = acc.s / acc.n
-      overrides[dev] = {
-        mode: 'absolute',
-        offsetMs: Math.round(modD(devDelay - c.delayMs, D)),
-      }
-    }
-    // 🜨 WAVE 8186 — la cohorte derramada se convierte en quirúrgica:
-    // una pista por nodo miembro de la familia enrutable del param,
-    // `cell = nodeId` (el adapter hace el descarte exacto). Los params
-    // sin familia quedan en la pista de cohorte (muertos en adapter).
-    const isolated = isolateSpilled && spill.size > 0
-    if (isolated) isolatedCohorts++
-
-    const gain = Math.min(1, Math.max(0, c.gain))
-    let cohortTrackEmitted = false
-    for (const param of params) {
-      const fam = isolated ? paramNodeFamily(param) : null
-      if (fam !== null) {
-        let di = 0
-        for (const nid of c.nodeIds) {
-          const e = atlas.byNodeId.get(nid)
-          const i = indexByNodeId.get(nid)
-          if (!e || i === undefined || e.family !== fam) continue
-          let curve = rotateCurveCyclic(baseCurveFor(param), field.delayMs[i], D)
-          curve = bakeGainIntoCurve(curve, gain)
-          tracks.push({
-            id: `${ASTERIA_TRACK_PREFIX}${param}_mccd_${ci}_${di++}`,
-            paramId: param,
-            zones: ['all'], // VÍA A — el filtro real lo hace `cell` (Δ3)
-            curve,
-            blendMode: 'replace',
-            cell: e.nodeId,
-          })
-          isolatedNodes++
-        }
-        continue
-      }
-      cohortTrackEmitted = true
-      let curve = rotateCurveCyclic(baseCurveFor(param), c.delayMs, D)
-      curve = bakeGainIntoCurve(curve, gain)
-      tracks.push({
-        id: `${ASTERIA_TRACK_PREFIX}${param}_cohort_${ci}`,
-        paramId: param,
-        zones: (zones.length > 0 ? zones : ['all']) as readonly ZoneTarget[],
-        curve,
-        blendMode: 'replace',
-        phaseConfig: { ...ASTERIA_PHASE_CONFIG },
-        phaseOverrides: overrides,
-      })
-    }
-    if (cohortTrackEmitted) overrideCount += Object.keys(overrides).length
-    if (isolated) {
-      warnings.push(
-        `COHORT_ISOLATED c${ci} — ${members.size} fixture(s) → pistas cell-exactas (MCC-Device)`,
-      )
-    }
-  }
-
-  return {
-    tracks,
-    overrideCount,
-    devicesTargeted: allMemberDevices.size,
-    isolatedCohorts,
-    isolatedNodes,
-  }
-}
-
-/**
- * VÍA MCC — Máscaras de Curva Celular (§4.2): una pista por
- * (celda cubierta × parámetro). El retardo NO viaja en phaseOverrides
- * (fixture-granular — A3) sino HORNEADO en la curva via
- * `rotateCurveCyclic(curva, delay_celda, D)`.
- *
- * `track.cell = nodeId` COMPLETO ('dev:cell') — el discriminador Δ3
- * (`_nodeCellMatches`) acepta match exacto de id completo, así cada
- * pista es quirúrgica: solo el nodo cuyo nodeId coincide recibe la
- * curva; las celdas homónimas de OTROS fixtures no colisionan. Δ1
- * garantiza que estas pistas no se fundan entre sí en el blend map.
- */
-function emitMccTracks(
-  atlas: NodeAtlas,
-  field: FieldSnapshot,
-  project: AsteriaProject,
-  D: number,
-  baseCurveFor: (param: HephParamId) => HephCurve,
-  warnings: string[],
-): { tracks: HephTrack[]; devicesTargeted: number } {
-  const entries = atlas.entries
-  const params = emitTargetParams(project, warnings)
-  const n = Math.min(field.count, entries.length)
-
-  const tracks: HephTrack[] = []
-  const devices = new Set<string>()
-  for (let i = 0; i < n; i++) {
-    if (field.mask[i] === 0) continue
-    const e = entries[i]
-    devices.add(e.deviceId)
-    const gain = Math.min(1, Math.max(0, field.gain[i]))
-    for (const param of params) {
-      let curve = rotateCurveCyclic(baseCurveFor(param), field.delayMs[i], D)
-      curve = bakeGainIntoCurve(curve, gain)
-      tracks.push({
-        id: `${ASTERIA_TRACK_PREFIX}${param}_mcc_${i}`,
-        paramId: param,
-        zones: ['all'], // G5 — el filtro real lo hace `cell` (Δ3)
-        curve,
-        blendMode: 'replace',
-        cell: e.nodeId, // Δ1+Δ3: match exacto por id completo
-      })
-    }
-  }
-
-  return { tracks, devicesTargeted: devices.size }
-}

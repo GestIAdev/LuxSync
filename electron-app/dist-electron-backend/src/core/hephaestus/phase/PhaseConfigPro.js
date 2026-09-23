@@ -18,7 +18,7 @@ export const DEFAULT_PHASE_CONFIG_PRO = {
 // FUNCIONES PURAS
 // ═══════════════════════════════════════════════════════════════════════════
 /** Hash determinista [0,1) — sin estado, reproducible. */
-function hash01(seed, k) {
+export function hash01(seed, k) {
     const x = Math.sin(k * 127.1 + seed * 311.7) * 43758.5453;
     return x - Math.floor(x); // fract
 }
@@ -26,7 +26,7 @@ function fract(x) {
     return x - Math.floor(x);
 }
 /** Simetría: [0,1] → [0,1] */
-function applySymmetry(u, mode) {
+export function applySymmetry(u, mode) {
     switch (mode) {
         case 'linear': return u;
         case 'mirror': return 1 - Math.abs(2 * u - 1); // pico al centro

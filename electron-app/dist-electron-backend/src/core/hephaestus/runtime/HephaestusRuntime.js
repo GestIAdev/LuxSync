@@ -69,9 +69,11 @@ export class HephaestusRuntime {
         this.debug = true;
         /**
          * 🧬 WAVE 7035: Blend map for intra-clip blendMode fusion.
-         * Key: `${fixtureId}:${paramName}` → Value: index into outputBuffer.
-         * Cleared per-clip in tickActive(). Enables max/replace/add/multiply
-         * blending when multiple tracks of the same paramId target the same fixture.
+         * Key: `${fixtureId}${track.blendSuffix}` → Value: index into outputBuffer.
+         * blendSuffix = `:paramId` + `#cell` opcional (WAVE 8040 Δ1, precalculado
+         * en _buildResolvedTrack). Cleared per-clip in tickActive(). Enables
+         * max/replace/add/multiply blending when multiple tracks of the same
+         * paramId target the same fixture.
          */
         this._blendMap = new Map();
         // ─────────────────────────────────────────────────────────────────────────
@@ -406,7 +408,10 @@ export class HephaestusRuntime {
      * para evitar el lookup `curve.valueType` en hot-path.
      */
     _emitTrackSample(track, fixtureId, timeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, trackZones, silenceSpatial) {
-        const blendKey = fixtureId + ':' + paramName;
+        // 🧬 WAVE 8040 (Δ1): blendSuffix precalculado en _buildResolvedTrack.
+        // Incluye '#<cell>' cuando el track es celular → independencia por celda
+        // sin coste extra en hot-path (una concatenación, como antes).
+        const blendKey = fixtureId + track.blendSuffix;
         const existingIdx = this._blendMap.get(blendKey);
         if (track.valueType === 'color') {
             // 🧬 AUDIT P0-B: Respect colorOverride — same logic as HephEvaluationKernel
@@ -442,7 +447,7 @@ export class HephaestusRuntime {
                 this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, 0, rgb, undefined, 0, this._normRgbBuf);
                 return;
             }
-            this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones, silenceSpatial);
+            this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones, silenceSpatial, track.cell);
             this._blendMap.set(blendKey, this.outputCursor - 1);
         }
         else {
@@ -456,7 +461,7 @@ export class HephaestusRuntime {
                 this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, scaledValue, undefined, fine, withIntensity, undefined);
                 return;
             }
-            this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones, silenceSpatial);
+            this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones, silenceSpatial, track.cell);
             this._blendMap.set(blendKey, this.outputCursor - 1);
         }
     }
@@ -526,7 +531,7 @@ export class HephaestusRuntime {
      * Mutates in-place — zero allocation in the hot path.
      * Auto-grows if capacity estimate was wrong (rare).
      */
-    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip, clipId, trackZones, silenceSpatial) {
+    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip, clipId, trackZones, silenceSpatial, cell) {
         // Auto-grow if needed (rare — only if capacity estimate was wrong)
         if (this.outputCursor >= this.outputCapacity) {
             this.ensureOutputCapacity(this.outputCursor + 64);
@@ -542,7 +547,10 @@ export class HephaestusRuntime {
         out.clipId = clipId;
         out.trackZones = trackZones;
         out.silenceSpatial = silenceSpatial;
-        // 🩹 WAVE 4995: Protect Memory Reference
+        // � WAVE 8040 (Δ2): mutación in-place sobre el slot prealocado —
+        // asignar `undefined` también limpia residuos del frame anterior.
+        out.cell = cell;
+        // �🩹 WAVE 4995: Protect Memory Reference
         // Only copy color values if the track actually provides them.
         // Do not destroy the pre-allocated references when processing non-color params.
         if (rgb) {
@@ -648,7 +656,7 @@ export class HephaestusRuntime {
             if (trackPhase != null && topLevelPhaseConfig == null) {
                 topLevelPhaseConfig = trackPhase;
             }
-            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, stretchFactor, t.zones, t.phaseOverrides, t.colorOverride));
+            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, stretchFactor, t.zones, t.phaseOverrides, t.colorOverride, t.cell));
         }
         return { tracks, phaseConfig: topLevelPhaseConfig };
     }
@@ -657,7 +665,7 @@ export class HephaestusRuntime {
      * Crea un `CurveEvaluator` con UNA sola curva (Map de tamaño 1) y, si hay
      * `phaseConfig + fixtureIds`, calcula la distribución de fase per-fixture.
      */
-    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, stretchFactor, zones, phaseOverrides, colorOverride) {
+    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, stretchFactor, zones, phaseOverrides, colorOverride, cell) {
         // 🌊 WAVE 7160: Clone + rescale keyframes when stretchFactor !== 1.
         // Critical: must NOT mutate the original clip's curve (cached, shared).
         const effectiveCurve = stretchFactor !== 1
@@ -685,6 +693,10 @@ export class HephaestusRuntime {
             fixturePhases,
             blendMode: blendMode ?? _defaultBlendModeFor(paramId),
             zones,
+            cell,
+            // 🧬 WAVE 8040 (Δ1): sufijo de blend-key horneado una vez aquí.
+            // Sin cell → ':paramId' (idéntico al legado); con cell → ':paramId#cell'.
+            blendSuffix: ':' + paramId + (cell !== undefined ? '#' + cell : ''),
             colorOverride,
         };
     }

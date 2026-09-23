@@ -219,6 +219,49 @@ describe('🜨 WAVE 8171 — Iconography Polish', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WAVE 8173-M1 — una sola etiqueta por aparato
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('🜨 WAVE 8173 — label overlap fix', () => {
+  const T_CLOSE = { ...T, cam: { ...T.cam, zoom: 120 } } as WorldTransform
+
+  test('celdas del mismo aparato → UNA etiqueta (dedupe por deviceId)', () => {
+    const atlas = mkAtlas([
+      { ...entry('mv:pan', 'mv', -0.07, 0), customLabel: 'Pan' },
+      { ...entry('mv:tilt', 'mv', 0.07, 0), customLabel: 'Main Intensity' },
+    ])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(ctx, T_CLOSE, atlas, getDeviceMeta([]))
+    // Dos celdas a 14cm en el mismo cluster → una sola fillText
+    expect(calls.texts).toHaveLength(1)
+    expect(calls.texts[0]).toBe('Pan') // la primera celda porta la etiqueta
+  })
+
+  test('aparatos distintos → una etiqueta cada uno', () => {
+    const atlas = mkAtlas([
+      entry('a:dim', 'a', -1, 0),
+      entry('b:dim', 'b', 1, 0),
+    ])
+    const meta = getDeviceMeta([
+      fx('a', 'par'), fx('b', 'par'),
+    ])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(ctx, T_CLOSE, atlas, meta)
+    expect(calls.texts).toHaveLength(2)
+  })
+
+  test('sin customLabel cae al name/model del fixture, luego cellSuffix', () => {
+    const atlas = mkAtlas([entry('x:cell', 'x', 0, 0)])
+    const meta = getDeviceMeta([
+      { ...fx('x', 'par'), name: 'Tungsten Fan 01' } as FixtureV2,
+    ])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(ctx, T_CLOSE, atlas, meta)
+    expect(calls.texts).toEqual(['Tungsten Fan 01'])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // WAVE 8172-M2 — Fan matcher robusto
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -253,22 +296,37 @@ describe('🜨 WAVE 8172 — Fan Tungsten matcher', () => {
     expect(resolveGlyphType(fx)).toBe('fan')
   })
 
-  test('RESTRICCIÓN: mover/PAR con "fan" en el nombre NO cambian de glifo', () => {
-    // Tipos explícitos son intocables por la heurística
+  test('WAVE 8173-M2: el nombre MANDA — mover/PAR con "fan" en name → hélice', () => {
+    // El escudo de tipos explícitos se rompe SOLO por el nombre:
+    // el operador llama a su aparato "Fan …" → quiere ver aspas.
     expect(
       resolveGlyphType(fxFull('m1', 'moving-head', 'Fantasy Spot')),
-    ).toBe('moving-head')
-    expect(resolveGlyphType(fxFull('p1', 'par', 'Fanny Wash'))).toBe('par')
+    ).toBe('fan')
+    expect(resolveGlyphType(fxFull('p1', 'par', 'Fanny Wash'))).toBe('fan')
+    // …pero sin 'fan' en el nombre, el tipo explícito sigue intacto
+    expect(resolveGlyphType(fxFull('m2', 'moving-head', 'Spot 250'))).toBe(
+      'moving-head',
+    )
+    expect(resolveGlyphType(fxFull('p2', 'par', 'Wash Left'))).toBe('par')
   })
 
-  test('render: mover sigue siendo diamante; fan-por-nombre dibuja aspas', () => {
+  test('canal "Fan Speed" en un PAR explícito NO rompe el anillo', () => {
+    // La heurística de canal queda BAJO los tipos explícitos: un PAR
+    // con ventilador de refrigeración no se convierte en hélice.
+    const fx = fxFull('p3', 'par', 'Wash Left', '', [
+      { index: 0, name: 'Fan Speed', type: 'range', is16bit: false },
+    ])
+    expect(resolveGlyphType(fx)).toBe('par')
+  })
+
+  test('render: "Fan Tungsten" (type effect) dibuja aspas; mover limpio = diamante', () => {
     const atlas = mkAtlas([
       entry('mv:pan', 'mv', -1, 0),
       entry('tw:air', 'tw', 1, 0),
     ])
     const meta = getDeviceMeta([
-      fxFull('mv', 'moving-head', 'Fan Killer'),   // nombre con 'fan' → NO
-      fxFull('tw', 'effect', 'Fan Tungsten'),      // effect + 'fan' → SÍ
+      fxFull('mv', 'moving-head', 'Spot 250'),     // nombre limpio → diamante
+      fxFull('tw', 'effect', 'Fan Tungsten'),      // effect + 'fan' → hélice
     ])
     const { ctx, calls } = fakeCtx()
     drawNodeLayer(ctx, T, atlas, meta)

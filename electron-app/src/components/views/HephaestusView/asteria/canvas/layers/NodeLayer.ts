@@ -88,10 +88,13 @@ export function nodeLabelFontPx(zoom: number): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface DeviceGlyphMeta {
-  /** FixtureV2.type ('moving-head' | 'fan' | 'laser' | 'par' | …). */
+  /** Tipo de glifo resuelto por resolveGlyphType ('moving-head' | 'fan' | …). */
   readonly type: string
   /** rotation.yaw en radianes (convención Erebus: dir=(cos,sin) en XZ). */
   readonly yawRad: number
+  /** 🜨 8173-M1: nombre del aparato (name || model) — etiqueta de nivel
+   *  de dispositivo cuando la celda no tiene customLabel. */
+  readonly label?: string
 }
 
 const EMPTY_META = new Map<string, DeviceGlyphMeta>()
@@ -101,9 +104,9 @@ let metaCache: {
 } | null = null
 
 /**
- * 🜨 WAVE 8172 (M2): tipos con glifo propio — si `FixtureV2.type` ya es
- * uno de estos, la heurística de ventilador JAMÁS lo toca: el diamante
- * del mover y el doble anillo del PAR son intocables.
+ * 🜨 WAVE 8172 (M2) + 8173 (M2): tipos con glifo propio. La heurística
+ * de CANAL de motor solo corre sobre tipos no concluyentes — un PAR
+ * real con canal "Fan Speed" sigue siendo PAR.
  */
 const EXPLICIT_GLYPH_TYPES = new Set([
   'moving-head', 'spot', 'scanner', 'laser',
@@ -111,19 +114,27 @@ const EXPLICIT_GLYPH_TYPES = new Set([
 ])
 
 /**
- * Resuelve el tipo de glifo. Jerarquía:
- *   1. type explícito ('fan' incluido) → se respeta siempre.
- *   2. Tipo no concluyente ('effect','generic','custom','pyro'…) + la
- *      palabra "fan" en name/model (el "Fan Tungsten" del operador) → fan.
- *   3. Canal de motor continuo (fan/spin/rotat…) → fan (heurística).
- *   4. Resto → type tal cual (cae al doble anillo en el dispatch).
+ * Resuelve el tipo de glifo. Jerarquía (WAVE 8173-M2 — el nombre del
+ * operador MANDA sobre el tipo estructural):
+ *   1. "fan" en name/model (case-insensitive) → hélice SIEMPRE. El
+ *      "Fan Tungsten" vive internamente como 'effect' — el nombre que
+ *      el usuario le dio pisa cualquier type, incluso 'blinder'/'par'.
+ *      (Trade-off aceptado: substring match — "Fantasy" también pega.)
+ *   2. type === 'fan' explícito → hélice.
+ *   3. type explícito conocido → se respeta (diamante/anillo intactos).
+ *   4. Canal de motor continuo (fan/spin/rotat) en tipo no concluyente
+ *      → hélice.
+ *   5. Resto → type tal cual (cae al doble anillo en el dispatch).
  */
 export function resolveGlyphType(f: FixtureV2): string {
+  // Prioridad absoluta: el nombre del operador rompe el escudo de tipos
+  const nameModel = `${f.name ?? ''} ${f.model ?? ''}`
+  if (/fan/i.test(nameModel)) return 'fan'
+
   const t = typeof f.type === 'string' ? f.type : 'generic'
   if (t === 'fan') return 'fan'
   if (EXPLICIT_GLYPH_TYPES.has(t)) return t
-  const nameModel = `${f.name ?? ''} ${f.model ?? ''}`
-  if (/fan/i.test(nameModel)) return 'fan'
+
   const channels = f.channels
   if (channels) {
     for (const ch of channels) {
@@ -149,6 +160,7 @@ export function getDeviceMeta(
     map.set(f.id, {
       type: resolveGlyphType(f),
       yawRad: ((f.rotation?.yaw ?? 0) * Math.PI) / 180,
+      label: (f.name || f.model) || undefined,
     })
   }
   metaCache = { ref: fixtures, map }
@@ -267,6 +279,14 @@ function drawDoubleRing(
 // DRAW
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * 🜨 WAVE 8173 (M1): devices ya etiquetados este frame — UNA etiqueta
+ * por aparato. Las celdas multicelulares de un fixture viven en un
+ * anillo de 15 cm: sin dedupe, N etiquetas se imprimen pisándose en el
+ * mismo cluster de píxeles. Set de módulo reusado — cero allocs.
+ */
+const labeledDevices = new Set<string>()
+
 export function drawNodeLayer(
   ctx: CanvasRenderingContext2D,
   t: WorldTransform,
@@ -284,10 +304,13 @@ export function drawNodeLayer(
   // Etiquetas solo con zoom cercano — fuente px con clamp estricto
   // [12,24], jamás escala libre con la matriz del mundo (8171-M3/8172-M1).
   const drawLabels = cam.zoom >= 90
+  labeledDevices.clear()
   if (drawLabels) {
     ctx.font = `${nodeLabelFontPx(cam.zoom)}px monospace`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
+    ctx.fillStyle = LABEL_TINT
+    ctx.shadowBlur = 0 // higiene: jamás sombra residual sobre el texto
   }
 
   for (let i = 0; i < entries.length; i++) {
@@ -324,9 +347,14 @@ export function drawNodeLayer(
         break
     }
 
-    if (drawLabels) {
-      ctx.fillStyle = LABEL_TINT
-      ctx.fillText(entry.customLabel ?? entry.cellSuffix, sx, sy - r - 3)
+    // 🜨 8173-M1: UNA etiqueta por deviceId — la primera celda dibujada
+    // del aparato la porta. Cadena única: customLabel → name/model del
+    // fixture → cellSuffix. Jamás dos fillText sobre el mismo cluster.
+    if (drawLabels && !labeledDevices.has(entry.deviceId)) {
+      labeledDevices.add(entry.deviceId)
+      const label =
+        entry.customLabel ?? meta?.label ?? entry.cellSuffix
+      ctx.fillText(label, sx, sy - r - 4)
     }
   }
 }

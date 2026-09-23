@@ -175,6 +175,10 @@ export function serializeHephClip(clip) {
         simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
         safetyDeclaration: clip.safetyDeclaration ? JSON.parse(JSON.stringify(clip.safetyDeclaration)) : undefined,
         executionHints: clip.executionHints ? JSON.parse(JSON.stringify(clip.executionHints)) : undefined,
+        // 🜨 WAVE 8000 (ASTERIA — D-4 EMBEBIDO): el serializador es un whitelist;
+        // sin esta línea, clip.asteria se descarta EN SILENCIO al guardar. El
+        // deep-clone JSON rompe la referencia a Immer y asegura serialización limpia.
+        asteria: clip.asteria ? JSON.parse(JSON.stringify(clip.asteria)) : undefined,
         schemaVersion: '3.0',
     };
 }

@@ -34,6 +34,7 @@ import { useSelectionStore } from './selectionStore';
 import { createEmptyShowFile, createFixtureGroup, normalizeZone, validateShowFileDeep, snapPosition, clampToCrystalBox, clampElevation, computePlanarPlacement, } from '../core/stage/ShowFileV2';
 import { autoMigrate } from '../core/stage/ShowFileMigrator';
 import { ensureSystemGroups } from '../core/stage/DefaultGroupsService';
+import { deepCloneFixture } from '../core/stage/massOps';
 // ═══════════════════════════════════════════════════════════════════════════
 // ID GENERATION (DETERMINISTIC, NOT RANDOM)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -42,7 +43,7 @@ let idCounter = 0;
  * Generate a unique ID based on timestamp and counter
  * NO Math.random() - Axioma Anti-Simulación
  */
-function generateId(prefix) {
+export function generateId(prefix) {
     const timestamp = Date.now().toString(36);
     const count = (++idCounter).toString(36);
     return `${prefix}-${timestamp}-${count}`;
@@ -52,6 +53,20 @@ function generateId(prefix) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Check if we're in Electron environment
 const isElectron = typeof window !== 'undefined' && 'lux' in window;
+/**
+ * 🏗️ WAVE 8130-F2 (M1): sync backend — UNA llamada por mutación batch.
+ * Extraído del patrón inline de addFixture/updateFixture (Amnesia Bug:
+ * las rutas duplicate/remove/batch nunca sincronizaban — el backend
+ * quedaba desfasado hasta recargar el show).
+ */
+function syncBackendFixtures(get) {
+    const lux = window.lux;
+    if (lux?.aether?.setFixtures) {
+        lux.aether
+            .setFixtures(get().fixtures, null)
+            .catch((err) => console.warn('[stageStore] Backend sync failed:', err));
+    }
+}
 /**
  * Get the persistence API from the preload bridge
  */
@@ -439,6 +454,27 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
                 .catch((err) => console.warn('[addFixture] Backend sync failed:', err));
         }
     },
+    /**
+     * 🏗️ WAVE 8130-F2 (M1): Batch insert — un push + UNA sola sync
+     * backend (N×addFixture dispararía N setFixtures redundantes).
+     * Punto de entrada de las Mass Operations de Erebus.
+     */
+    addFixtures: (newFixtures) => {
+        const { showFile } = get();
+        if (!showFile || newFixtures.length === 0)
+            return;
+        showFile.fixtures.push(...newFixtures);
+        get()._syncDerivedState();
+        get()._setDirty();
+        syncBackendFixtures(get);
+        console.log(`[stageStore] ➕ Mass-added ${newFixtures.length} fixtures`);
+    },
+    /**
+     * 🏗️ WAVE 8130-F2: deep-clone real (los objetos anidados ya no se
+     * comparten por referencia con el original) + generateId (anti-
+     * colisión en batches del mismo ms) + sync backend (el clon antes
+     * era invisible para Titan hasta recargar el show).
+     */
     duplicateFixture: (id) => {
         const { showFile } = get();
         if (!showFile)
@@ -446,23 +482,25 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         const original = showFile.fixtures.find(f => f.id === id);
         if (!original)
             return null;
-        const newId = `fix-${Date.now()}`;
-        const copy = {
-            ...original,
-            id: newId,
+        const newId = generateId('fix');
+        const copy = deepCloneFixture(original, newId, {
             name: `${original.name} (copy)`,
-            address: 0, // Reset DMX address — user must patch
             position: {
                 x: original.position.x + 0.5,
                 y: original.position.y,
                 z: original.position.z + 0.5,
             },
-        };
+        });
         showFile.fixtures.push(copy);
         get()._syncDerivedState();
         get()._setDirty();
+        syncBackendFixtures(get);
         return newId;
     },
+    /**
+     * 🏗️ WAVE 8130-F2: sync backend — el borrado ahora llega a Titan
+     * (antes el backend seguía emitiendo a una fixture fantasma).
+     */
     removeFixture: (id) => {
         const { showFile } = get();
         if (!showFile)
@@ -474,6 +512,26 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         }
         get()._syncDerivedState();
         get()._setDirty();
+        syncBackendFixtures(get);
+    },
+    /**
+     * 🏗️ WAVE 8130-F2: batch remove — filtra ids + limpia referencias de
+     * grupos + UNA sola sync backend. Es el pseudo-undo de las Mass
+     * Operations: "Delete All" sobre 60 clones ya no dispara 60
+     * setFixtures seguidos.
+     */
+    removeFixtures: (ids) => {
+        const { showFile } = get();
+        if (!showFile || ids.length === 0)
+            return;
+        const idSet = new Set(ids);
+        showFile.fixtures = showFile.fixtures.filter(f => !idSet.has(f.id));
+        for (const group of showFile.groups) {
+            group.fixtureIds = group.fixtureIds.filter(fid => !idSet.has(fid));
+        }
+        get()._syncDerivedState();
+        get()._setDirty();
+        syncBackendFixtures(get);
     },
     updateFixture: (id, updates) => {
         const { showFile } = get();
@@ -601,6 +659,9 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         }
         get()._syncDerivedState();
         get()._setDirty();
+        // 🏗️ WAVE 8130-F2: sync backend — Align/Distribute del MultiInspector
+        // movían fixtures solo en frontend; Titan conservaba posiciones viejas.
+        syncBackendFixtures(get);
     },
     // WAVE 7606: Batch edit — apply same partial to multiple fixtures
     updateMultipleFixtures: (ids, changes) => {
@@ -619,6 +680,8 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         }
         get()._syncDerivedState();
         get()._setDirty();
+        // 🏗️ WAVE 8130-F2: sync backend (misma clase de Amnesia Bug).
+        syncBackendFixtures(get);
     },
     reconcileFixturesWithProfile: (updatedProfile, previousProfileId) => {
         const { showFile } = get();

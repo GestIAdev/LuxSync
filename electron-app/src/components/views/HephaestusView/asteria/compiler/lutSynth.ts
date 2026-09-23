@@ -24,7 +24,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import type { HephCurve, HephKeyframe, HephParamId } from '../../../../../core/hephaestus/types'
+import type { HephCurve, HephKeyframe, HephParamId, HSL } from '../../../../../core/hephaestus/types'
 import type { PhaseOverrideMap } from '../../../../../core/hephaestus/phase/PhaseOverride'
 import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { FieldSnapshot } from '../model/fieldEngine'
@@ -71,6 +71,40 @@ export function synthesizeLambdaPulse(
     valueType: 'number',
     range: [0, 1],
     defaultValue: 0,
+    keyframes,
+    mode: 'absolute',
+  }
+}
+
+/**
+ * 🌈 WAVE 8110 (M2): LUT de COLOR — barrido de arcoíris completo.
+ *
+ * Hue 0→360 sobre el dominio D con S=100 / L=50, cierre C⁰ (rojo→rojo).
+ *
+ * TRAMPA DE SEMÁNTICA REAL (CurveEvaluator.lerpHue — shortest-path):
+ * un único segmento 0→360 colapsa (delta=360 → shortest path = 0 →
+ * rojo estático). Por eso emitimos 7 keyframes a 60°: cada segmento
+ * tiene delta=60 < 180 → la interpolación SIEMPRE avanza hacia
+ * adelante por el arcoíris completo. Estructura idéntica a las curvas
+ * `valueType:'color'` que la Forja produce a mano (range [0,360],
+ * defaultValue HSL) — blendRgb las funde sin discriminación.
+ */
+export function synthesizeColorLut(durationMs: number): HephCurve {
+  const D = Math.max(1, durationMs)
+  const keyframes: HephKeyframe[] = []
+  for (let i = 0; i <= 6; i++) {
+    const hsl: HSL = { h: i * 60, s: 100, l: 50 }
+    keyframes.push({
+      timeMs: Math.round((D * i) / 6),
+      value: hsl,
+      interpolation: 'linear',
+    })
+  }
+  return {
+    paramId: 'color',
+    valueType: 'color',
+    range: [0, 360],
+    defaultValue: { h: 0, s: 100, l: 50 },
     keyframes,
     mode: 'absolute',
   }

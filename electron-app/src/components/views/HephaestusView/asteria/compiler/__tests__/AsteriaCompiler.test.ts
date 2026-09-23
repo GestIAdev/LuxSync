@@ -671,3 +671,188 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
     expect(validateAstTrack(noPrefix, 4000)).toContain('ast_')
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// WAVE 8110 — Chromatic Injection: LUT arcoíris + gain→lightness
+// ═════════════════════════════════════════════════════════════════════════════
+
+type HslValue = { h: number; s: number; l: number }
+const hslOf = (kf: { value: number | HslValue }): HslValue =>
+  kf.value as HslValue
+
+describe('🌈 AsteriaCompiler — Chromatic Injection (WAVE 8110)', () => {
+  test('Λ + color: ast_color_lambda con LUT HSL — barrido 0→360 en 7 kfs', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      targetParams: ['color'] as const,
+    }
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip: makeClip(), project,
+    })
+    expect(out.tracks).toHaveLength(1)
+    const t = out.tracks[0]
+    expect(t.id).toBe('ast_color_lambda_0')
+    expect(t.paramId).toBe('color')
+    expect(t.curve.valueType).toBe('color')
+    expect(t.curve.range).toEqual([0, 360])
+    // 7 keyframes — segmentos de 60°: lerpHue (shortest-path) siempre
+    // avanza hacia adelante. Un único tramo 0→360 colapsaría (delta=0).
+    const kfs = t.curve.keyframes
+    expect(kfs).toHaveLength(7)
+    for (let i = 0; i <= 6; i++) {
+      const hsl = hslOf(kfs[i])
+      expect(hsl.h).toBeCloseTo(i * 60, 5)
+      expect(hsl.s).toBe(100)
+      expect(hsl.l).toBe(50)
+    }
+    // Cierre C⁰: rojo → rojo (hue 360 ≡ 0 mod 360)
+    expect(hslOf(kfs[0]).h).toBe(0)
+    expect(hslOf(kfs[6]).h % 360).toBe(0)
+    // Bus de direcciones intacto — offsets espaciales sobre el arcoíris
+    expect(Object.keys(t.phaseOverrides!).length).toBe(3)
+    // Sin warnings de tipo — color es ciudadano de primera clase
+    expect(
+      out.report.warnings.some((w) => w.startsWith('PARAM_SKIPPED')),
+    ).toBe(false)
+  })
+
+  test('Λ multi-param: intensity emite λ-pulse numérica, color emite LUT', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      targetParams: ['intensity', 'color'] as const,
+    }
+    const out = compile({
+      atlas: makeAtlas(), field: makeField(), clip: makeClip(), project,
+    })
+    expect(out.tracks).toHaveLength(2)
+    expect(out.tracks[0].curve.valueType).toBe('number')
+    expect(out.tracks[1].curve.valueType).toBe('color')
+    expect(out.tracks[1].paramId).toBe('color')
+  })
+
+  test('cohort + color: gain horneado en Lightness — H/S intactos', () => {
+    const field: FieldSnapshot = {
+      count: 4,
+      delayMs: new Float32Array([0, 100, 200, 300]),
+      gain: new Float32Array([1, 0.5, 1, 0.5]),
+      mask: new Uint8Array([1, 1, 1, 1]),
+    }
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'cohort' as const,
+      cohortBudget: 2,
+      targetParams: ['color'] as const,
+    }
+    const out = compile({
+      atlas: makeCohortAtlas(), field, clip: makeClip(), project,
+    })
+    expect(out.tracks).toHaveLength(2)
+    expect(out.tracks.map((t) => t.id)).toEqual([
+      'ast_color_cohort_0',
+      'ast_color_cohort_1',
+    ])
+    // cohort0 gain≈0.5 → L horneada ≈ 25; cohort1 gain=1 → L=50.
+    // La LUT rota por delay — el horneado toca solo `l`, nunca `h`/`s`.
+    for (const kf of out.tracks[0].curve.keyframes) {
+      const hsl = hslOf(kf)
+      expect(hsl.l).toBeCloseTo(25, 5)
+      expect(hsl.s).toBe(100)
+    }
+    for (const kf of out.tracks[1].curve.keyframes) {
+      const hsl = hslOf(kf)
+      expect(hsl.l).toBeCloseTo(50, 5)
+      expect(hsl.s).toBe(100)
+    }
+    // Los keyframes horneados siguen siendo HSL válidos para blendRgb
+    for (const kf of out.tracks[0].curve.keyframes) {
+      const hsl = hslOf(kf)
+      expect(Number.isFinite(hsl.h)).toBe(true)
+      expect(Number.isFinite(hsl.s)).toBe(true)
+      expect(Number.isFinite(hsl.l)).toBe(true)
+      expect(hsl.l).toBeGreaterThanOrEqual(0)
+      expect(hsl.l).toBeLessThanOrEqual(100)
+    }
+  })
+
+  test('mcc + color: L por celda horneada — el fade espacial es a negro', () => {
+    const field: FieldSnapshot = {
+      count: 4,
+      delayMs: new Float32Array([0, 0, 0, 0]),
+      gain: new Float32Array([1, 0.5, 1, 1]),
+      mask: new Uint8Array([1, 1, 1, 1]),
+    }
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'mcc' as const,
+      targetParams: ['color'] as const,
+    }
+    const out = compile({
+      atlas: makeAtlas(), field, clip: makeClip(), project,
+    })
+    expect(out.tracks).toHaveLength(4)
+    const l0 = hslOf(out.tracks[0].curve.keyframes[0]).l
+    const l1 = hslOf(out.tracks[1].curve.keyframes[0]).l
+    expect(l0).toBeCloseTo(50, 5)  // gain 1 → L intacta
+    expect(l1).toBeCloseTo(25, 5)  // gain 0.5 → L×0.5 (fade a negro)
+    for (const t of out.tracks) {
+      expect(t.curve.valueType).toBe('color')
+      expect(t.cell).toBeDefined() // Δ1+Δ3 intactos sobre color
+    }
+  })
+
+  test('Λ-Ride: fuente color clona agnósticamente; fuente numérica + color → warning + LUT', () => {
+    // a) Fuente color: la curva esculpida en Forge es la base — ride puro
+    const clip = makeClip()
+    clip.tracks.push({
+      id: 'forge-color-01',
+      paramId: 'color',
+      zones: ['all'] as readonly ZoneTarget[],
+      curve: {
+        paramId: 'color',
+        valueType: 'color',
+        range: [0, 360],
+        defaultValue: { h: 0, s: 100, l: 50 },
+        keyframes: [
+          { timeMs: 0, value: { h: 200, s: 90, l: 40 }, interpolation: 'linear' },
+          { timeMs: 4000, value: { h: 320, s: 90, l: 40 }, interpolation: 'linear' },
+        ],
+        mode: 'absolute',
+      },
+    })
+    const rideColor = compile({
+      atlas: makeAtlas(), field: makeField(), clip,
+      project: {
+        ...createDefaultProject('x'),
+        targetParams: ['color'] as const,
+        lutSource: { kind: 'ride' as const, trackId: 'forge-color-01' },
+      },
+    })
+    const rt = rideColor.tracks[0]
+    expect(rt.curve.valueType).toBe('color')
+    expect(rt.curve.keyframes).toEqual(
+      clip.tracks[1].curve.keyframes, // clon estructural del azul→magenta
+    )
+    expect(
+      rideColor.report.warnings.some((w) => w.startsWith('RIDE_TYPE_MISMATCH')),
+    ).toBe(false)
+
+    // b) Fuente numérica + target color: sin clone silencioso de basura —
+    //    warning honesto y caída a la LUT sintética.
+    const rideNumeric = compile({
+      atlas: makeAtlas(), field: makeField(), clip,
+      project: {
+        ...createDefaultProject('x'),
+        targetParams: ['color'] as const,
+        lutSource: { kind: 'ride' as const, trackId: 'forge-track-01' },
+      },
+    })
+    expect(
+      rideNumeric.report.warnings.some((w) =>
+        w.startsWith('RIDE_TYPE_MISMATCH'),
+      ),
+    ).toBe(true)
+    const fb = rideNumeric.tracks[0]
+    expect(fb.curve.valueType).toBe('color')
+    expect(fb.curve.keyframes).toHaveLength(7) // LUT arcoíris, no el pulso
+  })
+})

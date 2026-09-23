@@ -46,6 +46,7 @@ import type {
   HephCurve,
   HephParamId,
   HephTrack,
+  HSL,
   ZoneTarget,
 } from '../../../../../core/hephaestus/types'
 import type { PhaseConfigPro } from '../../../../../core/hephaestus/phase/PhaseConfigPro'
@@ -53,7 +54,7 @@ import type { PhaseOverrideMap } from '../../../../../core/hephaestus/phase/Phas
 import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { AsteriaProject } from '../model/AsteriaProject'
 import type { FieldSnapshot } from '../model/fieldEngine'
-import { synthesizeLambda, synthesizeLambdaPulse } from './lutSynth'
+import { synthesizeColorLut, synthesizeLambda, synthesizeLambdaPulse } from './lutSynth'
 import { rotateCurveCyclic } from './curveRotate'
 import { quantizeGainCohorts } from './cohortQuantizer'
 
@@ -124,15 +125,16 @@ export function injectAstTracks(
 }
 
 /**
- * Params que la Vía Λ puede emitir hoy: numéricos, curva sintetizable.
+ * Params que la Vía Λ puede emitir: numéricos (λ-pulse) o 'color'
+ * (LUT arcoíris 🌈 WAVE 8110-M2).
  * WAVE 8080 (M1): 'strobe' admitido — el antiguo gate G6 era paternalismo;
  * el operador decide a qué canal aplica su campo, el compilador obedece.
- * 'color' sigue fuera: la Vía Λ solo emite curvas numéricas.
  */
 const LAMBDA_SAFE_PARAMS: ReadonlySet<HephParamId> = new Set([
   'intensity', 'white', 'amber', 'speed', 'zoom', 'focus', 'iris',
   'pan', 'tilt', 'strobe', 'scale_x', 'scale_y', 'rot_x', 'rot_y',
   'gobo_rotation', 'smoke_pump', 'width', 'direction', 'globalComp',
+  'color',
 ])
 
 /** phaseConfig mínimo que despierta el bus de overrides (hallazgo A1). */
@@ -167,14 +169,34 @@ function cloneCurve(src: HephCurve, paramId: HephParamId): HephCurve {
 }
 
 /**
- * Escala los valores de una curva numérica por `gain`, clampeando al
- * `range` declarado. WAVE 8090 (M1): el gain se hornea en los keyframes
- * para TODOS los params, intensity incluido — `track.dimmerScale` era
- * un DEAD WRITE (el runtime jamás lo leyó; auditoría 8080-M3). El
- * motor recibe la curva ya escalada — cero dependencia del campo muerto.
+ * Escala los valores de una curva por `gain`. WAVE 8090 (M1): el gain
+ * se hornea en los keyframes — `track.dimmerScale` era un DEAD WRITE
+ * (el runtime jamás lo leyó; auditoría 8080-M3). El motor recibe la
+ * curva ya escalada — cero dependencia del campo muerto.
+ *
+ * - 'number': v × gain, clamp al `range` declarado.
+ * - 'color' 🌈 WAVE 8110 (M3): gain → canal Lightness (HSL `l` × gain,
+ *   clamp [0,100]). La caída espacial se convierte en fundido a negro
+ *   manteniendo H y S intactos — pureza de tono preservada. La forma
+ *   del keyframe ({h,s,l}) queda idéntica a las curvas de la Forja —
+ *   blendRgb las funde sin excepciones de tipado.
  */
 function bakeGainIntoCurve(curve: HephCurve, gain: number): HephCurve {
-  if (curve.valueType !== 'number' || gain === 1) return curve
+  if (gain === 1) return curve
+  if (curve.valueType === 'color') {
+    return {
+      ...curve,
+      keyframes: curve.keyframes.map((kf) => {
+        const v = kf.value
+        if (typeof v !== 'object' || v === null || !('l' in v)) return kf
+        return {
+          ...kf,
+          value: { ...v, l: Math.min(100, Math.max(0, (v as HSL).l * gain)) },
+        }
+      }),
+    }
+  }
+  if (curve.valueType !== 'number') return curve
   const [lo, hi] = curve.range
   return {
     ...curve,
@@ -339,9 +361,23 @@ export function compile(input: CompileInput): CompileOutput {
     }
   }
 
-  /** Curva base por parámetro: clone del ride o pulso Λ sintetizado. */
-  const baseCurveFor = (param: HephParamId): HephCurve =>
-    rideCurve !== null ? cloneCurve(rideCurve, param) : synthesizeLambdaPulse(param, D)
+  /** Curva base por parámetro: clone del ride o síntesis por tipo
+   *  (λ-pulse numérica / LUT color 🌈 WAVE 8110-M2). El ride es
+   *  agnóstico — cloneCurve preserva el valueType del origen. Guardia
+   *  honesta: 'color' con fuente no-color no clonaría basura silente —
+   *  advertimos y caemos al LUT sintético. */
+  const baseCurveFor = (param: HephParamId): HephCurve => {
+    if (rideCurve !== null) {
+      if (param === 'color' && rideCurve.valueType !== 'color') {
+        warnings.push(
+          `RIDE_TYPE_MISMATCH — fuente '${rideCurve.paramId}' no es color; 'color' usa LUT sintética`,
+        )
+      } else {
+        return cloneCurve(rideCurve, param)
+      }
+    }
+    return param === 'color' ? synthesizeColorLut(D) : synthesizeLambdaPulse(param, D)
+  }
 
   // ── Emisión por estrategia ──
   let tracks: HephTrack[] = []
@@ -450,10 +486,10 @@ function zonesOverlap(
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * targetParams filtrados por las reglas duras: los params sin curva
- * numérica se omiten — warnings emitidos UNA vez. WAVE 8080 (M1):
- * strobe compila como cualquier otro param numérico — el operador
- * tiene la última palabra sobre su propio rig.
+ * targetParams filtrados por las reglas duras: los params sin canal
+ * sintetizable se omiten — warnings emitidos UNA vez. WAVE 8080 (M1):
+ * strobe compila como cualquier otro param numérico; WAVE 8110 (M1):
+ * 'color' compila con LUT HSL — el operador tiene la última palabra.
  */
 function emitTargetParams(
   project: AsteriaProject,
@@ -462,7 +498,7 @@ function emitTargetParams(
   const out: HephParamId[] = []
   for (const param of project.targetParams) {
     if (!LAMBDA_SAFE_PARAMS.has(param)) {
-      warnings.push(`PARAM_SKIPPED '${param}' — requiere curva numérica`)
+      warnings.push(`PARAM_SKIPPED '${param}' — sin canal sintetizable`)
       continue
     }
     out.push(param)

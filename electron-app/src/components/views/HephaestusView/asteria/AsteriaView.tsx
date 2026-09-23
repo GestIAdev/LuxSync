@@ -59,15 +59,17 @@ const TOOL_ORDER: readonly AsteriaToolId[] = [
 
 /**
  * 🜨 WAVE 8070 (M2): params ofrecidos en el rail — subestricto de
- * LAMBDA_SAFE_PARAMS (numéricos con curva sintetizable). 'color' no
- * entra: la Vía Λ solo emite curvas numéricas.
+ * LAMBDA_SAFE_PARAMS.
  * WAVE 8080 (M1): STB desbloqueado — el gate G6 era paternalismo;
  * el operador decide si su campo pinta estrobo.
+ * WAVE 8110 (M1): CLR — el compilador sintetiza LUT arcoíris y
+ * hornea gain→lightness; el campo ya puede pintar color.
  */
 const TARGET_PARAM_CHOICES: readonly { id: HephParamId; label: string }[] = [
   { id: 'intensity', label: 'DIM' },
   { id: 'white', label: 'WHT' },
   { id: 'amber', label: 'AMB' },
+  { id: 'color', label: 'CLR' },
   { id: 'pan', label: 'PAN' },
   { id: 'tilt', label: 'TILT' },
   { id: 'zoom', label: 'ZOOM' },

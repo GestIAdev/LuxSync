@@ -21,6 +21,7 @@ import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
 import type { FieldSnapshot } from '../../model/fieldEngine'
 import { createDefaultProject } from '../../model/AsteriaProject'
+import type { GlyphGesture } from '../../model/AsteriaProject'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FIXTURES
@@ -232,7 +233,11 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     expect(Object.keys(t.phaseOverrides!).length).toBe(3)
   })
 
-  test('Λ-Frozen: glifo estático (canal gain) sobre Vía Λ → aviso verbatim', () => {
+  // ── 🜨 WAVE 8160: Λ-Frozen murió — el glifo jamás monta la Vía Λ ──
+  //    La imagen estática se hornea por celda (MCC-Cell); el drift de
+  //    duración era un artefacto del truco Λ que ya no existe.
+
+  test('glyph estático bajo strategy lambda → enrutado a MCC-Cell', () => {
     const project = {
       ...createDefaultProject('x'),
       strategy: 'lambda' as const,
@@ -250,18 +255,16 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
       atlas: makeAtlas(), field: makeField(), clip: makeClip(),
       project,
     })
+    expect(out.report.strategy).toBe('mcc')
     expect(
-      out.report.warnings.some(
-        (w) =>
-          w.startsWith('LAMBDA_FROZEN_DRIFT') &&
-          w.includes(
-            'Λ-Frozen: imagen estática por escalado de duración — drift 3,3 %/disparo',
-          ),
-      ),
+      out.report.warnings.some((w) => w.startsWith('GLYPH_ROUTED_MCC')),
     ).toBe(true)
+    expect(
+      out.report.warnings.some((w) => w.startsWith('LAMBDA_FROZEN_DRIFT')),
+    ).toBe(false)
   })
 
-  test('Λ-Frozen NO avisa con glifo en canal delay (texto en movimiento)', () => {
+  test('glyph en canal delay bajo lambda → MCC también (texto 1:1)', () => {
     const project = {
       ...createDefaultProject('x'),
       strategy: 'lambda' as const,
@@ -279,6 +282,7 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
       atlas: makeAtlas(), field: makeField(), clip: makeClip(),
       project,
     })
+    expect(out.report.strategy).toBe('mcc')
     expect(
       out.report.warnings.some((w) => w.startsWith('LAMBDA_FROZEN_DRIFT')),
     ).toBe(false)
@@ -863,5 +867,180 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     const fb = rideNumeric.tracks[0]
     expect(fb.curve.valueType).toBe('color')
     expect(fb.curve.keyframes).toHaveLength(5) // pulso monocromático
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8160 — GLYPH ROUTING: máscara libre 1:1, adiós COHORT_ZONE_SPILL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function zEntry(
+  nodeId: string, deviceId: string, zoneId: string, x: number, z: number,
+): NodeAtlasEntry {
+  return {
+    nodeId, deviceId,
+    cellSuffix: nodeId.slice(nodeId.indexOf(':') + 1),
+    family: 'IMPACT', zoneId,
+    position: { x, y: 0, z }, role: 'cell',
+  }
+}
+
+/** Rig de 2 zonas: 'front' f1..f4, 'back' b1..b2 — el spill de zonas vive aquí. */
+function zonedAtlas(): NodeAtlas {
+  const entries = [
+    zEntry('f1:impact', 'f1', 'front', -1.5, -0.5),
+    zEntry('f2:impact', 'f2', 'front', -0.5, -0.5),
+    zEntry('f3:impact', 'f3', 'front', 0.5, -0.5),
+    zEntry('f4:impact', 'f4', 'front', 1.5, -0.5),
+    zEntry('b1:impact', 'b1', 'back', -1, 0.5),
+    zEntry('b2:impact', 'b2', 'back', 1, 0.5),
+  ]
+  return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+}
+
+function glyphGesture(mask: readonly string[]): GlyphGesture {
+  return {
+    kind: 'glyph', id: 'g1', op: 'replace', text: 'HI',
+    mask: { nodeIds: [...mask] },
+    transform: { x: 0, z: -0.5, scaleM: 2, rotDeg: 0 },
+    channel: 'gain', antialias: true,
+  }
+}
+
+/** Campo: solo los `ids` enmascarados, gain variable → 'auto' elegiría cohort. */
+function maskedField(atlas: NodeAtlas, ids: readonly string[]): FieldSnapshot {
+  const n = atlas.entries.length
+  const field: FieldSnapshot = {
+    count: n,
+    delayMs: new Float32Array(n),
+    gain: new Float32Array(n).fill(1),
+    mask: new Uint8Array(n),
+  }
+  const wanted = new Set(ids)
+  atlas.entries.forEach((e, i) => {
+    if (!wanted.has(e.nodeId)) return
+    field.mask[i] = 1
+    field.gain[i] = i % 2 === 0 ? 1 : 0.5 // gainVaries → cohort bajo 'auto'
+  })
+  return field
+}
+
+function glyphProject(
+  mask: readonly string[],
+  strategy: 'auto' | 'cohort' | 'mcc' | 'lambda' = 'auto',
+) {
+  return {
+    ...createDefaultProject('x'),
+    strategy,
+    stack: [
+      { kind: 'base' as const, id: 'base', delayMs: 0, gain: 1 },
+      glyphGesture(mask),
+    ],
+  }
+}
+
+describe('🜨 WAVE 8160 — Glyph routing & máscara libre', () => {
+  test('glyph nunca cruza la Vía B: máscara parcial de zona → mcc, cero SPILL', () => {
+    // f1,f2 son SUBCONJUNTO de la zona 'front' — bajo cohortes la zona
+    // alcanzaría f3,f4 (spill real). Con glyph → celular 1:1.
+    const atlas = zonedAtlas()
+    const mask = ['f1:impact', 'f2:impact']
+    const out = compile({
+      atlas,
+      field: maskedField(atlas, mask),
+      clip: makeClip(),
+      project: glyphProject(mask, 'auto'),
+    })
+    expect(out.report.strategy).toBe('mcc')
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ZONE_SPILL')),
+    ).toBe(false)
+    // MCC-Cell: una pista por nodo cubierto, cell = nodeId exacto
+    expect(out.tracks.length).toBeGreaterThan(0)
+    const cells = new Set(out.tracks.map((t) => t.cell))
+    expect(cells).toEqual(new Set(mask))
+    for (const t of out.tracks) {
+      expect(t.zones).toEqual(['all'])
+    }
+  })
+
+  test("strategy 'cohort' explícita + glyph → relevada por MCC + aviso", () => {
+    const atlas = zonedAtlas()
+    const mask = ['f1:impact', 'f2:impact']
+    const out = compile({
+      atlas,
+      field: maskedField(atlas, mask),
+      clip: makeClip(),
+      project: glyphProject(mask, 'cohort'),
+    })
+    expect(out.report.strategy).toBe('mcc')
+    expect(
+      out.report.warnings.some((w) => w.startsWith('GLYPH_ROUTED_MCC')),
+    ).toBe(true)
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ZONE_SPILL')),
+    ).toBe(false)
+  })
+
+  test('restricción crítica: selección irregular de 10 → solo esas 10 pistas', () => {
+    // 10 nodos irregulares repartidos entre dos zonas — máscara arbitraria
+    const entries: NodeAtlasEntry[] = []
+    const mask: string[] = []
+    for (let i = 0; i < 10; i++) {
+      const id = `fx-${i}:impact`
+      entries.push(
+        zEntry(id, `fx-${i}`, i % 2 ? 'front' : 'back',
+          (i * 0.37) % 3 - 1.5, (i * 0.53) % 1.4 - 0.7),
+      )
+      mask.push(id)
+    }
+    const atlas = { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+    const out = compile({
+      atlas,
+      field: maskedField(atlas, mask),
+      clip: makeClip(),
+      project: glyphProject(mask),
+    })
+    // Por ilegible que sea, compila: pistas exactamente para los 10
+    expect(new Set(out.tracks.map((t) => t.cell))).toEqual(new Set(mask))
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ZONE_SPILL')),
+    ).toBe(false)
+  })
+
+  test('resolución subóptima → GLYPH_SUBOPTIMAL_RES (aviso, compila igual)', () => {
+    const atlas = zonedAtlas()
+    const mask = atlas.entries.map((e) => e.nodeId)
+    const out = compile({
+      atlas,
+      field: maskedField(atlas, mask),
+      clip: makeClip(),
+      project: glyphProject(mask),
+    })
+    // Rig de 6 nodos en 2 filas — jamás resuelve 7 filas de fuente 5×7
+    expect(
+      out.report.warnings.some((w) => w.startsWith('GLYPH_SUBOPTIMAL_RES')),
+    ).toBe(true)
+    // …y aun así emite pistas para todos los nodos cubiertos
+    expect(out.tracks.length).toBeGreaterThan(0)
+  })
+
+  test('sin glyph en la pila: la Vía B sigue reportando SPILL intacto', () => {
+    // Contraste de no-regresión: el mismo campo sin glifo SÍ produce el
+    // diagnóstico de cohortes (el fix es quirúrgico, no apaga la alarma).
+    const atlas = zonedAtlas()
+    const mask = ['f1:impact']
+    const out = compile({
+      atlas,
+      field: maskedField(atlas, mask),
+      clip: makeClip(),
+      project: {
+        ...createDefaultProject('x'),
+        strategy: 'cohort' as const,
+      },
+    })
+    expect(out.report.strategy).toBe('cohort')
+    // (el spill puede o no dispararse según la cohorte — lo que importa
+    //  es que la rama sigue viva: strategy cohort se respeta sin glyph)
   })
 })

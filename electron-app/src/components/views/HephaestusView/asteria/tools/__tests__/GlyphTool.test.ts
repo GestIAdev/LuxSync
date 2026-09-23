@@ -129,4 +129,40 @@ describe('A GlyphTool (T5 — WAVE 8050)', () => {
     tool.onPointerUp!(456, 300, fakeEvent(), ctx)
     expect(gesturePreview.glyph).toBeNull()
   })
+
+  // ── 🜨 WAVE 8160 (M3): máscara libre + bbox de la selección ──
+
+  test('selección libre → el bbox escala la fuente; la máscara NO se re-deriva', () => {
+    const tool = createGlyphTool()
+    const atlas = makeAtlas() // petal-l (0,0) · petal-r (0.15,0) · fx-b (2,0)
+    // Selección irregular: extremos (0,0) y (2,0) — el bbox x∈[0,2]
+    // CONTIENE fx-a:petal-r (0.15,0), que NO está seleccionado.
+    const sel = new Set(['fx-a:petal-l', 'fx-b:impact'])
+    const { ctx, gestures } = fakeCtx(atlas, sel)
+    tool.onPointerDown!(700, 200, fakeEvent(), ctx) // clic lejos del bbox
+    tool.onPointerUp!(700, 200, fakeEvent(), ctx)
+
+    const g = gestures[0] as GlyphGesture
+    // Geometría = bbox de la selección: centro (1,0)
+    expect(g.transform.x).toBeCloseTo(1, 5)
+    expect(g.transform.z).toBeCloseTo(0, 5)
+    // 'LUX' → 17 cols: scaleM = min(2·7/17, fallback) = 0.8235 ≥ mínimo
+    expect(g.transform.scaleM).toBeCloseTo((2 * 7) / 17, 5)
+    // La máscara es EXACTAMENTE la selección — petal-r dentro del bbox
+    // queda fuera: el rectángulo no fuerza inclusiones.
+    expect(g.mask.nodeIds).toEqual(['fx-a:petal-l', 'fx-b:impact'])
+  })
+
+  test('con selección, el drag no mueve la geometría (solo el canal)', () => {
+    const tool = createGlyphTool()
+    const sel = new Set(['fx-a:petal-l', 'fx-a:petal-r'])
+    const { ctx, gestures } = fakeCtx(makeAtlas(), sel)
+    tool.onPointerDown!(400, 300, fakeEvent(), ctx)
+    tool.onPointerMove!(560, 400, fakeEvent(), ctx) // drag largo
+    tool.onPointerUp!(560, 400, fakeEvent(), ctx)
+    const g = gestures[0] as GlyphGesture
+    // Bbox x∈[0,0.15],z∈[0,0] → centro (0.075,0); el drag no lo movió
+    expect(g.transform.x).toBeCloseTo(0.075, 5)
+    expect(g.transform.scaleM).toBeGreaterThanOrEqual(0.7) // MIN_SCALE_M
+  })
 })

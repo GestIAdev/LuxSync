@@ -100,6 +100,28 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     expect(snap.delayMs[0]).toBe(0)   // canal gain no toca delay
   })
 
+  test('glyph (WAVE 8160-M3): dentro del bbox pero FUERA de la máscara → intacto', () => {
+    // 'I' scaleM=1.4: a (0,0) y b (0.05,0) caen AMBOS sobre el tallo
+    // (u≈2.5/2.75 → col 2 encendida). La máscara solo trae 'a:cell':
+    // b está dentro del rectángulo matemático pero jamás se evalúa.
+    const atlas: NodeAtlas = {
+      entries: [entry('a:cell', 0, 0), entry('b:cell', 0.05, 0)],
+      byNodeId: new Map(),
+    }
+    const stack: Gesture[] = [
+      {
+        kind: 'glyph', id: 'g1', op: 'replace', text: 'I',
+        mask: { nodeIds: ['a:cell'] },
+        transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+        channel: 'gain', antialias: false,
+      },
+    ]
+    const snap = evaluateStack(stack, atlas)
+    expect(snap.mask[0]).toBe(1)   // en máscara + cubierto
+    expect(snap.mask[1]).toBe(0)   // dentro del bbox, fuera de máscara
+    expect(snap.gain[1]).toBe(1)   // identidad intacta — cero tinta
+  })
+
   test('glyph delay: barrido — delay = u·celda·1000 ms (1 m/s)', () => {
     // a en x=0 → u=2.5 celdas → 0.5 m desde el borde → 500 ms
     const atlas: NodeAtlas = {

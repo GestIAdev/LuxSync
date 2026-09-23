@@ -228,4 +228,26 @@ describe('🜨 glyphRaster — legibilidad efectiva', () => {
     expect(m.nodesInRect).toBe(1)
     expect(m.legible).toBe(false)
   })
+
+  // ── 🜨 WAVE 8160 (M2): tolerancia espacial de 0.25 m ──
+
+  test('nodo a <0.25 m del borde de fila cuenta para la vecina', () => {
+    // 'I' scaleM=7 → celda de 1 m, rect z∈[-3.5,3.5]; ε=0.25 → frac 0.25.
+    const mk = (z: number): NodeAtlas => ({
+      entries: [entry('n:cell', 0, z)],
+      byNodeId: new Map(),
+    })
+    const g = (a: NodeAtlas) =>
+      glyphAll('I', a, { transform: { x: 0, z: 0, scaleM: 7, rotDeg: 0 } })
+
+    // z=-0.74 → v=2.76 → a 0.24 m del borde superior → filas {2,3}
+    const border = mk(-0.74)
+    expect(measureGlyphLegibility(border, g(border)).rowsResolved).toBe(2)
+    // z=-1.26 → v=2.24 → a 0.24 m del borde inferior → filas {1,2}
+    const below = mk(-1.26)
+    expect(measureGlyphLegibility(below, g(below)).rowsResolved).toBe(2)
+    // z=-0.85 → v=2.65 → a 0.35 m de ambos bordes → solo fila {2}
+    const mid = mk(-0.85)
+    expect(measureGlyphLegibility(mid, g(mid)).rowsResolved).toBe(1)
+  })
 })

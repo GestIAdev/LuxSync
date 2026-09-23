@@ -52,10 +52,11 @@ import type {
 import type { PhaseConfigPro } from '../../../../../core/hephaestus/phase/PhaseConfigPro'
 import type { PhaseOverrideMap } from '../../../../../core/hephaestus/phase/PhaseOverride'
 import type { NodeAtlas } from '../store/useAsteriaStore'
-import type { AsteriaProject } from '../model/AsteriaProject'
+import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
 import type { FieldSnapshot } from '../model/fieldEngine'
 import { synthesizeColorLut, synthesizeLambda, synthesizeLambdaPulse } from './lutSynth'
 import { ASTERIA_DEFAULT_TARGET_COLOR } from '../model/AsteriaProject'
+import { measureGlyphLegibility } from '../model/glyphRaster'
 import { rotateCurveCyclic } from './curveRotate'
 import { quantizeGainCohorts } from './cohortQuantizer'
 
@@ -331,22 +332,40 @@ export function compile(input: CompileInput): CompileOutput {
     )
   }
 
-  // ── Λ-Frozen (§3.2): un glifo ESTÁTICO (canal gain) disparado con
-  //    Vía Λ solo puede vivir por el truco de escalado de duración —
-  //    mesetas + D≫vida del disparo + one-shot. Deriva real por disparo:
-  //    el aviso va verbatim al HUD, nunca silencioso. 'ride' también es
-  //    Λ (una curva compartida): strategy resuelto 'lambda' lo cubre.
-  if (
-    strategy === 'lambda' &&
-    project.stack.some(
-      (g) =>
-        g.kind === 'glyph' &&
-        (g.channel === 'gain' || g.channel === 'both'),
-    )
-  ) {
-    warnings.push(
-      'LAMBDA_FROZEN_DRIFT — Λ-Frozen: imagen estática por escalado de duración — drift 3,3 %/disparo',
-    )
+  // ── 🜨 WAVE 8160 (M1): GLYPH = GEOMETRÍA 2D PURA ────────────────────
+  //    Un gesto de texto jamás cruza el targeting por zonas de la Vía B:
+  //    la máscara del operador (lazo/polígono/libre) es arbitraria y el
+  //    spill de zonas es estructuralmente inevitable. Enrutamiento
+  //    celular puro: MCC-Cell emite una pista por (nodo cubierto × param)
+  //    con `track.cell = nodeId` — mapeo absoluto 1:1, cero derrame.
+  //    Válido bajo CUALQUIER strategy declarada: estampar texto nunca
+  //    emite COHORT_ZONE_SPILL.
+  const glyphGestures = project.stack.filter(
+    (g): g is Extract<Gesture, { kind: 'glyph' }> => g.kind === 'glyph',
+  )
+  if (glyphGestures.length > 0) {
+    if (strategy !== 'mcc') {
+      if (project.strategy !== 'auto' && project.strategy !== 'mcc') {
+        warnings.push(
+          `GLYPH_ROUTED_MCC — el texto es máscara libre 1:1; strategy '${project.strategy}' relevada por enrutamiento celular`,
+        )
+      }
+      strategy = 'mcc'
+    }
+    // ── 🜨 WAVE 8160 (M2): legibilidad = aviso, nunca bloqueo ──
+    //    El operador tiene la última palabra: el texto compila aunque la
+    //    matriz no resuelva la fuente 5×7. Reporte honesto, sin gate.
+    for (const g of glyphGestures) {
+      const m = measureGlyphLegibility(atlas, g)
+      if (!m.legible) {
+        warnings.push(
+          `GLYPH_SUBOPTIMAL_RES '${g.text ?? ''}' — ${m.rowsResolved}/7 filas · ${m.colsResolved} cols resueltas — compila igualmente (aviso, no bloqueo)`,
+        )
+      }
+    }
+    // (La rama LAMBDA_FROZEN_DRIFT murió aquí: con glyph → mcc forzado,
+    //  strategy==='lambda' + glyph es inalcanzable — el drift de imagen
+    //  estática era un artefacto del truco Λ; MCC lo hornea por celda.)
   }
 
   // ── Λ-Ride (§8.2): la curva esculpida en Forge es la base de TODAS las

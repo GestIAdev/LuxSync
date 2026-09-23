@@ -2856,6 +2856,13 @@
   color: #ff7a7a;
 }
 
+/* 🜨 WAVE 8160 (M2): warning naranja — aviso no bloqueante
+   (la legibilidad del glifo informa, no decide por el operador). */
+.asteria-rail__warn {
+  font-size: 10px;
+  color: #ffb35c;
+}
+
 /* ── WAVE 8020: toolbox de selección + badge POKE ── */
 
 .asteria-tool-btn {

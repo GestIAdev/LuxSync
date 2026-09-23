@@ -233,6 +233,15 @@ export const GLYPH_DELAY_MS_PER_M = 1000
 // LEGIBILIDAD — resolución efectiva del rig bajo el glifo
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * 🜨 WAVE 8160 (M2): tolerancia espacial al contar filas/columnas.
+ * Un nodo a menos de esta distancia de un borde de celda cuenta para
+ * AMBAS celdas vecinas — una matriz con nodos a medio paso del borde
+ * ya no produce falsos "fila sin resolver". Alineado con el voxel de
+ * 0.25 m del Crystal Box (_syncDerivedState snapea a esa rejilla).
+ */
+export const GLYPH_LEGIBILITY_TOLERANCE_M = 0.25
+
 export interface GlyphLegibility {
   /** Nodos posicionados (y enmascarados) dentro del rect del glifo. */
   readonly nodesInRect: number
@@ -276,6 +285,26 @@ export function measureGlyphLegibility(
   const maskIds = g.mask?.nodeIds
   const maskSet = maskIds ? new Set(maskIds) : null
 
+  // 🜨 WAVE 8160 (M2): ε espacial en unidades de celda — un nodo a
+  // <0.25 m del borde cuenta para la celda vecina también (matrices
+  // grandes: los nodos no caen centrados en cada celda de la fuente).
+  const cellM = g.transform.scaleM > 0 ? g.transform.scaleM / bitmap.rows : 0
+  const epsCell = cellM > 0 ? GLYPH_LEGIBILITY_TOLERANCE_M / cellM : 0
+
+  /** Marca la banda de `w` + la vecina si queda a <ε del borde. */
+  const markBand = (arr: Uint8Array, w: number, max: number): void => {
+    // +ε fp: un nodo sobre el borde exacto de celda no debe caer en la
+    // banda anterior por error de coma flotante (0.4/0.2 = 1.9999…)
+    const i = Math.min(max - 1, Math.floor(w + 1e-6))
+    arr[i] = 1
+    if (epsCell <= 0) return
+    const frac = w - Math.floor(w)
+    // Independientes (no else-if): si ε ≥ celda el nodo queda a <ε de
+    // AMBOS bordes → cuenta para las dos vecinas (simetría espacial).
+    if (frac < epsCell && i > 0) arr[i - 1] = 1
+    if (frac > 1 - epsCell && i < max - 1) arr[i + 1] = 1
+  }
+
   let inRect = 0
   for (const e of atlas.entries) {
     if (!e.position) continue
@@ -283,10 +312,8 @@ export function measureGlyphLegibility(
     const { u, v } = worldToGlyphCell(e.position.x, e.position.z, g, bitmap)
     if (u < 0 || u >= bitmap.cols || v < 0 || v >= bitmap.rows) continue
     inRect++
-    // +ε: un nodo sobre el borde exacto de celda no debe caer en la
-    // banda anterior por error de coma flotante (0.4/0.2 = 1.9999…)
-    rowsHit[Math.min(bitmap.rows - 1, Math.floor(v + 1e-6))] = 1
-    colsHit[Math.min(bitmap.cols - 1, Math.floor(u + 1e-6))] = 1
+    markBand(rowsHit, v, bitmap.rows)
+    markBand(colsHit, u, bitmap.cols)
   }
 
   let rowsResolved = 0

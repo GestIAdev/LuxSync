@@ -336,9 +336,11 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
               {glyphLegibility.rowsResolved}/7 filas ·{' '}
               {glyphLegibility.colsResolved} cols
             </div>
+            {/* 🜨 WAVE 8160 (M2): la legibilidad es un AVISO naranja,
+                nunca un bloqueo — el operador decide sobre su matriz. */}
             {!glyphLegibility.legible && (
-              <div className="asteria-rail__error">
-                ⚠ Resolución insuficiente para texto legible
+              <div className="asteria-rail__warn">
+                ⚠ Resolución subóptima — el texto compila igualmente
               </div>
             )}
           </div>

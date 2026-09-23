@@ -30,6 +30,7 @@
 
 import React from 'react'
 import { useAsteriaStore } from './store/useAsteriaStore'
+import { useHephaestusEditorStore } from '../../../../core/hephaestus/store/useHephaestusEditorStore'
 import type {
   BlendOp,
   Gesture,
@@ -37,6 +38,7 @@ import type {
 } from './model/AsteriaProject'
 import { GHOST_RGB } from './model/gestureGhost'
 import { measureGlyphLegibility } from './model/glyphRaster'
+import { isAsteriaTrack } from './compiler/AsteriaCompiler'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PRIMITIVAS DE CONTROL — una fila = label + input + readout
@@ -157,6 +159,8 @@ export const GestureInspector: React.FC = () => {
         <div className="asteria-rail__muted">
           selecciona una capa del stack para editar sus parámetros
         </div>
+        {/* 🜨 WAVE 8184 (M2): STRATEGY es de proyecto — visible siempre */}
+        <StrategyRows />
       </div>
     )
   }
@@ -442,7 +446,80 @@ export const GestureInspector: React.FC = () => {
           onChange={(v) => patch({ gain: v / 100 })}
         />
       )}
+
+      {/* 🜨 WAVE 8184 (M2): STRATEGY — controles de proyecto al pie
+          del inspector (alcanzables con o sin gesto seleccionado) */}
+      <StrategyRows />
     </div>
+  )
+}
+
+/**
+ * 🜨 WAVE 8184 (M2): STRATEGY — sub-panel global del proyecto.
+ * LUT SOURCE: la curva que los tracks ast_* reutilizan.
+ *   'preset' → el compilador sintetiza el pulso Λ (Auto-Synth).
+ *   'ride'   → clona la curva de una pista Forge existente: el ast_*
+ *             emite SOLO phaseOverrides sobre esa forma de onda exacta
+ *             (la pista madre jamás se sobreescribe — §8.2).
+ */
+const StrategyRows: React.FC = () => {
+  const lutSource = useAsteriaStore((s) => s.project.lutSource)
+  const setLutSource = useAsteriaStore((s) => s.setLutSource)
+  const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
+  // Pistas Forge candidatas a Ride — las ast_* nunca se ofrecen
+  // (hacer ride de una curva sintética sería ruido recursivo).
+  const forgeTracks = useHephaestusEditorStore((s) =>
+    s.clip.tracks.filter((t) => !isAsteriaTrack(t.id)),
+  )
+
+  const value = lutSource.kind === 'ride' ? lutSource.trackId : ''
+  const rideMissing =
+    lutSource.kind === 'ride' &&
+    !forgeTracks.some((t) => t.id === lutSource.trackId)
+
+  return (
+    <>
+      <div className="asteria-insp__divider" />
+      <div className="asteria-rail__title asteria-insp__strategy">
+        STRATEGY
+      </div>
+      <label className="asteria-insp__row" title="Fuente de la forma de onda de los tracks ast_* — Auto-Synth sintetiza el pulso Λ; Ride clona una curva de Forge y emite solo los retardos (phaseOverrides)">
+        <span className="asteria-insp__label">LUT SRC</span>
+        <select
+          className="asteria-insp__select"
+          value={value}
+          disabled={driftReadOnly}
+          onChange={(e) => {
+            const v = e.target.value
+            setLutSource(
+              v === ''
+                ? { kind: 'preset', name: 'default' }
+                : { kind: 'ride', trackId: v },
+            )
+          }}
+        >
+          <option value="">AUTO-SYNTH Λ</option>
+          {forgeTracks.map((t) => (
+            <option key={t.id} value={t.id}>
+              RIDE → {t.paramId.toUpperCase()} · {t.id}
+            </option>
+          ))}
+          {/* La fuente ride persistida puede haber desaparecido del clip
+              (pista Forge borrada) — la opción fantasma deja ver el
+              estado real en lugar de fingir Auto-Synth */}
+          {rideMissing && (
+            <option value={value}>
+              ⚠ {lutSource.kind === 'ride' ? lutSource.trackId : ''} (pista perdida)
+            </option>
+          )}
+        </select>
+      </label>
+      {rideMissing && (
+        <div className="asteria-rail__warn">
+          ⚠ RIDE_SOURCE_MISSING — el compilador cae al pulso Λ
+        </div>
+      )}
+    </>
   )
 }
 

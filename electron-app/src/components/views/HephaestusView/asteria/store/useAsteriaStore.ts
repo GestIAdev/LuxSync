@@ -23,7 +23,7 @@
 
 import { create } from 'zustand'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
-import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
+import type { AsteriaProject, Gesture, LutSource } from '../model/AsteriaProject'
 import { createDefaultProject } from '../model/AsteriaProject'
 import {
   computeRigDrift,
@@ -203,6 +203,13 @@ export interface AsteriaStore extends AsteriaCamera {
    * solo-lectura (drift).
    */
   setTargetColor: (color: string) => void
+  /**
+   * 🜨 WAVE 8184 (M2): fuente de la curva-LUT de los tracks `ast_*`.
+   * 'preset' = el compilador sintetiza el pulso Λ (Auto-Synth);
+   * 'ride' = clona la curva de una pista Forge existente (Λ-Ride §8.2 —
+   * la pista ast_* emite SOLO phaseOverrides sobre esa curva exacta).
+   */
+  setLutSource: (src: LutSource) => void
 
   // ── WAVE 8150-F3: UNDO/REDO LOCAL ──
 
@@ -210,7 +217,7 @@ export interface AsteriaStore extends AsteriaCamera {
    * Historial local del documento — snapshots por referencia (gratis
    * por structural sharing). Solo mutaciones creativas del operador:
    * addGesture/removeGesture/moveGesture/updateGesture(coalesced)/
-   * setTargetParams/setTargetColor/resetProject. sealRig y la carga de
+   * setTargetParams/setTargetColor/setLutSource/resetProject. sealRig y la carga de
    * documentos quedan fuera (frontera de documento / evento de sistema).
    */
   past: AsteriaProject[]
@@ -523,20 +530,26 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
     }),
 
   removeGesture: (id) =>
-    set((s) =>
-      s.driftReadOnly
-        ? {}
-        : {
-            ...historyPush(s),
-            project: {
-              ...s.project,
-              stack: s.project.stack.filter((g) => g.id !== id),
-            },
-            // Si el gesto eliminado era el seleccionado, limpia la capa
-            selectedGestureId:
-              s.selectedGestureId === id ? null : s.selectedGestureId,
-          },
-    ),
+    set((s) => {
+      if (s.driftReadOnly) return {}
+      // 🜨 WAVE 8184 (M1): EL LIENZO NEGRO — la capa BASE es
+      // estructuralmente inmutable. Sin ella los nodos fuera de las
+      // máscaras parciales heredan delay=0/gain=1 → el rig se enciende
+      // entero de golpe. Editable (gain al 0 % = fondo negro), jamás
+      // borrable. El panel oculta el ✕; esta guardia es la segunda línea.
+      const target = s.project.stack.find((g) => g.id === id)
+      if (!target || target.kind === 'base') return {}
+      return {
+        ...historyPush(s),
+        project: {
+          ...s.project,
+          stack: s.project.stack.filter((g) => g.id !== id),
+        },
+        // Si el gesto eliminado era el seleccionado, limpia la capa
+        selectedGestureId:
+          s.selectedGestureId === id ? null : s.selectedGestureId,
+      }
+    }),
 
   moveGesture: (id, toIndex) =>
     set((s) => {
@@ -568,6 +581,13 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       s.driftReadOnly || !/^#[0-9a-fA-F]{6}$/.test(color)
         ? {}
         : { ...historyPush(s), project: { ...s.project, targetColor: color } },
+    ),
+
+  setLutSource: (src) =>
+    set((s) =>
+      s.driftReadOnly
+        ? {}
+        : { ...historyPush(s), project: { ...s.project, lutSource: src } },
     ),
 
   // ── WAVE 8150-F3: UNDO/REDO LOCAL ──

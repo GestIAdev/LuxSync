@@ -155,18 +155,31 @@ export const GestureStackPanel: React.FC = () => {
                 </span>
                 <span className="asteria-layer__desc">{describe(g)}</span>
               </span>
-              <button
-                type="button"
-                className="asteria-layer__delete"
-                title="Eliminar capa (no destructivo — la pila se recompila)"
-                disabled={driftReadOnly}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  removeGesture(g.id)
-                }}
-              >
-                ✕
-              </button>
+              {/* 🜨 WAVE 8184 (M1): la capa BASE es el lienzo negro —
+                  inmutable estructuralmente (sin ella los nodos fuera
+                  de máscara heredan gain=1 y el rig se enciende solo).
+                  Sigue seleccionable: su GAIN se edita en el inspector. */}
+              {g.kind === 'base' ? (
+                <span
+                  className="asteria-layer__lock"
+                  title="Capa raíz — no se puede eliminar. Bájala a GAIN 0 % para el lienzo negro."
+                >
+                  🔒
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="asteria-layer__delete"
+                  title="Eliminar capa (no destructivo — la pila se recompila)"
+                  disabled={driftReadOnly}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeGesture(g.id)
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
           )
         })}

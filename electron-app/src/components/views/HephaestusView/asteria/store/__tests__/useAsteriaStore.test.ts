@@ -81,6 +81,38 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
     ).toEqual(['base', 'w2'])
   })
 
+  // 🜨 WAVE 8184 (M1): el lienzo negro — la capa BASE es inmutable
+  test('removeGesture sobre la capa BASE es no-op (lienzo negro protegido)', () => {
+    const s = useAsteriaStore.getState()
+    s.addGesture(wave('w1'))
+    const before = useAsteriaStore.getState().project
+    const pastLen = useAsteriaStore.getState().past.length
+    useAsteriaStore.getState().removeGesture('base')
+    const after = useAsteriaStore.getState()
+    expect(after.project).toBe(before) // ni siquiera nueva referencia
+    expect(after.project.stack.map((g) => g.id)).toEqual(['base', 'w1'])
+    expect(after.past.length).toBe(pastLen) // sin paso de undo fantasma
+  })
+
+  test('la BASE sigue editable: updateGesture baja su gain a 0 (fondo negro)', () => {
+    useAsteriaStore.getState().updateGesture('base', { gain: 0 })
+    const base = useAsteriaStore.getState().project.stack[0]
+    expect(base.kind === 'base' ? base.gain : -1).toBe(0)
+  })
+
+  test('setLutSource (WAVE 8184-M2): preset↔ride, undoable', () => {
+    const s = useAsteriaStore.getState()
+    expect(s.project.lutSource).toEqual({ kind: 'preset', name: 'default' })
+    s.setLutSource({ kind: 'ride', trackId: 'forge-track-01' })
+    expect(useAsteriaStore.getState().project.lutSource).toEqual({
+      kind: 'ride', trackId: 'forge-track-01',
+    })
+    useAsteriaStore.getState().undo()
+    expect(useAsteriaStore.getState().project.lutSource).toEqual({
+      kind: 'preset', name: 'default',
+    })
+  })
+
   test('moveGesture reordena con clamp', () => {
     const s = useAsteriaStore.getState()
     s.addGesture(wave('w1'))

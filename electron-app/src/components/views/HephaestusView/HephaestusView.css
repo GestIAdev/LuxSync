@@ -3080,6 +3080,16 @@
   cursor: not-allowed;
 }
 
+/* 🜨 WAVE 8184 (M1): la capa BASE no se borra — candado en lugar de ✕ */
+.asteria-layer__lock {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 5px;
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* ── WAVE 8070 (M2): chips de TARGET ── */
 
 .asteria-target-chips {
@@ -3631,4 +3641,47 @@
 .asteria-insp input[type='checkbox'] {
   accent-color: #7b5cff;
   cursor: pointer;
+}
+
+/* 🜨 WAVE 8184 (M2): STRATEGY — selector de LUT Source (Λ-Ride) */
+.asteria-insp__divider {
+  height: 1px;
+  margin: 8px 0 4px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(123, 92, 255, 0.35),
+    transparent
+  );
+}
+
+.asteria-insp__strategy {
+  font-size: 9px;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+.asteria-insp__select {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 1px solid rgba(123, 92, 255, 0.3);
+  border-radius: 3px;
+  background: rgba(10, 10, 16, 0.85);
+  color: #e6e1ff;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  outline: none;
+  cursor: pointer;
+}
+
+.asteria-insp__select:focus {
+  border-color: rgba(123, 92, 255, 0.8);
+  box-shadow: 0 0 8px rgba(123, 92, 255, 0.3);
+}
+
+.asteria-insp__select:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }

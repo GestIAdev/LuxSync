@@ -82,6 +82,10 @@ export function drawGestureLayer(
   selection: ReadonlySet<string>,
   preview: ReadonlySet<string>,
   hover: ReadonlySet<string>,
+  /** 🜨 8150-F4: ghosting de capa — nodos dominados por el gesto
+   *  seleccionado en el stack + su color por kind. */
+  ghostIds?: ReadonlySet<string> | null,
+  ghostRGB?: readonly [number, number, number] | null,
 ): void {
   const { cam, canvasW, canvasH } = t
   const halfW = canvasW / 2
@@ -187,7 +191,75 @@ export function drawGestureLayer(
     ctx.restore()
   }
 
+  // 🜨 WAVE 8150-F4: POLYGON — polilínea committed + banda elástica al
+  // cursor + cierre punteado al origen (≥3 vértices) + puntos de vértice.
+  const pg = gesturePreview.polygon
+  if (pg && pg.pts.length >= 2) {
+    const pts = pg.pts
+    ctx.beginPath()
+    ctx.moveTo(toSX(pts[0]), toSY(pts[1]))
+    for (let i = 2; i < pts.length; i += 2) {
+      ctx.lineTo(toSX(pts[i]), toSY(pts[i + 1]))
+    }
+    ctx.stroke()
+    ctx.setLineDash([4, 3])
+    ctx.beginPath()
+    const lx = toSX(pts[pts.length - 2])
+    const ly = toSY(pts[pts.length - 1])
+    ctx.moveTo(lx, ly)
+    ctx.lineTo(toSX(pg.hoverX), toSY(pg.hoverZ))
+    if (pts.length >= 6) {
+      ctx.lineTo(toSX(pts[0]), toSY(pts[1]))
+    }
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = COLOR_GESTURE
+    for (let i = 0; i < pts.length; i += 2) {
+      ctx.beginPath()
+      ctx.arc(toSX(pts[i]), toSY(pts[i + 1]), 2.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.fillStyle = COLOR_GESTURE_FILL
+  }
+
+  // 🜨 WAVE 8150-F4: LINE — banda translúcida (la cobertura real del
+  // segmento) + eje brillante. El operador ve la anchura honesta.
+  const ln = gesturePreview.line
+  if (ln) {
+    const ax = toSX(ln.ax)
+    const ay = toSY(ln.az)
+    const bx = toSX(ln.bx)
+    const by = toSY(ln.bz)
+    ctx.lineCap = 'round'
+    ctx.lineWidth = Math.max(ln.halfWidthM * cam.zoom * 2, 2)
+    ctx.strokeStyle = 'rgba(123, 92, 255, 0.18)'
+    ctx.beginPath()
+    ctx.moveTo(ax, ay)
+    ctx.lineTo(bx, by)
+    ctx.stroke()
+    ctx.lineWidth = 1.2
+    ctx.strokeStyle = COLOR_GESTURE
+    ctx.beginPath()
+    ctx.moveTo(ax, ay)
+    ctx.lineTo(bx, by)
+    ctx.stroke()
+    ctx.lineCap = 'butt'
+  }
+
   if (!atlas) return
+
+  // ── 🜨 WAVE 8150-F4: GHOSTING DE CAPA — halo + anillo brillante del
+  // color del kind sobre los nodos dominados por el gesto seleccionado.
+  // Bajo los anillos de selección: el ghost informa, no manda.
+  if (ghostIds && ghostIds.size > 0 && ghostRGB) {
+    const [gr, gg, gb] = ghostRGB
+    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.22)`
+    ctx.lineWidth = 3
+    drawNodeRings(ctx, t, atlas, ghostIds, 11.5, false)
+    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.9)`
+    ctx.lineWidth = 1.4
+    drawNodeRings(ctx, t, atlas, ghostIds, 10, false)
+  }
 
   // ── Anillos de estado sobre los nodos ─────────────────────────────────
   ctx.lineWidth = 1.3

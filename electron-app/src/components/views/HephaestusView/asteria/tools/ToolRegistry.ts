@@ -42,6 +42,13 @@ export interface GesturePreview {
     x: number; z: number; scaleM: number; rotDeg: number
     text: string; channel: 'delay' | 'gain'
   } | null
+  /**
+   * 🜨 8150-F4 Polygon: vértices committed (plano [x,z,…]) + cursor
+   * para la banda elástica del último vértice.
+   */
+  polygon: { pts: number[]; hoverX: number; hoverZ: number } | null
+  /** 🜨 8150-F4 Line: segmento en curso + media anchura de la banda. */
+  line: { ax: number; az: number; bx: number; bz: number; halfWidthM: number } | null
 }
 
 /** Singleton mutable — las tools escriben, GestureLayer lee. */
@@ -51,6 +58,8 @@ export const gesturePreview: GesturePreview = {
   radial: null,
   chrono: null,
   glyph: null,
+  polygon: null,
+  line: null,
 }
 
 /** Limpia toda la geometría de gesto (al soltar / cambiar de herramienta). */
@@ -60,6 +69,8 @@ export function clearGesturePreview(): void {
   gesturePreview.radial = null
   gesturePreview.chrono = null
   gesturePreview.glyph = null
+  gesturePreview.polygon = null
+  gesturePreview.line = null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,11 +115,20 @@ export interface AsteriaTool {
   /** Tecla de atajo (key lowercase). */
   readonly hotkey: string
 
+  /**
+   * 🜨 8150-F4: la tool quiere pointermove SIN botón (banda elástica
+   * del Polygon entre clics). Cuando es true, el canvas le pasa los
+   * moves en reposo y suprime el hover-pick (evita pokes fantasma).
+   */
+  readonly trackIdlePointer?: boolean
+
   onPointerDown?(sx: number, sy: number, e: PointerEvent | React.PointerEvent, ctx: AsteriaToolContext): void
   onPointerMove?(sx: number, sy: number, e: PointerEvent | React.PointerEvent, ctx: AsteriaToolContext): void
   onPointerUp?(sx: number, sy: number, e: PointerEvent | React.PointerEvent, ctx: AsteriaToolContext): void
   /** 🜨 8040B (T7): doble clic sobre el lienzo (Cell Surgeon expande). */
   onDoubleClick?(sx: number, sy: number, e: MouseEvent | React.MouseEvent, ctx: AsteriaToolContext): void
+  /** 🜨 8150-F4: tecla dirigida a la tool activa (Enter cierra, Esc cancela). */
+  onKeyDown?(e: KeyboardEvent, ctx: AsteriaToolContext): void
   /** Cancela/limpia el gesto en curso (cambio de herramienta, Esc). */
   cancel?(): void
 }

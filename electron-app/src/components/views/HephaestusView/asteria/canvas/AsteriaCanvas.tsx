@@ -29,6 +29,7 @@ import { drawGridLayer } from './layers/GridLayer'
 import { drawNodeLayer } from './layers/NodeLayer'
 import { drawFeedbackLayer } from './layers/FeedbackLayer'
 import { drawGestureLayer } from './layers/GestureLayer'
+import { gestureGhostIds, gestureGhostColor } from '../model/gestureGhost'
 import { getTool, type AsteriaToolContext } from '../tools/ToolRegistry'
 import { nearestNodeToScreen } from '../tools/selection'
 import type { HephPreviewReturn } from '../../useHephPreview'
@@ -124,6 +125,21 @@ export const AsteriaCanvas: React.FC<{
     }
   }, [])
 
+  // ── 🜨 8150-F4: teclas dirigidas a la tool activa (Enter/Esc del
+  //  Polygon). Solo tools que implementan onKeyDown — el resto pasa.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) return
+      const tool = getTool(useAsteriaStore.getState().activeToolId)
+      tool?.onKeyDown?.(e, toolCtx)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [toolCtx])
+
   // ── RAF loop: pipeline de capas ──
   useEffect(() => {
     const canvas = canvasRef.current
@@ -142,10 +158,25 @@ export const AsteriaCanvas: React.FC<{
 
       // Referencias estables por getState() — zero React cost
       const s = useAsteriaStore.getState()
+
+      // 🜨 WAVE 8150-F4: ghosting de capa — resolución cacheada por
+      // identidad del gesto (WeakMap en gestureGhost.ts): el .find
+      // devuelve la ref existente, nada se aloca en el hot path.
+      const ghostGesture = s.selectedGestureId
+        ? s.project.stack.find((g) => g.id === s.selectedGestureId) ?? null
+        : null
+      const ghostIds = ghostGesture
+        ? gestureGhostIds(ghostGesture, s.nodeAtlas)
+        : null
+
       drawGridLayer(ctx, t)
       drawNodeLayer(ctx, t, s.nodeAtlas)
       drawFeedbackLayer(ctx, t, s.nodeAtlas, previewDataRef.current?.current)
-      drawGestureLayer(ctx, t, s.nodeAtlas, s.selectionNodeIds, s.previewNodeIds, s.hoverNodeIds)
+      drawGestureLayer(
+        ctx, t, s.nodeAtlas, s.selectionNodeIds, s.previewNodeIds,
+        s.hoverNodeIds, ghostIds,
+        ghostGesture ? gestureGhostColor(ghostGesture) : null,
+      )
 
       raf = requestAnimationFrame(tick)
     }
@@ -190,6 +221,14 @@ export const AsteriaCanvas: React.FC<{
     if (activeGestureRef.current) {
       const tool = getTool(useAsteriaStore.getState().activeToolId)
       tool?.onPointerMove?.(sx, sy, e.nativeEvent, toolCtx)
+      return
+    }
+
+    // 🜨 8150-F4: tools con banda elástica (Polygon) reciben moves sin
+    // botón — y el hover-pick se suprime para no pokear bajo el cursor.
+    const idleTool = getTool(useAsteriaStore.getState().activeToolId)
+    if (idleTool?.trackIdlePointer) {
+      idleTool.onPointerMove?.(sx, sy, e.nativeEvent, toolCtx)
       return
     }
 

@@ -50,9 +50,11 @@ export interface NodeAtlas {
   readonly byNodeId: ReadonlyMap<string, NodeAtlasEntry>
 }
 
-/** Herramientas del Lienzo Táctico (WAVE 8020 + 8040B: chrono ✎ · cell ✜). */
+/** Herramientas del Lienzo Táctico (WAVE 8020 + 8040B: chrono ✎ · cell ✜
+ *  + 8150-F4: polygon ⬠ · line ╱). */
 export type AsteriaToolId =
   | 'select' | 'lasso' | 'radial' | 'chrono' | 'cell' | 'glyph'
+  | 'polygon' | 'line'
 
 /** Límites de zoom en píxeles por metro. */
 export const ASTERIA_ZOOM_MIN = 4

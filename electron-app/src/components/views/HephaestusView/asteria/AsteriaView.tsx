@@ -58,7 +58,7 @@ export interface AsteriaViewProps {
 }
 
 const TOOL_ORDER: readonly AsteriaToolId[] = [
-  'select', 'lasso', 'radial', 'chrono', 'cell', 'glyph',
+  'select', 'lasso', 'radial', 'polygon', 'line', 'chrono', 'cell', 'glyph',
 ]
 
 /**
@@ -132,6 +132,9 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
       for (const id of TOOL_ORDER) {
         const tool = getTool(id)
         if (tool?.hotkey === key) {
+          // 🜨 8150-F4: el cambio de tool cancela el gesto en curso
+          // (un polígono a medio cerrar no sobrevive al cambio).
+          getTool(useAsteriaStore.getState().activeToolId)?.cancel?.()
           setActiveTool(id)
           return
         }
@@ -187,7 +190,10 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
               type="button"
               className={`asteria-tool-btn ${active ? 'active' : ''}`}
               title={`${tool.label} (${tool.hotkey.toUpperCase()})`}
-              onClick={() => setActiveTool(id)}
+              onClick={() => {
+                getTool(useAsteriaStore.getState().activeToolId)?.cancel?.()
+                setActiveTool(id)
+              }}
             >
               <span className="asteria-tool-btn__icon">{tool.icon}</span>
             </button>

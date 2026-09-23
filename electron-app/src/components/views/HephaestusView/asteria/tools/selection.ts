@@ -109,6 +109,46 @@ export function nodesInWorldPolygon(
   return out
 }
 
+/**
+ * 🜨 WAVE 8150-F4: nodos bajo un SEGMENTO del mundo (Line Tool).
+ * Distancia punto-segmento ≤ `halfWidthM` — banda de tolerancia que
+ * convierte un trazo unidimensional en un pincel de selección.
+ * Segmento degenerado (ax≈bx, az≈bz) se comporta como pick radial.
+ */
+export function nodesNearWorldSegment(
+  atlas: NodeAtlas | null,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+  halfWidthM: number,
+  out: Set<string>,
+): Set<string> {
+  if (!atlas) return out
+  const dx = bx - ax
+  const dz = bz - az
+  const len2 = dx * dx + dz * dz
+  const r2 = halfWidthM * halfWidthM
+  const entries = atlas.entries
+  for (let i = 0; i < entries.length; i++) {
+    const pos = entries[i].position
+    if (!pos) continue
+    // Proyección del punto sobre el segmento, clamp a [0,1]
+    let t = 0
+    if (len2 > 0) {
+      t = ((pos.x - ax) * dx + (pos.z - az) * dz) / len2
+      if (t < 0) t = 0
+      else if (t > 1) t = 1
+    }
+    const px = ax + t * dx
+    const pz = az + t * dz
+    const ddx = pos.x - px
+    const ddz = pos.z - pz
+    if (ddx * ddx + ddz * ddz <= r2) out.add(entries[i].nodeId)
+  }
+  return out
+}
+
 /** Nodos dentro de un radio en metros desde (cx, cz) del mundo. */
 export function nodesInWorldRadius(
   atlas: NodeAtlas | null,

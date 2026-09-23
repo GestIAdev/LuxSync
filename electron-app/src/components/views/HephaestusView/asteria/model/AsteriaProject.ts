@@ -251,8 +251,14 @@ export type GestureKind = Gesture['kind']
  *   - 'lambda' → Vía Λ: una pista-LUT + phaseOverrides (§3)
  *   - 'cohort' → cuantización en K cohortes de delay (presupuesto HUD)
  *   - 'mcc'    → Máscaras de Curva Celular (§4 — independencia por celda)
+ *   - 'mcc-device' → WAVE 8186 (VÍA A del COHORT_FORENSIC_AUDIT):
+ *               cohortes normales + aislamiento quirúrgico por
+ *               `track.cell = nodeId` para las cohortes con
+ *               COHORT_ZONE_SPILL — el adapter descarta por match
+ *               exacto de nodeId, engañando al filtro de zonas sin
+ *               tocar el runtime.
  */
-export type CompileStrategy = 'auto' | 'lambda' | 'cohort' | 'mcc'
+export type CompileStrategy = 'auto' | 'lambda' | 'cohort' | 'mcc' | 'mcc-device'
 
 /** Fuente de la curva-LUT que los tracks `ast_*` reutilizan (Λ-Ride). */
 export type LutSource =

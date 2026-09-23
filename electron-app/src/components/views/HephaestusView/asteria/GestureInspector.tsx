@@ -465,6 +465,8 @@ export const GestureInspector: React.FC = () => {
 const StrategyRows: React.FC = () => {
   const lutSource = useAsteriaStore((s) => s.project.lutSource)
   const setLutSource = useAsteriaStore((s) => s.setLutSource)
+  const strategy = useAsteriaStore((s) => s.project.strategy)
+  const setStrategy = useAsteriaStore((s) => s.setStrategy)
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
   // Pistas Forge candidatas a Ride — las ast_* nunca se ofrecen
   // (hacer ride de una curva sintética sería ruido recursivo).
@@ -488,6 +490,23 @@ const StrategyRows: React.FC = () => {
       <div className="asteria-rail__title asteria-insp__strategy">
         STRATEGY
       </div>
+      <label className="asteria-insp__row" title="Estrategia de compilación del campo — AUTO elige por el árbol; Λ una pista+offsets; COHORT cubos por gain; MCC-CELL pista por celda; MCC-DEVICE cohortes + aislamiento quirúrgico cell=nodeId en las que derraman (COHORT_ZONE_SPILL)">
+        <span className="asteria-insp__label">COMPILER</span>
+        <select
+          className="asteria-insp__select"
+          value={strategy}
+          disabled={driftReadOnly}
+          onChange={(e) =>
+            setStrategy(e.target.value as typeof strategy)
+          }
+        >
+          <option value="auto">AUTO</option>
+          <option value="lambda">Λ · LAMBDA</option>
+          <option value="cohort">COHORT</option>
+          <option value="mcc">MCC · CELL</option>
+          <option value="mcc-device">MCC · DEVICE</option>
+        </select>
+      </label>
       <label className="asteria-insp__row" title="Fuente de la forma de onda de los tracks ast_* — Auto-Synth sintetiza el pulso Λ; Ride clona una curva de Forge y emite solo los retardos (phaseOverrides)">
         <span className="asteria-insp__label">LUT SRC</span>
         <select

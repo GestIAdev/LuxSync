@@ -57,6 +57,7 @@ const STRATEGY_TAG: Record<CompileReport['strategy'], string> = {
   ride: 'Λ·RIDE',
   cohort: 'COH',
   mcc: 'MCC',
+  'mcc-device': 'MCC·D',
 }
 
 function budgetClass(pct: number): string {

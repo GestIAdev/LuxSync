@@ -23,7 +23,7 @@
 
 import { create } from 'zustand'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
-import type { AsteriaProject, Gesture, LutSource } from '../model/AsteriaProject'
+import type { AsteriaProject, CompileStrategy, Gesture, LutSource } from '../model/AsteriaProject'
 import { createDefaultProject } from '../model/AsteriaProject'
 import {
   computeRigDrift,
@@ -210,6 +210,12 @@ export interface AsteriaStore extends AsteriaCamera {
    * la pista ast_* emite SOLO phaseOverrides sobre esa curva exacta).
    */
   setLutSource: (src: LutSource) => void
+  /**
+   * 🜨 WAVE 8186 (M2): estrategia de compilación del campo → tracks.
+   * 'auto' | 'lambda' | 'cohort' | 'mcc' | 'mcc-device' — ver
+   * CompileStrategy. Undoable vía historyPush; congelada en drift.
+   */
+  setStrategy: (strategy: CompileStrategy) => void
 
   // ── WAVE 8150-F3: UNDO/REDO LOCAL ──
 
@@ -217,7 +223,7 @@ export interface AsteriaStore extends AsteriaCamera {
    * Historial local del documento — snapshots por referencia (gratis
    * por structural sharing). Solo mutaciones creativas del operador:
    * addGesture/removeGesture/moveGesture/updateGesture(coalesced)/
-   * setTargetParams/setTargetColor/setLutSource/resetProject. sealRig y la carga de
+   * setTargetParams/setTargetColor/setLutSource/setStrategy/resetProject. sealRig y la carga de
    * documentos quedan fuera (frontera de documento / evento de sistema).
    */
   past: AsteriaProject[]
@@ -588,6 +594,13 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       s.driftReadOnly
         ? {}
         : { ...historyPush(s), project: { ...s.project, lutSource: src } },
+    ),
+
+  setStrategy: (strategy) =>
+    set((s) =>
+      s.driftReadOnly
+        ? {}
+        : { ...historyPush(s), project: { ...s.project, strategy } },
     ),
 
   // ── WAVE 8150-F3: UNDO/REDO LOCAL ──

@@ -639,7 +639,9 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
     })
     expect(outMcc.report.strategy).toBe('mcc')
 
-    // Mismo delay en ambas celdas de fx-a, pero gain varía → cohort
+    // Mismo delay en ambas celdas de fx-a, pero gain varía → cohorte…
+    // 🜨 WAVE 8186: 'auto' ahora emite el pipeline mcc-device — con todos
+    // los nodos en 'front' cada cohorte derrama → aislamiento total.
     const gainField: FieldSnapshot = {
       count: 4,
       delayMs: new Float32Array([0, 0, 0, 0]),
@@ -649,7 +651,8 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
     const outCohort = compile({
       atlas: makeAtlas(), field: gainField, clip: makeClip(), project: auto,
     })
-    expect(outCohort.report.strategy).toBe('cohort')
+    expect(outCohort.report.strategy).toBe('mcc-device')
+    expect(outCohort.tracks.every((t) => t.cell !== undefined)).toBe(true)
   })
 
   test('validador: keyframes no ASC o fuera de dominio → rechazo', () => {
@@ -1042,5 +1045,206 @@ describe('🜨 WAVE 8160 — Glyph routing & máscara libre', () => {
     expect(out.report.strategy).toBe('cohort')
     // (el spill puede o no dispararse según la cohorte — lo que importa
     //  es que la rama sigue viva: strategy cohort se respeta sin glyph)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// WAVE 8186 — MCC-Device (VÍA A del COHORT_FORENSIC_AUDIT)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Atlas del spill: 3 fixtures monocelda, TODOS en 'front' — cualquier cohorte
+ *  alcanza por zona a los demás devices. */
+function spillAtlas(): NodeAtlas {
+  const entries = [
+    zoned('fx-a:impact', 'fx-a', 'front'),
+    zoned('fx-b:impact', 'fx-b', 'front'),
+    zoned('fx-c:impact', 'fx-c', 'front'),
+  ]
+  return { entries, byNodeId: new Map(entries.map((e) => [e.nodeId, e])) }
+}
+
+/** Campo del spill: gain 1/0.2/1 → budget 2 → percentiles:
+ *  c0={a,b} (gain medio 0.6), c1={c} (gain 1) — ambas derraman en 'front'. */
+function spillField(): FieldSnapshot {
+  return {
+    count: 3,
+    delayMs: new Float32Array([0, 0, 0]),
+    gain: new Float32Array([1, 0.2, 1]),
+    mask: new Uint8Array([1, 1, 1]),
+  }
+}
+
+describe('🜨 WAVE 8186 — MCC-Device (Zone Spill Workaround)', () => {
+  test('cohortes derramadas → pistas quirúrgicas cell=nodeId, zones [all]', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'mcc-device' as const,
+      cohortBudget: 2,
+    }
+    const out = compile({
+      atlas: spillAtlas(), field: spillField(), clip: makeClip(), project,
+    })
+    expect(out.report.strategy).toBe('mcc-device')
+    // Ambas cohortes derraman (todas en 'front') → 3 pistas por dispositivo
+    expect(out.tracks).toHaveLength(3)
+    expect(out.tracks.map((t) => t.cell).sort()).toEqual([
+      'fx-a:impact',
+      'fx-b:impact',
+      'fx-c:impact',
+    ])
+    for (const t of out.tracks) {
+      expect(t.id.startsWith('ast_intensity_mccd_')).toBe(true)
+      expect(t.zones).toEqual(['all'])      // el filtro real es cell (Δ3)
+      expect(t.phaseOverrides).toBeUndefined() // delay horneado en la curva
+      expect(t.blendMode).toBe('replace')
+    }
+    // Gain de cohorte horneado: c0={a,b} gain medio 0.6; c1={c} gain 1
+    const byCell = new Map(out.tracks.map((t) => [t.cell, t]))
+    const peakB = Math.max(
+      ...byCell.get('fx-b:impact')!.curve.keyframes.map((k) => k.value as number),
+    )
+    const peakA = Math.max(
+      ...byCell.get('fx-a:impact')!.curve.keyframes.map((k) => k.value as number),
+    )
+    const peakC = Math.max(
+      ...byCell.get('fx-c:impact')!.curve.keyframes.map((k) => k.value as number),
+    )
+    expect(peakB).toBeCloseTo(0.6, 3)
+    expect(peakA).toBeCloseTo(0.6, 3)
+    expect(peakC).toBeCloseTo(1, 3)
+    // Diagnóstico honesto: spill reportado + aislamiento aplicado
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ZONE_SPILL')),
+    ).toBe(true)
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ISOLATED')),
+    ).toBe(true)
+  })
+
+  test('auto: cohort con spill → auto-escalado a mcc-device', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'auto' as const,
+      cohortBudget: 2,
+    }
+    const out = compile({
+      atlas: spillAtlas(), field: spillField(), clip: makeClip(), project,
+    })
+    expect(out.report.strategy).toBe('mcc-device')
+    expect(out.tracks.every((t) => t.id.includes('_mccd_'))).toBe(true)
+  })
+
+  test('cohort explícita NO aísla — legado: spill = warning solamente', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'cohort' as const,
+      cohortBudget: 2,
+    }
+    const out = compile({
+      atlas: spillAtlas(), field: spillField(), clip: makeClip(), project,
+    })
+    expect(out.report.strategy).toBe('cohort')
+    expect(out.tracks.every((t) => t.cell === undefined)).toBe(true)
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ZONE_SPILL')),
+    ).toBe(true)
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COHORT_ISOLATED')),
+    ).toBe(false)
+  })
+
+  test('mcc-device sin spill → cohortes puras + MCC_DEVICE_NO_SPILL', () => {
+    // Cohortes en zonas disjuntas: {a,b}=front gain 1, {c,d}=back gain 0.5
+    const field: FieldSnapshot = {
+      count: 4,
+      delayMs: new Float32Array([0, 100, 200, 300]),
+      gain: new Float32Array([1, 1, 0.5, 0.5]),
+      mask: new Uint8Array([1, 1, 1, 1]),
+    }
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'mcc-device' as const,
+      cohortBudget: 2,
+    }
+    const out = compile({
+      atlas: makeCohortAtlas(), field, clip: makeClip(), project,
+    })
+    expect(out.report.strategy).toBe('mcc-device')
+    expect(out.tracks).toHaveLength(2) // cohortes puras, sin aislamiento
+    expect(out.tracks.every((t) => t.id.includes('_cohort_'))).toBe(true)
+    expect(
+      out.report.warnings.some((w) => w.startsWith('MCC_DEVICE_NO_SPILL')),
+    ).toBe(true)
+  })
+
+  test('aislamiento mixto: cohorte limpia sigue zonal, derramada → mccd', () => {
+    // makeCohortAtlas: (a,b)=front, (c,d)=back. gains [0.2,1,0.5,0.5]
+    // → percentiles K=3: c0={a} front ·g.2, c1={c,d} back ·g.5, c2={b} front ·g1
+    // c0 derrama (b no-miembro en front) → aislada; c2 derrama (a) → aislada;
+    // c1 limpia: su zona 'back' solo aloja a sus miembros c,d.
+    const field: FieldSnapshot = {
+      count: 4,
+      delayMs: new Float32Array([0, 0, 0, 0]),
+      gain: new Float32Array([0.2, 1, 0.5, 0.5]),
+      mask: new Uint8Array([1, 1, 1, 1]),
+    }
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'mcc-device' as const,
+      cohortBudget: 3,
+    }
+    const out = compile({
+      atlas: makeCohortAtlas(), field, clip: makeClip(), project,
+    })
+    const mccd = out.tracks.filter((t) => t.id.includes('_mccd_'))
+    const cohort = out.tracks.filter((t) => t.id.includes('_cohort_'))
+    expect(mccd.map((t) => t.cell).sort()).toEqual([
+      'fx-a:impact',
+      'fx-b:impact',
+    ])
+    // c1 ({c,d}, back) limpio → cohorte zonal normal intacta
+    expect(cohort.length).toBe(1)
+    expect(cohort[0].cell).toBeUndefined()
+    expect(cohort[0].zones).toEqual(['back'])
+    expect(out.tracks).toHaveLength(3)
+    expect(out.report.strategy).toBe('mcc-device')
+    // Dos aislamientos reportados (c0 y c2); la limpia no genera aviso
+    expect(
+      out.report.warnings.filter((w) => w.startsWith('COHORT_ISOLATED')),
+    ).toHaveLength(2)
+  })
+
+  test('BUDGET: la explosión de pistas se contabiliza en report.bytes', () => {
+    const base = { ...createDefaultProject('x'), cohortBudget: 2 }
+    const cohortOut = compile({
+      atlas: spillAtlas(), field: spillField(), clip: makeClip(),
+      project: { ...base, strategy: 'cohort' as const },
+    })
+    const mccdOut = compile({
+      atlas: spillAtlas(), field: spillField(), clip: makeClip(),
+      project: { ...base, strategy: 'mcc-device' as const },
+    })
+    // 2 pistas cohorte vs 3 pistas quirúrgicas — bytes reales crecen y el
+    // HUD (pct = bytes / 256KB, rojo >70%) lo refleja sin trabajo extra.
+    expect(mccdOut.report.bytes).toBeGreaterThan(cohortOut.report.bytes)
+    expect(mccdOut.report.trackIds.length).toBe(3)
+    expect(cohortOut.report.trackIds.length).toBe(2)
+  })
+
+  test('cell sobrevive al serializeHephClip (.lfx roundtrip)', () => {
+    const project = {
+      ...createDefaultProject('x'),
+      strategy: 'mcc-device' as const,
+      cohortBudget: 2,
+    }
+    const out = compile({
+      atlas: spillAtlas(), field: spillField(), clip: makeClip(), project,
+    })
+    const clip = makeClip()
+    const injected = injectAstTracks(clip, out.tracks, project)
+    const round = serializeHephClip(injected)
+    const t = round.tracks.find((x) => x.id === 'ast_intensity_mccd_0_0')!
+    expect(t.cell).toBe('fx-a:impact') // c0={a,b} — orden de atlas
+    expect(t.zones).toEqual(['all'])
   })
 })

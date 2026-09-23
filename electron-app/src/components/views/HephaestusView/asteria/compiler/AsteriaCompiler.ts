@@ -24,8 +24,13 @@
  *   - 'mcc'         → MCC-Cell (§4.2): una pista por (celda × parámetro),
  *                     curva rotada por el delay exacto de la celda y
  *                     `track.cell = nodeId` (discriminador Δ1-Δ3).
+ *   - 'mcc-device'  → WAVE 8186 (VÍA A del COHORT_FORENSIC_AUDIT):
+ *                     cohortes limpias normales + cohortes con
+ *                     COHORT_ZONE_SPILL reemitidas como pistas
+ *                     quirúrgicas `cell = nodeId` por nodo miembro.
  *   - 'auto'        → el árbol: ¿distingue celdas del mismo fixture? → mcc;
- *                     ¿gain per-nodo? → cohort; si no → λ.
+ *                     ¿gain per-nodo? → cohort (con auto-escalado a
+ *                     mcc-device si una cohorte derrama); si no → λ.
  * Λ-Ride (§8.2): lutSource.kind='ride' reutiliza la curva que el
  * operador esculpió en Forge como curva base de TODAS las estrategias.
  *
@@ -61,7 +66,7 @@ import { rotateCurveCyclic } from './curveRotate'
 import { quantizeGainCohorts } from './cohortQuantizer'
 
 /** Estrategia REAL emitida por el compilador (la que produce los tracks). */
-export type CompiledStrategy = 'lambda' | 'ride' | 'cohort' | 'mcc'
+export type CompiledStrategy = 'lambda' | 'ride' | 'cohort' | 'mcc' | 'mcc-device'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONTRACT — blueprint §8.1 verbatim
@@ -307,13 +312,16 @@ export function compile(input: CompileInput): CompileOutput {
   if (nodesCovered === 0) warnings.push('EMPTY_FIELD — sin nodos cubiertos')
 
   // ── Estrategia — §4.3: 'auto' recorre el árbol de decisión ──
-  let strategy: 'lambda' | 'cohort' | 'mcc'
+  let strategy: 'lambda' | 'cohort' | 'mcc' | 'mcc-device'
   switch (project.strategy) {
     case 'cohort':
       strategy = 'cohort'
       break
     case 'mcc':
       strategy = 'mcc'
+      break
+    case 'mcc-device':
+      strategy = 'mcc-device'
       break
     case 'lambda':
       strategy = 'lambda'
@@ -322,7 +330,7 @@ export function compile(input: CompileInput): CompileOutput {
       strategy = fieldDistinguishesCells(field, atlas)
         ? 'mcc'
         : gainVaries
-          ? 'cohort'
+          ? 'mcc-device' // 🜨 WAVE 8186: cohort + auto-escalado por spill
           : 'lambda'
       break
   }
@@ -345,7 +353,11 @@ export function compile(input: CompileInput): CompileOutput {
   )
   if (glyphGestures.length > 0) {
     if (strategy !== 'mcc') {
-      if (project.strategy !== 'auto' && project.strategy !== 'mcc') {
+      if (
+        project.strategy !== 'auto' &&
+        project.strategy !== 'mcc' &&
+        project.strategy !== 'mcc-device'
+      ) {
         warnings.push(
           `GLYPH_ROUTED_MCC — el texto es máscara libre 1:1; strategy '${project.strategy}' relevada por enrutamiento celular`,
         )
@@ -407,12 +419,27 @@ export function compile(input: CompileInput): CompileOutput {
   let overrideCount = 0
   let devicesTargeted = 0
 
-  if (strategy === 'cohort') {
-    const r = emitCohortTracks(atlas, field, project, D, baseCurveFor, warnings)
+  if (strategy === 'cohort' || strategy === 'mcc-device') {
+    // 🜨 WAVE 8186 (VÍA A): 'mcc-device' = cohort pipeline con
+    // aislamiento quirúrgico — las cohortes que derraman se reemiten
+    // como pistas `cell = nodeId` por nodo miembro (squelch Δ3 en el
+    // adapter; zones=['all']). Las limpias quedan como cohortes puras.
+    const r = emitCohortTracks(
+      atlas, field, project, D, baseCurveFor, warnings,
+      strategy === 'mcc-device',
+    )
     tracks = r.tracks
     overrideCount = r.overrideCount
     devicesTargeted = r.devicesTargeted
-    reportStrategy = 'cohort'
+    reportStrategy =
+      r.isolatedCohorts > 0 || strategy === 'mcc-device'
+        ? 'mcc-device'
+        : 'cohort'
+    if (strategy === 'mcc-device' && r.isolatedCohorts === 0) {
+      warnings.push(
+        'MCC_DEVICE_NO_SPILL — ninguna cohorte derramó; emisión cohorte pura',
+      )
+    }
   } else if (strategy === 'mcc') {
     const r = emitMccTracks(atlas, field, project, D, baseCurveFor, warnings)
     tracks = r.tracks
@@ -529,6 +556,48 @@ function emitTargetParams(
 }
 
 /**
+ * 🜨 WAVE 8186 (VÍA A del COHORT_FORENSIC_AUDIT): familia Aether a la que
+ * el adapter enruta cada paramId — espejo de `_paramFamily`
+ * (HephaestusAetherAdapter:357). Necesaria para MCC-Device: `cell` solo
+ * discrimina si apunta a un nodeId de la familia que el param alcanza.
+ * null → param sin familia (engine-internal) — jamás produce intent;
+ * se queda en la pista de cohorte (squelch innecesario, cero daño).
+ */
+function paramNodeFamily(param: HephParamId): string | null {
+  switch (param) {
+    case 'intensity':
+    case 'strobe':
+      return 'IMPACT'
+    case 'color':
+    case 'white':
+    case 'amber':
+      return 'COLOR'
+    case 'pan':
+    case 'tilt':
+    case 'speed':
+      return 'KINETIC'
+    case 'zoom':
+    case 'focus':
+    case 'iris':
+    case 'gobo1':
+    case 'gobo2':
+    case 'prism':
+    case 'scale_x':
+    case 'scale_y':
+    case 'rot_x':
+    case 'rot_y':
+    case 'gobo_rotation':
+      return 'BEAM'
+    case 'smoke_pump':
+    case 'smoke_density':
+    case 'fan_speed':
+      return 'ATMOSPHERE'
+    default:
+      return null
+  }
+}
+
+/**
  * VÍA B — cohortes (§8.3): K ≤ cohortBudget cubos por percentiles de gain.
  * Por cohorte × parámetro: curva maestra rotada por el delay representativo,
  * escalada por el gain representativo horneado en los keyframes
@@ -539,6 +608,18 @@ function emitTargetParams(
  * COHORT_ZONE_SPILL: si una zona de la cohorte alcanza fixtures ajenos, o
  * un fixture miembro cae en zonas de otra cohorte, se reporta la lista
  * exacta de nodos afectados — nunca se esconde.
+ *
+ * 🜨 WAVE 8186 (MCC-Device, VÍA A del informe forense): con
+ * `isolateSpilled=true`, cada cohorte que derrama se reemite como
+ * pistas quirúrgicas por nodo miembro — `cell = e.nodeId` (match exacto
+ * en `_nodeCellMatches`, d===0) + `zones:['all']`. El runtime emite un
+ * output por fixture del rig; el adapter squelcha todos menos el nodeId
+ * exacto. Delay horneado por nodo (rotateCurveCyclic), gain de cohorte
+ * horneado en keyframes. En fixtures simples `e.nodeId` ES
+ * `${deviceId}:${family}` — el formato del informe verbatim; en
+ * compuestos cae a per-celda (MCC-Cell) sin código extra. Params sin
+ * familia Aether (globalComp/width/direction) quedan en la pista de
+ * cohorte — no producen intents, el spill no les aplica.
  */
 function emitCohortTracks(
   atlas: NodeAtlas,
@@ -547,12 +628,19 @@ function emitCohortTracks(
   D: number,
   baseCurveFor: (param: HephParamId) => HephCurve,
   warnings: string[],
-): { tracks: HephTrack[]; overrideCount: number; devicesTargeted: number } {
+  isolateSpilled = false,
+): {
+  tracks: HephTrack[]
+  overrideCount: number
+  devicesTargeted: number
+  isolatedCohorts: number
+  isolatedNodes: number
+} {
   const entries = atlas.entries
   const cohorts = quantizeGainCohorts(field, entries, project.cohortBudget)
   if (cohorts.length === 0) {
     warnings.push('COHORT_EMPTY — sin nodos cubiertos que cuantizar')
-    return { tracks: [], overrideCount: 0, devicesTargeted: 0 }
+    return { tracks: [], overrideCount: 0, devicesTargeted: 0, isolatedCohorts: 0, isolatedNodes: 0 }
   }
 
   const params = emitTargetParams(project, warnings)
@@ -595,6 +683,8 @@ function emitCohortTracks(
 
   const tracks: HephTrack[] = []
   let overrideCount = 0
+  let isolatedCohorts = 0
+  let isolatedNodes = 0
   const allMemberDevices = new Set<string>()
   for (const m of memberDevices) for (const d of m) allMemberDevices.add(d)
 
@@ -653,10 +743,38 @@ function emitCohortTracks(
         offsetMs: Math.round(modD(devDelay - c.delayMs, D)),
       }
     }
-    overrideCount += Object.keys(overrides).length
+    // 🜨 WAVE 8186 — la cohorte derramada se convierte en quirúrgica:
+    // una pista por nodo miembro de la familia enrutable del param,
+    // `cell = nodeId` (el adapter hace el descarte exacto). Los params
+    // sin familia quedan en la pista de cohorte (muertos en adapter).
+    const isolated = isolateSpilled && spill.size > 0
+    if (isolated) isolatedCohorts++
 
     const gain = Math.min(1, Math.max(0, c.gain))
+    let cohortTrackEmitted = false
     for (const param of params) {
+      const fam = isolated ? paramNodeFamily(param) : null
+      if (fam !== null) {
+        let di = 0
+        for (const nid of c.nodeIds) {
+          const e = atlas.byNodeId.get(nid)
+          const i = indexByNodeId.get(nid)
+          if (!e || i === undefined || e.family !== fam) continue
+          let curve = rotateCurveCyclic(baseCurveFor(param), field.delayMs[i], D)
+          curve = bakeGainIntoCurve(curve, gain)
+          tracks.push({
+            id: `${ASTERIA_TRACK_PREFIX}${param}_mccd_${ci}_${di++}`,
+            paramId: param,
+            zones: ['all'], // VÍA A — el filtro real lo hace `cell` (Δ3)
+            curve,
+            blendMode: 'replace',
+            cell: e.nodeId,
+          })
+          isolatedNodes++
+        }
+        continue
+      }
+      cohortTrackEmitted = true
       let curve = rotateCurveCyclic(baseCurveFor(param), c.delayMs, D)
       curve = bakeGainIntoCurve(curve, gain)
       tracks.push({
@@ -669,9 +787,21 @@ function emitCohortTracks(
         phaseOverrides: overrides,
       })
     }
+    if (cohortTrackEmitted) overrideCount += Object.keys(overrides).length
+    if (isolated) {
+      warnings.push(
+        `COHORT_ISOLATED c${ci} — ${members.size} fixture(s) → pistas cell-exactas (MCC-Device)`,
+      )
+    }
   }
 
-  return { tracks, overrideCount, devicesTargeted: allMemberDevices.size }
+  return {
+    tracks,
+    overrideCount,
+    devicesTargeted: allMemberDevices.size,
+    isolatedCohorts,
+    isolatedNodes,
+  }
 }
 
 /**

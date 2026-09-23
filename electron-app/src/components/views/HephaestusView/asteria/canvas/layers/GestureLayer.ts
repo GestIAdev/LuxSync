@@ -19,6 +19,7 @@
 import type { WorldTransform } from '../useWorldTransform'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import { gesturePreview } from '../../tools/ToolRegistry'
+import { nodeGlyphRadiusPx } from './NodeLayer'
 import { rasterizeText, glyphRectMeters, GLYPH_ROWS } from '../../model/glyphRaster'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -251,26 +252,29 @@ export function drawGestureLayer(
   // ── 🜨 WAVE 8150-F4: GHOSTING DE CAPA — halo + anillo brillante del
   // color del kind sobre los nodos dominados por el gesto seleccionado.
   // Bajo los anillos de selección: el ghost informa, no manda.
+  // 🜨 WAVE 8171 (M1): los anillos orbitan FUERA del glifo a cualquier
+  // zoom — mismo radio base escalado que NodeLayer.
+  const gr = nodeGlyphRadiusPx(t.cam.zoom)
   if (ghostIds && ghostIds.size > 0 && ghostRGB) {
-    const [gr, gg, gb] = ghostRGB
-    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.22)`
+    const [r0, g0, b0] = ghostRGB
+    ctx.strokeStyle = `rgba(${r0}, ${g0}, ${b0}, 0.22)`
     ctx.lineWidth = 3
-    drawNodeRings(ctx, t, atlas, ghostIds, 11.5, false)
-    ctx.strokeStyle = `rgba(${gr}, ${gg}, ${gb}, 0.9)`
+    drawNodeRings(ctx, t, atlas, ghostIds, gr + 7, false)
+    ctx.strokeStyle = `rgba(${r0}, ${g0}, ${b0}, 0.9)`
     ctx.lineWidth = 1.4
-    drawNodeRings(ctx, t, atlas, ghostIds, 10, false)
+    drawNodeRings(ctx, t, atlas, ghostIds, gr + 5.5, false)
   }
 
   // ── Anillos de estado sobre los nodos ─────────────────────────────────
   ctx.lineWidth = 1.3
   ctx.strokeStyle = COLOR_PREVIEW
-  drawNodeRings(ctx, t, atlas, preview, 7.5, true)
+  drawNodeRings(ctx, t, atlas, preview, gr + 3, true)
 
   ctx.strokeStyle = COLOR_SELECTED
   ctx.lineWidth = 1.6
-  drawNodeRings(ctx, t, atlas, selection, 8, false)
+  drawNodeRings(ctx, t, atlas, selection, gr + 3.5, false)
 
   ctx.strokeStyle = COLOR_HOVER
   ctx.lineWidth = 1.8
-  drawNodeRings(ctx, t, atlas, hover, 9, false)
+  drawNodeRings(ctx, t, atlas, hover, gr + 4.5, false)
 }

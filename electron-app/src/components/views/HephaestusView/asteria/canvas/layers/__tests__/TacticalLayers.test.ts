@@ -17,6 +17,7 @@ import {
   drawNodeLayer,
   drawHoverTag,
   getDeviceMeta,
+  nodeGlyphRadiusPx,
 } from '../NodeLayer'
 import type { WorldTransform } from '../../useWorldTransform'
 import type { NodeAtlas } from '../../../store/useAsteriaStore'
@@ -152,7 +153,7 @@ describe('🜨 NodeLayer — iconografía Hyperion (WAVE 8170-M2)', () => {
     ])
     const { ctx, calls } = fakeCtx()
     drawNodeLayer(ctx, T, atlas, meta)
-    // Hélice: 3 aspas (arc) + rim (arc) + hub (arc) = 5; PAR: 2 anillos = 2
+    // Hélice: 3 aspas + hub = 4 arcs; PAR: 2 anillos + punto de vida = 3
     // → 7 arcs totales
     expect(calls.arc).toBe(7)
     // Diamante: moveTo + 3 lineTo (4 vértices)
@@ -172,7 +173,39 @@ describe('🜨 NodeLayer — iconografía Hyperion (WAVE 8170-M2)', () => {
     const atlas = mkAtlas([entry('ghost:dim', 'ghost', 0, 0)])
     const { ctx, calls } = fakeCtx()
     drawNodeLayer(ctx, T, atlas, getDeviceMeta([]))
-    expect(calls.arc).toBe(2) // dos anillos concéntricos
+    expect(calls.arc).toBe(3) // 2 anillos + punto de vida
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 8171 — screen-space scaling + paleta industrial + texto inmutable
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('🜨 WAVE 8171 — Iconography Polish', () => {
+  test('radio del glifo: suelo 7px, escala con metros, techo 22px', () => {
+    // FIXTURE_R_M = 0.18 m → zoom 40 = 7.2 px (sobre el suelo)
+    expect(nodeGlyphRadiusPx(40)).toBeCloseTo(7.2, 1)
+    // zoom extremo-bajo → suelo, jamás colapsa a 1 px
+    expect(nodeGlyphRadiusPx(4)).toBe(7)
+    // zoom cercano → escala con el mundo
+    expect(nodeGlyphRadiusPx(100)).toBeCloseTo(18, 1)
+    // zoom microscópico → techo
+    expect(nodeGlyphRadiusPx(500)).toBe(22)
+  })
+
+  test('etiquetas de zoom: fuente px fija (inmutable al mundo)', () => {
+    const atlas = mkAtlas([entry('fx-a:cell', 'fx-a', 0, 0)])
+    const { ctx } = fakeCtx()
+    const tClose = { ...T, cam: { ...T.cam, zoom: 120 } } as WorldTransform
+    drawNodeLayer(ctx, tClose, atlas, getDeviceMeta([]))
+    expect(ctx.font).toBe('10px monospace')
+  })
+
+  test('hover tag: 12px monospace absoluto', () => {
+    const atlas = mkAtlas([entry('fx-a:petal-l', 'fx-a', 0, 0)])
+    const { ctx } = fakeCtx()
+    drawHoverTag(ctx, T, atlas, new Set(['fx-a:petal-l']))
+    expect(ctx.font).toBe('12px monospace')
   })
 })
 

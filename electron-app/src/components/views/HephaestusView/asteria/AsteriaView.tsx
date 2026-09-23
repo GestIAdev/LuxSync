@@ -141,6 +141,38 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [setActiveTool])
 
+  // ── 🜨 WAVE 8150-F3 (M3): Undo/Redo local — el listener nace y muere
+  // con la pestaña Asteria (ForgeTab tiene el suyo propio y están
+  // desmontadas entre sí → sin colisión). stopPropagation por si algún
+  // listener global de Hephaestus escuchara más arriba.
+  const undo = useAsteriaStore((s) => s.undo)
+  const redo = useAsteriaStore((s) => s.redo)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) return
+      if (!(e.ctrlKey || e.metaKey)) return
+      const key = e.key.toLowerCase()
+      if (key === 'z') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.shiftKey) {
+          redo()
+        } else {
+          undo()
+        }
+      } else if (key === 'y') {
+        e.preventDefault()
+        e.stopPropagation()
+        redo()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [undo, redo])
+
   return (
     <div className="asteria-view">
       {/* ── TOOLBOX ── */}

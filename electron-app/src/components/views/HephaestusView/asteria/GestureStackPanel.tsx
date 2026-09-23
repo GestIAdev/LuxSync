@@ -82,12 +82,36 @@ export const GestureStackPanel: React.FC = () => {
   const removeGesture = useAsteriaStore((s) => s.removeGesture)
   const resetProject = useAsteriaStore((s) => s.resetProject)
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
+  // 🜨 WAVE 8150-F3: affordance del historial local (Ctrl+Z es
+  // invisible sin esto — los botones hacen el feature descubrible).
+  const canUndo = useAsteriaStore((s) => s.past.length > 0)
+  const canRedo = useAsteriaStore((s) => s.future.length > 0)
+  const undo = useAsteriaStore((s) => s.undo)
+  const redo = useAsteriaStore((s) => s.redo)
 
   return (
     <div className="asteria-rail__section asteria-stack">
       <div className="asteria-rail__title asteria-stack__header">
         <span>GESTURE STACK</span>
         <span className="asteria-stack__count">{stack.length}</span>
+        <button
+          type="button"
+          className="asteria-stack__reset"
+          title="Deshacer (Ctrl+Z)"
+          disabled={!canUndo}
+          onClick={undo}
+        >
+          ↶
+        </button>
+        <button
+          type="button"
+          className="asteria-stack__reset"
+          title="Rehacer (Ctrl+Shift+Z / Ctrl+Y)"
+          disabled={!canRedo}
+          onClick={redo}
+        >
+          ↷
+        </button>
         <button
           type="button"
           className="asteria-stack__reset"

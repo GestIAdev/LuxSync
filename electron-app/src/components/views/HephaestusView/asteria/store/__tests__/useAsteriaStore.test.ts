@@ -4,7 +4,7 @@
  * rigFingerprint al llegar el atlas.
  */
 
-import { describe, test, expect, beforeEach } from 'vitest'
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useAsteriaStore, type NodeAtlas } from '../useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
 import type { Gesture, WaveGesture } from '../../model/AsteriaProject'
@@ -37,6 +37,8 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
       project: createDefaultProject(),
       nodeAtlas: null,
       selectedGestureId: null,
+      past: [],
+      future: [],
     })
   })
 
@@ -200,6 +202,8 @@ describe('🜨 AsteriaStore — Rig Drift (WAVE 8050-M3)', () => {
       rigDrift: null,
       driftReadOnly: false,
       lastCompileReport: null,
+      past: [],
+      future: [],
     })
   })
 
@@ -293,5 +297,180 @@ describe('🜨 AsteriaStore — Rig Drift (WAVE 8050-M3)', () => {
     // Resellada al rig vivo — la huella describe el atlas actual
     expect(st.project.rigFingerprint).toMatch(/^sha1:/)
     expect(st.project.nodePositions?.['fx-a:impact']).toEqual({ x: 0, z: 0 })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 8150-F3: UNDO/REDO LOCAL — historial por snapshots + coalescing
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('🜨 AsteriaStore — Undo/Redo local (WAVE 8150-F3)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    useAsteriaStore.setState({
+      project: createDefaultProject(),
+      nodeAtlas: null,
+      selectedGestureId: null,
+      rigDrift: null,
+      driftReadOnly: false,
+      past: [],
+      future: [],
+    })
+  })
+
+  afterEach(() => {
+    vi.runAllTimers()
+    vi.useRealTimers()
+  })
+
+  test('addGesture empuja historial; undo restaura; redo reaplica', () => {
+    const s = useAsteriaStore.getState()
+    const p0 = s.project
+    s.addGesture(wave('w1'))
+    expect(useAsteriaStore.getState().past).toHaveLength(1)
+    expect(useAsteriaStore.getState().past[0]).toBe(p0)
+
+    s.undo()
+    const st = useAsteriaStore.getState()
+    expect(st.project).toBe(p0)
+    expect(st.past).toHaveLength(0)
+    expect(st.future).toHaveLength(1)
+
+    s.redo()
+    const st2 = useAsteriaStore.getState()
+    expect(st2.project.stack.map((g) => g.id)).toEqual(['base', 'w1'])
+    expect(st2.past).toHaveLength(1)
+    expect(st2.future).toHaveLength(0)
+  })
+
+  test('una mutación nueva invalida la rama de redo', () => {
+    const s = useAsteriaStore.getState()
+    s.addGesture(wave('w1'))
+    s.undo()
+    expect(useAsteriaStore.getState().future).toHaveLength(1)
+    s.addGesture(wave('w2'))
+    expect(useAsteriaStore.getState().future).toHaveLength(0)
+    // redo ya no puede revivir w1
+    s.redo()
+    expect(useAsteriaStore.getState().project.stack.map((g) => g.id)).toEqual([
+      'base', 'w2',
+    ])
+  })
+
+  test('coalescing: un burst de updateGesture = UN paso de undo', () => {
+    const s = useAsteriaStore.getState()
+    const p0 = s.project
+    // Simula arrastre de slider: 5 patches en <300ms
+    for (let i = 1; i <= 5; i++) {
+      s.updateGesture('base', { delayMs: i * 10 })
+      vi.advanceTimersByTime(50)
+    }
+    expect(useAsteriaStore.getState().project.stack[0]).toMatchObject({
+      delayMs: 50,
+    })
+    // El debounce aún no consolidó → past sigue vacío
+    expect(useAsteriaStore.getState().past).toHaveLength(0)
+    vi.advanceTimersByTime(300)
+    const st = useAsteriaStore.getState()
+    expect(st.past).toHaveLength(1)
+    expect(st.past[0]).toBe(p0)
+    // Undo → vuelve entero al estado pre-arrastre
+    s.undo()
+    expect(useAsteriaStore.getState().project).toBe(p0)
+  })
+
+  test('otra mutación creativa consolida el burst pendiente en orden', () => {
+    const s = useAsteriaStore.getState()
+    const p0 = s.project
+    s.updateGesture('base', { delayMs: 99 })
+    // addGesture llega a mitad del burst → el snapshot pre-burst entra
+    // al historial AHORA (el drag queda fusionado al paso siguiente)
+    s.addGesture(wave('w1'))
+    expect(useAsteriaStore.getState().past).toHaveLength(1)
+    expect(useAsteriaStore.getState().past[0]).toBe(p0)
+    // Y el timer residual no duplica el paso
+    vi.advanceTimersByTime(400)
+    expect(useAsteriaStore.getState().past).toHaveLength(1)
+  })
+
+  test('undo a mitad de burst restaura el pre-arrastre directamente', () => {
+    const s = useAsteriaStore.getState()
+    const p0 = s.project
+    s.updateGesture('base', { delayMs: 50 })
+    s.updateGesture('base', { delayMs: 80 })
+    // Ctrl+Z antes de que consolide el debounce
+    s.undo()
+    const st = useAsteriaStore.getState()
+    expect(st.project).toBe(p0)
+    expect(st.future).toHaveLength(1)
+    // El timer muerto no contamina el historial después
+    vi.advanceTimersByTime(400)
+    expect(useAsteriaStore.getState().past).toHaveLength(0)
+  })
+
+  test('setProject es frontera de documento: el historial muere', () => {
+    const s = useAsteriaStore.getState()
+    s.addGesture(wave('w1'))
+    s.addGesture(wave('w2'))
+    expect(useAsteriaStore.getState().past).toHaveLength(2)
+    s.setProject(createDefaultProject('sha1:other'))
+    const st = useAsteriaStore.getState()
+    expect(st.past).toHaveLength(0)
+    expect(st.future).toHaveLength(0)
+  })
+
+  test('resetProject ES undoable (intervención creativa)', () => {
+    const s = useAsteriaStore.getState()
+    s.addGesture(wave('w1'))
+    const withWave = useAsteriaStore.getState().project
+    s.resetProject()
+    expect(useAsteriaStore.getState().project.stack).toHaveLength(1)
+    s.undo()
+    expect(useAsteriaStore.getState().project).toBe(withWave)
+  })
+
+  test('sealRig/setNodeAtlas NO entran al historial (evento de sistema)', () => {
+    useAsteriaStore.getState().setNodeAtlas(mkAtlas(['fx-1:impact']))
+    expect(useAsteriaStore.getState().project.rigFingerprint).toMatch(/^sha1:/)
+    expect(useAsteriaStore.getState().past).toHaveLength(0)
+  })
+
+  test('undo sanea selectedGestureId si el gesto no existe en el restore', () => {
+    const s = useAsteriaStore.getState()
+    s.addGesture(wave('w1')) // queda seleccionado
+    expect(useAsteriaStore.getState().selectedGestureId).toBe('w1')
+    s.undo() // restaura proyecto sin w1
+    const st = useAsteriaStore.getState()
+    expect(st.project.stack.some((g) => g.id === 'w1')).toBe(false)
+    expect(st.selectedGestureId).toBeNull()
+  })
+
+  test('undo recomputa rigDrift contra el atlas vivo', () => {
+    const s = useAsteriaStore.getState()
+    const rig = mkAtlasPos([['fx-a:impact', 0, 0]])
+    s.setNodeAtlas(rig)
+    s.setProject(foreignProject(
+      mkAtlasPos([['fx-a:impact', 0, 0], ['fx-b:impact', 1, 0]]),
+      ['fx-a:impact', 'fx-b:impact'],
+    ))
+    expect(useAsteriaStore.getState().rigDrift).not.toBeNull()
+    // Mutación con drift visible (sin readOnly) → undoable
+    s.addGesture(wave('w2'))
+    s.undo()
+    // El restore re-corre computeRigDrift → el banner sigue coherente
+    expect(useAsteriaStore.getState().rigDrift).not.toBeNull()
+    expect(useAsteriaStore.getState().rigDrift!.missing).toEqual([
+      'fx-b:impact',
+    ])
+  })
+
+  test('historial capado a HISTORY_LIMIT (40)', () => {
+    const s = useAsteriaStore.getState()
+    for (let i = 0; i < 45; i++) s.addGesture(wave(`w${i}`))
+    expect(useAsteriaStore.getState().past).toHaveLength(40)
+    // Los más antiguos se descartan (los 5 primeros commits fuera)
+    expect(
+      useAsteriaStore.getState().past[0].stack.some((g) => g.id === 'w4'),
+    ).toBe(true)
   })
 })

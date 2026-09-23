@@ -182,6 +182,20 @@ export interface AsteriaStore extends AsteriaCamera {
    */
   setTargetColor: (color: string) => void
 
+  // ── WAVE 8150-F3: UNDO/REDO LOCAL ──
+
+  /**
+   * Historial local del documento — snapshots por referencia (gratis
+   * por structural sharing). Solo mutaciones creativas del operador:
+   * addGesture/removeGesture/moveGesture/updateGesture(coalesced)/
+   * setTargetParams/setTargetColor/resetProject. sealRig y la carga de
+   * documentos quedan fuera (frontera de documento / evento de sistema).
+   */
+  past: AsteriaProject[]
+  future: AsteriaProject[]
+  undo: () => void
+  redo: () => void
+
   /**
    * 🜨 WAVE 8030-P7: último reporte del compilador Λ (useAsteriaCompiler).
    * El rail lo muestra como HUD de presupuesto — bytes, pistas, warnings.
@@ -240,6 +254,72 @@ export interface AsteriaStore extends AsteriaCamera {
 
 function clampZoom(z: number): number {
   return Math.min(ASTERIA_ZOOM_MAX, Math.max(ASTERIA_ZOOM_MIN, z))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8150-F3: HISTORIAL LOCAL — snapshots por referencia
+//
+// `project` es inmutable (cada mutación crea ref nueva) → guardar el
+// snapshot es GRATIS (structural sharing, cero deep-copy). El historial
+// solo cubre la intervención creativa del operador — sealRig/setNodeAtlas
+// quedan fuera por diseño (evento de sistema, no gesto).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HISTORY_LIMIT = 40
+
+/**
+ * Coalescing de `updateGesture` (M1): un arrastre de slider dispara N
+ * patches seguidos → debounce de 300ms consolida el burst en UN paso
+ * de undo (el snapshot es el proyecto ANTES del primer tick).
+ */
+const UPDATE_GESTURE_COALESCE_MS = 300
+let _pendingSnapshot: AsteriaProject | null = null
+let _coalesceTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearPendingBurst(): void {
+  _pendingSnapshot = null
+  if (_coalesceTimer) {
+    clearTimeout(_coalesceTimer)
+    _coalesceTimer = null
+  }
+}
+
+/**
+ * Parcial `{past, future}` para una mutación creativa: empuja el estado
+ * previo a `past` e invalida la rama de redo. Si hay un burst de slider
+ * en vuelo, el snapshot pre-burst se consolida aquí (orden correcto).
+ */
+function historyPush(s: { project: AsteriaProject; past: AsteriaProject[] }): {
+  past: AsteriaProject[]
+  future: AsteriaProject[]
+} {
+  const snapshot = _pendingSnapshot ?? s.project
+  clearPendingBurst()
+  return { past: [...s.past, snapshot].slice(-HISTORY_LIMIT), future: [] }
+}
+
+/**
+ * Parcial post-restore (M2): recomputa rigDrift contra el atlas vivo y
+ * sanea la capa seleccionada si el gesto ya no existe en el proyecto
+ * restaurado.
+ */
+function restorePartial(
+  s: AsteriaStore,
+  project: AsteriaProject,
+  past: AsteriaProject[],
+  future: AsteriaProject[],
+): Partial<AsteriaStore> {
+  const rigDrift = computeRigDrift(project, s.nodeAtlas)
+  return {
+    project,
+    past,
+    future,
+    rigDrift,
+    driftReadOnly: rigDrift !== null && s.driftReadOnly,
+    selectedGestureId: project.stack.some((g) => g.id === s.selectedGestureId)
+      ? s.selectedGestureId
+      : null,
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -337,12 +417,17 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       // 🜨 WAVE 8050 (M3): cargar un documento ajeno dispara el drift —
       // su huella describe OTRO rig. Si coincide, rigDrift = null.
       const rigDrift = computeRigDrift(project, s.nodeAtlas)
+      // 🜨 WAVE 8150-F3: frontera de documento — el historial del
+      // documento anterior muere aquí (undo jamás cruza documentos).
+      clearPendingBurst()
       return {
         project,
         rigDrift,
         driftReadOnly: rigDrift !== null && s.driftReadOnly,
         // Documento nuevo → la selección de capa no sobrevive
         selectedGestureId: null,
+        past: [],
+        future: [],
       }
     }),
   resetProject: () =>
@@ -351,6 +436,7 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       // documento cargado ES una mutación destructiva.
       if (s.driftReadOnly) return {}
       return {
+        ...historyPush(s),
         project: {
           ...createDefaultProject(),
           // El documento nuevo nace sobre el rig actual si el atlas ya llegó.
@@ -367,6 +453,7 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       s.driftReadOnly
         ? {}
         : {
+            ...historyPush(s),
             project: { ...s.project, stack: [...s.project.stack, gesture] },
             // La capa nueva queda activa en el inspector (como Photoshop)
             selectedGestureId: gesture.id,
@@ -374,24 +461,44 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
     ),
 
   updateGesture: (id, patch) =>
-    set((s) =>
-      s.driftReadOnly
-        ? {}
-        : {
-            project: {
-              ...s.project,
-              stack: s.project.stack.map((g) =>
-                g.id === id ? ({ ...g, ...patch } as Gesture) : g,
-              ),
-            },
-          },
-    ),
+    set((s) => {
+      if (s.driftReadOnly) return {}
+      if (!s.project.stack.some((g) => g.id === id)) return {}
+      // 🜨 WAVE 8150-F3 (M1): coalescing — el primer tick del burst
+      // guarda el snapshot pre-arrastre; cada tick posterior solo
+      // refresca el debounce. A los 300ms el burst consolida en UN
+      // paso de undo. Otra mutación creativa lo consolida antes (el
+      // historyPush lee _pendingSnapshot).
+      if (!_pendingSnapshot) _pendingSnapshot = s.project
+      if (_coalesceTimer) clearTimeout(_coalesceTimer)
+      _coalesceTimer = setTimeout(() => {
+        _coalesceTimer = null
+        set((st) => {
+          if (!_pendingSnapshot) return {}
+          const snap = _pendingSnapshot
+          _pendingSnapshot = null
+          return {
+            past: [...st.past, snap].slice(-HISTORY_LIMIT),
+            future: [],
+          }
+        })
+      }, UPDATE_GESTURE_COALESCE_MS)
+      return {
+        project: {
+          ...s.project,
+          stack: s.project.stack.map((g) =>
+            g.id === id ? ({ ...g, ...patch } as Gesture) : g,
+          ),
+        },
+      }
+    }),
 
   removeGesture: (id) =>
     set((s) =>
       s.driftReadOnly
         ? {}
         : {
+            ...historyPush(s),
             project: {
               ...s.project,
               stack: s.project.stack.filter((g) => g.id !== id),
@@ -413,7 +520,7 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       const next = stack.slice()
       const [g] = next.splice(from, 1)
       next.splice(to, 0, g)
-      return { project: { ...s.project, stack: next } }
+      return { ...historyPush(s), project: { ...s.project, stack: next } }
     }),
 
   selectedGestureId: null,
@@ -424,15 +531,58 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
     set((s) =>
       s.driftReadOnly || params.length === 0
         ? {}
-        : { project: { ...s.project, targetParams: params } },
+        : { ...historyPush(s), project: { ...s.project, targetParams: params } },
     ),
 
   setTargetColor: (color) =>
     set((s) =>
       s.driftReadOnly || !/^#[0-9a-fA-F]{6}$/.test(color)
         ? {}
-        : { project: { ...s.project, targetColor: color } },
+        : { ...historyPush(s), project: { ...s.project, targetColor: color } },
     ),
+
+  // ── WAVE 8150-F3: UNDO/REDO LOCAL ──
+
+  past: [],
+  future: [],
+
+  undo: () =>
+    set((s) => {
+      // Burst de slider en vuelo: el paso aún no está en `past` — el
+      // snapshot pre-arrastre ES el destino de la restauración (un
+      // drag = un undo, como promete el coalescing).
+      if (_pendingSnapshot) {
+        const prev = _pendingSnapshot
+        clearPendingBurst()
+        return restorePartial(
+          s, prev, s.past, [...s.future, s.project].slice(-HISTORY_LIMIT),
+        )
+      }
+      const prev = s.past[s.past.length - 1]
+      if (!prev) return {}
+      return restorePartial(
+        s, prev, s.past.slice(0, -1),
+        [...s.future, s.project].slice(-HISTORY_LIMIT),
+      )
+    }),
+
+  redo: () =>
+    set((s) => {
+      // Burst pendiente → se consolida antes del redo (estado estable).
+      let cur = s
+      let flushed: { past: AsteriaProject[]; future: AsteriaProject[] } | null =
+        null
+      if (_pendingSnapshot) {
+        flushed = historyPush(s)
+        cur = { ...s, ...flushed }
+      }
+      const next = cur.future[cur.future.length - 1]
+      if (!next) return flushed ?? {}
+      return restorePartial(
+        s, next, [...cur.past, s.project].slice(-HISTORY_LIMIT),
+        cur.future.slice(0, -1),
+      )
+    }),
 
   lastCompileReport: null,
   setCompileReport: (report) => set({ lastCompileReport: report }),

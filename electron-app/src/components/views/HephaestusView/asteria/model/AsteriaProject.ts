@@ -91,6 +91,12 @@ export interface WaveGesture {
   readonly falloffM?: number
   /** Multi-emisor Huygens → delay = min(dist a cualquier emisor). */
   readonly huygens?: readonly WorldPoint2D[]
+  /**
+   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también escribe
+   * gain en los nodos cubiertos (con falloffM lo multiplica). undefined
+   * = solo delay, el gain de capas previas queda intacto.
+   */
+  readonly gain?: number
 }
 
 /**
@@ -109,6 +115,22 @@ export interface ChronoGesture {
   readonly captureRealTime: boolean
   /** Ancho del pincel en metros. */
   readonly radiusM: number
+  /**
+   * 🜨 WAVE 8181 (post-proceso §T3): escala temporal del trazo —
+   * multiplica el delay resultante (2.0 = chase el doble de lento,
+   * 0.5 = comprimido al 50 %). undefined = 1 (tempo capturado).
+   */
+  readonly timeScale?: number
+  /**
+   * 🜨 WAVE 8181: invierte el sentido del trazo — el último punto
+   * pintado dispara primero (delay = totalMs − tMs).
+   */
+  readonly invert?: boolean
+  /**
+   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también estampa
+   * gain uniforme en los nodos cubiertos. undefined = solo delay.
+   */
+  readonly gain?: number
 }
 
 /**
@@ -132,6 +154,12 @@ export interface GlyphGesture {
   readonly channel: FieldChannel
   readonly threshold?: number
   readonly antialias: boolean
+  /**
+   * 🜨 WAVE 8181: multiplicador de la cobertura en el canal gain
+   * (intensidad del texto estampado). undefined = 1. Solo afecta al
+   * canal 'gain' — con channel 'delay' el glifo barre y no estampa.
+   */
+  readonly gain?: number
 }
 
 /**
@@ -150,6 +178,11 @@ export interface SliceGesture {
   readonly spanMs: number
   readonly symmetry: 'linear' | 'mirror' | 'center-out'
   readonly shuffleSeed?: number
+  /**
+   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también estampa
+   * gain uniforme en los nodos cubiertos. undefined = solo delay.
+   */
+  readonly gain?: number
 }
 
 /**
@@ -161,6 +194,11 @@ export interface ManualGesture {
   readonly kind: 'manual'
   readonly id: string
   readonly entries: readonly { nodeId: string; delayMs?: number; gain?: number }[]
+  /**
+   * 🜨 WAVE 8181: multiplicador maestro sobre el gain de las entries
+   * (entry sin gain propio recibe este valor). undefined = 1.
+   */
+  readonly gain?: number
 }
 
 /**
@@ -176,6 +214,11 @@ export interface NoiseGesture {
   readonly scaleM: number
   readonly amountMs: number
   readonly octaves: 1 | 2 | 3
+  /**
+   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también estampa
+   * gain uniforme en los nodos cubiertos. undefined = solo delay.
+   */
+  readonly gain?: number
 }
 
 /** La unión discriminada del stack — 7 kinds. */

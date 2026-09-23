@@ -3390,3 +3390,237 @@
   box-shadow: 0 0 8px rgba(123, 92, 255, 0.7);
   cursor: ew-resize;
 }
+
+/* ── 🜨 WAVE 8181 (M1): HUD BUDGET — el bloque COMPILE del rail se
+   mudó a la barra inferior (blueprint §6.2). Umbrales §8.4:
+   <40% verde · 40-70% ámbar · >70% rojo. ── */
+
+.asteria-budget {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.asteria-budget__strategy {
+  font-weight: 700;
+  color: #b8a6ff;
+}
+
+.asteria-budget__bytes {
+  color: #8a84a8;
+}
+
+.asteria-budget__bar {
+  width: 42px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.asteria-budget__fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.asteria-budget__pct {
+  min-width: 34px;
+  text-align: right;
+}
+
+.asteria-budget__warn {
+  color: #ffb35c;
+}
+
+.asteria-budget--green .asteria-budget__fill { background: #6fe3a0; }
+.asteria-budget--green .asteria-budget__pct  { color: #6fe3a0; }
+.asteria-budget--amber .asteria-budget__fill { background: #ffb35c; }
+.asteria-budget--amber .asteria-budget__pct  { color: #ffb35c; }
+.asteria-budget--red .asteria-budget__fill   { background: #ff7a7a; }
+.asteria-budget--red .asteria-budget__pct    { color: #ff7a7a; }
+
+.asteria-budget--red {
+  border-color: rgba(255, 122, 122, 0.45);
+  background: rgba(255, 122, 122, 0.08);
+}
+
+.asteria-transport__budgetDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 9px;
+  color: #8a84a8;
+  font-variant-numeric: tabular-nums;
+}
+
+.asteria-transport__warn {
+  color: #ffb35c;
+  font-size: 9px;
+}
+
+/* ── 🜨 WAVE 8181 (M2): GESTURE INSPECTOR — controles paramétricos
+   no destructivos (filas label + slider + readout). ── */
+
+.asteria-insp__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.asteria-insp__kind {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.asteria-insp__id {
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.asteria-insp__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+
+.asteria-insp__row--check {
+  cursor: pointer;
+}
+
+.asteria-insp__label {
+  flex-shrink: 0;
+  width: 58px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #8a84a8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asteria-insp__row--check .asteria-insp__label {
+  width: auto;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.asteria-insp__range {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.asteria-insp__range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: #b8a6ff;
+  border: 1px solid rgba(123, 92, 255, 0.9);
+  cursor: ew-resize;
+}
+
+.asteria-insp__range::-moz-range-thumb {
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: #b8a6ff;
+  border: 1px solid rgba(123, 92, 255, 0.9);
+  cursor: ew-resize;
+}
+
+.asteria-insp__range:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.asteria-insp__val {
+  flex-shrink: 0;
+  min-width: 52px;
+  text-align: right;
+  font-size: 10px;
+  color: #d8dcff;
+  font-variant-numeric: tabular-nums;
+}
+
+.asteria-insp__text {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid rgba(123, 92, 255, 0.3);
+  border-radius: 3px;
+  background: rgba(10, 10, 16, 0.7);
+  color: #e6e1ff;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  outline: none;
+}
+
+.asteria-insp__text:focus {
+  border-color: rgba(123, 92, 255, 0.8);
+  box-shadow: 0 0 8px rgba(123, 92, 255, 0.3);
+}
+
+.asteria-insp__seg {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asteria-insp__segbtn {
+  flex: 1;
+  padding: 2px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  background: rgba(16, 16, 26, 0.6);
+  color: #8b8fa8;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.asteria-insp__segbtn:hover:not(:disabled) {
+  border-color: rgba(123, 92, 255, 0.5);
+  color: #d8dcff;
+}
+
+.asteria-insp__segbtn.active {
+  background: rgba(123, 92, 255, 0.22);
+  border-color: #7b5cff;
+  color: #fff;
+}
+
+.asteria-insp__segbtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.asteria-insp input[type='checkbox'] {
+  accent-color: #7b5cff;
+  cursor: pointer;
+}

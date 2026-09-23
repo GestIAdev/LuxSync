@@ -270,6 +270,10 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const dirZ = Math.sin(dirRad)
     const hasFalloff = g.falloffM !== undefined && g.falloffM > 0
     const invFalloff = hasFalloff ? 1 / (g.falloffM as number) : 0
+    // 🜨 8181: gain de capa — multiplica el resultado del falloff (o
+    // estampa gain plano si el gesto no lo define por sí mismo).
+    const layerGain = g.gain ?? 1
+    const writesGain = hasFalloff || g.gain !== undefined
     const hy = g.huygens
     const hyLen = hy ? hy.length : 0
 
@@ -292,8 +296,8 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         if (hd < dist) dist = hd
       }
       const d = dist * msPerM
-      const gv = hasFalloff ? Math.max(0, 1 - dist * invFalloff) : 1
-      blendInto(delayMs, gain, i, g.op, d, gv, hasFalloff ? 'both' : 'delay')
+      const gv = (hasFalloff ? Math.max(0, 1 - dist * invFalloff) : 1) * layerGain
+      blendInto(delayMs, gain, i, g.op, d, gv, writesGain ? 'both' : 'delay')
       mask[i] = 1
     }
   }
@@ -329,6 +333,13 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     }
     const totalArc = arcLen ? arcLen[T - 1] : 0
     const totalMs = stroke[T - 1].tMs
+    // 🜨 8181 (post-proceso §T3): escala temporal + inversión — el
+    // trazo crudo queda intacto en el gesto, el post-proceso es un
+    // parámetro no destructivo más.
+    const tScale = g.timeScale ?? 1
+    const invert = g.invert === true
+    const layerGain = g.gain ?? 1
+    const writesGain = g.gain !== undefined
 
     for (let k = 0; k < cnt; k++) {
       const i = scratchIdx[k]
@@ -347,11 +358,13 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         }
       }
       if (best < 0) continue
-      const d =
+      let d =
         arcLen !== null && totalArc > 0
           ? (arcLen[best] / totalArc) * totalMs
           : stroke[best].tMs
-      blendInto(delayMs, gain, i, g.op, d, 1, 'delay')
+      if (invert) d = totalMs - d
+      if (tScale !== 1) d *= tScale
+      blendInto(delayMs, gain, i, g.op, d, layerGain, writesGain ? 'both' : 'delay')
       mask[i] = 1
     }
   }
@@ -362,16 +375,19 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
    */
   function applyManual(g: ManualGesture): void {
     const list = g.entries
+    const layerGain = g.gain ?? 1
     for (let k = 0; k < list.length; k++) {
       const e = list[k]
       const i = indexByNodeId.get(e.nodeId)
       if (i === undefined) continue
       const hasD = e.delayMs !== undefined
-      const hasG = e.gain !== undefined
+      // 🜨 8181: el gain de capa multiplica el de la entry — una entry
+      // sin gain propio recibe el de la capa si está definido.
+      const hasG = e.gain !== undefined || g.gain !== undefined
       if (!hasD && !hasG) continue
       blendInto(
         delayMs, gain, i, 'replace',
-        e.delayMs ?? 0, e.gain ?? 1,
+        e.delayMs ?? 0, (e.gain ?? 1) * layerGain,
         hasD && hasG ? 'both' : hasD ? 'delay' : 'gain',
       )
       mask[i] = 1
@@ -422,6 +438,8 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const range = mx - mn
     const hasSeed = g.shuffleSeed !== undefined
     const seed = g.shuffleSeed ?? 0
+    const writesGain = g.gain !== undefined
+    const layerGain = g.gain ?? 1
 
     // Pase 2: cuantización → shuffle determinista → simetría → delay
     for (let k = 0; k < cnt; k++) {
@@ -433,7 +451,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       if (hasSeed) b = Math.floor(hash01(seed, b) * buckets)
       const ub = buckets > 1 ? b / (buckets - 1) : 0
       const s = applySymmetry(ub, g.symmetry)
-      blendInto(delayMs, gain, i, g.op, s * g.spanMs, 1, 'delay')
+      blendInto(delayMs, gain, i, g.op, s * g.spanMs, layerGain, writesGain ? 'both' : 'delay')
       mask[i] = 1
     }
   }
@@ -451,6 +469,8 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const freq0 = 1 / Math.max(1e-6, g.scaleM)
     const octaves = g.octaves
     const amount = g.amountMs
+    const writesGain = g.gain !== undefined
+    const layerGain = g.gain ?? 1
     for (let k = 0; k < cnt; k++) {
       const i = scratchIdx[k]
       if (!hasPosition[i]) continue
@@ -465,7 +485,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         freq *= 2
       }
       const u = (sum / norm) * 0.5 + 0.5 // [-1,1] → [0,1]
-      blendInto(delayMs, gain, i, g.op, u * amount, 1, 'delay')
+      blendInto(delayMs, gain, i, g.op, u * amount, layerGain, writesGain ? 'both' : 'delay')
       mask[i] = 1
     }
   }
@@ -496,6 +516,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const cellM = g.transform.scaleM / bmp.rows
     const writesDelay = g.channel !== 'gain'
     const writesGain = g.channel !== 'delay'
+    const layerGain = g.gain ?? 1
 
     for (let k = 0; k < cnt; k++) {
       const i = scratchIdx[k]
@@ -508,7 +529,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       blendInto(
         delayMs, gain, i, g.op,
         writesDelay ? d : 0,
-        writesGain ? cov : 1,
+        writesGain ? cov * layerGain : 1,
         g.channel,
       )
       mask[i] = 1

@@ -28,6 +28,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { HephPreviewReturn } from '../useHephPreview'
 import { useHephaestusEditorStore } from '../../../../core/hephaestus/store/useHephaestusEditorStore'
+import { useAsteriaStore } from './store/useAsteriaStore'
+import type { CompileReport } from './compiler/AsteriaCompiler'
 
 interface AsteriaTransportDrawerProps {
   preview: HephPreviewReturn
@@ -39,6 +41,88 @@ function fmtMs(ms: number): string {
   const m = Math.floor(totalSec / 60)
   const s = totalSec - m * 60
   return `${m}:${s.toFixed(2).padStart(5, '0')}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8181 (M1): HUD BUDGET — el bloque COMPILE del rail se mudó aquí,
+// a la barra inferior que el blueprint §6.2 reservó para el presupuesto.
+// Umbrales §8.4: <40 % verde · 40-70 % ámbar · >70 % rojo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Límite del archivo .lfx — LfxFileLoader.ts:66 (blueprint §10). */
+const LFX_MAX_BYTES = 256 * 1024
+
+const STRATEGY_TAG: Record<CompileReport['strategy'], string> = {
+  lambda: 'Λ',
+  ride: 'Λ·RIDE',
+  cohort: 'COH',
+  mcc: 'MCC',
+}
+
+function budgetClass(pct: number): string {
+  if (pct > 0.7) return 'asteria-budget--red'
+  if (pct > 0.4) return 'asteria-budget--amber'
+  return 'asteria-budget--green'
+}
+
+/** Readout compacto del presupuesto — vive en la tira colapsada. */
+const BudgetHud: React.FC = () => {
+  const report = useAsteriaStore((s) => s.lastCompileReport)
+  if (!report) return null
+  const pct = report.bytes / LFX_MAX_BYTES
+  const cls = budgetClass(pct)
+  return (
+    <div
+      className={`asteria-budget ${cls}`}
+      title={
+        `BUDGET — ${report.trackIds.length} pista(s) · ` +
+        `${report.keyframeCount} kf · ${report.overrideCount} overrides · ` +
+        `${report.nodesCovered} nodos · ${report.devicesTargeted} fixtures` +
+        (report.warnings.length > 0
+          ? `\n${report.warnings.join('\n')}`
+          : '')
+      }
+    >
+      <span className="asteria-budget__strategy">
+        {STRATEGY_TAG[report.strategy] ?? report.strategy.toUpperCase()}
+      </span>
+      <span className="asteria-budget__bytes">
+        {(report.bytes / 1024).toFixed(1)} / 256 KB
+      </span>
+      <span className="asteria-budget__bar">
+        <span
+          className="asteria-budget__fill"
+          style={{ width: `${Math.min(100, pct * 100).toFixed(1)}%` }}
+        />
+      </span>
+      <span className="asteria-budget__pct">{(pct * 100).toFixed(1)}%</span>
+      {report.warnings.length > 0 && (
+        <span className="asteria-budget__warn">⚠ {report.warnings.length}</span>
+      )}
+    </div>
+  )
+}
+
+/** Detalle del presupuesto — fila extra dentro del panel expandido. */
+const BudgetDetail: React.FC = () => {
+  const report = useAsteriaStore((s) => s.lastCompileReport)
+  if (!report) return null
+  const pct = report.bytes / LFX_MAX_BYTES
+  return (
+    <div className={`asteria-transport__budgetDetail ${budgetClass(pct)}`}>
+      <span className="asteria-transport__budgetStats">
+        {STRATEGY_TAG[report.strategy] ?? report.strategy} ·{' '}
+        {report.trackIds.length} pista(s) · {report.keyframeCount} kf ·{' '}
+        {report.overrideCount} offsets · {report.nodesCovered} nodos ·{' '}
+        {report.devicesTargeted} fixtures · {(report.bytes / 1024).toFixed(1)} KB
+      </span>
+      {report.warnings.map((w) => (
+        <div key={w} className="asteria-transport__warn">
+          ⚠ {w}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export const AsteriaTransportDrawer: React.FC<AsteriaTransportDrawerProps> = ({
@@ -109,6 +193,9 @@ export const AsteriaTransportDrawer: React.FC<AsteriaTransportDrawerProps> = ({
         >
           {open ? '▼' : '▲ PREVIEW'}
         </button>
+        {/* 🜨 WAVE 8181 (M1): HUD BUDGET — siempre visible en la tira,
+            heredero del bloque COMPILE que ocupaba el rail (§6.2). */}
+        <BudgetHud />
       </div>
 
       {/* ── Panel expandido: transporte + scrubber ── */}
@@ -158,6 +245,9 @@ export const AsteriaTransportDrawer: React.FC<AsteriaTransportDrawerProps> = ({
               aria-label="Clip playhead"
             />
           </div>
+          {/* Detalle del presupuesto + warnings — el bloque COMPILE
+              del rail, reubicado bajo el transporte (§6.2). */}
+          <BudgetDetail />
         </div>
       )}
     </div>

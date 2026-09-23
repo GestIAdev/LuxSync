@@ -34,16 +34,13 @@ import { useAsteriaRigDrift } from './compiler/useAsteriaRigDrift'
 import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
 import { getTool } from './tools/ToolRegistry'
 import { GestureStackPanel } from './GestureStackPanel'
+import { GestureInspector } from './GestureInspector'
 import type { HephParamId } from '../../../../core/hephaestus/types'
 import {
   MCC_CELL_AVAILABLE,
   MCC_CELL_UNAVAILABLE_TOOLTIP,
 } from './mccCapability'
-import { measureGlyphLegibility } from './model/glyphRaster'
-import {
-  ASTERIA_DEFAULT_TARGET_COLOR,
-  type GlyphGesture,
-} from './model/AsteriaProject'
+import { ASTERIA_DEFAULT_TARGET_COLOR } from './model/AsteriaProject'
 import './tools' // side-effect: puebla TOOL_REGISTRY
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -100,8 +97,6 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
   const selectionCount = useAsteriaStore((s) => s.selectionNodeIds.size)
   const hoverCount = useAsteriaStore((s) => s.hoverNodeIds.size)
   const touchLive = selectionCount + hoverCount
-  const stack = useAsteriaStore((s) => s.project.stack)
-  const compileReport = useAsteriaStore((s) => s.lastCompileReport)
   const surgeonDeviceId = useAsteriaStore((s) => s.surgeonDeviceId)
   const targetParams = useAsteriaStore((s) => s.project.targetParams)
   const setTargetParams = useAsteriaStore((s) => s.setTargetParams)
@@ -110,16 +105,6 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
     ASTERIA_DEFAULT_TARGET_COLOR
   const setTargetColor = useAsteriaStore((s) => s.setTargetColor)
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
-
-  // 🜨 WAVE 8050 (T5): legibilidad del último gesto glyph del stack —
-  // el HUD de resolución efectiva (Gate 8050: aviso honesto, jamás
-  // una promesa falsa de texto legible).
-  const lastGlyph = [...stack].reverse().find(
-    (g): g is GlyphGesture => g.kind === 'glyph',
-  )
-  const glyphLegibility = lastGlyph
-    ? measureGlyphLegibility(atlas, lastGlyph)
-    : null
 
   // ── Hotkeys de herramientas: V / L / R ──
   useEffect(() => {
@@ -322,55 +307,12 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
           </div>
         )}
 
-        {/* 🜨 WAVE 8050 (T5): HUD de legibilidad del glifo — resolución
-            efectiva bajo el área del texto; aviso honesto por debajo
-            del umbral de la fuente 5×7. */}
-        {lastGlyph && glyphLegibility && (
-          <div className="asteria-rail__section">
-            <div className="asteria-rail__title">GLYPH</div>
-            <div className="asteria-rail__stat">
-              "{lastGlyph.text ?? ''}" · {lastGlyph.channel.toUpperCase()}
-            </div>
-            <div className="asteria-rail__muted">
-              {glyphLegibility.nodesPerMeter.toFixed(1)} nodos/m ·{' '}
-              {glyphLegibility.rowsResolved}/7 filas ·{' '}
-              {glyphLegibility.colsResolved} cols
-            </div>
-            {/* 🜨 WAVE 8160 (M2): la legibilidad es un AVISO naranja,
-                nunca un bloqueo — el operador decide sobre su matriz. */}
-            {!glyphLegibility.legible && (
-              <div className="asteria-rail__warn">
-                ⚠ Resolución subóptima — el texto compila igualmente
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="asteria-rail__section">
-          <div className="asteria-rail__title">COMPILE</div>
-          {compileReport ? (
-            <>
-              <div className="asteria-rail__stat">
-                {(compileReport.bytes / 1024).toFixed(1)} KB ·{' '}
-                {compileReport.trackIds.length} pista(s) ·{' '}
-                {compileReport.nodesCovered} nodos ·{' '}
-                {compileReport.keyframeCount} kfs
-              </div>
-              <div className="asteria-rail__muted">
-                {compileReport.devicesTargeted} fixtures ·{' '}
-                {compileReport.overrideCount} offsets ·{' '}
-                {compileReport.strategy}
-              </div>
-              {compileReport.warnings.map((w) => (
-                <div key={w} className="asteria-rail__error">
-                  ⚠ {w}
-                </div>
-              ))}
-            </>
-          ) : (
-            <div className="asteria-rail__muted">sin compilar</div>
-          )}
-        </div>
+        {/* 🜨 WAVE 8181 (M1): el espacio liberado por COMPILE/GLYPH
+            queda reservado al INSPECTOR — edición paramétrica no
+            destructiva del gesto seleccionado (blueprint §6.2). La
+            legibilidad del glyph vive ahora dentro del inspector; los
+            datos de compilación migraron al HUD BUDGET del transporte. */}
+        <GestureInspector />
 
         {touchLive > 0 && pokeEnabled && (
           <div className="asteria-poke-badge">⚡ POKE ACTIVO · {touchLive} nodos</div>

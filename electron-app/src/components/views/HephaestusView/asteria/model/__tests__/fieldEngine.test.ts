@@ -441,4 +441,130 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     expect(engine.indexOf('fx-2:petal-l:impact')).toBe(2)
     expect(engine.indexOf('fx-ghost:x')).toBe(-1)
   })
+
+  // ── 🜨 WAVE 8181: post-proceso del inspector — timeScale / invert / gain ──
+
+  test('chrono timeScale: multiplica el delay capturado (×2 = chase al doble de lento)', () => {
+    const mk = (timeScale?: number): Gesture => ({
+      kind: 'chrono', id: 'c1', op: 'replace', timeScale,
+      mask: { nodeIds: ['fx-2:petal-l:impact'] },
+      stroke: [{ x: 0, z: 0, tMs: 0 }, { x: 1.5, z: 2, tMs: 800 }],
+      captureRealTime: true, radiusM: 0.5,
+    })
+    expect(evaluateStack([mk()], makeAtlas()).delayMs[2]).toBe(800)
+    expect(evaluateStack([mk(2)], makeAtlas()).delayMs[2]).toBe(1600)
+    expect(evaluateStack([mk(0.5)], makeAtlas()).delayMs[2]).toBe(400)
+  })
+
+  test('chrono invert: el final del trazo dispara primero (totalMs − tMs)', () => {
+    const stack: Gesture[] = [
+      {
+        kind: 'chrono', id: 'c1', op: 'replace', invert: true,
+        mask: { nodeIds: ['fx-1:impact', 'fx-2:petal-l:impact'] },
+        stroke: [
+          { x: -2, z: -1, tMs: 0 },    // sobre fx-1 → invierte a 800
+          { x: 1.5, z: 2, tMs: 800 },  // sobre fx-2 → invierte a 0
+        ],
+        captureRealTime: true, radiusM: 0.5,
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    expect(snap.delayMs[0]).toBe(800)  // pintado primero, dispara último
+    expect(snap.delayMs[2]).toBe(0)    // pintado último, dispara primero
+  })
+
+  test('chrono gain: definido → estampa gain en nodos cubiertos (canal both)', () => {
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'b', delayMs: 0, gain: 1 },
+      {
+        kind: 'chrono', id: 'c1', op: 'replace', gain: 0.4,
+        mask: { nodeIds: ['fx-1:impact'] },
+        stroke: [{ x: -2, z: -1, tMs: 300 }],
+        captureRealTime: true, radiusM: 0.5,
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    expect(snap.delayMs[0]).toBe(300)
+    expect(snap.gain[0]).toBeCloseTo(0.4, 4)
+    expect(snap.gain[2]).toBe(1) // fuera del trazo → identidad del base
+  })
+
+  test('wave gain: sin falloff estampa gain plano; con falloff lo multiplica', () => {
+    const flat: Gesture[] = [
+      {
+        kind: 'wave', id: 'w1', op: 'replace', gain: 0.6,
+        mask: { nodeIds: ['fx-2:petal-l:impact'] },
+        emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
+      },
+    ]
+    expect(evaluateStack(flat, makeAtlas()).gain[2]).toBeCloseTo(0.6, 4)
+    // falloff 5 m a dist 2.5 → 0.5; × capa 0.5 → 0.25
+    const scaled: Gesture[] = [
+      {
+        kind: 'wave', id: 'w1', op: 'replace', gain: 0.5, falloffM: 5,
+        mask: { nodeIds: ['fx-2:petal-l:impact'] },
+        emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
+      },
+    ]
+    expect(evaluateStack(scaled, makeAtlas()).gain[2]).toBeCloseTo(0.25, 4)
+  })
+
+  test('slice gain: estampa gain uniforme sobre los buckets cubiertos', () => {
+    const stack: Gesture[] = [
+      {
+        kind: 'slice', id: 's1', op: 'replace', axis: 'dmx', gain: 0.3,
+        buckets: 2, spanMs: 500, symmetry: 'linear',
+        mask: { nodeIds: ['fx-1:impact', 'fx-2:petal-l:impact'] },
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    expect(snap.gain[0]).toBeCloseTo(0.3, 4)
+    expect(snap.gain[2]).toBeCloseTo(0.3, 4)
+  })
+
+  test('noise gain: definido → canal both (delay + estampa)', () => {
+    const stack: Gesture[] = [
+      {
+        kind: 'noise', id: 'n1', op: 'replace', seed: 7, scaleM: 1.5,
+        amountMs: 100, octaves: 1, gain: 0.7,
+        mask: { nodeIds: ['fx-1:impact'] },
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    expect(snap.gain[0]).toBeCloseTo(0.7, 4)
+    expect(snap.mask[0]).toBe(1)
+  })
+
+  test('glyph gain: multiplica la cobertura del píxel en canal gain', () => {
+    const atlas: NodeAtlas = {
+      entries: [entry('a:cell', 0, 0)],
+      byNodeId: new Map(),
+    }
+    const stack: Gesture[] = [
+      {
+        kind: 'glyph', id: 'g1', op: 'replace', text: 'I', gain: 0.5,
+        mask: { nodeIds: ['a:cell'] },
+        transform: { x: 0, z: 0, scaleM: 1.4, rotDeg: 0 },
+        channel: 'gain', antialias: false,
+      },
+    ]
+    const snap = evaluateStack(stack, atlas)
+    expect(snap.gain[0]).toBeCloseTo(0.5, 4) // cov 1 × 0.5
+  })
+
+  test('manual gain: multiplica entries con gain y rellena las que no tienen', () => {
+    const stack: Gesture[] = [
+      {
+        kind: 'manual', id: 'm1', gain: 0.5,
+        entries: [
+          { nodeId: 'fx-1:impact', gain: 0.8 },   // 0.8 × 0.5 = 0.4
+          { nodeId: 'fx-1:color', delayMs: 50 },  // sin gain propio → 0.5
+        ],
+      },
+    ]
+    const snap = evaluateStack(stack, makeAtlas())
+    expect(snap.gain[0]).toBeCloseTo(0.4, 4)
+    expect(snap.gain[1]).toBeCloseTo(0.5, 4)
+    expect(snap.delayMs[1]).toBe(50) // delay intacto
+  })
 })

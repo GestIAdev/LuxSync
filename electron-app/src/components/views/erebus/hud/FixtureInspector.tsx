@@ -8,6 +8,7 @@ import {
 } from '../../../../core/stage/ShowFileV2'
 import type { FixtureV2, InstallationOrientation, CanonicalZone } from '../../../../core/stage/ShowFileV2'
 import { NumberField } from './NumberField'
+import MassOpsSection from './MassOpsSection'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FixtureInspector — Datos de un foco seleccionado
@@ -155,6 +156,11 @@ export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId })
           </text>
         </svg>
       </div>
+
+      {/* 🏗️ WAVE 8140-M2: Mass Operations con UNA sola semilla — el
+          operador ya no necesita seleccionar 2+ focos para clonar.
+          En selección múltiple la sección vive en MultiInspector. */}
+      <MassOpsSection seeds={[fixture]} />
     </div>
   )
 }

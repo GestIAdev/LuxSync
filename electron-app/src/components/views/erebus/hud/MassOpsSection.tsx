@@ -73,7 +73,8 @@ export const MassOpsSection: React.FC<MassOpsSectionProps> = ({ seeds }) => {
       case 'linear':
         return Math.max(0, Math.floor(num(pCount, 0))) * seeds.length
       case 'grid':
-        return Math.max(0, Math.floor(num(pCols, 0))) * Math.max(0, Math.floor(num(pRows, 0)))
+        // WAVE 8140-M1: la celda (0,0) se omite — es la posición del ancla
+        return Math.max(0, Math.floor(num(pCols, 0)) * Math.floor(num(pRows, 0)) - 1)
       case 'circular':
         return Math.max(0, Math.floor(num(pCount, 0)))
       default:

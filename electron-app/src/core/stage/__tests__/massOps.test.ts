@@ -110,26 +110,55 @@ describe('generateLinearArray', () => {
     const clones = generateLinearArray([seedA()], 2, { x: 0, y: 0.5, z: 0.25 }, makeIdGen())
     expect(clones[1].position).toEqual({ x: 1, y: 1.25, z: -1.5 })
   })
+
+  it('WAVE 8140: multiplicador parte en 1 — ningún clon pisa a la semilla', () => {
+    const seed = seedA()
+    const clones = generateLinearArray([seed], 4, { x: 1, y: 0, z: 0 }, makeIdGen())
+    expect(clones).toHaveLength(4)
+    for (const c of clones) {
+      expect(c.position).not.toEqual(seed.position)
+    }
+    // Offsets: 1×Δ … 4×Δ
+    expect(clones.map(c => c.position.x)).toEqual([2, 3, 4, 5])
+  })
+
+  it('WAVE 8140: offset {0,0,0} degenerado → 0 clones (nunca superpone)', () => {
+    const clones = generateLinearArray([seedA()], 3, { x: 0, y: 0, z: 0 }, makeIdGen())
+    expect(clones).toHaveLength(0)
+  })
 })
 
 describe('generateGridMatrix', () => {
-  it('retícula cols×rows anclada al PRIMER seed, celdas round-robin', () => {
+  it('WAVE 8140: celda (0,0) se omite — retícula produce cols×rows−1', () => {
     const seeds = [seedA(), seedB()]
     const clones = generateGridMatrix(seeds, 3, 2, 0.5, 1.0, makeIdGen())
 
-    expect(clones).toHaveLength(6)
-    // Fila 0: A,B,A — Fila 1: B,A,B (índice r*cols+c mod n)
+    expect(clones).toHaveLength(5) // 3×2 − celda origen
+    // (0,0) ausente; el round-robin sigue el índice absoluto r*cols+c
     expect(clones.map(c => c.name)).toEqual([
-      'PAR Alpha ·G1x1', 'MH Beta ·G1x2', 'PAR Alpha ·G1x3',
+      'MH Beta ·G1x2', 'PAR Alpha ·G1x3',
       'MH Beta ·G2x1', 'PAR Alpha ·G2x2', 'MH Beta ·G2x3',
     ])
     // Anclaje: posición de seeds[0] = (1, -2)
-    expect(clones[2].position.x).toBe(1 + 2 * 0.5)
-    expect(clones[3].position.z).toBe(-2 + 1 * 1.0)
+    expect(clones[1].position.x).toBe(1 + 2 * 0.5)
+    expect(clones[2].position.z).toBe(-2 + 1 * 1.0)
     // Y heredado de la semilla de la CELDA (suelo vs truss)
-    expect(clones[0].position.y).toBe(0.25)
-    expect(clones[1].position.y).toBe(4)
-    expect(new Set(clones.map(c => c.id)).size).toBe(6)
+    expect(clones[0].position.y).toBe(4)
+    expect(clones[1].position.y).toBe(0.25)
+    expect(new Set(clones.map(c => c.id)).size).toBe(5)
+    // Ningún clon en la posición del ancla
+    expect(clones.every(c => !(c.position.x === 1 && c.position.z === -2))).toBe(true)
+  })
+
+  it('WAVE 8140: celda que colisiona con OTRA semilla también se omite', () => {
+    // seedB en (1.5, 4, -2) — la celda (1,0) usa semilla B → su clon caería
+    // exactamente donde B ya está (la Y se hereda de la semilla de celda)
+    const b = seedB()
+    b.position = { x: 1.5, y: 4, z: -2 }
+    const clones = generateGridMatrix([seedA(), b], 3, 1, 0.5, 1.0, makeIdGen())
+    // (0,0) salta por ser origen; (1,0) salta por colisión con B; (2,0) queda
+    expect(clones).toHaveLength(1)
+    expect(clones[0].name).toBe('PAR Alpha ·G1x3')
   })
 })
 
@@ -165,6 +194,19 @@ describe('generateCircularArray', () => {
       'PAR Alpha ·C1', 'MH Beta ·C2', 'PAR Alpha ·C3', 'MH Beta ·C4',
     ])
   })
+
+  it('WAVE 8140: semilla ya EN el perímetro → ese ángulo se omite', () => {
+    // Centroide de A(3,-1)+B(-1,-1) = (1,-1); radio 2 → θ=0 cae en (3,-1)=A
+    // y θ=π cae en (-1,-1)=B → esos dos clones se omiten
+    const a = seedA()
+    a.position = { x: 3, y: 0.25, z: -1 }
+    const b = seedB()
+    b.position = { x: -1, y: 0.25, z: -1 }
+    const clones = generateCircularArray([a, b], 4, 2, 'XZ', makeIdGen())
+    expect(clones).toHaveLength(2)
+    // i=1 e i=3 usan seeds[1]=B (índice absoluto i mod n)
+    expect(clones.map(c => c.name)).toEqual(['MH Beta ·C2', 'MH Beta ·C4'])
+  })
 })
 
 describe('generateMirrorX', () => {
@@ -188,5 +230,13 @@ describe('generateMirrorX', () => {
     expect(clones).toHaveLength(2)
     expect(new Set(clones.map(c => c.id)).size).toBe(2)
     expect(clones[1].position.x).toBe(3) // -(-3)
+  })
+
+  it('WAVE 8140: semilla en x≈0 espejaría sobre sí misma → omitida', () => {
+    const centered = seedA()
+    centered.position = { x: 0, y: 0.25, z: -2 }
+    const clones = generateMirrorX([seedA(), centered], makeIdGen())
+    expect(clones).toHaveLength(1) // solo A(x=1) espeja; la centrada se omite
+    expect(clones[0].name).toBe('PAR Alpha ·M')
   })
 })

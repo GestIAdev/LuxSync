@@ -30,6 +30,25 @@ import type { FixtureV2, Position3D } from './ShowFileV2'
 /** Generador de IDs únicos — el caller inyecta `() => generateId('fix')`. */
 export type IdGen = () => string
 
+/**
+ * 🛡️ WAVE 8140 (M1): epsilon anti-superposición.
+ * `_syncDerivedState` snapea a voxel 0.25m → dos puntos a <0.125m colapsan
+ * al mismo voxel. Cualquier clon dentro de este radio de una semilla se
+ * omite: NUNCA estampamos un clon sobre una fixture original.
+ */
+const SEED_COLLISION_EPS = 0.125
+
+const collidesWithSeed = (
+  pos: Position3D,
+  seeds: readonly FixtureV2[],
+): boolean =>
+  seeds.some(
+    (s) =>
+      Math.abs(s.position.x - pos.x) < SEED_COLLISION_EPS &&
+      Math.abs(s.position.y - pos.y) < SEED_COLLISION_EPS &&
+      Math.abs(s.position.z - pos.z) < SEED_COLLISION_EPS,
+  )
+
 // ═══════════════════════════════════════════════════════════════════════════
 // DEEP CLONE — nada se comparte por referencia con la semilla
 // ═══════════════════════════════════════════════════════════════════════════
@@ -80,7 +99,9 @@ export function deepCloneFixture(
 
 /**
  * LINEAR ARRAY — repite la SELECCIÓN como bloque `count` veces:
- * la copia k de cada semilla nace en `seed.pos + k·offset` (k = 1..count).
+ * la copia k de cada semilla nace en `seed.pos + k·offset` con
+ * k = 1..count (WAVE 8140-M1: el multiplicador NUNCA parte de 0 — el
+ * primer clon ya desplaza un offset completo, jamás pisa a la semilla).
  * Total = seeds.length × count. Con 1 semilla → N copias marchando.
  */
 export function generateLinearArray(
@@ -92,14 +113,18 @@ export function generateLinearArray(
   const out: FixtureV2[] = []
   for (let k = 1; k <= count; k++) {
     for (const seed of seeds) {
+      const position: Position3D = {
+        x: seed.position.x + offset.x * k,
+        y: seed.position.y + offset.y * k,
+        z: seed.position.z + offset.z * k,
+      }
+      // Guard extra (offset 0 explícito del operador): un clon en la
+      // posición exacta de una semilla no aporta nada — se omite.
+      if (collidesWithSeed(position, seeds)) continue
       out.push(
         deepCloneFixture(seed, idGen(), {
           name: `${seed.name} ·L${k}`,
-          position: {
-            x: seed.position.x + offset.x * k,
-            y: seed.position.y + offset.y * k,
-            z: seed.position.z + offset.z * k,
-          },
+          position,
         }),
       )
     }
@@ -126,15 +151,21 @@ export function generateGridMatrix(
   const anchor = seeds[0]
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
+      // 🛡️ WAVE 8140-M1: la celda origen (0,0) coincide con la posición
+      // del seed ancla — se omite para no estampar un clon encima.
+      // La retícula produce (cols × rows) − 1 clones.
+      if (c === 0 && r === 0) continue
       const seed = seeds[(r * cols + c) % seeds.length]
+      const position: Position3D = {
+        x: anchor.position.x + c * spacingX,
+        y: seed.position.y,
+        z: anchor.position.z + r * spacingZ,
+      }
+      if (collidesWithSeed(position, seeds)) continue
       out.push(
         deepCloneFixture(seed, idGen(), {
           name: `${seed.name} ·G${r + 1}x${c + 1}`,
-          position: {
-            x: anchor.position.x + c * spacingX,
-            y: seed.position.y,
-            z: anchor.position.z + r * spacingZ,
-          },
+          position,
         }),
       )
     }
@@ -190,6 +221,11 @@ export function generateCircularArray(
         z: cz + radius * Math.sin(theta),
       }
     }
+    // 🛡️ WAVE 8140-M1: si una semilla ya está EN el perímetro a ese
+    // ángulo (p.ej. densificar un anillo existente), el clon colisionaría
+    // con ella → se omite. Esto subsume el caso "i === 0": con centroide,
+    // θ=0 no es especial salvo que una semilla ocupe ese punto exacto.
+    if (collidesWithSeed(position, seeds)) continue
     const overrides: Partial<FixtureV2> = {
       name: `${seed.name} ·C${i + 1}`,
       position,
@@ -215,17 +251,28 @@ export function generateMirrorX(
   seeds: readonly FixtureV2[],
   idGen: IdGen,
 ): FixtureV2[] {
-  return seeds.map((seed) =>
-    deepCloneFixture(seed, idGen(), {
-      name: `${seed.name} ·M`,
-      position: { x: -seed.position.x, y: seed.position.y, z: seed.position.z },
-      rotation: {
-        pitch: seed.rotation.pitch,
-        yaw: -seed.rotation.yaw,
-        roll: -seed.rotation.roll,
-      },
-      // Un clon espejo no hereda el anclaje a rig — el truss no está espejado
-      rigId: undefined,
-    }),
-  )
+  const out: FixtureV2[] = []
+  for (const seed of seeds) {
+    const position: Position3D = {
+      x: -seed.position.x,
+      y: seed.position.y,
+      z: seed.position.z,
+    }
+    // 🛡️ WAVE 8140-M1: una semilla en x≈0 espeja sobre sí misma → skip.
+    if (collidesWithSeed(position, seeds)) continue
+    out.push(
+      deepCloneFixture(seed, idGen(), {
+        name: `${seed.name} ·M`,
+        position,
+        rotation: {
+          pitch: seed.rotation.pitch,
+          yaw: -seed.rotation.yaw,
+          roll: -seed.rotation.roll,
+        },
+        // Un clon espejo no hereda el anclaje a rig — el truss no está espejado
+        rigId: undefined,
+      }),
+    )
+  }
+  return out
 }

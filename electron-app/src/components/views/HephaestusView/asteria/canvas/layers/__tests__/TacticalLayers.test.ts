@@ -234,7 +234,22 @@ describe('🜨 WAVE 8173 — label overlap fix', () => {
     drawNodeLayer(ctx, T_CLOSE, atlas, getDeviceMeta([]))
     // Dos celdas a 14cm en el mismo cluster → una sola fillText
     expect(calls.texts).toHaveLength(1)
-    expect(calls.texts[0]).toBe('Pan') // la primera celda porta la etiqueta
+    expect(calls.texts[0]).toBe('Pan') // sin meta de padre → customLabel de celda
+  })
+
+  test('8174-M2: el nombre del PADRE pisa el customLabel de la celda', () => {
+    // El bug reportado: el Tungsten imprimía "Wash Color" (celda) en
+    // vez del nombre del aparato. Prioridad: padre → celda.
+    const atlas = mkAtlas([
+      { ...entry('tw:wash', 'tw', -0.07, 0), customLabel: 'Wash Color' },
+      { ...entry('tw:impact', 'tw', 0.07, 0), customLabel: 'Main Intensity' },
+    ])
+    const meta = getDeviceMeta([
+      { ...fx('tw', 'effect'), name: 'Fan Tungsten' } as FixtureV2,
+    ])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(ctx, T_CLOSE, atlas, meta)
+    expect(calls.texts).toEqual(['Fan Tungsten'])
   })
 
   test('aparatos distintos → una etiqueta cada uno', () => {
@@ -332,6 +347,55 @@ describe('🜨 WAVE 8172 — Fan Tungsten matcher', () => {
     drawNodeLayer(ctx, T, atlas, meta)
     expect(calls.lineTo).toBe(3) // solo el diamante del mover
     expect(calls.arc).toBe(4)    // 3 aspas + hub del ventilador
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVE 8174 — Composite Fixture Resolution (parent-aware)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('🜨 WAVE 8174 — Tungsten compuesto (parent-aware heuristics)', () => {
+  const fxFull = (
+    id: string, type: string, name = '', model = '', profileId = '',
+  ): FixtureV2 =>
+    ({
+      id, type, name, model, profileId,
+      rotation: { pitch: 0, yaw: 0, roll: 0 },
+    }) as unknown as FixtureV2
+
+  test("'Tungsten' sin 'fan' en el nombre → hélice (paridad Hyperion)", () => {
+    // El clasificador de Hyperion (useFixtureData 7761.5) matchea
+    // 'fan' O 'tungsten' — el aparato real puede llamarse "Tungsten #3"
+    expect(resolveGlyphType(fxFull('t1', 'effect', 'Tungsten #3'))).toBe('fan')
+    expect(resolveGlyphType(fxFull('t2', 'effect', 'Washer Tungsten'))).toBe('fan')
+    // Por model/profileId también (definición 'fan_tungsten'/'tungsten')
+    expect(resolveGlyphType(fxFull('t3', 'effect', '', 'tungsten_rgb'))).toBe('fan')
+    expect(resolveGlyphType(fxFull('t4', 'blinder', '', '', 'fan_tungsten'))).toBe('fan')
+  })
+
+  test("celda 'Wash Color' de un Tungsten hereda la hélice del padre", () => {
+    // La celda nunca se evalúa: meta resuelve por deviceId → padre.
+    const atlas = mkAtlas([
+      entry('tung-1:wash', 'tung-1', -1, 0),
+      entry('tung-1:petal-l', 'tung-1', -0.9, 0),
+      entry('par-1:dim', 'par-1', 1, 0),
+    ])
+    const meta = getDeviceMeta([
+      fxFull('tung-1', 'effect', 'Tungsten'),
+      fxFull('par-1', 'par', 'LED Par'),
+    ])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(ctx, T, atlas, meta)
+    // 2 celdas Tungsten = 2 hélices (8 arcs) + PAR (2 anillos + punto = 3)
+    expect(calls.arc).toBe(11)
+    expect(calls.lineTo).toBe(0)
+  })
+
+  test('fallback por deviceId: fixture ausente + id "tungsten-1" → hélice', () => {
+    const atlas = mkAtlas([entry('tungsten-1:wash', 'tungsten-1', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(ctx, T, atlas, getDeviceMeta([])) // fixture no resuelve
+    expect(calls.arc).toBe(4) // 3 aspas + hub
   })
 })
 

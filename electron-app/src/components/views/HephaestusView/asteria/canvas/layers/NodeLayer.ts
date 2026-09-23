@@ -114,11 +114,22 @@ const EXPLICIT_GLYPH_TYPES = new Set([
 ])
 
 /**
- * Resuelve el tipo de glifo. Jerarquía (WAVE 8173-M2 — el nombre del
- * operador MANDA sobre el tipo estructural):
- *   1. "fan" en name/model (case-insensitive) → hélice SIEMPRE. El
- *      "Fan Tungsten" vive internamente como 'effect' — el nombre que
- *      el usuario le dio pisa cualquier type, incluso 'blinder'/'par'.
+ * 🜨 WAVE 8174 (M1): hint de hélice sobre la identidad del APARATO
+ * PADRE (name/model/profileId del FixtureV2 — nunca sobre la celda).
+ * Paridad con el clasificador de Hyperion
+ * (useFixtureData.classifyFixtureType, WAVE 7761.5): el Tungsten
+ * multicelular se detecta por 'fan' **o 'tungsten'** — su nombre real
+ * puede ser "Tungsten"/"Washer Tungsten"/"Tungsteno #3" sin 'fan'.
+ */
+const PARENT_FAN_HINT = /fan|tungsten/i
+
+/**
+ * Resuelve el tipo de glifo evaluando SIEMPRE el aparato padre.
+ * Jerarquía (WAVE 8173-M2 + 8174-M1 — el nombre del operador MANDA):
+ *   1. 'fan'|'tungsten' en name/model/profileId → hélice SIEMPRE. El
+ *      Fan Tungsten vive internamente como 'effect' y sus celdas
+ *      ("Wash Color", "Main Intensity") jamás llegan a esta función —
+ *      se evalúa `f`, el FixtureV2 resuelto por `entry.deviceId`.
  *      (Trade-off aceptado: substring match — "Fantasy" también pega.)
  *   2. type === 'fan' explícito → hélice.
  *   3. type explícito conocido → se respeta (diamante/anillo intactos).
@@ -127,9 +138,9 @@ const EXPLICIT_GLYPH_TYPES = new Set([
  *   5. Resto → type tal cual (cae al doble anillo en el dispatch).
  */
 export function resolveGlyphType(f: FixtureV2): string {
-  // Prioridad absoluta: el nombre del operador rompe el escudo de tipos
-  const nameModel = `${f.name ?? ''} ${f.model ?? ''}`
-  if (/fan/i.test(nameModel)) return 'fan'
+  // Prioridad absoluta: la identidad del padre rompe el escudo de tipos
+  const parentIdentity = `${f.name ?? ''} ${f.model ?? ''} ${f.profileId ?? ''}`
+  if (PARENT_FAN_HINT.test(parentIdentity)) return 'fan'
 
   const t = typeof f.type === 'string' ? f.type : 'generic'
   if (t === 'fan') return 'fan'
@@ -330,30 +341,37 @@ export function drawNodeLayer(
     }
 
     const meta = deviceMeta?.get(entry.deviceId)
-    switch (meta?.type) {
+    // 🜨 8174-M1 fallback: si el fixture no resuelve en stageStore, el
+    // propio deviceId ("tungsten-1", "fan-01") es identidad del padre —
+    // última red antes de caer al anillo genérico.
+    const glyphType =
+      meta?.type ??
+      (PARENT_FAN_HINT.test(entry.deviceId) ? 'fan' : undefined)
+    switch (glyphType) {
       case 'moving-head':
       case 'spot':
       case 'scanner':
-        drawDiamond(ctx, sx, sy, r, meta.yawRad)
+        drawDiamond(ctx, sx, sy, r, meta?.yawRad ?? 0)
         break
       case 'fan':
         drawHelix(ctx, sx, sy, r)
         break
       case 'laser':
-        drawLaser(ctx, sx, sy, r, meta.yawRad)
+        drawLaser(ctx, sx, sy, r, meta?.yawRad ?? 0)
         break
       default:
         drawDoubleRing(ctx, sx, sy, r)
         break
     }
 
-    // 🜨 8173-M1: UNA etiqueta por deviceId — la primera celda dibujada
-    // del aparato la porta. Cadena única: customLabel → name/model del
-    // fixture → cellSuffix. Jamás dos fillText sobre el mismo cluster.
+    // 🜨 8173-M1 + 8174-M2: UNA etiqueta por deviceId, y la etiqueta es
+    // del APARATO, no de la celda. Prioridad: nombre del padre
+    // (FixtureV2.name = etiqueta del operador → model) → customLabel
+    // de celda → cellSuffix. "Fan Tungsten", nunca "Wash Color".
     if (drawLabels && !labeledDevices.has(entry.deviceId)) {
       labeledDevices.add(entry.deviceId)
       const label =
-        entry.customLabel ?? meta?.label ?? entry.cellSuffix
+        meta?.label ?? entry.customLabel ?? entry.cellSuffix
       ctx.fillText(label, sx, sy - r - 4)
     }
   }

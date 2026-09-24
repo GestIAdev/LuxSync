@@ -63,8 +63,13 @@ import type {
 import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
 import type { FieldSnapshot } from '../model/fieldEngine'
-import { synthesizeColorLut, synthesizeLambdaPulse } from './lutSynth'
-import { ASTERIA_DEFAULT_TARGET_COLOR } from '../model/AsteriaProject'
+import { hexToHsl } from './lutSynth'
+import { envelope } from './synth/envelopes'
+import { materialize } from './synth/materialize'
+import {
+  ASTERIA_DEFAULT_SYNTH,
+  ASTERIA_DEFAULT_TARGET_COLOR,
+} from '../model/AsteriaProject'
 import { measureGlyphLegibility } from '../model/glyphRaster'
 import {
   ASTERIA_TRACK_PREFIX,
@@ -328,11 +333,19 @@ export function compile(input: CompileInput): CompileOutput {
     }
   }
 
-  /** Curva base por parámetro: clone del ride o síntesis por tipo
-   *  (λ-pulse numérica / LUT color 🌈 WAVE 8110-M2). El ride es
-   *  agnóstico — cloneCurve preserva el valueType del origen. Guardia
-   *  honesta: 'color' con fuente no-color no clonaría basura silente —
-   *  advertimos y caemos al LUT sintético. */
+  // 🜨 WAVE 8191 — la forma de onda ya no es constante global: la spec
+  // provisional del proyecto (SHAPE en STRATEGY) alimenta el único
+  // embudo de materialización. En la WAVE 8195 pasa a ser por capa.
+  const synthSpec = project.defaultSynth ?? ASTERIA_DEFAULT_SYNTH
+  const colorHsl = hexToHsl(
+    project.targetColor ?? ASTERIA_DEFAULT_TARGET_COLOR,
+  )
+
+  /** Curva base por parámetro: clone del ride o síntesis por spec
+   *  (envelope→materialize 🜨 WAVE 8191). El ride es agnóstico —
+   *  cloneCurve preserva el valueType del origen. Guardia honesta:
+   *  'color' con fuente no-color no clonaría basura silente —
+   *  advertimos y caemos a la LUT sintética. */
   const baseCurveFor = (param: HephParamId): HephCurve => {
     if (rideCurve !== null) {
       if (param === 'color' && rideCurve.valueType !== 'color') {
@@ -344,8 +357,8 @@ export function compile(input: CompileInput): CompileOutput {
       }
     }
     return param === 'color'
-      ? synthesizeColorLut(D, project.targetColor ?? ASTERIA_DEFAULT_TARGET_COLOR)
-      : synthesizeLambdaPulse(param, D)
+      ? materialize(envelope(synthSpec), 'color', D, colorHsl)
+      : materialize(envelope(synthSpec), param, D)
   }
 
   // ── Emisión por estrategia — 🜨 WAVE 8190: PLAN DE EMISIÓN ──

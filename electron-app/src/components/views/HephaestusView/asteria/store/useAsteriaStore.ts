@@ -24,6 +24,7 @@
 import { create } from 'zustand'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
 import type { AsteriaProject, CompileStrategy, Gesture, LutSource } from '../model/AsteriaProject'
+import type { SynthSpec } from '../compiler/synth/SynthSpec'
 import { createDefaultProject } from '../model/AsteriaProject'
 import {
   computeRigDrift,
@@ -210,6 +211,12 @@ export interface AsteriaStore extends AsteriaCamera {
    * la pista ast_* emite SOLO phaseOverrides sobre esa curva exacta).
    */
   setLutSource: (src: LutSource) => void
+  /**
+   * 🜨 WAVE 8191 (M3): forma de síntesis provisional del proyecto —
+   * la curva base que el compilador materializa cuando LUT SRC es
+   * AUTO-SYNTH. Undoable vía historyPush; congelada en drift.
+   */
+  setDefaultSynth: (spec: SynthSpec) => void
   /**
    * 🜨 WAVE 8186 (M2): estrategia de compilación del campo → tracks.
    * 'auto' | 'lambda' | 'cohort' | 'mcc' | 'mcc-device' — ver
@@ -594,6 +601,16 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
       s.driftReadOnly
         ? {}
         : { ...historyPush(s), project: { ...s.project, lutSource: src } },
+    ),
+
+  setDefaultSynth: (spec) =>
+    set((s) =>
+      s.driftReadOnly
+        ? {}
+        : {
+            ...historyPush(s),
+            project: { ...s.project, defaultSynth: spec },
+          },
     ),
 
   setStrategy: (strategy) =>

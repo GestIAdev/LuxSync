@@ -22,6 +22,7 @@
 
 import type { AsteriaProject as AsteriaProjectEnvelope } from '../../../../../core/hephaestus/types'
 import type { HephParamId } from '../../../../../core/hephaestus/types'
+import type { SynthSpec } from '../compiler/synth/SynthSpec'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BLEND & CHANNEL
@@ -284,6 +285,15 @@ export interface AsteriaProject extends AsteriaProjectEnvelope {
    */
   readonly targetColor?: string
   readonly lutSource: LutSource
+  /**
+   * 🜨 WAVE 8191: forma de síntesis provisional a nivel de PROYECTO.
+   * El compilador materializa `envelope(defaultSynth)` como curva base
+   * cuando `lutSource.kind === 'preset'`. En la WAVE 8195 esta spec baja
+   * a `paint.synth` por capa — el campo desaparecerá del root entonces.
+   * Opcional: proyectos persistidos antes del 8191 no lo traen — el
+   * compilador cae a ASTERIA_DEFAULT_SYNTH ('pulse' ≡ V1 byte a byte).
+   */
+  readonly defaultSynth?: SynthSpec
   /** K máximo de cohortes para strategy 'cohort' (default 16). */
   readonly cohortBudget: number
   /**
@@ -306,6 +316,8 @@ export const ASTERIA_DEFAULT_TARGET_PARAMS: readonly HephParamId[] = ['intensity
 /** Color por defecto del canal 'color' — rojo puro (HEX '#rrggbb'). */
 export const ASTERIA_DEFAULT_TARGET_COLOR = '#ff0000'
 export const ASTERIA_DEFAULT_LUT_SOURCE: LutSource = { kind: 'preset', name: 'default' }
+/** Forma por defecto — el trapezoide Λ de siempre (byte-parity V1). */
+export const ASTERIA_DEFAULT_SYNTH: SynthSpec = { shape: 'pulse' }
 /** El gesto suelo de todo proyecto nuevo: campo uniforme identidad. */
 export const ASTERIA_BASE_GESTURE_ID = 'base'
 

@@ -39,6 +39,8 @@ import type {
 import { GHOST_RGB } from './model/gestureGhost'
 import { measureGlyphLegibility } from './model/glyphRaster'
 import { isAsteriaTrack } from './compiler/AsteriaCompiler'
+import { SYNTH_SHAPES } from './compiler/synth/SynthSpec'
+import type { SynthShape } from './compiler/synth/SynthSpec'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PRIMITIVAS DE CONTROL — una fila = label + input + readout
@@ -465,6 +467,8 @@ export const GestureInspector: React.FC = () => {
 const StrategyRows: React.FC = () => {
   const lutSource = useAsteriaStore((s) => s.project.lutSource)
   const setLutSource = useAsteriaStore((s) => s.setLutSource)
+  const defaultSynth = useAsteriaStore((s) => s.project.defaultSynth)
+  const setDefaultSynth = useAsteriaStore((s) => s.setDefaultSynth)
   const strategy = useAsteriaStore((s) => s.project.strategy)
   const setStrategy = useAsteriaStore((s) => s.setStrategy)
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
@@ -542,6 +546,29 @@ const StrategyRows: React.FC = () => {
         <div className="asteria-rail__warn">
           ⚠ RIDE_SOURCE_MISSING — el compilador cae al pulso Λ
         </div>
+      )}
+      {/* 🜨 WAVE 8191: SHAPE — la forma de onda sintetizada, provisional
+          a nivel de proyecto (baja a por-capa en la WAVE 8195). Solo
+          tiene sentido con LUT SRC = AUTO-SYNTH; con Ride la curva
+          la dicta la pista Forge clonada. */}
+      {lutSource.kind === 'preset' && (
+        <label className="asteria-insp__row" title="Forma de onda que el compilador sintetiza como curva base de los tracks ast_* — PULSE es el trapezoide Λ clásico; LASER es un pulso ultra-estrecho de flancos duros (la línea de luz que barre el rig con un gesto Wave)">
+          <span className="asteria-insp__label">SHAPE</span>
+          <select
+            className="asteria-insp__select"
+            value={defaultSynth?.shape ?? 'pulse'}
+            disabled={driftReadOnly}
+            onChange={(e) =>
+              setDefaultSynth({ shape: e.target.value as SynthShape })
+            }
+          >
+            {SYNTH_SHAPES.map((s) => (
+              <option key={s} value={s}>
+                {s.toUpperCase()}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
     </>
   )

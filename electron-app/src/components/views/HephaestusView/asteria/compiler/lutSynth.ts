@@ -24,11 +24,13 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import type { HephCurve, HephKeyframe, HephParamId, HSL } from '../../../../../core/hephaestus/types'
+import type { HephCurve, HephParamId, HSL } from '../../../../../core/hephaestus/types'
 import { ASTERIA_DEFAULT_TARGET_COLOR } from '../model/AsteriaProject'
 import type { PhaseOverrideMap } from '../../../../../core/hephaestus/phase/PhaseOverride'
 import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { FieldSnapshot } from '../model/fieldEngine'
+import { envelope } from './synth/envelopes'
+import { materialize } from './synth/materialize'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -59,22 +61,10 @@ export function synthesizeLambdaPulse(
   paramId: HephParamId,
   durationMs: number,
 ): HephCurve {
-  const D = Math.max(1, durationMs)
-  const keyframes: HephKeyframe[] = [
-    { timeMs: 0,                    value: 0, interpolation: 'linear' },
-    { timeMs: Math.round(D * 0.08), value: 1, interpolation: 'linear' }, // attack
-    { timeMs: Math.round(D * 0.28), value: 1, interpolation: 'linear' }, // hold
-    { timeMs: Math.round(D * 0.42), value: 0, interpolation: 'linear' }, // release
-    { timeMs: D,                    value: 0, interpolation: 'linear' }, // cierre C⁰
-  ]
-  return {
-    paramId,
-    valueType: 'number',
-    range: [0, 1],
-    defaultValue: 0,
-    keyframes,
-    mode: 'absolute',
-  }
+  // 🜨 WAVE 8191: wrapper de compatibilidad — la receta 'pulse' por
+  // defecto de envelopes.ts reproduce esta curva byte a byte
+  // (gate G-SYN-COMPAT). La implementación vive en synth/materialize.
+  return materialize(envelope({ shape: 'pulse' }), paramId, durationMs)
 }
 
 /**
@@ -133,28 +123,16 @@ export function synthesizeColorLut(
   durationMs: number,
   targetColorHex: string = ASTERIA_DEFAULT_TARGET_COLOR,
 ): HephCurve {
-  const D = Math.max(1, durationMs)
-  const { h, s, l } = hexToHsl(targetColorHex)
-  const at = (t: number, light: number): HephKeyframe => ({
-    timeMs: t,
-    value: { h, s, l: light } satisfies HSL,
-    interpolation: 'linear',
-  })
-  const keyframes: HephKeyframe[] = [
-    at(0, 0),                                // reposo — negro
-    at(Math.round(D * 0.08), l),             // attack → color exacto
-    at(Math.round(D * 0.28), l),             // hold
-    at(Math.round(D * 0.42), 0),             // release → negro
-    at(D, 0),                                // cierre C⁰
-  ]
-  return {
-    paramId: 'color',
-    valueType: 'color',
-    range: [0, 360],
-    defaultValue: { h, s, l: 0 },
-    keyframes,
-    mode: 'absolute',
-  }
+  // 🜨 WAVE 8191: wrapper de compatibilidad — 'pulse' materializado
+  // sobre el HSL del objetivo reproduce la V1 byte a byte
+  // (gate G-SYN-COMPAT). La envolvente modula Lightness: pico = color
+  // exacto, resto del ciclo funde a negro.
+  return materialize(
+    envelope({ shape: 'pulse' }),
+    'color',
+    durationMs,
+    hexToHsl(targetColorHex),
+  )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

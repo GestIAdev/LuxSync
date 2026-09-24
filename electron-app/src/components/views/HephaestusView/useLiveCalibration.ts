@@ -27,6 +27,7 @@ import {
   type CalibrationEntry,
 } from '../../../core/aether/glass/CalibrationSAB'
 import type { HephPreviewData } from './useHephPreview'
+import { resolveTrackFixtureSet } from './useHephPreview'
 // 🜨 WAVE 8020: la capa L3++ tiene UN solo escritor — el CalibrationBus.
 // useLiveCalibration es productor 'clip'; el Protocolo Poke de Asteria es
 // productor 'touch' con prioridad LTP por nodeId.
@@ -129,17 +130,14 @@ export function useLiveCalibration(
       position: sf.position ? { x: sf.position.x } : undefined,
     }))
 
+    const resolveZones = (zs: string[]) => resolveZoneTags(zs, zoneMappable)
     for (const track of c.tracks) {
-      const trackZones = (track.zones || []) as readonly string[]
-      const cleanTrackZones = trackZones.filter(z => !FORBIDDEN_ENERGY_TAGS.includes(z.toLowerCase()))
-      const isTrackUniversal = cleanTrackZones.length === 0 || cleanTrackZones.includes('all')
-
-      if (isTrackUniversal) {
-        trackFixtureSets.set(track.id, allFixtureIdSet)
-      } else {
-        const resolvedIds = resolveZoneTags(cleanTrackZones.map(String), zoneMappable)
-        trackFixtureSets.set(track.id, new Set(resolvedIds))
-      }
+      // 🜨 8196 — mismo fix que useHephPreview: cell acota la pista
+      // quirúrgica a su fixture exacto antes que zones.
+      trackFixtureSets.set(
+        track.id,
+        resolveTrackFixtureSet(track, allFixtureIdSet, resolveZones, FORBIDDEN_ENERGY_TAGS),
+      )
     }
 
     // Per-track phase offsets

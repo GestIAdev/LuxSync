@@ -355,7 +355,9 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     ]
     const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBe(999)
-    expect(snap.gain[0]).toBe(0.5)    // gain intacto (canal delay only)
+    // 🜨 8196: la capa posee su amplitud — la entry solo-delay estampa
+    // el gain de capa (1), no hereda el 0.5 del base.
+    expect(snap.gain[0]).toBe(1)
     expect(snap.delayMs[1]).toBe(10)  // delay intacto (canal gain only)
     expect(snap.gain[1]).toBe(0.25)
     expect(snap.delayMs[2]).toBe(5)
@@ -647,6 +649,67 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     expect(snap.gain[0]).toBeCloseTo(0.4, 4)
     expect(snap.gain[1]).toBeCloseTo(0.5, 4)
     expect(snap.delayMs[1]).toBe(50) // delay intacto
+  })
+
+  // ── 🜨 WAVE 8196 — PHANTOM GAIN: la capa posee su amplitud ──
+
+  test('🜨 8196 phantom gain: gestos temporales sin `gain` explícito estampan 1.0 — no heredan la base', () => {
+    // Regresión del bug E2E reportado: un SLICE con GAIN visual 100%
+    // (fallback `?? 1` del inspector) sobre BASE oscura no emitía pulso —
+    // el kernel evaluaba `gain === undefined` como salto de canal
+    // (sChan=1), el plano conservaba base.gain y bakeGainIntoCurve
+    // multiplicaba la envolvente por él. Doctrina: gain undefined ≡ 1.0.
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'b', delayMs: 0, gain: 0.18 },
+      {
+        kind: 'wave', id: 'w1', op: 'replace',
+        mask: { nodeIds: ['fx-1:impact'] },
+        emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
+      },
+      {
+        kind: 'chrono', id: 'c1', op: 'replace',
+        mask: { nodeIds: ['fx-1:color'] },
+        stroke: [{ x: -2, z: -1, tMs: 300 }],
+        captureRealTime: true, radiusM: 0.5,
+      },
+      {
+        kind: 'noise', id: 'n1', op: 'replace', seed: 7, scaleM: 1.5,
+        amountMs: 100, octaves: 1,
+        mask: { nodeIds: ['fx-2:petal-l:impact'] },
+      },
+      {
+        kind: 'slice', id: 's1', op: 'replace', axis: 'dmx',
+        buckets: 2, spanMs: 500, symmetry: 'linear',
+        mask: { nodeIds: ['fx-3:impact'] },
+      },
+    ]
+    const snap = ev(stack, makeAtlas())
+    // Los 4 nodos cubiertos estampan gain 1.0 — NUNCA el 0.18 del base.
+    expect(snap.gain[0]).toBe(1)   // wave sin gain
+    expect(snap.gain[1]).toBe(1)   // chrono sin gain
+    expect(snap.gain[2]).toBe(1)   // noise sin gain
+    expect(snap.gain[3]).toBe(1)   // slice sin gain (axis dmx cubre sin posición)
+    expect(snap.mask[3]).toBe(1)
+  })
+
+  test('🜨 8196 phantom gain: manual entry sin campos no reclama; entry solo-delay estampa gain de capa', () => {
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'b', delayMs: 0, gain: 0.18 },
+      {
+        kind: 'manual', id: 'm1', gain: 0.3,
+        entries: [
+          { nodeId: 'fx-1:impact' },                // vacía → no reclama
+          { nodeId: 'fx-1:color', delayMs: 50 },    // solo delay → estampa 0.3
+        ],
+      },
+    ]
+    const snap = ev(stack, makeAtlas())
+    // Entry vacía → no escribe nada: delay/gain conservan el base
+    // (mask sigue =1 por el claim del base, no por la entry).
+    expect(snap.delayMs[0]).toBe(0)
+    expect(snap.gain[0]).toBeCloseTo(0.18, 4)
+    expect(snap.delayMs[1]).toBe(50)
+    expect(snap.gain[1]).toBeCloseTo(0.3, 4) // layerGain de la capa manual
   })
 })
 

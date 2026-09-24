@@ -178,6 +178,8 @@ export function createGlyphTool(): AsteriaTool {
         transform,
         channel: e.altKey ? 'delay' : 'gain',
         antialias: true,
+        // 🜨 8196 — Phantom Gain: multiplicador de capa explícito.
+        gain: 1,
       }
       ctx.addGesture(gesture)
       selFit = null

@@ -92,6 +92,8 @@ export const NoiseTool: AsteriaTool = {
       scaleM: 1.5,
       amountMs: 250,
       octaves: 2,
+      // 🜨 8196 — Phantom Gain: la capa nace dueña de su amplitud.
+      gain: 1,
     }
     ctx.addGesture(gesture)
     clearGesturePreview()

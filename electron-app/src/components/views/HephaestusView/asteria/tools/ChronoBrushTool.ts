@@ -128,6 +128,8 @@ export function createChronoBrushTool(deps: ChronoBrushDeps = {}): AsteriaTool {
           stroke,
           captureRealTime: !arcLength,
           radiusM,
+          // 🜨 8196 — Phantom Gain: la capa nace dueña de su amplitud.
+          gain: 1,
         }
         ctx.addGesture(gesture)
       }

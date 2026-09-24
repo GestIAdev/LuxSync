@@ -29,6 +29,53 @@ import { resolveZoneTags } from '../../../core/zones/ZoneMapper'
 
 const FPS_44_MS = 1000 / 44
 
+// ── WAVE 7024-B: Cuarentena Semántica — Exorcismo de Energy Vibe Tags ──
+const FORBIDDEN_ENERGY_TAGS = [
+  'silent', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
+  'sil', 'val', 'amb', 'gen', 'act', 'int', 'pea',
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8196 — TRACK→FIXTURE RESOLUTION (Preview Squelch fix)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resolve which preview fixtures a track applies to — parity with
+ * HephaestusRuntime's per-track resolution.
+ *
+ * `track.cell` (Asteria surgical / MCC-Cell tracks) is the REAL filter:
+ * the track reaches ONLY the fixture whose id prefixes the cell nodeId
+ * ('dev:cell:sub' → 'dev'). `zones:['all']` on such tracks is a compiler
+ * placeholder, NOT a universal broadcast — mirroring the runtime's
+ * `blendSuffix ':param#cell'` + `_nodeCellMatches` exact-match rule.
+ * If the fixture is not in the pool, the track applies nowhere (honest
+ * dark — never a phantom broadcast).
+ *
+ * Returns the shared `allFixtureIdSet` for universal tracks (read-only
+ * consumption downstream) — zero per-track allocation on the hot path.
+ */
+export function resolveTrackFixtureSet(
+  track: Pick<HephTrack, 'cell' | 'zones'>,
+  allFixtureIdSet: Set<string>,
+  resolveZones: ((zones: string[]) => string[]) | null,
+  forbiddenTags: readonly string[] = FORBIDDEN_ENERGY_TAGS,
+): Set<string> {
+  // 🜨 8196 — Preview Squelch: cell is the real discriminator.
+  if (track.cell !== undefined && track.cell.length > 0) {
+    const ci = track.cell.indexOf(':')
+    const devId = ci > 0 ? track.cell.slice(0, ci) : track.cell
+    const set = new Set<string>()
+    if (devId.length > 0 && allFixtureIdSet.has(devId)) set.add(devId)
+    return set
+  }
+  const cleanTrackZones = (track.zones ?? []).filter(
+    z => !forbiddenTags.includes(z.toLowerCase()),
+  )
+  const isTrackUniversal = cleanTrackZones.length === 0 || cleanTrackZones.includes('all')
+  if (isTrackUniversal || resolveZones === null) return allFixtureIdSet
+  return new Set(resolveZones(cleanTrackZones.map(String)))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -280,11 +327,6 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
    */
   const resolveFixtures = useCallback(
     (c: HephAutomationClipV3, trackEvaluators: Map<string, CurveEvaluator>, timeMs: number): PreviewFixtureState[] => {
-      // ── WAVE 7024-B: Cuarentena Semántica — Exorcismo de Energy Vibe Tags ──
-      const FORBIDDEN_ENERGY_TAGS = [
-        'silent', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
-        'sil', 'val', 'amb', 'gen', 'act', 'int', 'pea',
-      ]
       const rawZones = (c.spatialZones || []) as readonly string[]
       const cleanSpatialZones = rawZones.filter(z => !FORBIDDEN_ENERGY_TAGS.includes(z.toLowerCase()))
       const isUniversal = cleanSpatialZones.length === 0 || cleanSpatialZones.includes('all')
@@ -345,17 +387,13 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
           }))
         : null
 
+      const resolveZones = zoneMappable
+        ? (zs: string[]) => resolveZoneTags(zs, zoneMappable)
+        : null
       for (const track of c.tracks) {
-        const trackZones = (track.zones || []) as readonly string[]
-        const cleanTrackZones = trackZones.filter(z => !FORBIDDEN_ENERGY_TAGS.includes(z.toLowerCase()))
-        const isTrackUniversal = cleanTrackZones.length === 0 || cleanTrackZones.includes('all')
-
-        if (isTrackUniversal || !hasRealStage || !zoneMappable) {
-          trackFixtureSets.set(track.id, allFixtureIdSet)
-        } else {
-          const resolvedIds = resolveZoneTags(cleanTrackZones.map(String), zoneMappable)
-          trackFixtureSets.set(track.id, new Set(resolvedIds))
-        }
+        // 🜨 8196 — resolveTrackFixtureSet honra track.cell ANTES que
+        // zones: una pista quirúrgica solo alcanza su fixture exacto.
+        trackFixtureSets.set(track.id, resolveTrackFixtureSet(track, allFixtureIdSet, resolveZones))
       }
 
       // ── Phase distribution: per-track resolution (WAVE 7036) ──

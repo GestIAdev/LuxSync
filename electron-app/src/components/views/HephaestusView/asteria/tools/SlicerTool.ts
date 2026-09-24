@@ -90,6 +90,9 @@ export const SlicerTool: AsteriaTool = {
       buckets: 4,
       spanMs: 500,
       symmetry: 'linear',
+      // 🜨 8196 — Phantom Gain: la capa nace dueña de su amplitud (el
+      // inspector muestra 100% — el gesto lo declara explícitamente).
+      gain: 1,
     }
     ctx.addGesture(gesture)
     clearGesturePreview()

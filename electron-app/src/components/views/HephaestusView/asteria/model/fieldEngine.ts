@@ -439,10 +439,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const dirZ = Math.sin(dirRad)
     const hasFalloff = g.falloffM !== undefined && g.falloffM > 0
     const invFalloff = hasFalloff ? 1 / (g.falloffM as number) : 0
-    // 🜨 8181: gain de capa — multiplica el resultado del falloff (o
-    // estampa gain plano si el gesto no lo define por sí mismo).
+    // 🜨 8181: gain de capa — multiplica el resultado del falloff.
+    // 🜨 8196 (Phantom Gain): la capa SIEMPRE posee su amplitud —
+    // `gain` undefined ≡ 1.0, jamás herencia silenciosa de la capa
+    // inferior (el inspector muestra 100% — el kernel lo escribe).
     const layerGain = g.gain ?? 1
-    const writesGain = hasFalloff || g.gain !== undefined
     const hy = g.huygens
     const hyLen = hy ? hy.length : 0
 
@@ -468,7 +469,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       const gv = (hasFalloff ? Math.max(0, 1 - dist * invFalloff) : 1) * layerGain
       sDelay[i] = d
       sGain[i] = gv
-      sChan[i] = writesGain ? 3 : 1
+      sChan[i] = 3
       sCov[i] = 1
       sClaim[i] = 1
     }
@@ -510,8 +511,10 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     // parámetro no destructivo más.
     const tScale = g.timeScale ?? 1
     const invert = g.invert === true
+    // 🜨 8196 (Phantom Gain): la capa SIEMPRE posee su amplitud —
+    // `gain` undefined ≡ 1.0 (el inspector muestra 100% — el kernel
+    // lo escribe; nunca hereda el gain de la capa inferior).
     const layerGain = g.gain ?? 1
-    const writesGain = g.gain !== undefined
 
     for (let k = 0; k < cnt; k++) {
       const i = scratchIdx[k]
@@ -538,7 +541,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       if (tScale !== 1) d *= tScale
       sDelay[i] = d
       sGain[i] = layerGain
-      sChan[i] = writesGain ? 3 : 1
+      sChan[i] = 3
       sCov[i] = 1
       sClaim[i] = 1
     }
@@ -546,7 +549,10 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
 
   /**
    * MANUAL (§5.2): las entries SON el campo — replace directo por canal
-   * presente (entry con solo delayMs no toca gain y viceversa).
+   * presente. 🜨 8196 (Phantom Gain): toda entry no-vacía también estampa
+   * el gain de capa (`(e.gain ?? 1) * layerGain`, layerGain ≡ `g.gain ?? 1`)
+   * — la capa posee la amplitud de los nodos que toca; una entry solo-
+   * delay nunca hereda el gain de la capa inferior.
    */
   function applyManual(g: ManualGesture): void {
     const list = g.entries
@@ -556,13 +562,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       const i = indexByNodeId.get(e.nodeId)
       if (i === undefined) continue
       const hasD = e.delayMs !== undefined
-      // 🜨 8181: el gain de capa multiplica el de la entry — una entry
-      // sin gain propio recibe el de la capa si está definido.
-      const hasG = e.gain !== undefined || g.gain !== undefined
-      if (!hasD && !hasG) continue
+      const hasE = e.gain !== undefined
+      if (!hasD && !hasE) continue
       if (hasD) sDelay[i] = e.delayMs ?? 0
-      if (hasG) sGain[i] = (e.gain ?? 1) * layerGain
-      sChan[i] = (hasD ? 1 : 0) | (hasG ? 2 : 0)
+      sGain[i] = (e.gain ?? 1) * layerGain
+      sChan[i] = (hasD ? 1 : 0) | 2
       sCov[i] = 1
       sClaim[i] = 1
     }
@@ -577,7 +581,8 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
    *   axis 'zone'                  → ordinal del zoneId (tampoco espacial)
    * normalize [min,max] → floor(u·buckets) → shuffleSeed remapea el bucket
    * con hash01 (MISMA función que PhaseConfigPro — paridad §7.5) →
-   * symmetry → delay = s · spanMs. Canal: solo delay.
+   * symmetry → delay = s · spanMs. Canal: delay + gain de capa
+   * (🜨 8196 — la capa siempre posee su amplitud, `gain` undefined ≡ 1).
    */
   function applySlice(g: SliceGesture): void {
     const cnt = resolveMask(g.mask)
@@ -612,7 +617,9 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const range = mx - mn
     const hasSeed = g.shuffleSeed !== undefined
     const seed = g.shuffleSeed ?? 0
-    const writesGain = g.gain !== undefined
+    // 🜨 8196 (Phantom Gain): la capa SIEMPRE posee su amplitud —
+    // `gain` undefined ≡ 1.0; un SLICE sin gain explícito estampa 1.0,
+    // nunca hereda el gain de la capa inferior (BASE oscura ≠ SLICE mudo).
     const layerGain = g.gain ?? 1
 
     // Pase 2: cuantización → shuffle determinista → simetría → delay
@@ -627,7 +634,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       const s = applySymmetry(ub, g.symmetry)
       sDelay[i] = s * g.spanMs
       sGain[i] = layerGain
-      sChan[i] = writesGain ? 3 : 1
+      sChan[i] = 3
       sCov[i] = 1
       sClaim[i] = 1
     }
@@ -637,7 +644,8 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
    * NOISE (§5.2): value-noise fBm muestreado en la posición del nodo —
    * rompe la simetría perfecta ("orgánico", no "mecánico").
    *   f = 1/scaleM, octavas con amp ½·freq 2×, normalizado a [-1,1]
-   *   → delay = (n·0.5+0.5) · amountMs. Canal: solo delay.
+   *   → delay = (n·0.5+0.5) · amountMs. Canal: delay + gain de capa
+   *   (🜨 8196 — `gain` undefined ≡ 1).
    * Determinista: mismo (seed, posición) → mismo valor siempre.
    */
   function applyNoise(g: NoiseGesture): void {
@@ -646,7 +654,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     const freq0 = 1 / Math.max(1e-6, g.scaleM)
     const octaves = g.octaves
     const amount = g.amountMs
-    const writesGain = g.gain !== undefined
+    // 🜨 8196 (Phantom Gain): la capa SIEMPRE posee su amplitud.
     const layerGain = g.gain ?? 1
     for (let k = 0; k < cnt; k++) {
       const i = scratchIdx[k]
@@ -664,7 +672,7 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       const u = (sum / norm) * 0.5 + 0.5 // [-1,1] → [0,1]
       sDelay[i] = u * amount
       sGain[i] = layerGain
-      sChan[i] = writesGain ? 3 : 1
+      sChan[i] = 3
       sCov[i] = 1
       sClaim[i] = 1
     }

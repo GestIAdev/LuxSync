@@ -107,6 +107,8 @@ export const WavefrontTool: AsteriaTool = {
       shape: _hasDir ? 'line' : 'point',
       dirDeg: _hasDir ? _dirDeg : undefined,
       speedMps: WAVEFRONT_DEFAULT_SPEED_MPS,
+      // 🜨 8196 — Phantom Gain: la capa nace dueña de su amplitud.
+      gain: 1,
     }
     ctx.addGesture(gesture)
     clearGesturePreview()

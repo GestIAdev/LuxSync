@@ -127,9 +127,10 @@ export interface WaveGesture extends GestureCommon {
   /** Multi-emisor Huygens → delay = min(dist a cualquier emisor). */
   readonly huygens?: readonly WorldPoint2D[]
   /**
-   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también escribe
-   * gain en los nodos cubiertos (con falloffM lo multiplica). undefined
-   * = solo delay, el gain de capas previas queda intacto.
+   * 🜨 WAVE 8181: gain de capa — multiplica el resultado del falloffM
+   * (o estampa gain plano si el gesto no lo define). 🜨 8196: undefined
+   * ≡ 1.0 — la capa siempre posee su amplitud; el gesto nunca hereda
+   * el gain de capas inferiores.
    */
   readonly gain?: number
 }
@@ -162,8 +163,9 @@ export interface ChronoGesture extends GestureCommon {
    */
   readonly invert?: boolean
   /**
-   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también estampa
-   * gain uniforme en los nodos cubiertos. undefined = solo delay.
+   * 🜨 WAVE 8181: gain de capa — estampa gain uniforme en los nodos
+   * cubiertos. 🜨 8196: undefined ≡ 1.0 — la capa siempre posee su
+   * amplitud; nunca hereda el gain de capas inferiores.
    */
   readonly gain?: number
 }
@@ -222,8 +224,9 @@ export interface SliceGesture extends GestureCommon {
   readonly symmetry: 'linear' | 'mirror' | 'center-out'
   readonly shuffleSeed?: number
   /**
-   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también estampa
-   * gain uniforme en los nodos cubiertos. undefined = solo delay.
+   * 🜨 WAVE 8181: gain de capa — estampa gain uniforme en los nodos
+   * cubiertos. 🜨 8196: undefined ≡ 1.0 — la capa siempre posee su
+   * amplitud; nunca hereda el gain de capas inferiores.
    */
   readonly gain?: number
 }
@@ -240,6 +243,8 @@ export interface ManualGesture extends GestureCommon {
   /**
    * 🜨 WAVE 8181: multiplicador maestro sobre el gain de las entries
    * (entry sin gain propio recibe este valor). undefined = 1.
+   * 🜨 8196: toda entry no-vacía también estampa este gain — la capa
+   * posee la amplitud de los nodos que toca.
    */
   readonly gain?: number
 }
@@ -258,8 +263,9 @@ export interface NoiseGesture extends GestureCommon {
   readonly amountMs: number
   readonly octaves: 1 | 2 | 3
   /**
-   * 🜨 WAVE 8181: gain de capa — si definido, el gesto también estampa
-   * gain uniforme en los nodos cubiertos. undefined = solo delay.
+   * 🜨 WAVE 8181: gain de capa — estampa gain uniforme en los nodos
+   * cubiertos. 🜨 8196: undefined ≡ 1.0 — la capa siempre posee su
+   * amplitud; nunca hereda el gain de capas inferiores.
    */
   readonly gain?: number
 }

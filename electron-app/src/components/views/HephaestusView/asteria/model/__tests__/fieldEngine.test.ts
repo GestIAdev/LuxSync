@@ -18,6 +18,7 @@ import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
 import type { Gesture, LayerPaint } from '../AsteriaProject'
 import { createDefaultPaint } from '../AsteriaProject'
+import { srgbToLinear } from '../colorMath'
 import type { HephParamId } from '../../../../../../core/hephaestus/types'
 
 /**
@@ -730,5 +731,189 @@ describe('🜨 FieldEngine multi-plano — WAVE 8193', () => {
       expect(cur.mask).toBe(m)
       expect(cur.owner).toBe(o)
     }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8194 — COLOR PLANE: álgebra de luz §3.4 en RGB lineal
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RED_LIN = srgbToLinear(1)
+const BLUE_LIN = srgbToLinear(1)
+
+describe('🜨 FieldEngine — ColorPlane (WAVE 8194)', () => {
+  test("'color' en params → plano de color activo, fuera del Map escalar", () => {
+    const stack: Gesture[] = [
+      {
+        kind: 'base', id: 'b', delayMs: 0, gain: 1,
+        paint: { params: ['intensity', 'color'], color: '#ff0000' },
+      },
+    ]
+    const planes = evaluateStack(stack, makeAtlas())
+    expect(planes.color).not.toBeNull()
+    expect(planes.scalar.has('color')).toBe(false)
+    // El base pinta el color por defecto del paint sobre TODOS los nodos
+    const cp = planes.color!
+    expect(Array.from(cp.mask)).toEqual([1, 1, 1, 1])
+    expect(Array.from(cp.alpha)).toEqual([1, 1, 1, 1])
+    expect(Array.from(cp.owner)).toEqual([0, 0, 0, 0])
+  })
+
+  test('replace + opacity: el color se compone por cobertura·opacity en lineal', () => {
+    // Base rojo a opacity 1 + capa manual azul a 0.5 sobre el nodo 0:
+    // rgb = red·(1−0.5) + blue·0.5 (over sobre lienzo ya opaco).
+    const stack: Gesture[] = [
+      {
+        kind: 'base', id: 'b', delayMs: 0, gain: 1,
+        paint: { params: ['color'], color: '#ff0000' },
+      },
+      {
+        kind: 'manual', id: 'm1',
+        paint: { params: ['color'], color: '#0000ff', opacity: 0.5 },
+        entries: [{ nodeId: 'fx-1:color', delayMs: 0 }],
+      },
+    ]
+    const cp = evaluateStack(stack, makeAtlas()).color!
+    // Nodo 1 = 'fx-1:color' (índice 1): mezcla 50/50 en lineal
+    expect(cp.rgb[3]).toBeCloseTo(RED_LIN * 0.5, 5)
+    expect(cp.rgb[4]).toBeCloseTo(0, 5)
+    expect(cp.rgb[5]).toBeCloseTo(BLUE_LIN * 0.5, 5)
+    expect(cp.alpha[1]).toBeCloseTo(0.5 + 1 * 0.5, 5) // over: 1
+    expect(cp.owner[1]).toBe(1)
+    // Nodo 0 ('fx-1:impact') solo vio el base → rojo puro
+    expect(cp.rgb[0]).toBeCloseTo(RED_LIN, 5)
+    expect(cp.rgb[2]).toBeCloseTo(0, 5)
+    expect(cp.owner[0]).toBe(0)
+  })
+
+  test('add: suma de luz en lineal con clamp a 1', () => {
+    const stack: Gesture[] = [
+      {
+        kind: 'base', id: 'b', delayMs: 0, gain: 1,
+        paint: { params: ['color'], color: '#ff0000', opacity: 0.6 },
+      },
+      {
+        kind: 'manual', id: 'm1', op: 'add',
+        paint: { params: ['color'], color: '#00ff00' },
+        entries: [{ nodeId: 'fx-1:impact', delayMs: 0 }],
+      },
+    ]
+    const cp = evaluateStack(stack, makeAtlas()).color!
+    const green = srgbToLinear(1)
+    // nodo 0: C_i + C_L·a — rojo·0.6 ya acumulado + verde·1 (r:0.6+0,
+    // g:0+1, b:0) — suma de luz canal a canal, sin clamp que intervenga.
+    expect(cp.rgb[0]).toBeCloseTo(RED_LIN * 0.6, 5)
+    expect(cp.rgb[1]).toBeCloseTo(green, 5)
+    expect(cp.rgb[2]).toBeCloseTo(0, 5)
+    // alpha: over de la capa add a=1 → 1
+    expect(cp.alpha[0]).toBeCloseTo(1, 5)
+  })
+
+  test('mul/min/max: Multiply filtra, Darken techaea con lerp(1,C_L,a), Lighten eleva', () => {
+    // Base gris medio (#808080) sobre el nodo 0; tres gestos idénticos
+    // en nodos distintos prueban mul, min y max contra un azul.
+    const gray = srgbToLinear(0.50196)
+    const stack: Gesture[] = [
+      {
+        kind: 'base', id: 'b', delayMs: 0, gain: 1,
+        paint: { params: ['color'], color: '#808080' },
+      },
+      {
+        kind: 'manual', id: 'mmul', op: 'mul',
+        paint: { params: ['color'], color: '#0000ff' },
+        entries: [{ nodeId: 'fx-1:impact', delayMs: 0 }],
+      },
+      {
+        kind: 'manual', id: 'mmin', op: 'min',
+        paint: { params: ['color'], color: '#0000ff' },
+        entries: [{ nodeId: 'fx-1:color', delayMs: 0 }],
+      },
+      {
+        kind: 'manual', id: 'mmax', op: 'max',
+        paint: { params: ['color'], color: '#0000ff' },
+        entries: [{ nodeId: 'fx-2:petal-l:impact', delayMs: 0 }],
+      },
+    ]
+    const cp = evaluateStack(stack, makeAtlas()).color!
+    // nodo 0 — mul: C·lerp(1, blue, 1) = gray·blue → (0, 0, gray)
+    expect(cp.rgb[0]).toBeCloseTo(0, 5)
+    expect(cp.rgb[2]).toBeCloseTo(gray, 5)
+    // nodo 1 — min: min(gray, lerp(1, blue, 1)) = min(gray, blue) →
+    // r:0, g:0, b:min(gray,1)=gray
+    expect(cp.rgb[3]).toBeCloseTo(0, 5)
+    expect(cp.rgb[5]).toBeCloseTo(gray, 5)
+    // nodo 2 — max: max(gray, blue·1) → r:gray, g:gray, b:1
+    expect(cp.rgb[6]).toBeCloseTo(gray, 5)
+    expect(cp.rgb[7]).toBeCloseTo(gray, 5)
+    expect(cp.rgb[8]).toBeCloseTo(BLUE_LIN, 5)
+    expect(Array.from(cp.alpha)).toEqual([1, 1, 1, 1])
+  })
+
+  test('alpha=0 → mask=0: el lienzo transparente no emite color', () => {
+    // Solo la capa manual pinta color y solo sobre 'fx-1:color';
+    // el resto de nodos jamás recibe tinta de color.
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'b', delayMs: 0, gain: 1, paint: { params: ['intensity'] } },
+      {
+        kind: 'manual', id: 'm1',
+        paint: { params: ['color'], color: '#00ff00' },
+        entries: [{ nodeId: 'fx-1:color', delayMs: 0 }],
+      },
+    ]
+    const cp = evaluateStack(stack, makeAtlas()).color!
+    expect(Array.from(cp.alpha)).toEqual([0, 1, 0, 0])
+    expect(Array.from(cp.mask)).toEqual([0, 1, 0, 0])
+  })
+
+  test('ensurePlanes: color entra/sale del conjunto activo sin tocar escalares', () => {
+    const engine = createFieldEngine(makeAtlas())
+    const withColor: Gesture[] = [
+      {
+        kind: 'base', id: 'b', delayMs: 0, gain: 1,
+        paint: { params: ['intensity', 'color'], color: '#ff0000' },
+      },
+    ]
+    const p1 = engine.evaluate(withColor)
+    const cp = p1.color
+    expect(cp).not.toBeNull()
+    const cpRef = cp!
+    const intensity = p1.scalar.get('intensity')!
+    // Quitar 'color' → plano retirado, intensity conserva buffer
+    const without: Gesture[] = [
+      { ...withColor[0], paint: { params: ['intensity'] } } as Gesture,
+    ]
+    const p2 = engine.evaluate(without)
+    expect(p2.color).toBeNull()
+    expect(p2.scalar.get('intensity')).toBe(intensity)
+    // Reintroducir 'color' → NUEVO plano (el viejo se liberó), mismo result
+    const p3 = engine.evaluate(withColor)
+    expect(p3).toBe(p1)
+    expect(p3.color).not.toBeNull()
+    expect(p3.color).not.toBe(cpRef)
+    // Y estable en repaints: misma instancia evaluate tras evaluate
+    expect(engine.evaluate(withColor).color).toBe(p3.color)
+  })
+
+  test('zero-alloc: el ColorPlane y sus buffers son estables en el RAF', () => {
+    const engine = createFieldEngine(makeAtlas())
+    const stack: Gesture[] = [
+      {
+        kind: 'base', id: 'b', delayMs: 0, gain: 1,
+        paint: { params: ['intensity', 'color'], color: '#ff0000' },
+      },
+    ]
+    const planes = engine.evaluate(stack)
+    const cp = planes.color!
+    const { rgb, alpha, mask, delayMs, gain, owner } = cp
+    for (let i = 0; i < 500; i++) {
+      const p = engine.evaluate(stack)
+      expect(p.color).toBe(cp)
+    }
+    expect(cp.rgb).toBe(rgb)
+    expect(cp.alpha).toBe(alpha)
+    expect(cp.mask).toBe(mask)
+    expect(cp.delayMs).toBe(delayMs)
+    expect(cp.gain).toBe(gain)
+    expect(cp.owner).toBe(owner)
   })
 })

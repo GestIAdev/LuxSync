@@ -36,6 +36,7 @@ import type {
   Gesture,
   SliceGesture,
 } from './model/AsteriaProject'
+import type { HephParamId } from '../../../../core/hephaestus/types'
 import { GHOST_RGB } from './model/gestureGhost'
 import { measureGlyphLegibility } from './model/glyphRaster'
 import { isAsteriaTrack } from './compiler/AsteriaCompiler'
@@ -449,10 +450,118 @@ export const GestureInspector: React.FC = () => {
         />
       )}
 
+      {/* 🜨 WAVE 8194: PAINT — pintura por capa (Crux 2). `paint`
+          undefined → hereda defaultPaint entero; con paint, cada campo
+          ausente sigue heredando (Partial<LayerPaint> — §3.1). */}
+      <PaintRows gesture={gesture} patch={patch} ro={ro} />
+
       {/* 🜨 WAVE 8184 (M2): STRATEGY — controles de proyecto al pie
           del inspector (alcanzables con o sin gesto seleccionado) */}
       <StrategyRows />
     </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8194 — PAINT (por capa, Crux 2 §3.1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Params con canal sintetizable que la UI ofrece como chips. */
+const PAINT_PARAMS: readonly HephParamId[] = [
+  'intensity', 'color', 'white', 'amber', 'strobe',
+  'pan', 'tilt', 'zoom', 'focus', 'iris',
+]
+
+const PaintRows: React.FC<{
+  gesture: Gesture
+  patch: (p: Partial<Gesture>) => void
+  ro: boolean
+}> = ({ gesture, patch, ro }) => {
+  const defaultPaint = useAsteriaStore((s) => s.project.defaultPaint)
+  const paint = gesture.paint
+  const effParams = paint?.params ?? defaultPaint.params
+  const effColor = paint?.color ?? defaultPaint.color
+  const effOpacity = paint?.opacity ?? defaultPaint.opacity ?? 1
+
+  const toggleParam = (p: HephParamId): void => {
+    const cur = [...effParams]
+    const idx = cur.indexOf(p)
+    if (idx >= 0) {
+      if (cur.length <= 1) return // un paint jamás queda sin params
+      cur.splice(idx, 1)
+    } else {
+      cur.push(p)
+    }
+    patch({ paint: { ...(paint ?? {}), params: cur } })
+  }
+
+  return (
+    <>
+      <div className="asteria-insp__divider" />
+      <div className="asteria-rail__title asteria-insp__strategy">
+        PAINT
+      </div>
+      <CheckRow
+        label="INHERIT — toda la pintura del DEFAULT PAINT"
+        checked={paint === undefined}
+        disabled={ro}
+        title="ON = la capa hereda defaultPaint completo; OFF = esta capa puede sobreescribir params/color/opacity"
+        onChange={(v) => patch({ paint: v ? undefined : {} })}
+      />
+      <div
+        className="asteria-insp__row"
+        title="Parámetros que esta capa pinta — los planos escalares (y el plano de color) que reciben su geometría"
+      >
+        <span className="asteria-insp__label">PARAMS</span>
+        <div
+          className="asteria-insp__seg"
+          style={{ flexWrap: 'wrap', gap: 2 }}
+        >
+          {PAINT_PARAMS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={`asteria-insp__segbtn ${effParams.includes(p) ? 'active' : ''}`}
+              disabled={ro}
+              onClick={() => toggleParam(p)}
+            >
+              {p.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+      {effParams.includes('color') && (
+        <label
+          className="asteria-insp__row"
+          title="Color que esta capa vierte en el plano de color (sRGB — la mezcla se hace en RGB lineal)"
+        >
+          <span className="asteria-insp__label">COLOR</span>
+          <input
+            type="color"
+            className="asteria-insp__text"
+            style={{ padding: 0, height: 22 }}
+            value={effColor}
+            disabled={ro}
+            onChange={(e) =>
+              patch({ paint: { ...(paint ?? {}), color: e.target.value } })
+            }
+          />
+        </label>
+      )}
+      <NumRow
+        label="OPACITY"
+        unit=" %"
+        min={0}
+        max={100}
+        step={1}
+        value={Math.round(effOpacity * 100)}
+        disabled={ro}
+        title="Cobertura de la capa sobre el lienzo de color — 0 % = transparente (el nodo conserva el color base de Selene)"
+        onChange={(v) =>
+          patch({ paint: { ...(paint ?? {}), opacity: v / 100 } })
+        }
+      />
+    </>
   )
 }
 

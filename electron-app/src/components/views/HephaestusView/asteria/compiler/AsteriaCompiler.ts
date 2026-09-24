@@ -74,6 +74,7 @@ import type {
 } from '../model/fieldEngine'
 import { OWNER_NONE } from '../model/fieldEngine'
 import { hexToHsl } from './lutSynth'
+import { rgb8PackedToHsl } from '../model/colorMath'
 import { envelope, specKey } from './synth/envelopes'
 import { materialize } from './synth/materialize'
 import {
@@ -193,7 +194,11 @@ function cloneCurve(src: HephCurve, paramId: HephParamId): HephCurve {
  */
 function fieldDistinguishesCells(field: FieldPlanes, atlas: NodeAtlas): boolean {
   const entries = atlas.entries
-  for (const plane of field.scalar.values()) {
+  const planes: Iterable<ScalarPlane> =
+    field.color !== null
+      ? [...field.scalar.values(), field.color]
+      : field.scalar.values()
+  for (const plane of planes) {
     const first = new Map<string, { d: number; g: number }>()
     const n = Math.min(field.count, plane.mask.length)
     for (let i = 0; i < n; i++) {
@@ -279,12 +284,16 @@ export function compile(input: CompileInput): CompileOutput {
       ? input.field
       : flatFieldToPlanes(input.field, params)
 
-  // ── Cobertura del campo — UNIÓN de todos los planos escalares ──
+  // ── Cobertura del campo — UNIÓN de todos los planos (+ color 8194) ──
   let nodesCovered = 0
   let gainVaries = false
   {
     const seen = new Uint8Array(field.count)
-    for (const plane of field.scalar.values()) {
+    const planes: Iterable<ScalarPlane> =
+      field.color !== null
+        ? [...field.scalar.values(), field.color]
+        : field.scalar.values()
+    for (const plane of planes) {
       const n = Math.min(field.count, plane.mask.length)
       for (let i = 0; i < n; i++) {
         if (plane.mask[i] === 0) continue
@@ -403,12 +412,19 @@ export function compile(input: CompileInput): CompileOutput {
   }
   const curveCache = new Map<string, HephCurve>()
 
-  /** Curva base por (parámetro, owner): clone del ride de SU capa o
-   *  síntesis por SU spec (envelope→materialize 🜨 WAVE 8191). El ride
-   *  es agnóstico — cloneCurve preserva el valueType del origen.
+  /** Curva base por (parámetro, owner[, rgb8]): clone del ride de SU
+   *  capa o síntesis por SU spec (envelope→materialize 🜨 WAVE 8191).
+   *  El ride es agnóstico — cloneCurve preserva el valueType del origen.
+   *  🜨 WAVE 8194: para 'color', `rgb8` es el color COMPUESTO de la clase
+   *  (la mezcla real del plano de color) — tiene precedencia sobre el
+   *  paint.color declarado. Un ride de color explícito manda sobre ambos.
    *  Guardia honesta: 'color' con fuente no-color no clonaría basura
    *  silente — advertimos (una vez por fuente) y caemos a síntesis. */
-  const baseCurveFor = (param: HephParamId, owner: number): HephCurve => {
+  const baseCurveFor = (
+    param: HephParamId,
+    owner: number,
+    rgb8?: number,
+  ): HephCurve => {
     const paint = paintForOwner(owner)
     const lut = paint.lut
     if (lut?.kind === 'ride') {
@@ -439,14 +455,23 @@ export function compile(input: CompileInput): CompileOutput {
     const spec = paint.synth ?? ASTERIA_DEFAULT_SYNTH
     const colorHex =
       param === 'color'
-        ? (paint.color ?? project.defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR)
+        ? rgb8 !== undefined
+          ? `#${rgb8.toString(16).padStart(6, '0')}`
+          : (paint.color ??
+            project.defaultPaint.color ??
+            ASTERIA_DEFAULT_TARGET_COLOR)
         : ''
     const key = `syn:${param}|${specKey(spec)}|${colorHex}`
     let c = curveCache.get(key)
     if (c === undefined) {
       c =
         param === 'color'
-          ? materialize(envelope(spec), 'color', D, hexToHsl(colorHex))
+          ? materialize(
+              envelope(spec),
+              'color',
+              D,
+              rgb8 !== undefined ? rgb8PackedToHsl(rgb8) : hexToHsl(colorHex),
+            )
           : materialize(envelope(spec), param, D)
       curveCache.set(key, c)
     }

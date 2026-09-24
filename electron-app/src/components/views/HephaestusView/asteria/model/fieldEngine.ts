@@ -52,6 +52,7 @@ import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
 import type { HephParamId } from '../../../../../core/hephaestus/types'
 import { hash01, applySymmetry } from '../../../../../core/hephaestus/phase/PhaseConfigPro'
+import { hexToLinearRgb } from './colorMath'
 import { createDefaultPaint } from './AsteriaProject'
 import type {
   Gesture,
@@ -113,14 +114,33 @@ export interface ScalarPlane extends PlaneField {
 }
 
 /**
+ * 🜨 WAVE 8194 (§3.3): el plano de color — un ScalarPlane más el color
+ * acumulado por nodo. `rgb` es LINEAL (la luz se mezcla en lineal, no en
+ * sRGB); `alpha` es la cobertura acumulada (over estándar). Un nodo con
+ * `alpha = 0` queda fuera del plano (`mask = 0`) — lienzo transparente:
+ * el fixture conserva el color que le dio Selene.
+ *
+ * El plano vive FUERA de `scalar` — el param 'color' se resuelve por
+ * `field.color` (el compilador cae a `scalar.get('color')` solo para la
+ * forma legacy envuelta de `flatFieldToPlanes`).
+ */
+export interface ColorPlane extends ScalarPlane {
+  /** RGB LINEAL por nodo — 3 floats por nodo (r,g,b consecutivos). */
+  readonly rgb: Float32Array
+  /** Cobertura acumulada [0,1] — `a_i + alpha·(1−a_i)` por capa. */
+  readonly alpha: Float32Array
+}
+
+/**
  * Resultado del engine: UN plano por parámetro activo
- * (∪ effectivePaint(g).params). El ColorPlane llega en WAVE 8194 —
- * este wave solo mueve planos escalares.
+ * (∪ effectivePaint(g).params) + el plano de color opcional.
  */
 export interface FieldPlanes {
   /** Número de nodos (= atlas.entries.length). */
   readonly count: number
   readonly scalar: ReadonlyMap<HephParamId, ScalarPlane>
+  /** 🜨 WAVE 8194: presente iff 'color' ∈ ∪ effectivePaint(g).params. */
+  readonly color: ColorPlane | null
 }
 
 /**
@@ -247,7 +267,16 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
   //    por dentro (delete/set) para preservar la identidad de
   //    `planesResult.scalar` y de los planos supervivientes. ──
   const scalarPlanes = new Map<HephParamId, ScalarPlane>()
-  const planesResult: FieldPlanes = { count: n, scalar: scalarPlanes }
+  // 🜨 WAVE 8194: el plano de color vive fuera del Map escalar (su
+  // mask = alpha>0, no claim). `planesResult.color` se reasigna SOLO
+  // cuando 'color' entra/sale del conjunto activo — el objeto result
+  // es siempre el mismo.
+  let colorPlane: ColorPlane | null = null
+  const planesResult: {
+    count: number
+    scalar: Map<HephParamId, ScalarPlane>
+    color: ColorPlane | null
+  } = { count: n, scalar: scalarPlanes, color: null }
 
   // ── Scratch del kernel — geometría cruda del gesto en curso (§3.3).
   //    sClaim: el gesto reclama el nodo · sChan: bits 1=delay 2=gain
@@ -318,19 +347,27 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
    * conjunto sobre la Map estable: mismo conjunto → early return, cero
    * alloc. Si cambia, los planos supervivientes conservan su identidad
    * (=== estable por param) y solo los nuevos alocan buffers.
+   * 🜨 8194: 'color' se desvía al ColorPlane dedicado — nunca entra al
+   * Map escalar (su composición es rgb/alpha, no delay/gain).
    */
   function ensurePlanes(active: ReadonlySet<HephParamId>): void {
+    const wantColor = active.has('color')
     let cnt = 0
     let dirty = false
     for (const p of active) {
+      if (p === 'color') continue
       cnt++
       if (!scalarPlanes.has(p)) dirty = true
     }
-    if (!dirty && cnt === scalarPlanes.size) return
+    if (!dirty && cnt === scalarPlanes.size && wantColor === (colorPlane !== null)) {
+      planesResult.color = colorPlane
+      return
+    }
     for (const p of [...scalarPlanes.keys()]) {
-      if (!active.has(p)) scalarPlanes.delete(p)
+      if (p === 'color' || !active.has(p)) scalarPlanes.delete(p)
     }
     for (const p of active) {
+      if (p === 'color') continue
       if (!scalarPlanes.has(p)) {
         scalarPlanes.set(p, {
           delayMs: new Float32Array(n),
@@ -340,6 +377,19 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         })
       }
     }
+    if (wantColor && colorPlane === null) {
+      colorPlane = {
+        delayMs: new Float32Array(n),
+        gain: new Float32Array(n),
+        mask: new Uint8Array(n),
+        owner: new Uint16Array(n),
+        rgb: new Float32Array(n * 3),
+        alpha: new Float32Array(n),
+      }
+    } else if (!wantColor) {
+      colorPlane = null
+    }
+    planesResult.color = colorPlane
   }
 
   /**
@@ -723,17 +773,99 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     }
   }
 
+  // 🜨 WAVE 8194 (§3.4): color lineal del gesto en curso — convertido
+  // sRGB→lineal UNA vez por gesto, jamás por nodo.
+  const sLin = new Float32Array(3)
+
   /**
    * Etapa 2 — COMPOSITOR (§3.3): para cada plano p ∈ effectivePaint(g)
    * .params, mezcla el scratch con la semántica (g.op, canal por nodo).
    * `owner_p[i]` = índice del gesto donde claim y cov ≥ 0.5 — el dueño
    * decide la forma de onda local en el compilador (§4.4).
+   *
+   * 🜨 8194: 'color' se desvía al ColorPlane — el delay/gain escalar
+   * siguen `blendInto` (los usa el color animado), pero rgb/alpha van
+   * por el álgebra de luz §3.4 y el mask se deriva de alpha>0 al final
+   * de evaluate (lienzo transparente).
    */
-  function composite(gesture: Gesture, gi: number, params: readonly HephParamId[]): void {
+  function composite(
+    gesture: Gesture,
+    gi: number,
+    params: readonly HephParamId[],
+    defaultPaint: LayerPaint,
+  ): void {
     const op: BlendOp =
       'op' in gesture && gesture.op !== undefined ? gesture.op : 'replace'
+    // Una conversión por gesto (§3.4): el hex del paint a RGB lineal.
+    if (colorPlane !== null && params.indexOf('color') !== -1) {
+      hexToLinearRgb(
+        gesture.paint?.color ?? defaultPaint.color ?? '#ff0000',
+        sLin,
+      )
+    }
+    const opacity = gesture.paint?.opacity ?? defaultPaint.opacity ?? 1
     for (let k = 0; k < params.length; k++) {
-      const plane = scalarPlanes.get(params[k])
+      const p = params[k]
+      if (p === 'color') {
+        const cp = colorPlane
+        if (cp === null) continue
+        const crgb = cp.rgb
+        const cal = cp.alpha
+        const co = cp.owner
+        const lr = sLin[0]
+        const lg = sLin[1]
+        const lb = sLin[2]
+        for (let i = 0; i < n; i++) {
+          if (sClaim[i] === 0) continue
+          // Los ejes delay/gain del plano sí siguen la geometría —
+          // el color animado los usa como la intensidad (§3.5-3).
+          const ch = sChan[i]
+          if (ch !== 0) {
+            blendInto(
+              cp.delayMs, cp.gain, i, op, sDelay[i], sGain[i],
+              ch === 3 ? 'both' : ch === 1 ? 'delay' : 'gain',
+            )
+          }
+          // El color se compone donde el gesto reclama — el canal
+          // (delay/gain) de la geometría no aplica al plano de color.
+          const a = sCov[i] * opacity
+          if (a <= 0) continue
+          const ia = 1 - a
+          const j = i * 3
+          switch (op) {
+            case 'replace': // Normal
+              crgb[j] = crgb[j] * ia + lr * a
+              crgb[j + 1] = crgb[j + 1] * ia + lg * a
+              crgb[j + 2] = crgb[j + 2] * ia + lb * a
+              break
+            case 'add': // Linear Dodge — suma de luz
+              crgb[j] = Math.min(1, crgb[j] + lr * a)
+              crgb[j + 1] = Math.min(1, crgb[j + 1] + lg * a)
+              crgb[j + 2] = Math.min(1, crgb[j + 2] + lb * a)
+              break
+            case 'max': // Lighten
+              crgb[j] = Math.max(crgb[j], lr * a)
+              crgb[j + 1] = Math.max(crgb[j + 1], lg * a)
+              crgb[j + 2] = Math.max(crgb[j + 2], lb * a)
+              break
+            case 'min': // Darken — lerp(1, C_L, a) como techo
+              crgb[j] = Math.min(crgb[j], 1 + (lr - 1) * a)
+              crgb[j + 1] = Math.min(crgb[j + 1], 1 + (lg - 1) * a)
+              crgb[j + 2] = Math.min(crgb[j + 2], 1 + (lb - 1) * a)
+              break
+            case 'mul': // Multiply — filtro sobre lo acumulado
+              crgb[j] = crgb[j] * (1 + (lr - 1) * a)
+              crgb[j + 1] = crgb[j + 1] * (1 + (lg - 1) * a)
+              crgb[j + 2] = crgb[j + 2] * (1 + (lb - 1) * a)
+              break
+          }
+          // Over estándar: alpha_i ← a_i + alpha_i·(1−a_i)
+          cal[i] = a + cal[i] * ia
+          if (sCov[i] >= 0.5) co[i] = gi
+        }
+        continue
+      }
+      const plane = scalarPlanes.get(p)
       if (plane === undefined) continue
       const pd = plane.delayMs
       const pg = plane.gain
@@ -773,6 +905,15 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       plane.mask.fill(0)
       plane.owner.fill(OWNER_NONE)
     }
+    // 🜨 8194: el lienzo de color vuelve a transparente (rgb 0, alpha 0)
+    if (colorPlane !== null) {
+      colorPlane.delayMs.fill(0)
+      colorPlane.gain.fill(1)
+      colorPlane.mask.fill(0)
+      colorPlane.owner.fill(OWNER_NONE)
+      colorPlane.rgb.fill(0)
+      colorPlane.alpha.fill(0)
+    }
 
     for (let g = 0; g < stack.length; g++) {
       const gesture = stack[g]
@@ -781,7 +922,17 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         gesture,
         g,
         gesture.paint?.params ?? defaultPaint.params,
+        defaultPaint,
       )
+    }
+
+    // 🜨 8194: sellado del lienzo — mask ← alpha>0. Un nodo sin capa de
+    // color queda fuera del plano: jamás recibe pista de color y no
+    // "pisa" los colores base de Selene en el resto del rig.
+    if (colorPlane !== null) {
+      const cm = colorPlane.mask
+      const ca = colorPlane.alpha
+      for (let i = 0; i < n; i++) cm[i] = ca[i] > 0 ? 1 : 0
     }
 
     return planesResult

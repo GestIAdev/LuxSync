@@ -35,6 +35,8 @@
 import type { WorldTransform } from '../useWorldTransform'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { FixtureV2 } from '../../../../../../core/stage/ShowFileV2'
+import type { ColorPlane } from '../../model/fieldEngine'
+import { linearToSrgb } from '../../model/colorMath'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS — paleta industrial Hyperion (WAVE 8171-M2)
@@ -298,11 +300,41 @@ function drawDoubleRing(
  */
 const labeledDevices = new Set<string>()
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8194 — COLOR TINT: los nodos muestran el color COMPUESTO del
+// plano de color (la mezcla real de capas), no un tinte por familia.
+// LUT de 4096 strings `rgb(r,g,b)` indexada por RGB cuantizado a 4 bits
+// por canal — se rellena perezosamente; el alpha del plano viaja por
+// ctx.globalAlpha. Cero allocs en el hot path tras el calentamiento.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COLOR_TINT_LUT = new Array<string | undefined>(4096)
+
+function colorTintFill(r: number, g: number, b: number): string {
+  const q = (v: number): number => {
+    const s = Math.min(1, Math.max(0, linearToSrgb(v)))
+    return Math.min(15, (s * 16) | 0)
+  }
+  const qr = q(r)
+  const qg = q(g)
+  const qb = q(b)
+  const key = (qr << 8) | (qg << 4) | qb
+  let s = COLOR_TINT_LUT[key]
+  if (s === undefined) {
+    // string real sRGB8 (los 4 bits se expanden de vuelta a 0..255)
+    const e = (n4: number): number => Math.round((n4 / 15) * 255)
+    s = `rgb(${e(qr)},${e(qg)},${e(qb)})`
+    COLOR_TINT_LUT[key] = s
+  }
+  return s
+}
+
 export function drawNodeLayer(
   ctx: CanvasRenderingContext2D,
   t: WorldTransform,
   atlas: NodeAtlas | null,
   deviceMeta?: Map<string, DeviceGlyphMeta>,
+  colorPlane?: ColorPlane | null,
 ): void {
   if (!atlas) return
 
@@ -362,6 +394,29 @@ export function drawNodeLayer(
       default:
         drawDoubleRing(ctx, sx, sy, r)
         break
+    }
+
+    // 🜨 WAVE 8194: tinte del color compuesto — disco interior sobre el
+    // glifo. mask=0 (alpha=0, lienzo transparente) → sin tinte: el nodo
+    // conserva su estética industrial (no "pisa" el rig).
+    if (
+      colorPlane !== null &&
+      colorPlane !== undefined &&
+      i < colorPlane.mask.length &&
+      colorPlane.mask[i] === 1
+    ) {
+      const j = i * 3
+      ctx.globalAlpha =
+        Math.min(1, Math.max(0, colorPlane.alpha[i])) * 0.85
+      ctx.fillStyle = colorTintFill(
+        colorPlane.rgb[j],
+        colorPlane.rgb[j + 1],
+        colorPlane.rgb[j + 2],
+      )
+      ctx.beginPath()
+      ctx.arc(sx, sy, r * 0.55, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
     }
 
     // 🜨 8173-M1 + 8174-M2: UNA etiqueta por deviceId, y la etiqueta es

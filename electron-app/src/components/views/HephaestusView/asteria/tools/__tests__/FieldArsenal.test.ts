@@ -281,7 +281,7 @@ function mkField(delays: number[], maskBits?: number[]): FieldPlanes {
       },
     ],
   ])
-  return { count: n, scalar }
+  return { count: n, scalar, color: null }
 }
 
 describe('🜨 drawFieldLayer (WAVE 8182)', () => {

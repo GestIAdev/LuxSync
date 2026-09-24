@@ -21,6 +21,13 @@ import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
 import type { FieldSnapshot } from '../../model/fieldEngine'
 import { evaluateStack } from '../../model/fieldEngine'
+import { CurveEvaluator } from '../../../../../../core/hephaestus/CurveEvaluator'
+import {
+  hslToSrgb,
+  srgbToLinear,
+  linearToOklabInto,
+  oklabDeltaE,
+} from '../../model/colorMath'
 import { createDefaultProject, migrateV1toV2 } from '../../model/AsteriaProject'
 import type {
   AsteriaProjectV1,
@@ -1731,5 +1738,176 @@ describe('🜨 AsteriaCompiler — G-SHAPE-ISOLATION (WAVE 8193)', () => {
     expect(
       out.report.warnings.filter((w) => w.startsWith('SHAPE_ISOLATED')),
     ).toHaveLength(0)
+  })
+})
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8194 — EL COMPOSITOR DE COLOR (Crux 2 — Phase 3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** HSL del keyframe → OKLab (hsl→srgb→lineal→oklab). */
+function hslToOklab(h: number, s: number, l: number): [number, number, number] {
+  const [r, g, b] = hslToSrgb(h, s, l)
+  const out: [number, number, number] = [0, 0, 0]
+  linearToOklabInto(srgbToLinear(r), srgbToLinear(g), srgbToLinear(b), out)
+  return out
+}
+
+describe('🜨 AsteriaCompiler — ColorPlane (WAVE 8194)', () => {
+  test('G-COLOR-RT: dos capas solapadas → el t=0 emitido coincide con el álgebra §3.4 (ΔE OKLab ≤ 1)', () => {
+    const atlas = makeDualAtlas() // 3 devices × (IMPACT+COLOR), zona 'front'
+    // Base rojo sobre todo + capa azul a opacity 0.5 solo en fx-b:color.
+    // §3.4 replace: C = red_lin·(1−0.5) + blue_lin·0.5 = (0.5, 0, 0.5).
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'base', delayMs: 0, gain: 1 },
+      {
+        kind: 'manual', id: 'blue-half',
+        paint: { params: ['color'], color: '#0000ff', opacity: 0.5 },
+        entries: [{ nodeId: 'fx-b:color', delayMs: 0 }],
+      },
+    ]
+    const project = {
+      ...createDefaultProject('x'),
+      colorFlood: 'contain' as const, // clases de color → quirúrgico (sin flood)
+      defaultPaint: {
+        params: ['intensity', 'color'] as const,
+        color: '#ff0000',
+      },
+      stack,
+    }
+    const field = evaluateStack(stack, atlas, project.defaultPaint)
+    // El plano de color existe y mezcló: fx-b:color (idx 3) = (0.5,0,0.5)
+    const cp = field.color!
+    expect(cp.alpha[3]).toBeCloseTo(1, 5)
+    expect(cp.rgb[9]).toBeCloseTo(0.5, 5)
+    expect(cp.rgb[11]).toBeCloseTo(0.5, 5)
+
+    const out = compile({ atlas, field, clip: makeClip(), project })
+    const colorTracks = out.tracks.filter((t) => t.paramId === 'color')
+    expect(colorTracks.length).toBeGreaterThan(0)
+
+    // La pista que alcanza fx-b:color (cell-exacta bajo 'contain').
+    const target = colorTracks.find((t) => t.cell === 'fx-b:color')
+    expect(target).toBeDefined()
+    const evaluator = new CurveEvaluator(
+      new Map([['color' as const, target!.curve]]),
+      4000,
+    )
+    const hsl = evaluator.getColorValue('color', 0)
+    const got = hslToOklab(hsl.h, hsl.s, hsl.l)
+    const expected: [number, number, number] = [0, 0, 0]
+    linearToOklabInto(0.5, 0, 0.5, expected) // teoría §3.4
+    expect(
+      oklabDeltaE(got[0], got[1], got[2], expected[0], expected[1], expected[2]),
+    ).toBeLessThanOrEqual(1)
+  })
+
+  test('G-COLOR-TRANSPARENT: nodo con alpha=0 jamás recibe pista de color', () => {
+    const atlas = makeDualAtlas()
+    // El base pinta SOLO intensity (sin tinta de color); una capa pinta
+    // verde únicamente sobre fx-a:color → fx-b/fx-c quedan con alpha=0.
+    const stack: Gesture[] = [
+      {
+        kind: 'base', id: 'base', delayMs: 0, gain: 1,
+        paint: { params: ['intensity'] },
+      },
+      {
+        kind: 'manual', id: 'green',
+        paint: { params: ['color'], color: '#00ff00' },
+        entries: [{ nodeId: 'fx-a:color', delayMs: 0 }],
+      },
+    ]
+    const project = {
+      ...createDefaultProject('x'),
+      colorFlood: 'contain' as const,
+      defaultPaint: {
+        params: ['intensity'] as const,
+        color: '#ff0000',
+      },
+      stack,
+    }
+    const field = evaluateStack(stack, atlas, project.defaultPaint)
+    // Solo fx-a:color (idx 1) tiene tinta; el resto es lienzo transparente.
+    expect([...field.color!.alpha]).toEqual([0, 1, 0, 0, 0, 0])
+    expect([...field.color!.mask]).toEqual([0, 1, 0, 0, 0, 0])
+
+    const out = compile({ atlas, field, clip: makeClip(), project })
+    const colorTracks = out.tracks.filter((t) => t.paramId === 'color')
+    // Una sola clase de color (verde) → una pista quirúrgica sobre
+    // fx-a:color. Ninguna pista alcanza fx-b/fx-c: una pista llega a un
+    // nodo si `cell` lo nombra o si (sin cell) la zona lo cubre — las
+    // quirúrgicas llevan zones ['all'] pero el filtro real es `cell`.
+    expect(colorTracks).toHaveLength(1)
+    expect(colorTracks[0].cell).toBe('fx-a:color')
+    for (const nid of ['fx-b:color', 'fx-c:color']) {
+      const zone = atlas.byNodeId.get(nid)!.zoneId!
+      expect(
+        colorTracks.some(
+          (t) =>
+            t.cell === nid ||
+            (t.cell === undefined &&
+              (t.zones.includes('all') || t.zones.includes(zone))),
+        ),
+      ).toBe(false)
+    }
+  })
+
+  test('COLOR_QUANTIZED: más colores distintos que colorBudget → median-cut + warning', () => {
+    // 4 nodos COLOR con 4 tintes distintos y colorBudget=2 → cuantiza.
+    const atlas = makeColorCohortAtlas()
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'base', delayMs: 0, gain: 1, paint: { params: ['intensity'] } },
+      {
+        kind: 'manual', id: 'palette',
+        paint: { params: ['color'], color: '#ff0000' },
+        entries: [
+          { nodeId: 'fx-a:color', delayMs: 0 },
+          { nodeId: 'fx-b:color', delayMs: 0 },
+          { nodeId: 'fx-c:color', delayMs: 0 },
+          { nodeId: 'fx-d:color', delayMs: 0 },
+        ],
+      },
+    ]
+    // Colores distintos por nodo: sobreescribo el rgb del plano tras
+    // evaluar — el compilador solo lee el plano compuesto (fixture real
+    // del pipeline: el engine es la fuente, aquí simulo su salida).
+    const field = evaluateStack(stack, atlas, {
+      params: ['intensity', 'color'],
+      color: '#ff0000',
+    })
+    const cp = field.color!
+    const tint = (idx: number, r: number, g: number, b: number): void => {
+      cp.rgb[idx * 3] = r
+      cp.rgb[idx * 3 + 1] = g
+      cp.rgb[idx * 3 + 2] = b
+    }
+    tint(0, 1, 0, 0)
+    tint(1, 0, 1, 0)
+    tint(2, 0, 0, 1)
+    tint(3, 1, 1, 0)
+
+    const out = compile({
+      atlas,
+      field,
+      clip: makeClip(),
+      project: {
+        ...createDefaultProject('x'),
+        colorBudget: 2,
+        colorFlood: 'contain' as const,
+        defaultPaint: { params: ['intensity', 'color'] as const, color: '#ff0000' },
+        stack,
+      },
+    })
+    expect(
+      out.report.warnings.some((w) => w.startsWith('COLOR_QUANTIZED')),
+    ).toBe(true)
+    const colorTracks = out.tracks.filter((t) => t.paramId === 'color')
+    // 4 colores → ≤2 clases → cada pista lleva un color representante.
+    const distinctEmitted = new Set(
+      colorTracks.map((t) => JSON.stringify(t.curve.keyframes[0].value)),
+    )
+    expect(distinctEmitted.size).toBeLessThanOrEqual(2)
+    expect(distinctEmitted.size).toBeGreaterThan(0)
   })
 })

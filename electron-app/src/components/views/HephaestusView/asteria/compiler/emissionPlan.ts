@@ -60,6 +60,12 @@ import { quantizeGainCohorts } from './cohortQuantizer'
 import { hexToHsl } from './lutSynth'
 import { specKey } from './synth/envelopes'
 import {
+  linearToRgb8,
+  rgb8PackedToHsl,
+  rgb8ToOklabInto,
+  oklabToLinearInto,
+} from '../model/colorMath'
+import {
   ASTERIA_DEFAULT_SYNTH,
   ASTERIA_DEFAULT_TARGET_COLOR,
   effectivePaint,
@@ -256,6 +262,12 @@ export interface ValueClass {
   readonly overrides?: PhaseOverrideMap
   /** Curva materializada — solo firmas *-static (constante, 1 kf). */
   readonly staticCurve?: HephCurve
+  /**
+   * 🜨 WAVE 8194: color compuesto (sRGB8 empaquetado) de la clase —
+   * solo param 'color'. Materializa la curva con ESTE tono (la mezcla
+   * del plano), no con el paint.color de la capa.
+   */
+  readonly rgb8?: number
 }
 
 export type RouteKind = 'zoned' | 'lambda' | 'surgical'
@@ -327,6 +339,88 @@ function staticColorCurve(targetColorHex: string): HephCurve {
   }
 }
 
+/** 🜨 WAVE 8194: igual que staticColorCurve pero desde rgb8 empaquetado
+ *  (el color COMPUESTO del plano, ya en sRGB — la aritmética HSL es la
+ *  misma que hexToHsl vía rgb8PackedToHsl). */
+function staticColorCurveRgb8(rgb8: number): HephCurve {
+  const value = rgb8PackedToHsl(rgb8)
+  return {
+    paramId: 'color',
+    valueType: 'color',
+    range: [0, 360],
+    defaultValue: value,
+    keyframes: [{ timeMs: 0, value: { ...value }, interpolation: 'linear' }],
+    mode: 'absolute',
+  }
+}
+
+/**
+ * 🜨 WAVE 8194 (§3.5) — Median-Cut en OKLab: reduce `colors` (rgb8
+ * distintos) a ≤ budget representantes perceptualmente uniformes.
+ * Corta la caja más poblada por el eje OKLab de mayor rango en su
+ * mediana; el representante es el centroide del cluster re-proyectado
+ * a sRGB8. Devuelve rgb8 → rgb8 representante.
+ * Patch-time puro: aloca a propósito (jamás en el RAF).
+ */
+function medianCutOklab(
+  colors: readonly number[],
+  budget: number,
+): Map<number, number> {
+  const items = colors.map((rgb8) => {
+    const lab: [number, number, number] = [0, 0, 0]
+    rgb8ToOklabInto(rgb8, lab)
+    return { rgb8, lab }
+  })
+  const boxes: (typeof items)[] = [items]
+  while (boxes.length < budget) {
+    let bi = -1
+    let best = 1
+    for (let k = 0; k < boxes.length; k++) {
+      if (boxes[k].length > best) {
+        best = boxes[k].length
+        bi = k
+      }
+    }
+    if (bi === -1) break // ninguna caja divisible
+    const box = boxes[bi]
+    let axis = 0
+    let range = -1
+    for (let a = 0; a < 3; a++) {
+      let lo = Infinity
+      let hi = -Infinity
+      for (const it of box) {
+        const v = it.lab[a]
+        if (v < lo) lo = v
+        if (v > hi) hi = v
+      }
+      if (hi - lo > range) {
+        range = hi - lo
+        axis = a
+      }
+    }
+    box.sort((x, y) => x.lab[axis] - y.lab[axis])
+    const mid = box.length >> 1
+    boxes.splice(bi, 1, box.slice(0, mid), box.slice(mid))
+  }
+  const out = new Map<number, number>()
+  const tmp = [0, 0, 0]
+  for (const box of boxes) {
+    let l = 0
+    let a = 0
+    let b = 0
+    for (const it of box) {
+      l += it.lab[0]
+      a += it.lab[1]
+      b += it.lab[2]
+    }
+    const n = box.length
+    oklabToLinearInto(l / n, a / n, b / n, tmp)
+    const rep = linearToRgb8(tmp[0], tmp[1], tmp[2])
+    for (const it of box) out.set(it.rgb8, rep)
+  }
+  return out
+}
+
 /**
  * 🜨 WAVE 8193: envuelve un FieldSnapshot plano (input legacy — fixtures,
  * documentos pre-8193) como UN ScalarPlane compartido por `params`.
@@ -345,7 +439,10 @@ export function flatFieldToPlanes(
   }
   const scalar = new Map<HephParamId, ScalarPlane>()
   for (const p of params) scalar.set(p, shared)
-  return { count: field.count, scalar }
+  // `color: null` — la forma plana no tiene álgebra de color: el planner
+  // resuelve el param 'color' por `field.color ?? scalar.get('color')`
+  // (este plano compartido) y particiona por paint.color — paridad V1.
+  return { count: field.count, scalar, color: null }
 }
 
 /** Índices cubiertos (mask=1) del atlas filtrados por familia del param.
@@ -504,7 +601,8 @@ function partitionByShape(
   plane: ScalarPlane,
   memberIdx: readonly number[],
   param: HephParamId,
-): { owner: number; paint: LayerPaint; idx: number[] }[] {
+  rgb8Of?: Int32Array | null,
+): { owner: number; paint: LayerPaint; idx: number[]; rgb8?: number }[] {
   const paintCache = new Map<number, LayerPaint>()
   const paintOf = (owner: number): LayerPaint => {
     let p = paintCache.get(owner)
@@ -515,7 +613,10 @@ function partitionByShape(
     }
     return p
   }
-  const groups = new Map<string, { owner: number; paint: LayerPaint; idx: number[] }>()
+  const groups = new Map<
+    string,
+    { owner: number; paint: LayerPaint; idx: number[]; rgb8?: number }
+  >()
   for (const i of memberIdx) {
     const owner = plane.owner[i]
     const paint = paintOf(owner)
@@ -523,10 +624,17 @@ function partitionByShape(
       paint.lut?.kind === 'ride'
         ? `ride:${paint.lut.trackId}`
         : specKey(paint.synth ?? ASTERIA_DEFAULT_SYNTH)
-    const key = param === 'color' ? `${shape}|${paint.color ?? ''}` : shape
+    // 🜨 8194: para 'color' la clave usa el color COMPUESTO por nodo
+    // (rgb8 del plano real); sin plano real (input legacy) cae al
+    // paint.color del owner — paridad V1.
+    const rgb8 = rgb8Of?.[i]
+    const key =
+      param === 'color'
+        ? `${shape}|${rgb8 !== undefined ? rgb8.toString(16).padStart(6, '0') : (paint.color ?? '')}`
+        : shape
     const grp = groups.get(key)
     if (grp) grp.idx.push(i)
-    else groups.set(key, { owner, paint, idx: [i] })
+    else groups.set(key, { owner, paint, idx: [i], rgb8 })
   }
   return [...groups.values()]
 }
@@ -553,7 +661,12 @@ export function planEmission(args: PlanArgs): PlanResult {
 
   for (const param of params) {
     const fam = paramNodeFamily(param)
-    const plane = field.scalar.get(param)
+    // 🜨 WAVE 8194: 'color' resuelve el ColorPlane real del engine; la
+    // forma plana legacy lo tiene en scalar (wrap compartido).
+    const plane: ScalarPlane | undefined =
+      param === 'color'
+        ? (field.color ?? field.scalar.get(param))
+        : field.scalar.get(param)
     if (plane === undefined) {
       warnings.push(`PARAM_NO_PLANE '${param}' — ninguna capa lo pinta`)
       continue
@@ -566,26 +679,75 @@ export function planEmission(args: PlanArgs): PlanResult {
       continue
     }
 
+    // ── 🜨 WAVE 8194 (§3.5): color COMPUESTO por nodo ─────────────
+    //    rgb8Of[i] = color final del nodo (lineal→sRGB8). Dedupe exacto;
+    //    si los distintos superan colorBudget → median-cut en OKLab +
+    //    COLOR_QUANTIZED. Un nodo con alpha=0 jamás está en memberIdx
+    //    (mask=0 sellado por el engine) → G-COLOR-TRANSPARENT.
+    let rgb8Of: Int32Array | null = null
+    if (param === 'color' && field.color !== null) {
+      const cp = field.color
+      rgb8Of = new Int32Array(field.count)
+      const distinct = new Set<number>()
+      for (const i of memberIdx) {
+        const j = i * 3
+        const c = linearToRgb8(cp.rgb[j], cp.rgb[j + 1], cp.rgb[j + 2])
+        rgb8Of[i] = c
+        distinct.add(c)
+      }
+      const budget = Math.max(1, project.colorBudget ?? 16)
+      if (distinct.size > budget) {
+        const rep = medianCutOklab([...distinct], budget)
+        for (const i of memberIdx) {
+          rgb8Of[i] = rep.get(rgb8Of[i]) ?? rgb8Of[i]
+        }
+        warnings.push(
+          `COLOR_QUANTIZED — ${distinct.size} colores distintos → ${budget} (median-cut OKLab)`,
+        )
+      }
+    }
+
     // ── 🜨 WAVE 8193 (§4.4 · G-SHAPE-ISOLATION): partición por FORMA ──
     //    Las clases se forman primero por specKey del owner efectivo.
     //    Un solo grupo = una sola forma en el plano → emisión idéntica
     //    al modelo escalar (paridad V1). Con varias formas, cada grupo
     //    enruta por separado y el solape zonal fuerza aislamiento
     //    celular — dos formas jamás alcanzan el mismo (fixture, param)
-    //    sin `cell`.
-    const groups = partitionByShape(project, plane, memberIdx, param)
+    //    sin `cell`. 🜨 8194: para 'color' la clave incluye el rgb8
+    //    compuesto por nodo (forma × color = clase).
+    const groups = partitionByShape(project, plane, memberIdx, param, rgb8Of)
     const multiShape = groups.length > 1
 
     // ── Regla de Propiedad de Luminancia (§2.4) ────────────────────────
     // 'color' + intensity activo → la envolvente vive en intensity; el
-    // color se emite como constante (1 kf hold) por grupo — el color
-    // efectivo del owner adelanta la paleta estática de la 8194.
+    // color se emite como constante (1 kf hold) por CLASE DE COLOR.
+    // 🜨 8194: las clases son el color COMPUESTO por nodo (rgb8 del
+    // plano — la mezcla real de capas), no el paint.color declarado;
+    // sin plano real (legacy) se particiona por paint.color del owner.
     if (param === 'color' && args.staticColor) {
-      const membersPerGroup = groups.map((g) => toMembers(g.idx, plane, atlas))
+      const colorGroups: { owner: number; idx: number[]; rgb8?: number; hex?: string }[] = []
+      if (rgb8Of !== null) {
+        const byColor = new Map<number, { owner: number; idx: number[] }>()
+        for (const i of memberIdx) {
+          const c = rgb8Of[i]
+          const g = byColor.get(c)
+          if (g) g.idx.push(i)
+          else byColor.set(c, { owner: plane.owner[i], idx: [i] })
+        }
+        for (const [rgb8, g] of byColor) {
+          colorGroups.push({ owner: g.owner, idx: g.idx, rgb8 })
+        }
+      } else {
+        for (const g of groups) {
+          colorGroups.push({ owner: g.owner, idx: g.idx, hex: g.paint.color })
+        }
+      }
+      const multiColor = colorGroups.length > 1
+      const membersPerGroup = colorGroups.map((g) => toMembers(g.idx, plane, atlas))
       const zonesList = membersPerGroup.map((ms) => memberZones(ms, atlas))
       const classes: PlanClass[] = []
-      for (let gi = 0; gi < groups.length; gi++) {
-        const grp = groups[gi]
+      for (let gi = 0; gi < colorGroups.length; gi++) {
+        const grp = colorGroups[gi]
         const members = membersPerGroup[gi]
         const zones = zonesList[gi]
         const memberSet = new Set(members.map((m) => m.nodeId))
@@ -595,7 +757,7 @@ export function planEmission(args: PlanArgs): PlanResult {
 
         let route: RouteKind = 'zoned'
         if (spill.size > 0) {
-          if (args.colorFlood === 'contain' || multiShape) {
+          if (args.colorFlood === 'contain' || multiColor) {
             route = 'surgical' // constantes quirúrgicas (~300 B c/u)
           } else {
             const foreign = famDevicesInZones(atlas, zones, fam)
@@ -612,17 +774,21 @@ export function planEmission(args: PlanArgs): PlanResult {
             key: 'static',
             members,
             owner: grp.owner,
+            rgb8: grp.rgb8,
             repDelayMs: 0,
             repGain: 1,
             zones: (zones.length > 0 ? zones : ['all']) as ZoneTarget[],
-            staticCurve: staticColorCurve(
-              grp.paint.color ??
-                project.defaultPaint.color ??
-                ASTERIA_DEFAULT_TARGET_COLOR,
-            ),
+            staticCurve:
+              grp.rgb8 !== undefined
+                ? staticColorCurveRgb8(grp.rgb8)
+                : staticColorCurve(
+                    grp.hex ??
+                      project.defaultPaint.color ??
+                      ASTERIA_DEFAULT_TARGET_COLOR,
+                  ),
           },
           route,
-          idStem: multiShape ? `static_${gi}` : 'static_0',
+          idStem: multiColor ? `static_${gi}` : 'static_0',
         })
       }
       plans.push({ param, signature: 'uniform-static', classes })
@@ -646,6 +812,7 @@ export function planEmission(args: PlanArgs): PlanResult {
               key: 'lambda',
               members,
               owner: grp.owner,
+            rgb8: grp.rgb8,
               repDelayMs: 0,
               repGain: 1,
               zones: ['all'],
@@ -675,6 +842,7 @@ export function planEmission(args: PlanArgs): PlanResult {
               key: `s${gi}`,
               members,
               owner: grp.owner,
+            rgb8: grp.rgb8,
               repDelayMs: 0,
               repGain: 1,
               zones: ['all'],
@@ -688,6 +856,7 @@ export function planEmission(args: PlanArgs): PlanResult {
               key: `s${gi}`,
               members,
               owner: grp.owner,
+            rgb8: grp.rgb8,
               repDelayMs: 0,
               repGain: 1,
               zones: (zones.length > 0 ? zones : ['all']) as ZoneTarget[],
@@ -714,6 +883,7 @@ export function planEmission(args: PlanArgs): PlanResult {
             key: 'cells',
             members,
             owner: grp.owner,
+            rgb8: grp.rgb8,
             repDelayMs: 0,
             repGain: 1,
             zones: ['all'],
@@ -742,6 +912,7 @@ export function planEmission(args: PlanArgs): PlanResult {
       ci: number
       gi: number
       owner: number
+      rgb8?: number
       key: string
     }[] = []
     for (let gi = 0; gi < groups.length; gi++) {
@@ -768,6 +939,7 @@ export function planEmission(args: PlanArgs): PlanResult {
           ci,
           gi,
           owner: grp.owner,
+          rgb8: grp.rgb8,
           key: multiShape ? `s${gi}c${ci}` : `c${ci}`,
         })
       }
@@ -801,6 +973,7 @@ export function planEmission(args: PlanArgs): PlanResult {
             key: pc.key,
             members: pc.members,
             owner: pc.owner,
+            rgb8: pc.rgb8,
             repDelayMs: pc.repDelayMs,
             repGain: pc.repGain,
             zones: ['all'],
@@ -818,6 +991,7 @@ export function planEmission(args: PlanArgs): PlanResult {
             key: pc.key,
             members: pc.members,
             owner: pc.owner,
+            rgb8: pc.rgb8,
             repDelayMs: pc.repDelayMs,
             repGain: pc.repGain,
             zones: (pc.zones.length > 0 ? pc.zones : ['all']) as ZoneTarget[],
@@ -898,8 +1072,14 @@ export interface EmitCtx {
    * Curva base por (parámetro, owner) — 🜨 WAVE 8193 §4.4: la forma de
    * onda la dicta la capa dominante de la clase (effectivePaint(owner)
    * .synth/.lut), no una global.
+   * 🜨 WAVE 8194: para 'color', `rgb8` es el color COMPUESTO de la clase
+   * (la mezcla del plano) — materializa la curva sobre ese tono.
    */
-  readonly baseCurveFor: (param: HephParamId, owner: number) => HephCurve
+  readonly baseCurveFor: (
+    param: HephParamId,
+    owner: number,
+    rgb8?: number,
+  ) => HephCurve
   /** 'lambda' | 'ride' — etiqueta de id para la ruta Λ (§8.2). */
   readonly lambdaTag: 'lambda' | 'ride'
 }
@@ -924,7 +1104,8 @@ export function emitRoute(
   if (route === 'surgical') {
     let di = 0
     for (const m of cls.members) {
-      const base = cls.staticCurve ?? ctx.baseCurveFor(param, cls.owner)
+      const base =
+        cls.staticCurve ?? ctx.baseCurveFor(param, cls.owner, cls.rgb8)
       let curve = rotateCurveCyclic(base, m.delayMs, D)
       if (cls.staticCurve === undefined) {
         curve = bakeGainIntoCurve(curve, m.gain)
@@ -944,7 +1125,8 @@ export function emitRoute(
     return
   }
 
-  const base = cls.staticCurve ?? ctx.baseCurveFor(param, cls.owner)
+  const base =
+    cls.staticCurve ?? ctx.baseCurveFor(param, cls.owner, cls.rgb8)
   let curve: HephCurve
   if (route === 'lambda' || cls.staticCurve !== undefined) {
     curve = base // Λ: delay vive en overrides; static: constante

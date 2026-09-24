@@ -41,7 +41,9 @@ import { GHOST_RGB } from './model/gestureGhost'
 import { measureGlyphLegibility } from './model/glyphRaster'
 import { isAsteriaTrack } from './compiler/AsteriaCompiler'
 import { SYNTH_SHAPES } from './compiler/synth/SynthSpec'
-import type { SynthShape } from './compiler/synth/SynthSpec'
+import type { SynthShape, SynthSpec } from './compiler/synth/SynthSpec'
+import { envelope, resolveSpec } from './compiler/synth/envelopes'
+import { ASTERIA_DEFAULT_SYNTH } from './model/AsteriaProject'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PRIMITIVAS DE CONTROL — una fila = label + input + readout
@@ -561,42 +563,210 @@ const PaintRows: React.FC<{
           patch({ paint: { ...(paint ?? {}), opacity: v / 100 } })
         }
       />
+      {/* 🜨 WAVE 8195 (§4.5): SYNTH — la forma de onda ES de la capa.
+          SOURCE: SYNTH (envelope local) o RIDE → pista Forge. */}
+      <SynthRows gesture={gesture} patch={patch} ro={ro} />
     </>
   )
 }
 
-/**
- * 🜨 WAVE 8184 (M2): STRATEGY — sub-panel global del proyecto.
- * LUT SOURCE: la curva que los tracks ast_* reutilizan.
- *   'preset' → el compilador sintetiza el pulso Λ (Auto-Synth).
- *   'ride'   → clona la curva de una pista Forge existente: el ast_*
- *             emite SOLO phaseOverrides sobre esa forma de onda exacta
- *             (la pista madre jamás se sobreescribe — §8.2).
- */
-const StrategyRows: React.FC = () => {
-  // 🜨 WAVE 8192: LUT/SYNTH viven en defaultPaint (aún de proyecto —
-  // el paint por capa llega con el fieldEngine multi-plano).
-  const lut = useAsteriaStore((s) => s.project.defaultPaint.lut)
-  const synth = useAsteriaStore((s) => s.project.defaultPaint.synth)
-  const setDefaultPaint = useAsteriaStore((s) => s.setDefaultPaint)
-  const strategy = useAsteriaStore((s) => s.project.strategy)
-  const setStrategy = useAsteriaStore((s) => s.setStrategy)
-  const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
-  // Pistas Forge candidatas a Ride — las ast_* nunca se ofrecen
-  // (hacer ride de una curva sintética sería ruido recursivo).
-  // Selector = referencia estable del array; el filter va en useMemo —
-  // un .filter() dentro del selector devuelve array nuevo en cada
-  // getSnapshot → bucle infinito de useSyncExternalStore.
+// ═══════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8195 — SYNTH por capa (Crux 3 closure, §4.5)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SynthRows: React.FC<{
+  gesture: Gesture
+  patch: (p: Partial<Gesture>) => void
+  ro: boolean
+}> = ({ gesture, patch, ro }) => {
+  const defaultPaint = useAsteriaStore((s) => s.project.defaultPaint)
+  const paint = gesture.paint
+  const lut = paint?.lut ?? defaultPaint.lut
+  const synth = resolveSpec(
+    paint?.synth ?? defaultPaint.synth ?? ASTERIA_DEFAULT_SYNTH,
+  )
+  // Pistas Forge candidatas a Ride — las ast_* nunca se ofrecen (hacer
+  // ride de una curva sintética sería ruido recursivo). El filter va en
+  // useMemo: un .filter() dentro del selector devuelve array nuevo en
+  // cada getSnapshot → bucle infinito de useSyncExternalStore.
   const clipTracks = useHephaestusEditorStore((s) => s.clip.tracks)
   const forgeTracks = React.useMemo(
     () => clipTracks.filter((t) => !isAsteriaTrack(t.id)),
     [clipTracks],
   )
-
-  const value = lut?.kind === 'ride' ? lut.trackId : ''
+  const riding = lut?.kind === 'ride'
   const rideMissing =
-    lut?.kind === 'ride' &&
-    !forgeTracks.some((t) => t.id === lut.trackId)
+    riding && !forgeTracks.some((t) => t.id === lut.trackId)
+
+  const setSynth = (p: Partial<SynthSpec>): void =>
+    patch({
+      paint: {
+        ...(paint ?? {}),
+        synth: {
+          shape: synth.shape,
+          duty: synth.duty,
+          edge: synth.edge,
+          ...(paint?.synth ?? {}),
+          ...p,
+        },
+      },
+    })
+
+  return (
+    <>
+      <div className="asteria-insp__divider" />
+      <div className="asteria-rail__title asteria-insp__strategy">
+        SYNTH
+      </div>
+      <label
+        className="asteria-insp__row"
+        title="Fuente de la forma de onda de esta capa — SYNTH sintetiza la envolvente local; RIDE clona la curva de una pista Forge y emite solo retardos (phaseOverrides)"
+      >
+        <span className="asteria-insp__label">SOURCE</span>
+        <select
+          className="asteria-insp__select"
+          value={riding ? lut.trackId : ''}
+          disabled={ro}
+          onChange={(e) => {
+            const v = e.target.value
+            patch({
+              paint: {
+                ...(paint ?? {}),
+                lut: v === '' ? undefined : { kind: 'ride', trackId: v },
+              },
+            })
+          }}
+        >
+          <option value="">SYNTH</option>
+          {forgeTracks.map((t) => (
+            <option key={t.id} value={t.id}>
+              RIDE → {t.paramId.toUpperCase()} · {t.id}
+            </option>
+          ))}
+          {/* La fuente ride persistida puede haber desaparecido del clip
+              (pista Forge borrada) — la opción fantasma deja ver el
+              estado real en lugar de fingir SYNTH */}
+          {rideMissing && riding && (
+            <option value={lut.trackId}>
+              ⚠ {lut.trackId} (pista perdida)
+            </option>
+          )}
+        </select>
+      </label>
+      {rideMissing && (
+        <div className="asteria-rail__warn">
+          ⚠ RIDE_SOURCE_MISSING — el compilador cae al synth local
+        </div>
+      )}
+      {!riding && (
+        <>
+          <div className="asteria-insp__row">
+            <span className="asteria-insp__label">SHAPE</span>
+            <select
+              className="asteria-insp__select"
+              value={synth.shape}
+              disabled={ro}
+              title="Forma de onda que el compilador sintetiza como curva base de los tracks de esta capa — PULSE es el trapezoide Λ clásico; LASER es un pulso ultra-estrecho de flancos duros"
+              onChange={(e) =>
+                setSynth({ shape: e.target.value as SynthShape })
+              }
+            >
+              {SYNTH_SHAPES.map((s) => (
+                <option key={s} value={s}>
+                  {s.toUpperCase()}
+                </option>
+              ))}
+            </select>
+            <SynthSpark spec={synth} />
+          </div>
+          <NumRow
+            label="DUTY"
+            unit=" %"
+            min={1}
+            max={100}
+            step={1}
+            value={Math.round(synth.duty * 100)}
+            disabled={ro}
+            title="Anchura del pulso dentro del ciclo — dónde cae el flanco de bajada"
+            onChange={(v) => setSynth({ duty: v / 100 })}
+          />
+          <NumRow
+            label="EDGE"
+            unit=" %"
+            min={0}
+            max={100}
+            step={1}
+            value={Math.round(synth.edge * 100)}
+            disabled={ro}
+            title="Dureza de los flancos — 100 % = ε=1 ms (duro); menos ablanda los hold/ε a rampas"
+            onChange={(v) => setSynth({ edge: v / 100 })}
+          />
+        </>
+      )}
+    </>
+  )
+}
+
+/** 🜨 Sparkline de la envolvente (§4.5): ≤ 12 puntos SVG, puro. */
+const SynthSpark: React.FC<{ spec: Required<SynthSpec> }> = ({ spec }) => {
+  const pts = envelope(spec)
+  // Muestreo uniforme a ≤12 puntos sobre la envolvente normalizada.
+  const N = 12
+  const W = 56
+  const H = 20
+  const sample = (t: number): number => {
+    if (pts.length === 0) return 0
+    let prev = pts[0]
+    for (let i = 1; i < pts.length; i++) {
+      const cur = pts[i]
+      if (t <= cur.t || i === pts.length - 1) {
+        if (prev.interp === 'hold' || cur.t === prev.t) return prev.v
+        const u = (t - prev.t) / (cur.t - prev.t)
+        const k =
+          prev.interp === 'bezier' && prev.bz !== undefined
+            ? u * u * (3 - 2 * u) // smoothstep ≈ ease-in-out
+            : u
+        return prev.v + (cur.v - prev.v) * k
+      }
+      prev = cur
+    }
+    return pts[pts.length - 1].v
+  }
+  const d = Array.from({ length: N }, (_, i) => {
+    const t = i / (N - 1)
+    const x = (t * W).toFixed(1)
+    const y = ((1 - sample(t)) * H).toFixed(1)
+    return `${i === 0 ? 'M' : 'L'}${x},${y}`
+  }).join(' ')
+  return (
+    <svg
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      className="asteria-insp__spark"
+      aria-hidden
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/**
+ * 🜨 WAVE 8195 (§4.5): STRATEGY queda reducido al sesgo del planificador.
+ * La forma de onda ya NO es global — vive en PAINT → SYNTH de cada capa
+ * (`paint.synth`/`paint.lut`). COMPILER solo sesga `planEmission`
+ * (AUTO/Λ/COHORT/MCC), nunca selecciona waveform.
+ */
+const StrategyRows: React.FC = () => {
+  const strategy = useAsteriaStore((s) => s.project.strategy)
+  const setStrategy = useAsteriaStore((s) => s.setStrategy)
+  const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
 
   return (
     <>
@@ -604,7 +774,7 @@ const StrategyRows: React.FC = () => {
       <div className="asteria-rail__title asteria-insp__strategy">
         STRATEGY
       </div>
-      <label className="asteria-insp__row" title="Estrategia de compilación del campo — AUTO elige por el árbol; Λ una pista+offsets; COHORT cubos por gain; MCC-CELL pista por celda; MCC-DEVICE cohortes + aislamiento quirúrgico cell=nodeId en las que derraman (COHORT_ZONE_SPILL)">
+      <label className="asteria-insp__row" title="Estrategia de compilación del campo — sesgo del planner, no forma de onda. AUTO elige por el árbol; Λ una pista+offsets; COHORT cubos por gain; MCC-CELL pista por celda; MCC-DEVICE cohortes + aislamiento quirúrgico cell=nodeId en las que derraman (COHORT_ZONE_SPILL)">
         <span className="asteria-insp__label">COMPILER</span>
         <select
           className="asteria-insp__select"
@@ -621,70 +791,6 @@ const StrategyRows: React.FC = () => {
           <option value="mcc-device">MCC · DEVICE</option>
         </select>
       </label>
-      <label className="asteria-insp__row" title="Fuente de la forma de onda de los tracks ast_* — Auto-Synth sintetiza el pulso Λ; Ride clona una curva de Forge y emite solo los retardos (phaseOverrides)">
-        <span className="asteria-insp__label">LUT SRC</span>
-        <select
-          className="asteria-insp__select"
-          value={value}
-          disabled={driftReadOnly}
-          onChange={(e) => {
-            const v = e.target.value
-            setDefaultPaint({
-              // undefined = síntesis local (la v1 'preset' no se
-              // materializa en el paint — §3.1)
-              lut: v === '' ? undefined : { kind: 'ride', trackId: v },
-            })
-          }}
-        >
-          <option value="">AUTO-SYNTH Λ</option>
-          {forgeTracks.map((t) => (
-            <option key={t.id} value={t.id}>
-              RIDE → {t.paramId.toUpperCase()} · {t.id}
-            </option>
-          ))}
-          {/* La fuente ride persistida puede haber desaparecido del clip
-              (pista Forge borrada) — la opción fantasma deja ver el
-              estado real en lugar de fingir Auto-Synth */}
-          {rideMissing && (
-            <option value={value}>
-              ⚠ {lut?.kind === 'ride' ? lut.trackId : ''} (pista perdida)
-            </option>
-          )}
-        </select>
-      </label>
-      {rideMissing && (
-        <div className="asteria-rail__warn">
-          ⚠ RIDE_SOURCE_MISSING — el compilador cae al pulso Λ
-        </div>
-      )}
-      {/* 🜨 WAVE 8191: SHAPE — la forma de onda sintetizada, provisional
-          a nivel de proyecto (baja a por-capa en la WAVE 8195). Solo
-          tiene sentido con LUT SRC = AUTO-SYNTH; con Ride la curva
-          la dicta la pista Forge clonada. */}
-      {lut?.kind !== 'ride' && (
-        <label className="asteria-insp__row" title="Forma de onda que el compilador sintetiza como curva base de los tracks ast_* — PULSE es el trapezoide Λ clásico; LASER es un pulso ultra-estrecho de flancos duros (la línea de luz que barre el rig con un gesto Wave)">
-          <span className="asteria-insp__label">SHAPE</span>
-          <select
-            className="asteria-insp__select"
-            value={synth?.shape ?? 'pulse'}
-            disabled={driftReadOnly}
-            onChange={(e) =>
-              setDefaultPaint({
-                synth: {
-                  ...(synth ?? { shape: 'pulse' as const }),
-                  shape: e.target.value as SynthShape,
-                },
-              })
-            }
-          >
-            {SYNTH_SHAPES.map((s) => (
-              <option key={s} value={s}>
-                {s.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
     </>
   )
 }

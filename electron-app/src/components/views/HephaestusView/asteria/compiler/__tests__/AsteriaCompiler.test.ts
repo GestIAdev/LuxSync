@@ -19,7 +19,7 @@ import type {
 } from '../../../../../../core/hephaestus/types'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
-import type { FieldSnapshot } from '../../model/fieldEngine'
+import type { FieldPlanes, FieldSnapshot } from '../../model/fieldEngine'
 import { evaluateStack } from '../../model/fieldEngine'
 import { CurveEvaluator } from '../../../../../../core/hephaestus/CurveEvaluator'
 import {
@@ -118,7 +118,7 @@ function makeClip(durationMs = 4000): HephAutomationClipV3 {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
-  test('emite pista ast_intensity_lambda_0 con las reglas duras', () => {
+  test('emite pista ast_intensity_lambda_base_0 con las reglas duras', () => {
     const out = compile({
       atlas: makeAtlas(),
       field: makeField(),
@@ -127,7 +127,7 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     })
     expect(out.tracks).toHaveLength(1)
     const t = out.tracks[0]
-    expect(t.id).toBe('ast_intensity_lambda_0')
+    expect(t.id).toBe('ast_intensity_lambda_base_0')
     expect(t.id.startsWith(ASTERIA_TRACK_PREFIX)).toBe(true)
     expect(t.zones).toEqual(['all'])                    // G5
     expect(t.blendMode).toBe('replace')
@@ -233,7 +233,7 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     expect(out.report.strategy).toBe('ride')
     expect(out.tracks).toHaveLength(1) // una única pista nueva + bus
     const t = out.tracks[0]
-    expect(t.id).toBe('ast_intensity_ride_0')
+    expect(t.id).toBe('ast_intensity_ride_base_0')
     // Comparación estructural: keyframes byte-a-byte idénticos a la
     // fuente Forge — la Vía Λ no sintetiza, solo inyecta direcciones.
     const src = clip.tracks[0].curve
@@ -567,8 +567,8 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
     expect(out.report.strategy).toBe('cohort')
     expect(out.tracks).toHaveLength(2) // 2 cohortes × 1 param
     expect(out.tracks.map((t) => t.id)).toEqual([
-      'ast_intensity_cohort_0',
-      'ast_intensity_cohort_1',
+      'ast_intensity_cohort_base_0',
+      'ast_intensity_cohort_base_1',
     ])
     // Percentiles sobre [0.5,0.5,1,1] → cohort0 gain≈0.5, cohort1 gain=1
     // WAVE 8090-M1: el gain se hornea en los keyframes (intensity incluido)
@@ -727,7 +727,7 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
 
   test('validador: keyframes no ASC o fuera de dominio → rechazo', () => {
     const bad: HephTrack = {
-      id: 'ast_intensity_mcc_0',
+      id: 'ast_intensity_mcc_base_0',
       paramId: 'intensity',
       zones: ['all'],
       curve: {
@@ -771,7 +771,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     })
     expect(out.tracks).toHaveLength(1)
     const t = out.tracks[0]
-    expect(t.id).toBe('ast_color_lambda_0')
+    expect(t.id).toBe('ast_color_lambda_base_0')
     expect(t.paramId).toBe('color')
     expect(t.curve.valueType).toBe('color')
     // 5 kfs — geometría trapezoidal del λ-pulse, no el barrido de hue
@@ -831,11 +831,11 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       atlas: makeDualAtlas(), field, clip: makeClip(), project,
     })
     expect(out.tracks).toHaveLength(2)
-    expect(out.tracks[0].id).toBe('ast_intensity_lambda_0')
+    expect(out.tracks[0].id).toBe('ast_intensity_lambda_base_0')
     expect(out.tracks[0].curve.valueType).toBe('number')
     expect(Object.keys(out.tracks[0].phaseOverrides!)).toHaveLength(3)
     const ct = out.tracks[1]
-    expect(ct.id).toBe('ast_color_static_0')
+    expect(ct.id).toBe('ast_color_static_base_0')
     expect(ct.paramId).toBe('color')
     expect(ct.curve.valueType).toBe('color')
     expect(ct.curve.keyframes).toHaveLength(1) // hold — sin envolvente
@@ -861,8 +861,8 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     })
     expect(out.tracks).toHaveLength(2)
     expect(out.tracks.map((t) => t.id)).toEqual([
-      'ast_color_cohort_0',
-      'ast_color_cohort_1',
+      'ast_color_cohort_base_0',
+      'ast_color_cohort_base_1',
     ])
     // cohort0 gain≈0.5 → pico L ≈ 25; cohort1 gain=1 → pico L=50.
     // El horneado escala `l` de cada kf — la rotación por delay solo
@@ -1335,7 +1335,7 @@ describe('🜨 WAVE 8186 — MCC-Device (Zone Spill Workaround)', () => {
     const clip = makeClip()
     const injected = injectAstTracks(clip, out.tracks, project)
     const round = serializeHephClip(injected)
-    const t = round.tracks.find((x) => x.id === 'ast_intensity_mccd_0_0')!
+    const t = round.tracks.find((x) => x.id === 'ast_intensity_mccd_base_0_0')!
     expect(t.cell).toBe('fx-a:impact') // c0={a,b} — orden de atlas
     expect(t.zones).toEqual(['all'])
   })
@@ -1387,7 +1387,7 @@ describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () =
     const intTracks = out.tracks.filter((t) => t.paramId === 'intensity')
     // El decoupling: el color estático NO paga el multiplicador quirúrgico.
     expect(colorTracks).toHaveLength(1)
-    expect(colorTracks[0].id).toBe('ast_color_static_0')
+    expect(colorTracks[0].id).toBe('ast_color_static_base_0')
     expect(colorTracks[0].curve.keyframes).toHaveLength(1)
     expect(colorTracks[0].cell).toBeUndefined()
     // Intensity sí: cada nodo IMPACT cubierto, pista cell-exacta.
@@ -1400,23 +1400,68 @@ describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () =
     ).toBe(true)
   })
 
-  test('G-BUDGET-150: 150 fixtures DIM+CLR aislados → bytes < 60% del límite .lfx', () => {
+  test('G-BUDGET-150: 150 fixtures DIM+CLR → ≤40% (allow) / ≤60% (contain) del límite .lfx', () => {
+    // §5: atlas sintético 150 × {IMPACT,COLOR}, gain variable, spill
+    // forzado (todo en 'front'; el plano de color cubre solo la mitad
+    // de los nodos COLOR → la clase estática derrama sobre 75 fixtures
+    // ajenos: 'allow' emite 1 pista con flood, 'contain' 75 quirúrgicas).
     const N = 150
-    const out = compile({
-      atlas: bigDualAtlas(N),
-      field: bigField(N),
-      clip: makeClip(),
-      project: {
-        ...createDefaultProject('x'),
-        strategy: 'mcc-device' as const,
-        defaultPaint: { params: ['intensity', 'color'] as const },
-        cohortBudget: 16,
+    const atlas = bigDualAtlas(N)
+    const n2 = N * 2 // layout: pares IMPACT, impares COLOR
+    const field: FieldPlanes = {
+      count: n2,
+      scalar: new Map([
+        [
+          'intensity' as const,
+          {
+            delayMs: Float32Array.from({ length: n2 }, (_, i) => (i * 137) % 4000),
+            gain: Float32Array.from({ length: n2 }, (_, i) => 0.4 + ((i * 31) % 60) / 100),
+            mask: Uint8Array.from({ length: n2 }, (_, i) => (i % 2 === 0 ? 1 : 0)),
+            owner: new Uint16Array(n2), // owner 0 → capa 'base'
+          },
+        ],
+      ]),
+      color: {
+        delayMs: new Float32Array(n2),
+        gain: new Float32Array(n2).fill(1),
+        // mitad de los nodos COLOR cubiertos → spill zonal garantizado
+        mask: Uint8Array.from({ length: n2 }, (_, i) =>
+          i % 2 === 1 && (i >> 1) % 2 === 0 ? 1 : 0,
+        ),
+        owner: new Uint16Array(n2),
+        rgb: Float32Array.from({ length: n2 * 3 }, (_, i) =>
+          i % 3 === 0 ? 1 : 0, // rojo lineal
+        ),
+        alpha: Float32Array.from({ length: n2 }, (_, i) =>
+          i % 2 === 1 && (i >> 1) % 2 === 0 ? 1 : 0,
+        ),
       },
-    })
-    // Antes del planner: 150 int + 150 color = 300 pistas (~>60%).
-    // Ahora: 150 int quirúrgicas + 1 color estático.
-    expect(out.tracks.filter((t) => t.paramId === 'color')).toHaveLength(1)
-    expect(out.report.bytes).toBeLessThan(LFX_MAX_BYTES * 0.6)
+    }
+    const mk = (colorFlood: 'allow' | 'contain') =>
+      compile({
+        atlas, field, clip: makeClip(),
+        project: {
+          ...createDefaultProject('x'),
+          strategy: 'mcc-device' as const,
+          defaultPaint: { params: ['intensity', 'color'] as const },
+          cohortBudget: 16,
+          colorFlood,
+        },
+      })
+    const allow = mk('allow')
+    const contain = mk('contain')
+    const colorOf = (o: typeof allow) =>
+      o.tracks.filter((t) => t.paramId === 'color')
+    expect(colorOf(allow)).toHaveLength(1) // flood zonal
+    expect(
+      allow.report.warnings.some((w) => w.startsWith('COLOR_FLOOD')),
+    ).toBe(true)
+    expect(colorOf(contain)).toHaveLength(N / 2) // 75 quirúrgicas
+    expect(allow.report.bytes).toBeLessThanOrEqual(LFX_MAX_BYTES * 0.4)
+    expect(contain.report.bytes).toBeLessThanOrEqual(LFX_MAX_BYTES * 0.6)
+    // Baseline (§5): queda en report.bytes para comparación futura —
+    // 'contain' es estrictamente más caro que 'allow'.
+    expect(contain.report.bytes).toBeGreaterThan(allow.report.bytes)
   })
 
   test('§2.6 higiene numérica: timeMs enteros y valores ≤4 decimales tras rotar+escalar', () => {
@@ -1696,6 +1741,14 @@ describe('🜨 AsteriaCompiler — G-SHAPE-ISOLATION (WAVE 8193)', () => {
     expect(sA).not.toBe(sB) // pulse ≠ laser — clases separadas por specKey
     expect(shapeOf(byCell('fx-b:impact'))).toBe(sA)
     expect(shapeOf(byCell('fx-c:impact'))).toBe(sB)
+    // 🜨 WAVE 8195 (§4.5): el id lleva el layerId de la capa dominante —
+    // ast_<param>_<route>_<layerId>_<n>. Trazable hasta el gesto.
+    for (const cell of ['fx-a:petal-l:impact', 'fx-b:impact']) {
+      expect(byCell(cell).id).toContain('_layerA_')
+    }
+    for (const cell of ['fx-a:petal-r:impact', 'fx-c:impact']) {
+      expect(byCell(cell).id).toContain('_layerB_')
+    }
     // Y la curva base difiere: laser tiene menos keyframes que pulse.
     expect(byCell('fx-a:petal-l:impact').curve.keyframes.length).not.toBe(
       byCell('fx-a:petal-r:impact').curve.keyframes.length,

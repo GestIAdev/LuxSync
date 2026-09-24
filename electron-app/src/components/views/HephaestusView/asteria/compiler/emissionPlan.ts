@@ -640,6 +640,19 @@ function partitionByShape(
 }
 
 /**
+ * 🜨 WAVE 8195 (§4.5): id de la capa dominante para el esquema de ids
+ * `ast_<param>_<route>_<layerId>_<n>` — el tooltip del 🔒 y el operador
+ * pueden rastrear cada pista a su gesto de origen. OWNER_NONE o gesto
+ * perdido → 'default' (el defaultPaint). Sanitizada a [a-z0-9_-].
+ */
+function layerIdOf(project: AsteriaProject, owner: number): string {
+  const raw =
+    owner === OWNER_NONE ? 'default' : (project.stack[owner]?.id ?? 'default')
+  const clean = raw.replace(/[^a-zA-Z0-9_-]+/g, '-')
+  return clean === '' ? 'default' : clean
+}
+
+/**
  * PLAN DE EMISIÓN (§2.2) — sustituye al bucle ciego `params × cohortes`.
  * Cada parámetro clasifica su firma sobre SUS nodos enrutables (familia)
  * y cada clase se enruta por separado. La estrategia global sigue siendo
@@ -748,6 +761,7 @@ export function planEmission(args: PlanArgs): PlanResult {
       const classes: PlanClass[] = []
       for (let gi = 0; gi < colorGroups.length; gi++) {
         const grp = colorGroups[gi]
+        const lid = layerIdOf(project, grp.owner)
         const members = membersPerGroup[gi]
         const zones = zonesList[gi]
         const memberSet = new Set(members.map((m) => m.nodeId))
@@ -788,7 +802,7 @@ export function planEmission(args: PlanArgs): PlanResult {
                   ),
           },
           route,
-          idStem: multiColor ? `static_${gi}` : 'static_0',
+          idStem: `static_${lid}_${gi}`,
         })
       }
       plans.push({ param, signature: 'uniform-static', classes })
@@ -802,6 +816,7 @@ export function planEmission(args: PlanArgs): PlanResult {
       const classes: PlanClass[] = []
       for (let gi = 0; gi < groups.length; gi++) {
         const grp = groups[gi]
+        const lid = layerIdOf(project, grp.owner)
         const members = membersPerGroup[gi]
         for (const m of members) allDevices.add(m.deviceId)
         const overrides = lambdaOverrides(members, D)
@@ -819,7 +834,7 @@ export function planEmission(args: PlanArgs): PlanResult {
               overrides,
             },
             route: 'lambda',
-            idStem: 'lambda_0', // emitRoute lo retaggea a 'ride_0' si aplica
+            idStem: `lambda_${lid}_0`, // emitRoute retaggea a 'ride_*'
           })
           continue
         }
@@ -848,7 +863,7 @@ export function planEmission(args: PlanArgs): PlanResult {
               zones: ['all'],
             },
             route: 'surgical',
-            idStem: `lam_${gi}`,
+            idStem: `lam_${lid}_${gi}`,
           })
         } else {
           classes.push({
@@ -863,7 +878,7 @@ export function planEmission(args: PlanArgs): PlanResult {
               overrides,
             },
             route: 'zoned',
-            idStem: `lambda_${gi}`,
+            idStem: `lambda_${lid}_${gi}`,
           })
         }
       }
@@ -889,7 +904,8 @@ export function planEmission(args: PlanArgs): PlanResult {
             zones: ['all'],
           },
           route: 'surgical',
-          idStem: 'mcc', // id = ast_<param>_mcc_<idx> (índice de atlas)
+          // 🜨 8195: ast_<param>_mcc_<layerId>_<idx> (índice de atlas)
+          idStem: `mcc_${layerIdOf(project, grp.owner)}`,
         })
       }
       plans.push({ param, signature: 'cellular', classes })
@@ -911,12 +927,14 @@ export function planEmission(args: PlanArgs): PlanResult {
       repGain: number
       ci: number
       gi: number
+      lid: string
       owner: number
       rgb8?: number
       key: string
     }[] = []
     for (let gi = 0; gi < groups.length; gi++) {
       const grp = groups[gi]
+      const lid = layerIdOf(project, grp.owner)
       const inGroup = new Set(grp.idx)
       for (let ci = 0; ci < cohorts.length; ci++) {
         const c = cohorts[ci]
@@ -938,6 +956,7 @@ export function planEmission(args: PlanArgs): PlanResult {
           repGain: gain,
           ci,
           gi,
+          lid,
           owner: grp.owner,
           rgb8: grp.rgb8,
           key: multiShape ? `s${gi}c${ci}` : `c${ci}`,
@@ -980,8 +999,8 @@ export function planEmission(args: PlanArgs): PlanResult {
           },
           route: 'surgical',
           idStem: multiShape
-            ? `mccd_${pc.ci}_s${pc.gi}`
-            : `mccd_${pc.ci}`,
+            ? `mccd_${pc.lid}_${pc.ci}_s${pc.gi}`
+            : `mccd_${pc.lid}_${pc.ci}`,
         })
       } else {
         const overrides = cohortOverrides(pc.members, pc.repDelayMs, D)
@@ -999,8 +1018,8 @@ export function planEmission(args: PlanArgs): PlanResult {
           },
           route: 'zoned',
           idStem: multiShape
-            ? `cohort_${pc.ci}_s${pc.gi}`
-            : `cohort_${pc.ci}`,
+            ? `cohort_${pc.lid}_${pc.ci}_s${pc.gi}`
+            : `cohort_${pc.lid}_${pc.ci}`,
         })
       }
     }
@@ -1112,8 +1131,9 @@ export function emitRoute(
       }
       tracks.push({
         id:
-          idStem === 'mcc'
-            ? `${ASTERIA_TRACK_PREFIX}${param}_mcc_${m.idx}`
+          // 🜨 8195: mcc → ast_<param>_mcc_<layerId>_<idx-atlas>
+          idStem.startsWith('mcc_')
+            ? `${ASTERIA_TRACK_PREFIX}${param}_${idStem}_${m.idx}`
             : `${ASTERIA_TRACK_PREFIX}${param}_${idStem}_${di++}`,
         paramId: param,
         zones: ['all'], // el filtro real lo hace `cell` (Δ3)

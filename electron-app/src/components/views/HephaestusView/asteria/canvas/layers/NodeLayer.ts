@@ -36,6 +36,7 @@ import type { WorldTransform } from '../useWorldTransform'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { FixtureV2 } from '../../../../../../core/stage/ShowFileV2'
 import type { ColorPlane, PlaneField } from '../../model/fieldEngine'
+import type { HephPreviewData } from '../../../useHephPreview'
 import { linearToSrgb } from '../../model/colorMath'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -335,10 +336,14 @@ export function drawNodeLayer(
   atlas: NodeAtlas | null,
   deviceMeta?: Map<string, DeviceGlyphMeta>,
   colorPlane?: ColorPlane | null,
-  /** 🜨 WAVE 8198: plano escalar de intensidad (mask+gain) — la salida
-   *  real de fotones del diseño. Sin plano → tinte latente pleno
-   *  (comportamiento legado pre-8198). */
+  /** 🜨 WAVE 8198/8199: plano escalar de intensidad — FALLBACK cuando el
+   *  preview no reporta (sin transporte). Sin plano → tinte pleno. */
   intensityField?: PlaneField | null,
+  /** 🜨 WAVE 8199: previewData del editor — `fixtures[].dimmer` es el
+   *  valor de intensidad EVALUADO EN EL TIEMPO ACTUAL (el mismo que
+   *  pinta los halos de FeedbackLayer). Cuando existe, manda sobre el
+   *  gain estático del plano. */
+  preview?: HephPreviewData | null,
 ): void {
   if (!atlas) return
 
@@ -409,21 +414,43 @@ export function drawNodeLayer(
       i < colorPlane.mask.length &&
       colorPlane.mask[i] === 1
     ) {
-      // 🜨 WAVE 8198 (True-Black): el tinte latente se modula por la
-      // salida real de fotones — Visual Alpha = Latent Alpha × gain.
-      // Sin plano de intensidad → iGain=1 (legado). Nodo fuera de la
-      // máscara de intensidad (mask=0) → 0 fotones → negro táctico:
-      // se omite el disco aunque el ColorPlane tenga color latente.
-      const iGain =
-        intensityField === null || intensityField === undefined
-          ? 1
-          : i < intensityField.mask.length && intensityField.mask[i] === 1
+      // 🜨 WAVE 8199 (Time-Evaluated True-Black): Visual Alpha =
+      // Latent Alpha × currentValue — la intensidad EVALUADA en el
+      // tiempo actual, no el gain espacial estático del plano (que es
+      // 1.0 para toda la selección de un WAVE/CHRONO). El disco sigue
+      // la envolvente: valle → apagado, cresta → tinte pleno.
+      //
+      // Jerarquía:
+      //   1. preview.fixtures → pf.dimmer/255 por deviceId (paridad con
+      //      FeedbackLayer: "el fixture aporta la luz, el nodo la
+      //      posición"). Fixture ausente del preview → 0 (el preview
+      //      es la verdad cuando existe).
+      //   2. Sin preview → gain estático del plano intensity (8198).
+      //   3. Sin plano → 1 (legado — stack color-only muestra paleta).
+      const pfs = preview?.fixtures
+      let cur: number
+      if (pfs !== undefined && pfs.length > 0) {
+        cur = 0
+        // Búsqueda lineal sin allocs — mismo patrón que FeedbackLayer.
+        for (let k = 0; k < pfs.length; k++) {
+          const pf = pfs[k]
+          if (pf.fixtureId === entry.deviceId) {
+            cur = pf.dimmer > 255 ? 1 : pf.dimmer / 255
+            break
+          }
+        }
+      } else if (intensityField === null || intensityField === undefined) {
+        cur = 1
+      } else {
+        cur =
+          i < intensityField.mask.length && intensityField.mask[i] === 1
             ? Math.min(1, Math.max(0, intensityField.gain[i]))
             : 0
-      if (iGain > 1e-3) {
+      }
+      if (cur > 0.01) {
         const j = i * 3
         ctx.globalAlpha =
-          Math.min(1, Math.max(0, colorPlane.alpha[i]) * iGain) * 0.85
+          Math.min(1, Math.max(0, colorPlane.alpha[i]) * cur) * 0.85
         ctx.fillStyle = colorTintFill(
           colorPlane.rgb[j],
           colorPlane.rgb[j + 1],

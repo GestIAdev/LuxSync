@@ -26,6 +26,10 @@ import type { NodeAtlas } from '../../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../../core/aether/types'
 import type { FixtureV2 } from '../../../../../../../core/stage/ShowFileV2'
 import type { ColorPlane, PlaneField } from '../../../model/fieldEngine'
+import type {
+  HephPreviewData,
+  PreviewFixtureState,
+} from '../../../../useHephPreview'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FIXTURES
@@ -409,7 +413,7 @@ describe('🜨 WAVE 8174 — Tungsten compuesto (parent-aware heuristics)', () =
 // WAVE 8198 — TRUE-BLACK: el tinte latente obedece a la intensidad real
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('🜨 WAVE 8198 — NodeLayer true-black (tinte × intensidad)', () => {
+describe('🜨 WAVE 8198/8199 — NodeLayer true-black (tinte × intensidad)', () => {
   /** ColorPlane de 2 nodos: ambos con cobertura plena, rojo/verde lineal. */
   const mkColorPlane = (): ColorPlane => ({
     delayMs: new Float32Array(2),
@@ -499,6 +503,74 @@ describe('🜨 WAVE 8198 — NodeLayer true-black (tinte × intensidad)', () => 
     )
     // Un solo fill 'rgb(' — el nodo apagado no tira disco
     expect(calls.fills.filter((f) => f.style.startsWith('rgb('))).toHaveLength(1)
+  })
+
+  // ── 8199: el valor TEMPORAL del preview manda sobre el gain estático ──
+  const mkPreview = (
+    ...fixtures: Array<{ fixtureId: string; dimmer: number }>
+  ): HephPreviewData => ({
+    playheadMs: 0,
+    progress: 0,
+    frameCount: 0,
+    history: [],
+    fixtures: fixtures.map((f) => f as PreviewFixtureState),
+  })
+
+  test('8199 REGRESIÓN: envolvente en valle (dimmer=0) → negro aunque gain estático=1', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [1]), // gain espacial 1.0 — engañaba
+      mkPreview({ fixtureId: 'fx-a', dimmer: 0 }),
+    )
+    expect(hasTintFill(calls)).toBe(false)
+    expect(calls.arc).toBe(3) // chasis intacto
+  })
+
+  test('8199: dimmer=255 → tinte pleno aunque gain estático=0', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [0]),
+      mkPreview({ fixtureId: 'fx-a', dimmer: 255 }),
+    )
+    expect(hasTintFill(calls)).toBe(true)
+    expect(tintAlpha(calls)).toBeCloseTo(0.8 * 0.85, 6)
+  })
+
+  test('8199: dimmer=128 → Visual Alpha = Latent × (128/255)', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [1]),
+      mkPreview({ fixtureId: 'fx-a', dimmer: 128 }),
+    )
+    expect(tintAlpha(calls)).toBeCloseTo(0.8 * (128 / 255) * 0.85, 6)
+  })
+
+  test('8199: preview activo pero fixture ausente → 0 fotones → negro', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [1]),
+      mkPreview({ fixtureId: 'fx-OTHER', dimmer: 255 }),
+    )
+    expect(hasTintFill(calls)).toBe(false)
+  })
+
+  test('8199: preview sin fixtures → cae al gain estático del plano', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [0.5]),
+      mkPreview(), // fixtures vacío → fallback 8198
+    )
+    expect(tintAlpha(calls)).toBeCloseTo(0.8 * 0.5 * 0.85, 6)
   })
 })
 

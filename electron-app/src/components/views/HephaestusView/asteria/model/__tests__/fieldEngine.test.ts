@@ -7,10 +7,39 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { createFieldEngine, evaluateStack } from '../fieldEngine'
+import {
+  createFieldEngine,
+  evaluateStack,
+  OWNER_NONE,
+  type FieldPlanes,
+  type ScalarPlane,
+} from '../fieldEngine'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
-import type { Gesture } from '../AsteriaProject'
+import type { Gesture, LayerPaint } from '../AsteriaProject'
+import { createDefaultPaint } from '../AsteriaProject'
+import type { HephParamId } from '../../../../../../core/hephaestus/types'
+
+/**
+ * 🜨 WAVE 8193: evaluateStack devuelve FieldPlanes — los gestos de estos
+ * tests no llevan `paint`, así que todo cae al plano 'intensity' del
+ * defaultPaint (equivalente exacto al FieldSnapshot V1).
+ */
+function ev(
+  stack: readonly Gesture[],
+  atlas: NodeAtlas,
+  paint?: LayerPaint,
+): ScalarPlane {
+  return evaluateStack(stack, atlas, paint).scalar.get('intensity')!
+}
+
+/** Plano de un param concreto (tests multi-plano). */
+function planeOf(
+  planes: FieldPlanes,
+  p: HephParamId,
+): ScalarPlane | undefined {
+  return planes.scalar.get(p)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FIXTURES
@@ -44,17 +73,15 @@ function makeAtlas(): NodeAtlas {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('🜨 FieldEngine — WAVE 8030-P2', () => {
-  test('identidad: pila vacía → delay 0, gain 1, mask 0', () => {
-    const snap = evaluateStack([], makeAtlas())
-    expect(snap.count).toBe(4)
-    expect(Array.from(snap.delayMs)).toEqual([0, 0, 0, 0])
-    expect(Array.from(snap.gain)).toEqual([1, 1, 1, 1])
-    expect(Array.from(snap.mask)).toEqual([0, 0, 0, 0])
+  test('identidad: pila vacía → cero planos activos (∪ params = ∅)', () => {
+    const planes = evaluateStack([], makeAtlas())
+    expect(planes.count).toBe(4)
+    expect(planes.scalar.size).toBe(0)
   })
 
   test('base: escribe delay/gain uniforme y cubre todos los nodos', () => {
     const stack: Gesture[] = [{ kind: 'base', id: 'b1', delayMs: 120, gain: 0.5 }]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(Array.from(snap.delayMs)).toEqual([120, 120, 120, 120])
     expect(Array.from(snap.gain)).toEqual([0.5, 0.5, 0.5, 0.5])
     expect(Array.from(snap.mask)).toEqual([1, 1, 1, 1])
@@ -71,7 +98,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         channel: 'gain', antialias: true,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(Array.from(snap.mask)).toEqual([0, 0, 0, 0])
     expect(Array.from(snap.delayMs)).toEqual([0, 0, 0, 0])
   })
@@ -93,7 +120,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         channel: 'gain', antialias: false,
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     expect(snap.gain[0]).toBe(1)      // sobre el tallo
     expect(snap.gain[1]).toBe(1)      // fuera → identidad (no pisado)
     expect(Array.from(snap.mask)).toEqual([1, 0])
@@ -116,7 +143,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         channel: 'gain', antialias: false,
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     expect(snap.mask[0]).toBe(1)   // en máscara + cubierto
     expect(snap.mask[1]).toBe(0)   // dentro del bbox, fuera de máscara
     expect(snap.gain[1]).toBe(1)   // identidad intacta — cero tinta
@@ -136,7 +163,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         channel: 'delay', antialias: false,
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     expect(snap.delayMs[0]).toBeCloseTo(500, 3)
     expect(snap.gain[0]).toBe(1) // canal delay no toca gain
     expect(snap.mask[0]).toBe(1)
@@ -159,7 +186,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         channel: 'gain', antialias: false, invert: true,
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     // a: letra invertida → reclamada con gain 0 (texto negro)
     expect(snap.mask[0]).toBe(1)
     expect(snap.gain[0]).toBe(0)
@@ -184,7 +211,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         channel: 'delay', antialias: false, invert: true,
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     // a (letra): cov'=0 y canal delay → NO reclamada — la onda la esquiva
     expect(snap.mask[0]).toBe(0)
     // b (fondo): cov'=1 → reclamada, delay = u(0.5)·0.2m·1000 = 100 ms
@@ -204,7 +231,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBeCloseTo(Math.sqrt(5) * 100, 3)
     expect(snap.delayMs[2]).toBeCloseTo(250, 3)
     expect(snap.mask[3]).toBe(0) // fx-3 sin posición: sin cobertura
@@ -220,7 +247,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10, falloffM: 5,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.gain[2]).toBeCloseTo(0.5, 4) // 1 - 2.5/5
   })
 
@@ -233,7 +260,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         emitter: { x: 0, z: 0 }, shape: 'line', dirDeg: 0, speedMps: 10,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[2]).toBeCloseTo(150, 3)
     expect(snap.delayMs[0]).toBe(0) // fx-1 en x=-2: detrás del frente
   })
@@ -247,7 +274,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         huygens: [{ x: 1.5, z: 0 }], // a 2 m del nodo vs 2.5 m del primario
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[2]).toBeCloseTo(200, 3)
   })
 
@@ -266,7 +293,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         radiusM: 0.5,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBe(0)
     expect(snap.delayMs[2]).toBe(800)
     expect(snap.mask[2]).toBe(1)
@@ -282,7 +309,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         radiusM: 0.5,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.mask[2]).toBe(0)
     expect(snap.delayMs[2]).toBe(0)
   })
@@ -307,7 +334,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         radiusM: 0.5,
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     expect(snap.delayMs[0]).toBeCloseTo(750, 1) // 3/4 de 1000 ms
   })
 
@@ -325,7 +352,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         ],
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBe(999)
     expect(snap.gain[0]).toBe(0.5)    // gain intacto (canal delay only)
     expect(snap.delayMs[1]).toBe(10)  // delay intacto (canal gain only)
@@ -346,7 +373,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[2]).toBeCloseTo(350, 3) // 100 + 250
   })
 
@@ -361,7 +388,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact'] },
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBe(0)
     expect(snap.delayMs[1]).toBe(0)
     expect(snap.delayMs[2]).toBe(1000)
@@ -377,7 +404,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact', 'fx-3:impact'] },
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBe(0)         // idx 0 → bucket 0
     expect(snap.delayMs[3]).toBe(900)       // idx 3 → bucket 3 → ub 1
     expect(snap.mask[3]).toBe(1)
@@ -396,7 +423,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         mask: { nodeIds: ['fx-1:impact', 'fx-2:impact'] },
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     expect(snap.delayMs[0]).toBe(0)    // 'front' → ordinal 0
     expect(snap.delayMs[1]).toBe(500)  // 'back'  → ordinal 1
   })
@@ -409,7 +436,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact'] },
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     // idx 0→b0(ub 0→|−1|=1→500) · idx1→b1(ub .5→0→0) · idx2→b2(ub 1→1→500)
     expect(snap.delayMs[0]).toBe(500)
     expect(snap.delayMs[1]).toBe(0)
@@ -422,9 +449,9 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
       buckets: 4, spanMs: 600, symmetry: 'linear', shuffleSeed: 42,
       mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact', 'fx-3:impact'] },
     })
-    const a = evaluateStack([mk()], makeAtlas())
+    const a = ev([mk()], makeAtlas())
     const delays1 = Array.from(a.delayMs)
-    const b = evaluateStack([mk()], makeAtlas())
+    const b = ev([mk()], makeAtlas())
     expect(Array.from(b.delayMs)).toEqual(delays1) // determinismo
     for (const d of delays1) {
       expect(d).toBeGreaterThanOrEqual(0)
@@ -440,9 +467,9 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
       amountMs: 120, octaves: 2,
       mask: { nodeIds: ['fx-1:impact', 'fx-1:color', 'fx-2:petal-l:impact', 'fx-3:impact'] },
     })
-    const s1 = evaluateStack([mk(7)], makeAtlas())
+    const s1 = ev([mk(7)], makeAtlas())
     const first = Array.from(s1.delayMs)
-    const s2 = evaluateStack([mk(7)], makeAtlas())
+    const s2 = ev([mk(7)], makeAtlas())
     expect(Array.from(s2.delayMs)).toEqual(first) // determinismo
     for (let i = 0; i < 3; i++) {
       expect(s1.delayMs[i]).toBeGreaterThanOrEqual(0)
@@ -451,7 +478,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     }
     expect(s1.mask[3]).toBe(0) // sin posición → sin ruido
     // Seed distinta → campo distinto (al menos un nodo difiere)
-    const s3 = evaluateStack([mk(99)], makeAtlas())
+    const s3 = ev([mk(99)], makeAtlas())
     expect(
       first.some((d, i) => d !== s3.delayMs[i]),
     ).toBe(true)
@@ -464,7 +491,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         mask: { nodeIds: ['fx-1:impact', 'fx-ghost:impact', 'fx-99:nada'] },
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(Array.from(snap.mask)).toEqual([1, 0, 0, 0])
   })
 
@@ -473,17 +500,20 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
     const s1 = engine.evaluate([])
     const s2 = engine.evaluate([{ kind: 'base', id: 'b', delayMs: 5, gain: 2 }])
     expect(s1).toBe(s2)
-    expect(s1.delayMs).toBe(s2.delayMs)
-    // Y el buffer anterior refleja el nuevo estado (in-place)
-    expect(s1.delayMs[0]).toBe(5)
+    // El plano nace en el primer evaluate con capas; la Map es estable —
+    // s1.scalar y s2.scalar son la MISMA referencia.
+    const p = s1.scalar.get('intensity')!
+    expect(s2.scalar.get('intensity')).toBe(p)
+    // Y el buffer refleja el nuevo estado (in-place)
+    expect(p.delayMs[0]).toBe(5)
   })
 
-  test('reset entre evaluates: un gesto retirado libera su cobertura', () => {
+  test('reset entre evaluates: un gesto retirado libera sus planos', () => {
     const engine = createFieldEngine(makeAtlas())
     engine.evaluate([{ kind: 'base', id: 'b', delayMs: 10, gain: 1 }])
     const snap = engine.evaluate([])
-    expect(Array.from(snap.mask)).toEqual([0, 0, 0, 0])
-    expect(Array.from(snap.delayMs)).toEqual([0, 0, 0, 0])
+    // Pila vacía → ∪ params = ∅ → cero planos (la cobertura queda libre)
+    expect(snap.scalar.size).toBe(0)
   })
 
   test('indexOf: lookup O(1) nodeId→índice', () => {
@@ -501,9 +531,9 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
       stroke: [{ x: 0, z: 0, tMs: 0 }, { x: 1.5, z: 2, tMs: 800 }],
       captureRealTime: true, radiusM: 0.5,
     })
-    expect(evaluateStack([mk()], makeAtlas()).delayMs[2]).toBe(800)
-    expect(evaluateStack([mk(2)], makeAtlas()).delayMs[2]).toBe(1600)
-    expect(evaluateStack([mk(0.5)], makeAtlas()).delayMs[2]).toBe(400)
+    expect(ev([mk()], makeAtlas()).delayMs[2]).toBe(800)
+    expect(ev([mk(2)], makeAtlas()).delayMs[2]).toBe(1600)
+    expect(ev([mk(0.5)], makeAtlas()).delayMs[2]).toBe(400)
   })
 
   test('chrono invert: el final del trazo dispara primero (totalMs − tMs)', () => {
@@ -518,7 +548,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         captureRealTime: true, radiusM: 0.5,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBe(800)  // pintado primero, dispara último
     expect(snap.delayMs[2]).toBe(0)    // pintado último, dispara primero
   })
@@ -533,7 +563,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         captureRealTime: true, radiusM: 0.5,
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.delayMs[0]).toBe(300)
     expect(snap.gain[0]).toBeCloseTo(0.4, 4)
     expect(snap.gain[2]).toBe(1) // fuera del trazo → identidad del base
@@ -547,7 +577,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
       },
     ]
-    expect(evaluateStack(flat, makeAtlas()).gain[2]).toBeCloseTo(0.6, 4)
+    expect(ev(flat, makeAtlas()).gain[2]).toBeCloseTo(0.6, 4)
     // falloff 5 m a dist 2.5 → 0.5; × capa 0.5 → 0.25
     const scaled: Gesture[] = [
       {
@@ -556,7 +586,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
       },
     ]
-    expect(evaluateStack(scaled, makeAtlas()).gain[2]).toBeCloseTo(0.25, 4)
+    expect(ev(scaled, makeAtlas()).gain[2]).toBeCloseTo(0.25, 4)
   })
 
   test('slice gain: estampa gain uniforme sobre los buckets cubiertos', () => {
@@ -567,7 +597,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         mask: { nodeIds: ['fx-1:impact', 'fx-2:petal-l:impact'] },
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.gain[0]).toBeCloseTo(0.3, 4)
     expect(snap.gain[2]).toBeCloseTo(0.3, 4)
   })
@@ -580,7 +610,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         mask: { nodeIds: ['fx-1:impact'] },
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.gain[0]).toBeCloseTo(0.7, 4)
     expect(snap.mask[0]).toBe(1)
   })
@@ -598,7 +628,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         channel: 'gain', antialias: false,
       },
     ]
-    const snap = evaluateStack(stack, atlas)
+    const snap = ev(stack, atlas)
     expect(snap.gain[0]).toBeCloseTo(0.5, 4) // cov 1 × 0.5
   })
 
@@ -612,9 +642,93 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
         ],
       },
     ]
-    const snap = evaluateStack(stack, makeAtlas())
+    const snap = ev(stack, makeAtlas())
     expect(snap.gain[0]).toBeCloseTo(0.4, 4)
     expect(snap.gain[1]).toBeCloseTo(0.5, 4)
     expect(snap.delayMs[1]).toBe(50) // delay intacto
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🜨 WAVE 8193 — MULTI-PLANO: paint.params enruta, owner por capa, zero-alloc
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('🜨 FieldEngine multi-plano — WAVE 8193', () => {
+  test('paint.params enruta la geometría solo a los planos declarados', () => {
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'b', delayMs: 0, gain: 1 },
+      {
+        kind: 'manual', id: 'm1',
+        paint: { params: ['pan'] }, // este gesto pinta 'pan', no 'intensity'
+        entries: [{ nodeId: 'fx-1:impact', delayMs: 120 }],
+      },
+    ]
+    const planes = evaluateStack(stack, makeAtlas())
+    const intensity = planeOf(planes, 'intensity')!
+    const pan = planeOf(planes, 'pan')!
+    // 'intensity' solo ve el base: delay identidad, owner 0
+    expect(intensity.delayMs[0]).toBe(0)
+    expect(intensity.owner[0]).toBe(0)
+    // 'pan' recibe el gesto manual: delay 120, owner = índice del gesto (1)
+    expect(pan.delayMs[0]).toBe(120)
+    expect(pan.owner[0]).toBe(1)
+    // nodos fuera de la máscara del gesto: sin cobertura, sin owner
+    expect(pan.mask[1]).toBe(0)
+    expect(pan.owner[1]).toBe(OWNER_NONE)
+  })
+
+  test('ensurePlanes: al cambiar ∪ params solo se reasigna lo nuevo; el resto conserva buffer', () => {
+    const engine = createFieldEngine(makeAtlas())
+    const paint = createDefaultPaint()
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'b', delayMs: 0, gain: 1 },
+      {
+        kind: 'manual', id: 'm1', paint: { params: ['intensity', 'pan'] },
+        entries: [{ nodeId: 'fx-1:impact', delayMs: 10 }],
+      },
+    ]
+    const p1 = engine.evaluate(stack, paint)
+    const intensityRef = p1.scalar.get('intensity')!
+    expect(p1.scalar.has('pan')).toBe(true)
+    // Retirar 'pan' del conjunto activo → 'intensity' sobrevive intacto
+    const stack2: Gesture[] = [
+      stack[0],
+      { ...(stack[1] as Gesture & { kind: 'manual' }), paint: { params: ['intensity'] } },
+    ]
+    const p2 = engine.evaluate(stack2, paint)
+    expect(p2.scalar.has('pan')).toBe(false)
+    expect(p2.scalar.get('intensity')).toBe(intensityRef)
+    expect(p2.scalar.get('intensity')!.delayMs).toBe(intensityRef.delayMs)
+  })
+
+  test('🜨 G-ZERO-ALLOC-RAF: 1000 evaluate() sin mutar paint → buffers idénticos por referencia', () => {
+    const engine = createFieldEngine(makeAtlas())
+    const paint = createDefaultPaint()
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'b', delayMs: 0, gain: 1 },
+      {
+        kind: 'wave', id: 'w1', op: 'add',
+        emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 10,
+        mask: { nodeIds: ['fx-1:impact', 'fx-2:petal-l:impact'] },
+        paint: { params: ['intensity', 'pan'] },
+      },
+    ]
+    const planes = engine.evaluate(stack, paint)
+    // Captura de identidad: FieldPlanes, ScalarPlane y los 4 TypedArrays
+    const refs = [...planes.scalar.entries()].map(
+      ([p, pl]) => [p, pl, pl.delayMs, pl.gain, pl.mask, pl.owner] as const,
+    )
+    expect(refs.length).toBe(2)
+    for (let i = 0; i < 1000; i++) {
+      expect(engine.evaluate(stack, paint)).toBe(planes) // mismo FieldPlanes
+    }
+    for (const [p, pl, d, g, m, o] of refs) {
+      const cur = planes.scalar.get(p)!
+      expect(cur).toBe(pl)
+      expect(cur.delayMs).toBe(d)
+      expect(cur.gain).toBe(g)
+      expect(cur.mask).toBe(m)
+      expect(cur.owner).toBe(o)
+    }
   })
 })

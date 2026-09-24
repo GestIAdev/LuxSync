@@ -24,7 +24,7 @@
  * partición, byte a byte. Compiler-time puro — no se usa en runtime.
  */
 
-import type { FieldSnapshot } from '../model/fieldEngine'
+import type { PlaneField } from '../model/fieldEngine'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
 
 /** Una cohorte de nodos con gain representativo compartido. */
@@ -46,16 +46,18 @@ export interface GainCohort {
 }
 
 /**
- * Agrupa los nodos cubiertos por `field.mask` en ≤ `maxCohorts` cohortes
- * por percentiles de `field.gain`.
+ * Agrupa los nodos cubiertos por `plane.mask` en ≤ `maxCohorts` cohortes
+ * por percentiles de `plane.gain`. 🜨 WAVE 8193: opera sobre UN plano
+ * escalar (ScalarPlane) — cada param cuantiza SU campo, ya no hay una
+ * partición global compartida.
  *
- * @param field       FieldSnapshot del fieldEngine (mask ≠ 0 → cubierto).
+ * @param field       Plano del fieldEngine (mask ≠ 0 → cubierto).
  * @param atlas       Node Atlas — aporta el nodeId canónico de cada índice.
  * @param maxCohorts  K máximo (`project.cohortBudget`, default 16).
  * @returns Cohortes ordenadas por gain ascendente. Vacío si no hay cubiertos.
  */
 export function quantizeGainCohorts(
-  field: FieldSnapshot,
+  field: PlaneField,
   atlas: readonly NodeAtlasEntry[],
   maxCohorts: number,
 ): GainCohort[] {

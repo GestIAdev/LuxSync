@@ -16,7 +16,8 @@ import { drawFieldLayer } from '../../canvas/layers/FieldLayer'
 import type { AsteriaToolContext } from '../ToolRegistry'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
-import type { FieldSnapshot } from '../../model/fieldEngine'
+import type { FieldPlanes, ScalarPlane } from '../../model/fieldEngine'
+import type { HephParamId } from '../../../../../../core/hephaestus/types'
 import type { Gesture, WaveGesture, SliceGesture, NoiseGesture } from '../../model/AsteriaProject'
 import type { WorldTransform } from '../../canvas/useWorldTransform'
 
@@ -266,14 +267,21 @@ function fakeDrawCtx() {
   return { ctx: ctx as unknown as CanvasRenderingContext2D, calls }
 }
 
-function mkField(delays: number[], maskBits?: number[]): FieldSnapshot {
+function mkField(delays: number[], maskBits?: number[]): FieldPlanes {
   const n = delays.length
-  return {
-    count: n,
-    delayMs: Float32Array.from(delays),
-    gain: Float32Array.from(delays.map(() => 1)),
-    mask: Uint8Array.from(maskBits ?? delays.map(() => 1)),
-  }
+  // 🜨 WAVE 8193: FieldLayer lee el plano 'intensity' (o el primero).
+  const scalar = new Map<HephParamId, ScalarPlane>([
+    [
+      'intensity',
+      {
+        delayMs: Float32Array.from(delays),
+        gain: Float32Array.from(delays.map(() => 1)),
+        mask: Uint8Array.from(maskBits ?? delays.map(() => 1)),
+        owner: new Uint16Array(n),
+      },
+    ],
+  ])
+  return { count: n, scalar }
 }
 
 describe('🜨 drawFieldLayer (WAVE 8182)', () => {

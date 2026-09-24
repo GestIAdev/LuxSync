@@ -39,7 +39,7 @@ import {
   type RigDrift,
 } from '../model/rigDrift'
 import type { CompileReport } from '../compiler/AsteriaCompiler'
-import type { FieldSnapshot } from '../model/fieldEngine'
+import type { FieldPlanes } from '../model/fieldEngine'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -139,14 +139,17 @@ export interface AsteriaStore extends AsteriaCamera {
   setHeatEnabled: (on: boolean) => void
 
   /**
-   * 🜨 WAVE 8182 (M1): último FieldSnapshot evaluado por el compilador
+   * 🜨 WAVE 8182 (M1): último FieldPlanes evaluado por el compilador
    * live. Referencia a los buffers COMPARTIDOS del engine — mutan
    * in-place en cada evaluate(), así que la capa lee siempre los
    * valores frescos sin re-setear el store (zero-alloc en el RAF).
+   * 🜨 WAVE 8193: `scalar` es un Map param→ScalarPlane (un plano por
+   * parámetro activo) — FieldLayer dibuja el plano 'intensity' (o el
+   * primero disponible).
    * null = sin campo (sin atlas / drift pendiente / pre-compilación).
    */
-  fieldSnapshot: FieldSnapshot | null
-  setFieldSnapshot: (snap: FieldSnapshot | null) => void
+  fieldPlanes: FieldPlanes | null
+  setFieldPlanes: (snap: FieldPlanes | null) => void
 
   /**
    * 🜨 WAVE 8040B (T7): deviceId del fixture expandido por el Cell
@@ -444,8 +447,8 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
   heatEnabled: true,
   setHeatEnabled: (on) => set({ heatEnabled: on }),
 
-  fieldSnapshot: null,
-  setFieldSnapshot: (snap) => set({ fieldSnapshot: snap }),
+  fieldPlanes: null,
+  setFieldPlanes: (snap) => set({ fieldPlanes: snap }),
 
   surgeonDeviceId: null,
   setSurgeonDevice: (deviceId) =>

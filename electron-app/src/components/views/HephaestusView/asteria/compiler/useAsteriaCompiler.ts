@@ -63,7 +63,7 @@ export function useAsteriaCompiler(): void {
       const { nodeAtlas, project, rigDrift, driftReadOnly } =
         useAsteriaStore.getState()
       if (!nodeAtlas) {
-        useAsteriaStore.getState().setFieldSnapshot(null)
+        useAsteriaStore.getState().setFieldPlanes(null)
         return
       }
 
@@ -71,7 +71,7 @@ export function useAsteriaCompiler(): void {
       // pendiente — el campo mutilado hornearía tracks erróneos.
       // El HUD recibe un reporte honesto en lugar de pistas.
       if (rigDrift !== null || driftReadOnly) {
-        useAsteriaStore.getState().setFieldSnapshot(null)
+        useAsteriaStore.getState().setFieldPlanes(null)
         useAsteriaStore.getState().setCompileReport({
           strategy: 'lambda',
           trackIds: [],
@@ -98,11 +98,14 @@ export function useAsteriaCompiler(): void {
       const engine = engineRef.current
       if (!engine) return
 
-      const field = engine.evaluate(project.stack)
-      // 🜨 WAVE 8182 (M1): deposita el snapshot para el FieldLayer —
+      // 🜨 WAVE 8193: el engine evalúa a FieldPlanes — un ScalarPlane por
+      // param del ∪ effectivePaint(g).params; defaultPaint resuelve la
+      // herencia de los gestos sin `paint`.
+      const field = engine.evaluate(project.stack, project.defaultPaint)
+      // 🜨 WAVE 8182 (M1): deposita los planos para el FieldLayer —
       //  los buffers mutan in-place, la capa lee valores frescos en el
       //  RAF sin re-suscripciones. Misma referencia → set idempotente.
-      useAsteriaStore.getState().setFieldSnapshot(field)
+      useAsteriaStore.getState().setFieldPlanes(field)
       const editor = useHephaestusEditorStore.getState()
       const { tracks, report } = compile({
         atlas: nodeAtlas,

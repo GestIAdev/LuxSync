@@ -65,14 +65,21 @@ import type {
   AsteriaProject,
   AsteriaProjectV1,
   Gesture,
+  LayerPaint,
 } from '../model/AsteriaProject'
-import type { FieldSnapshot } from '../model/fieldEngine'
+import type {
+  FieldPlanes,
+  FieldSnapshot,
+  ScalarPlane,
+} from '../model/fieldEngine'
+import { OWNER_NONE } from '../model/fieldEngine'
 import { hexToHsl } from './lutSynth'
-import { envelope } from './synth/envelopes'
+import { envelope, specKey } from './synth/envelopes'
 import { materialize } from './synth/materialize'
 import {
   ASTERIA_DEFAULT_SYNTH,
   ASTERIA_DEFAULT_TARGET_COLOR,
+  effectivePaint,
   migrateV1toV2,
 } from '../model/AsteriaProject'
 import { measureGlyphLegibility } from '../model/glyphRaster'
@@ -80,6 +87,7 @@ import {
   ASTERIA_TRACK_PREFIX,
   emitPaintParams,
   emitPlans,
+  flatFieldToPlanes,
   isAsteriaTrack,
   planEmission,
 } from './emissionPlan'
@@ -98,7 +106,12 @@ export type CompiledStrategy = 'lambda' | 'ride' | 'cohort' | 'mcc' | 'mcc-devic
 
 export interface CompileInput {
   readonly atlas: NodeAtlas
-  readonly field: FieldSnapshot
+  /**
+   * 🜨 WAVE 8193: planos reales del fieldEngine (`FieldPlanes`), o un
+   * FieldSnapshot plano legacy — se envuelve como UN ScalarPlane
+   * compartido por todos los params (paridad con el modelo único).
+   */
+  readonly field: FieldPlanes | FieldSnapshot
   readonly clip: HephAutomationClipV3
   /**
    * 🜨 WAVE 8192: acepta documentos v1 — se normalizan a v2 por
@@ -173,25 +186,28 @@ function cloneCurve(src: HephCurve, paramId: HephParamId): HephCurve {
 }
 
 /**
- * ¿El campo distingue celdas del MISMO fixture? (§4.3 — raíz del árbol).
- * Compara delay+gain de cada nodo cubierto contra el primer nodo
- * cubierto de su deviceId; cualquier diferencia ⇒ MCC-Cell.
+ * ¿Algún plano distingue celdas del MISMO fixture? (§4.3 — raíz del
+ * árbol). 🜨 WAVE 8193: multi-plano — si CUALQUIER plano escalar
+ * distingue celdas, 'auto' escala a MCC. Compara delay+gain de cada
+ * nodo cubierto contra el primer nodo cubierto de su deviceId.
  */
-function fieldDistinguishesCells(field: FieldSnapshot, atlas: NodeAtlas): boolean {
-  const first = new Map<string, { d: number; g: number }>()
+function fieldDistinguishesCells(field: FieldPlanes, atlas: NodeAtlas): boolean {
   const entries = atlas.entries
-  const n = Math.min(field.count, entries.length)
-  for (let i = 0; i < n; i++) {
-    if (field.mask[i] === 0) continue
-    const dev = entries[i].deviceId
-    const sig = first.get(dev)
-    if (!sig) {
-      first.set(dev, { d: field.delayMs[i], g: field.gain[i] })
-    } else if (
-      Math.abs(sig.d - field.delayMs[i]) > 1e-3 ||
-      Math.abs(sig.g - field.gain[i]) > 1e-3
-    ) {
-      return true
+  for (const plane of field.scalar.values()) {
+    const first = new Map<string, { d: number; g: number }>()
+    const n = Math.min(field.count, plane.mask.length)
+    for (let i = 0; i < n; i++) {
+      if (plane.mask[i] === 0) continue
+      const dev = entries[i].deviceId
+      const sig = first.get(dev)
+      if (!sig) {
+        first.set(dev, { d: plane.delayMs[i], g: plane.gain[i] })
+      } else if (
+        Math.abs(sig.d - plane.delayMs[i]) > 1e-3 ||
+        Math.abs(sig.g - plane.gain[i]) > 1e-3
+      ) {
+        return true
+      }
     }
   }
   return false
@@ -247,19 +263,38 @@ export function validateAstTrack(t: HephTrack, D: number): string | null {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function compile(input: CompileInput): CompileOutput {
-  const { atlas, field, clip } = input
+  const { atlas, clip } = input
   // 🜨 WAVE 8192 — frontera de versión: todo lo interno opera sobre v2.
   const project = migrateV1toV2(input.project)
   const warnings: string[] = []
   const D = Math.max(1, clip.durationMs)
 
-  // ── Cobertura del campo ──
+  // ── 🜨 WAVE 8193: params activos = ∪ effectivePaint(g).params ──
+  const params = emitPaintParams(project, warnings)
+
+  // Normalización del input: planos reales del engine, o la forma plana
+  // legacy envuelta como ScalarPlane compartido (paridad modelo único).
+  const field: FieldPlanes =
+    'scalar' in input.field
+      ? input.field
+      : flatFieldToPlanes(input.field, params)
+
+  // ── Cobertura del campo — UNIÓN de todos los planos escalares ──
   let nodesCovered = 0
   let gainVaries = false
-  for (let i = 0; i < field.count; i++) {
-    if (field.mask[i] === 0) continue
-    nodesCovered++
-    if (Math.abs(field.gain[i] - 1) > 1e-3) gainVaries = true
+  {
+    const seen = new Uint8Array(field.count)
+    for (const plane of field.scalar.values()) {
+      const n = Math.min(field.count, plane.mask.length)
+      for (let i = 0; i < n; i++) {
+        if (plane.mask[i] === 0) continue
+        if (seen[i] === 0) {
+          seen[i] = 1
+          nodesCovered++
+        }
+        if (Math.abs(plane.gain[i] - 1) > 1e-3) gainVaries = true
+      }
+    }
   }
   if (nodesCovered === 0) warnings.push('EMPTY_FIELD — sin nodos cubiertos')
 
@@ -335,6 +370,9 @@ export function compile(input: CompileInput): CompileOutput {
   // ── Λ-Ride (§8.2): la curva esculpida en Forge es la base de TODAS las
   //    estrategias — el compilador no sintetiza, solo inyecta geometría ──
   //    🜨 WAVE 8192: la fuente vive en defaultPaint.lut (undefined = synth).
+  //    🜨 WAVE 8193: `rideWarned` deduplica con los rides por-capa de
+  //    baseCurveFor — el aviso de una fuente ausente sale UNA vez.
+  const rideWarned = new Set<string>()
   const lut = project.defaultPaint.lut
   let rideCurve: HephCurve | null = null
   if (lut?.kind === 'ride') {
@@ -343,35 +381,76 @@ export function compile(input: CompileInput): CompileOutput {
     if (src) {
       rideCurve = src.curve
     } else {
+      rideWarned.add(srcId)
       warnings.push(`RIDE_SOURCE_MISSING '${srcId}' — sintetizando pulso Λ`)
     }
   }
 
-  // 🜨 WAVE 8191/8192 — la forma de onda vive en defaultPaint.synth
-  // (SHAPE en STRATEGY). En la WAVE 8195 pasa a ser por capa.
-  const synthSpec = project.defaultPaint.synth ?? ASTERIA_DEFAULT_SYNTH
-  const colorHsl = hexToHsl(
-    project.defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR,
-  )
+  // 🜨 WAVE 8193 (§4.4) — la forma de onda la dicta la CAPA DOMINANTE
+  // (plane.owner) de cada clase, no una global: effectivePaint(owner)
+  // .synth/.lut. Las curvas se memoizan por (param, specKey, rideId,
+  // color) — clases con la misma forma comparten la base materializada.
+  const paintCache = new Map<number, LayerPaint>()
+  const paintForOwner = (owner: number): LayerPaint => {
+    let p = paintCache.get(owner)
+    if (p === undefined) {
+      const g = owner === OWNER_NONE ? undefined : project.stack[owner]
+      p =
+        g === undefined ? project.defaultPaint : effectivePaint(project, g)
+      paintCache.set(owner, p)
+    }
+    return p
+  }
+  const curveCache = new Map<string, HephCurve>()
 
-  /** Curva base por parámetro: clone del ride o síntesis por spec
-   *  (envelope→materialize 🜨 WAVE 8191). El ride es agnóstico —
-   *  cloneCurve preserva el valueType del origen. Guardia honesta:
-   *  'color' con fuente no-color no clonaría basura silente —
-   *  advertimos y caemos a la LUT sintética. */
-  const baseCurveFor = (param: HephParamId): HephCurve => {
-    if (rideCurve !== null) {
-      if (param === 'color' && rideCurve.valueType !== 'color') {
-        warnings.push(
-          `RIDE_TYPE_MISMATCH — fuente '${rideCurve.paramId}' no es color; 'color' usa LUT sintética`,
-        )
-      } else {
-        return cloneCurve(rideCurve, param)
+  /** Curva base por (parámetro, owner): clone del ride de SU capa o
+   *  síntesis por SU spec (envelope→materialize 🜨 WAVE 8191). El ride
+   *  es agnóstico — cloneCurve preserva el valueType del origen.
+   *  Guardia honesta: 'color' con fuente no-color no clonaría basura
+   *  silente — advertimos (una vez por fuente) y caemos a síntesis. */
+  const baseCurveFor = (param: HephParamId, owner: number): HephCurve => {
+    const paint = paintForOwner(owner)
+    const lut = paint.lut
+    if (lut?.kind === 'ride') {
+      const srcId = lut.trackId
+      const src = clip.tracks.find((t) => t.id === srcId)
+      if (src) {
+        if (param === 'color' && src.curve.valueType !== 'color') {
+          if (!rideWarned.has(`type:${srcId}:${param}`)) {
+            rideWarned.add(`type:${srcId}:${param}`)
+            warnings.push(
+              `RIDE_TYPE_MISMATCH — fuente '${src.curve.paramId}' no es color; 'color' usa LUT sintética`,
+            )
+          }
+        } else {
+          const key = `ride:${srcId}|${param}`
+          let c = curveCache.get(key)
+          if (c === undefined) {
+            c = cloneCurve(src.curve, param)
+            curveCache.set(key, c)
+          }
+          return c
+        }
+      } else if (!rideWarned.has(srcId)) {
+        rideWarned.add(srcId)
+        warnings.push(`RIDE_SOURCE_MISSING '${srcId}' — sintetizando pulso Λ`)
       }
     }
-    return param === 'color'
-      ? materialize(envelope(synthSpec), 'color', D, colorHsl)
-      : materialize(envelope(synthSpec), param, D)
+    const spec = paint.synth ?? ASTERIA_DEFAULT_SYNTH
+    const colorHex =
+      param === 'color'
+        ? (paint.color ?? project.defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR)
+        : ''
+    const key = `syn:${param}|${specKey(spec)}|${colorHex}`
+    let c = curveCache.get(key)
+    if (c === undefined) {
+      c =
+        param === 'color'
+          ? materialize(envelope(spec), 'color', D, hexToHsl(colorHex))
+          : materialize(envelope(spec), param, D)
+      curveCache.set(key, c)
+    }
+    return c
   }
 
   // ── Emisión por estrategia — 🜨 WAVE 8190: PLAN DE EMISIÓN ──
@@ -379,7 +458,6 @@ export function compile(input: CompileInput): CompileOutput {
   //    clasifica su firma y cada clase enruta por separado
   //    (CRUX_RESOLUTION §2). La estrategia queda como sesgo global.
   let tracks: HephTrack[] = []
-  const params = emitPaintParams(project, warnings)
 
   // §2.4 — Regla de Propiedad de Luminancia: intensity posee la
   // envolvente; 'color' se emite estático (1 kf). Un ride de color

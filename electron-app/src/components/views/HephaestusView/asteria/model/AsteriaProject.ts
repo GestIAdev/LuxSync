@@ -393,6 +393,19 @@ export function createDefaultPaint(): LayerPaint {
 }
 
 /**
+ * 🜨 WAVE 8193 — pintura efectiva de un gesto: merge de `defaultPaint`
+ * con el override parcial `g.paint` (undefined → herencia total, §3.1).
+ * El fieldEngine la usa para enrutar el scratch a los planos del gesto;
+ * el compilador para resolver la forma de onda del owner (§4.4).
+ */
+export function effectivePaint(
+  project: AsteriaProject,
+  g: Gesture,
+): LayerPaint {
+  return g.paint ? { ...project.defaultPaint, ...g.paint } : project.defaultPaint
+}
+
+/**
  * Proyecto nuevo: pila con un único gesto `base` (identidad — el campo
  * arranca plano y cada herramienta empuja capas encima). La huella del
  * rig se inyecta al crearlo (vacía si el atlas aún no ha llegado — el

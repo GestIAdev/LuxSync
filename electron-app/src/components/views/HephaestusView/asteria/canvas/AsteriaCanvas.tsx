@@ -183,7 +183,7 @@ export const AsteriaCanvas: React.FC<{
       // 🜨 WAVE 8182 (M1): HEAT — mapa térmico del delay + isócronas.
       //  Bajo Feedback: los halos físicos mandan sobre la tinta del campo.
       if (s.heatEnabled) {
-        drawFieldLayer(ctx, t, s.nodeAtlas, s.fieldSnapshot)
+        drawFieldLayer(ctx, t, s.nodeAtlas, s.fieldPlanes)
       }
       drawFeedbackLayer(ctx, t, s.nodeAtlas, previewDataRef.current?.current)
       drawGestureLayer(

@@ -1,21 +1,32 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🜨 FIELD ENGINE — WAVE 8030-P2: EL MOTOR DE CAMPOS
+ *                WAVE 8193: MULTI-PLANO (Crux 2 — Phase 2, §3.3)
  *
- * Evalúa el Gesture Stack a un campo escalar por nodo — la representación
- * intermedia entre la pila no destructiva y el AsteriaCompiler:
+ * Evalúa el Gesture Stack a planos escalares POR PARÁMETRO — la
+ * representación intermedia entre la pila no destructiva y el
+ * AsteriaCompiler:
  *
- *   stack: Gesture[]  ──►  fieldEngine.evaluate()  ──►  FieldSnapshot
- *                          O(N·G) ~0.2 ms                 delayMs[i]
- *                          N=400, G=8                     gain[i]
- *                                                        mask[i]
+ *   stack: Gesture[]  ──►  fieldEngine.evaluate()  ──►  FieldPlanes
+ *                          O(N·G) ~0.2 ms                 scalar: Map<param,
+ *                          N=400, G=8                      ScalarPlane>
+ *
+ * COMPOSITOR EN DOS ETAPAS (§3.3):
+ *   Etapa 1 — KERNEL GEOMÉTRICO: cada gesto escribe su geometría cruda
+ *             (delay, gain, claim, cobertura, canal) en UN único buffer
+ *             `scratch` preasignado, sin importar qué params targetea.
+ *             La matemática espacial de applyWave/applySlice/… es intacta.
+ *   Etapa 2 — COMPOSITOR: para cada plano escalar p ∈ effectivePaint(g)
+ *             .params, `blendInto(plane_p, scratch, g.op, canal)` mezcla
+ *             el scratch en ese plano y `owner_p[i]` recibe el índice de
+ *             la capa donde claim[i] y cov[i] ≥ 0.5 — dueño por plano,
+ *             no global (routing de synth local en WAVE 8195).
  *
  * DOGMA ZERO-ALLOC: `createFieldEngine(atlas)` devuelve un closure que
  * pre-asigna TODOS los TypedArrays una sola vez (sized to atlas) y los
- * muta in-place en cada evaluate. La evaluación es patch-time (commit de
- * gesto / cambio de parámetro), pero ni aún así se tolera churn: los
- * buffers se reutilizan y el snapshot devuelto es SIEMPRE la misma
- * referencia — los consumidores deben leer antes del próximo evaluate().
+ * muta in-place en cada evaluate. `ensurePlanes(activeParams)` reasigna
+ * buffers SOLO si el conjunto de params activos cambia — el hot path no
+ * genera garbage: mismo FieldPlanes, mismos planos, mismos arrays (===).
  *
  * Índices: el campo se indexa por POSICIÓN en `atlas.entries` (0..N-1),
  * no por nodeId — el índice nodeId→i se pre-construye una vez al crear
@@ -39,7 +50,9 @@
 
 import type { NodeAtlas } from '../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
+import type { HephParamId } from '../../../../../core/hephaestus/types'
 import { hash01, applySymmetry } from '../../../../../core/hephaestus/phase/PhaseConfigPro'
+import { createDefaultPaint } from './AsteriaProject'
 import type {
   Gesture,
   BaseGesture,
@@ -52,6 +65,7 @@ import type {
   NodeMask,
   BlendOp,
   FieldChannel,
+  LayerPaint,
 } from './AsteriaProject'
 import {
   rasterizeText,
@@ -62,12 +76,24 @@ import {
 } from './glyphRaster'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FIELD SNAPSHOT — el campo evaluado (buffers compartidos del engine)
+// FIELD PLANES — el campo evaluado, por parámetro (§3.3)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface FieldSnapshot {
-  /** Número de nodos (= atlas.entries.length). */
-  readonly count: number
+/** owner === OWNER_NONE → ningún gesto reclamó el nodo con cov ≥ 0.5. */
+export const OWNER_NONE = 0xffff
+
+/**
+ * Paint por omisión cuando `evaluate` se llama sin `defaultPaint`
+ * (tests y one-shots — el camino vivo siempre pasa project.defaultPaint).
+ * Instancia única: la trata el engine como read-only.
+ */
+const FALLBACK_PAINT: LayerPaint = createDefaultPaint()
+
+/**
+ * Buffers mínimos que los consumidores leen (cuantizador, planner).
+ * FieldSnapshot (legacy) y ScalarPlane lo satisfacen.
+ */
+export interface PlaneField {
   /** Retardo por nodo en ms — el eje temporal del campo. */
   readonly delayMs: Float32Array
   /** Ganancia por nodo [0..∞], identidad = 1 — el eje de intensidad. */
@@ -76,9 +102,51 @@ export interface FieldSnapshot {
   readonly mask: Uint8Array
 }
 
+/** Plano escalar de UN parámetro (intensity, pan, tilt, zoom…). */
+export interface ScalarPlane extends PlaneField {
+  /**
+   * Índice en project.stack de la capa dominante — último gesto que
+   * reclamó el nodo con cobertura ≥ 0.5. OWNER_NONE si ninguno.
+   * Routing de la forma de onda local (§4.4) — partición de clases.
+   */
+  readonly owner: Uint16Array
+}
+
+/**
+ * Resultado del engine: UN plano por parámetro activo
+ * (∪ effectivePaint(g).params). El ColorPlane llega en WAVE 8194 —
+ * este wave solo mueve planos escalares.
+ */
+export interface FieldPlanes {
+  /** Número de nodos (= atlas.entries.length). */
+  readonly count: number
+  readonly scalar: ReadonlyMap<HephParamId, ScalarPlane>
+}
+
+/**
+ * @deprecated FORMA PLANA V1 — el engine ya no la produce. `compile()`
+ * acepta esta forma como input legacy y la envuelve como UN plano
+ * compartido por todos los params (paridad con fixtures y documentos
+ * pre-8193). Los planos reales los crea el engine.
+ */
+export interface FieldSnapshot extends PlaneField {
+  /** Número de nodos (= atlas.entries.length). */
+  readonly count: number
+}
+
 export interface FieldEngine {
-  /** Evalúa la pila completa in-place y devuelve el snapshot compartido. */
-  evaluate(stack: readonly Gesture[]): FieldSnapshot
+  /**
+   * Evalúa la pila completa in-place y devuelve los planos compartidos
+   * (misma referencia siempre). `defaultPaint` resuelve la herencia de
+   * los gestos sin `paint` (omisión → `createDefaultPaint()`).
+   */
+  evaluate(stack: readonly Gesture[], defaultPaint?: LayerPaint): FieldPlanes
+  /**
+   * (Re)asigna planos para el conjunto de params activos. NO toca los
+   * buffers si el conjunto no cambió — llamarla por evaluate es gratis
+   * (G-ZERO-ALLOC-RAF). También invocable a mano al mutar paint.
+   */
+  ensurePlanes(activeParams: ReadonlySet<HephParamId>): void
   /** Índice del nodo en los buffers, o -1 si no está en el atlas. */
   indexOf(nodeId: string): number
   /** Número de nodos del atlas que este engine cubre. */
@@ -86,7 +154,7 @@ export interface FieldEngine {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BLEND — operaciones del stack sobre el campo
+// BLEND — operaciones del stack sobre los planos
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -159,11 +227,15 @@ function vnoise2(x: number, z: number, seed: number): number {
 
 /**
  * Crea el motor para un atlas concreto. Pre-asigna:
- *   delayMs / gain / mask          — el snapshot (salida)
- *   posX / posZ / hasPosition      — geometría plana (P3: matemática espacial
- *                                    sin desreferenciar objetos en el loop)
- *   indexByNodeId                  — resolución O(1) de máscaras por NodeId
- *   scratchIdx                     — lista de índices cubiertos por gesto
+ *   scratch sDelay/sGain/sCov/sClaim/sChan — salida del kernel (geometría
+ *                                           cruda del gesto en curso)
+ *   scalarPlanes                           — UN ScalarPlane por param
+ *                                            activo (Map estable — los
+ *                                            planos se añaden/quitan solo
+ *                                            cuando cambia el conjunto)
+ *   posX / posZ / hasPosition              — geometría plana (P3)
+ *   indexByNodeId                          — resolución O(1) por NodeId
+ *   scratchIdx                             — lista de índices de máscara
  *
  * Re-crear el engine cuando cambie el atlas (topology_changed → nuevo
  * NodeAtlas) — los buffers dependen del tamaño N.
@@ -171,9 +243,26 @@ function vnoise2(x: number, z: number, seed: number): number {
 export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
   const n = atlas.entries.length
 
-  const delayMs = new Float32Array(n)
-  const gain = new Float32Array(n)
-  const mask = new Uint8Array(n)
+  // ── Planos escalares por param — Map de referencia ESTABLE: se muta
+  //    por dentro (delete/set) para preservar la identidad de
+  //    `planesResult.scalar` y de los planos supervivientes. ──
+  const scalarPlanes = new Map<HephParamId, ScalarPlane>()
+  const planesResult: FieldPlanes = { count: n, scalar: scalarPlanes }
+
+  // ── Scratch del kernel — geometría cruda del gesto en curso (§3.3).
+  //    sClaim: el gesto reclama el nodo · sChan: bits 1=delay 2=gain
+  //    (manual escribe canales por entry; kind desconocido reclama sin
+  //    canales) · sCov: cobertura [0,1] (glyph antialias) para el umbral
+  //    de owner ≥ 0.5 · sDelay/sGain: solo se leen donde sChan lo indica. ──
+  const sDelay = new Float32Array(n)
+  const sGain = new Float32Array(n)
+  const sCov = new Float32Array(n)
+  const sClaim = new Uint8Array(n)
+  const sChan = new Uint8Array(n)
+
+  // Conjunto de params activos — Set persistente (clear+add = cero alloc
+  // en el hot path; los paramId son strings constantes).
+  const activeParams = new Set<HephParamId>()
 
   // Geometría plana pre-extraída — los gestos espaciales (P3) iteran
   // Float32Arrays, nunca objetos NodeAtlasEntry.
@@ -224,7 +313,34 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
     }
   }
 
-  const snapshot: FieldSnapshot = { count: n, delayMs, gain, mask }
+  /**
+   * (Re)asigna planos para `activeParams`. Hot path = comparación de
+   * conjunto sobre la Map estable: mismo conjunto → early return, cero
+   * alloc. Si cambia, los planos supervivientes conservan su identidad
+   * (=== estable por param) y solo los nuevos alocan buffers.
+   */
+  function ensurePlanes(active: ReadonlySet<HephParamId>): void {
+    let cnt = 0
+    let dirty = false
+    for (const p of active) {
+      cnt++
+      if (!scalarPlanes.has(p)) dirty = true
+    }
+    if (!dirty && cnt === scalarPlanes.size) return
+    for (const p of [...scalarPlanes.keys()]) {
+      if (!active.has(p)) scalarPlanes.delete(p)
+    }
+    for (const p of active) {
+      if (!scalarPlanes.has(p)) {
+        scalarPlanes.set(p, {
+          delayMs: new Float32Array(n),
+          gain: new Float32Array(n),
+          mask: new Uint8Array(n),
+          owner: new Uint16Array(n),
+        })
+      }
+    }
+  }
 
   /**
    * Resuelve una NodeMask a índices en scratchIdx. Devuelve el count.
@@ -244,8 +360,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
   /** BASE: suelo uniforme — replace implícito, sin máscara (cubre todo). */
   function applyBase(g: BaseGesture): void {
     for (let i = 0; i < n; i++) {
-      blendInto(delayMs, gain, i, 'replace', g.delayMs, g.gain, 'both')
-      mask[i] = 1
+      sDelay[i] = g.delayMs
+      sGain[i] = g.gain
+      sChan[i] = 3 // both
+      sCov[i] = 1
+      sClaim[i] = 1
     }
   }
 
@@ -297,8 +416,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       }
       const d = dist * msPerM
       const gv = (hasFalloff ? Math.max(0, 1 - dist * invFalloff) : 1) * layerGain
-      blendInto(delayMs, gain, i, g.op, d, gv, writesGain ? 'both' : 'delay')
-      mask[i] = 1
+      sDelay[i] = d
+      sGain[i] = gv
+      sChan[i] = writesGain ? 3 : 1
+      sCov[i] = 1
+      sClaim[i] = 1
     }
   }
 
@@ -364,8 +486,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
           : stroke[best].tMs
       if (invert) d = totalMs - d
       if (tScale !== 1) d *= tScale
-      blendInto(delayMs, gain, i, g.op, d, layerGain, writesGain ? 'both' : 'delay')
-      mask[i] = 1
+      sDelay[i] = d
+      sGain[i] = layerGain
+      sChan[i] = writesGain ? 3 : 1
+      sCov[i] = 1
+      sClaim[i] = 1
     }
   }
 
@@ -385,12 +510,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       // sin gain propio recibe el de la capa si está definido.
       const hasG = e.gain !== undefined || g.gain !== undefined
       if (!hasD && !hasG) continue
-      blendInto(
-        delayMs, gain, i, 'replace',
-        e.delayMs ?? 0, (e.gain ?? 1) * layerGain,
-        hasD && hasG ? 'both' : hasD ? 'delay' : 'gain',
-      )
-      mask[i] = 1
+      if (hasD) sDelay[i] = e.delayMs ?? 0
+      if (hasG) sGain[i] = (e.gain ?? 1) * layerGain
+      sChan[i] = (hasD ? 1 : 0) | (hasG ? 2 : 0)
+      sCov[i] = 1
+      sClaim[i] = 1
     }
   }
 
@@ -451,8 +575,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
       if (hasSeed) b = Math.floor(hash01(seed, b) * buckets)
       const ub = buckets > 1 ? b / (buckets - 1) : 0
       const s = applySymmetry(ub, g.symmetry)
-      blendInto(delayMs, gain, i, g.op, s * g.spanMs, layerGain, writesGain ? 'both' : 'delay')
-      mask[i] = 1
+      sDelay[i] = s * g.spanMs
+      sGain[i] = layerGain
+      sChan[i] = writesGain ? 3 : 1
+      sCov[i] = 1
+      sClaim[i] = 1
     }
   }
 
@@ -485,8 +612,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         freq *= 2
       }
       const u = (sum / norm) * 0.5 + 0.5 // [-1,1] → [0,1]
-      blendInto(delayMs, gain, i, g.op, u * amount, layerGain, writesGain ? 'both' : 'delay')
-      mask[i] = 1
+      sDelay[i] = u * amount
+      sGain[i] = layerGain
+      sChan[i] = writesGain ? 3 : 1
+      sCov[i] = 1
+      sClaim[i] = 1
     }
   }
 
@@ -537,65 +667,129 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         inv && u >= 0 && u < bmp.cols && v >= 0 && v < bmp.rows
       if (cov <= 0 && !(insideRect && writesGain)) continue
       const d = u * cellM * GLYPH_DELAY_MS_PER_M
-      blendInto(
-        delayMs, gain, i, g.op,
-        writesDelay ? d : 0,
-        writesGain ? cov * layerGain : 1,
-        g.channel,
-      )
-      mask[i] = 1
+      if (writesDelay) sDelay[i] = d
+      if (writesGain) sGain[i] = cov * layerGain
+      sChan[i] = (writesDelay ? 1 : 0) | (writesGain ? 2 : 0)
+      sCov[i] = cov
+      sClaim[i] = 1
     }
   }
 
-  function evaluate(stack: readonly Gesture[]): FieldSnapshot {
-    // Reset a la identidad: delay 0, gain 1, sin cobertura
-    delayMs.fill(0)
-    gain.fill(1)
-    mask.fill(0)
+  /**
+   * Etapa 1 — KERNEL GEOMÉTRICO: escribe la geometría cruda del gesto
+   * en el scratch compartido. La matemática es independiente de los
+   * params targeteados — el gesto se evalúa UNA sola vez.
+   */
+  function kernel(gesture: Gesture): void {
+    sClaim.fill(0)
+    sChan.fill(0)
+    sCov.fill(0)
+    switch (gesture.kind) {
+      case 'base':
+        applyBase(gesture)
+        break
+      case 'wave':
+        applyWave(gesture)
+        break
+      case 'chrono':
+        applyChrono(gesture)
+        break
+      case 'manual':
+        applyManual(gesture)
+        break
+      case 'slice':
+        applySlice(gesture)
+        break
+      case 'noise':
+        applyNoise(gesture)
+        break
+      case 'glyph':
+        applyGlyph(gesture)
+        break
+
+      default: {
+        // Futuro kind: resuelve solo la huella (mask) — el canvas ya
+        // visualiza qué nodos cubre el gesto. La unión es exhaustiva
+        // hoy — el cast defensivo protege contra kinds futuros.
+        const gm = (gesture as { mask?: NodeMask }).mask
+        if (!gm) break
+        const cnt = resolveMask(gm)
+        for (let k = 0; k < cnt; k++) {
+          sClaim[scratchIdx[k]] = 1
+          sCov[scratchIdx[k]] = 1
+        }
+        break
+      }
+    }
+  }
+
+  /**
+   * Etapa 2 — COMPOSITOR (§3.3): para cada plano p ∈ effectivePaint(g)
+   * .params, mezcla el scratch con la semántica (g.op, canal por nodo).
+   * `owner_p[i]` = índice del gesto donde claim y cov ≥ 0.5 — el dueño
+   * decide la forma de onda local en el compilador (§4.4).
+   */
+  function composite(gesture: Gesture, gi: number, params: readonly HephParamId[]): void {
+    const op: BlendOp =
+      'op' in gesture && gesture.op !== undefined ? gesture.op : 'replace'
+    for (let k = 0; k < params.length; k++) {
+      const plane = scalarPlanes.get(params[k])
+      if (plane === undefined) continue
+      const pd = plane.delayMs
+      const pg = plane.gain
+      const pm = plane.mask
+      const po = plane.owner
+      for (let i = 0; i < n; i++) {
+        if (sClaim[i] === 0) continue
+        const ch = sChan[i]
+        if (ch !== 0) {
+          blendInto(
+            pd, pg, i, op, sDelay[i], sGain[i],
+            ch === 3 ? 'both' : ch === 1 ? 'delay' : 'gain',
+          )
+        }
+        pm[i] = 1
+        if (sCov[i] >= 0.5) po[i] = gi
+      }
+    }
+  }
+
+  function evaluate(
+    stack: readonly Gesture[],
+    defaultPaint: LayerPaint = FALLBACK_PAINT,
+  ): FieldPlanes {
+    // ∪ effectivePaint(g).params — Set persistente, cero alloc estable.
+    activeParams.clear()
+    for (let g = 0; g < stack.length; g++) {
+      const ps = stack[g].paint?.params ?? defaultPaint.params
+      for (let k = 0; k < ps.length; k++) activeParams.add(ps[k])
+    }
+    ensurePlanes(activeParams)
+
+    // Reset de planos a la identidad: delay 0, gain 1, sin cobertura
+    for (const plane of scalarPlanes.values()) {
+      plane.delayMs.fill(0)
+      plane.gain.fill(1)
+      plane.mask.fill(0)
+      plane.owner.fill(OWNER_NONE)
+    }
 
     for (let g = 0; g < stack.length; g++) {
       const gesture = stack[g]
-      switch (gesture.kind) {
-        case 'base':
-          applyBase(gesture)
-          break
-        case 'wave':
-          applyWave(gesture)
-          break
-        case 'chrono':
-          applyChrono(gesture)
-          break
-        case 'manual':
-          applyManual(gesture)
-          break
-        case 'slice':
-          applySlice(gesture)
-          break
-        case 'noise':
-          applyNoise(gesture)
-          break
-        case 'glyph':
-          applyGlyph(gesture)
-          break
-
-        default: {
-          // Futuro kind: resuelve solo la huella (mask) — el canvas ya
-          // visualiza qué nodos cubre el gesto. La unión es exhaustiva
-          // hoy — el cast defensivo protege contra kinds futuros.
-          const gm = (gesture as { mask?: NodeMask }).mask
-          if (!gm) break
-          const cnt = resolveMask(gm)
-          for (let k = 0; k < cnt; k++) mask[scratchIdx[k]] = 1
-          break
-        }
-      }
+      kernel(gesture)
+      composite(
+        gesture,
+        g,
+        gesture.paint?.params ?? defaultPaint.params,
+      )
     }
 
-    return snapshot
+    return planesResult
   }
 
   return {
     evaluate,
+    ensurePlanes,
     indexOf: (nodeId) => indexByNodeId.get(nodeId) ?? -1,
     size: n,
   }
@@ -606,6 +800,10 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
 // repetido crear el engine y reusar)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function evaluateStack(stack: readonly Gesture[], atlas: NodeAtlas): FieldSnapshot {
-  return createFieldEngine(atlas).evaluate(stack)
+export function evaluateStack(
+  stack: readonly Gesture[],
+  atlas: NodeAtlas,
+  defaultPaint: LayerPaint = createDefaultPaint(),
+): FieldPlanes {
+  return createFieldEngine(atlas).evaluate(stack, defaultPaint)
 }

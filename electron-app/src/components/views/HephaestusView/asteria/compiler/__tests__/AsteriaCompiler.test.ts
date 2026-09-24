@@ -20,9 +20,11 @@ import type {
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
 import type { FieldSnapshot } from '../../model/fieldEngine'
+import { evaluateStack } from '../../model/fieldEngine'
 import { createDefaultProject, migrateV1toV2 } from '../../model/AsteriaProject'
 import type {
   AsteriaProjectV1,
+  Gesture,
   GlyphGesture,
 } from '../../model/AsteriaProject'
 
@@ -1606,5 +1608,128 @@ describe('🜨 AsteriaCompiler — G-MIG (WAVE 8192: migración v1→v2)', () =>
         compile({ atlas, field, clip, project: v2Hand }).tracks,
       ).toEqual(outV1.tracks)
     }
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8193 — G-SHAPE-ISOLATION (CRUX_RESOLUTION §5)
+// Dos capas sobre el mismo param con formas distintas y máscaras que se cruzan:
+// el compilador no mezcla formas y ningún (fixture, param) es alcanzado por dos
+// pistas sin aislamiento `cell`.
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('🜨 AsteriaCompiler — G-SHAPE-ISOLATION (WAVE 8193)', () => {
+  test('pulse + laser entrelazados en una zona → aislamiento quirúrgico por cell', () => {
+    const atlas = makeAtlas() // 4 nodos IMPACT, todos en zona 'front'
+    // Capa A (pulse) cubre nodos 0 y 2; capa B (laser) cubre 1 y 3 —
+    // máscaras entrelazadas dentro de la MISMA zona (cruce espacial).
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'base', delayMs: 0, gain: 1 },
+      {
+        kind: 'manual', id: 'layerA',
+        paint: { synth: { shape: 'pulse' } },
+        entries: [
+          { nodeId: 'fx-a:petal-l:impact', delayMs: 100 },
+          { nodeId: 'fx-b:impact', delayMs: 300 },
+        ],
+      },
+      {
+        kind: 'manual', id: 'layerB',
+        paint: { synth: { shape: 'laser' } },
+        entries: [
+          { nodeId: 'fx-a:petal-r:impact', delayMs: 200 },
+          { nodeId: 'fx-c:impact', delayMs: 400 },
+        ],
+      },
+    ]
+    const field = evaluateStack(stack, atlas)
+    // Owner del plano intensity: capa A=1, capa B=2 — entrelazados.
+    expect([...field.scalar.get('intensity')!.owner]).toEqual([1, 2, 1, 2])
+
+    const out = compile({
+      atlas,
+      field,
+      clip: makeClip(),
+      // El proyecto lleva el MISMO stack que generó el field — el owner
+      // del plano se resuelve contra project.stack[i].paint.
+      project: {
+        ...createDefaultProject('x'),
+        strategy: 'cohort' as const,
+        stack,
+      },
+    })
+    const intensityTracks = out.tracks.filter((t) => t.paramId === 'intensity')
+
+    // Gate 1: cero pares (fixture, param) alcanzados por dos pistas sin cell.
+    // Con máscaras cruzadas toda pista debe ser quirúrgica (cell aislado).
+    expect(intensityTracks.length).toBeGreaterThan(0)
+    for (const t of intensityTracks) expect(t.cell).toBeDefined()
+    // El reporte declara el aislamiento por forma (multiShape → _s{gi}).
+    expect(
+      out.report.warnings.filter((w) => w.startsWith('SHAPE_ISOLATED')),
+    ).not.toHaveLength(0)
+    for (const e of atlas.entries) {
+      const reaching = intensityTracks.filter(
+        (t) =>
+          t.cell === e.nodeId ||
+          (!t.cell && (t.zones.includes('all') || t.zones.includes(e.zoneId!))),
+      )
+      expect(reaching).toHaveLength(1)
+    }
+
+    // Gate 2: las formas no se mezclan — el id quirúrgico lleva el índice
+    // del grupo de forma (`_s{gi}_`); cada capa vive en su propia clase.
+    const shapeOf = (t: HephTrack) => t.id.match(/_s(\d+)_/)?.[1]
+    const byCell = (cell: string) =>
+      intensityTracks.find((t) => t.cell === cell)!
+    const sA = shapeOf(byCell('fx-a:petal-l:impact'))
+    const sB = shapeOf(byCell('fx-a:petal-r:impact'))
+    expect(sA).toBeDefined()
+    expect(sB).toBeDefined()
+    expect(sA).not.toBe(sB) // pulse ≠ laser — clases separadas por specKey
+    expect(shapeOf(byCell('fx-b:impact'))).toBe(sA)
+    expect(shapeOf(byCell('fx-c:impact'))).toBe(sB)
+    // Y la curva base difiere: laser tiene menos keyframes que pulse.
+    expect(byCell('fx-a:petal-l:impact').curve.keyframes.length).not.toBe(
+      byCell('fx-a:petal-r:impact').curve.keyframes.length,
+    )
+  })
+
+  test('dos capas MISMA forma sobre el mismo param → colapsan en una clase (no duplican)', () => {
+    const atlas = makeAtlas()
+    // Ambas capas pulse: misma specKey → una sola clase de valor pese a
+    // owners distintos (paridad con la semántica V1 de un solo campo).
+    const stack: Gesture[] = [
+      { kind: 'base', id: 'base', delayMs: 0, gain: 1 },
+      {
+        kind: 'manual', id: 'layerA',
+        paint: { synth: { shape: 'pulse' } },
+        entries: [{ nodeId: 'fx-a:petal-l:impact', delayMs: 100 }],
+      },
+      {
+        kind: 'manual', id: 'layerB',
+        paint: { synth: { shape: 'pulse' } },
+        entries: [{ nodeId: 'fx-b:impact', delayMs: 300 }],
+      },
+    ]
+    const field = evaluateStack(stack, atlas)
+    const out = compile({
+      atlas,
+      field,
+      clip: makeClip(),
+      project: {
+        ...createDefaultProject('x'),
+        strategy: 'cohort' as const,
+        stack,
+      },
+    })
+    const intensityTracks = out.tracks.filter((t) => t.paramId === 'intensity')
+    expect(intensityTracks.length).toBeGreaterThan(0)
+    // Misma specKey en todos los owners → una sola clase de valor:
+    // los ids no llevan sufijo de forma `_s{gi}` y no hay aislamiento por forma.
+    for (const t of intensityTracks) expect(t.id).not.toMatch(/_s\d+/)
+    expect(
+      out.report.warnings.filter((w) => w.startsWith('SHAPE_ISOLATED')),
+    ).toHaveLength(0)
   })
 })

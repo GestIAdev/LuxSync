@@ -30,7 +30,7 @@
 
 import type { WorldTransform } from '../useWorldTransform'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
-import type { FieldSnapshot } from '../../model/fieldEngine'
+import type { FieldPlanes } from '../../model/fieldEngine'
 import { nodeGlyphRadiusPx } from './NodeLayer'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,9 +98,16 @@ export function drawFieldLayer(
   ctx: CanvasRenderingContext2D,
   t: WorldTransform,
   atlas: NodeAtlas | null,
-  field: FieldSnapshot | null,
+  planes: FieldPlanes | null,
 ): void {
-  if (!atlas || !field) return
+  if (!atlas || !planes) return
+  // 🜨 WAVE 8193: el overlay dibuja el plano 'intensity' (la envolvente
+  // visible); si no existe, el primer plano escalar disponible.
+  const field =
+    planes.scalar.get('intensity') ??
+    planes.scalar.values().next().value ??
+    null
+  if (!field) return
   const { cam, canvasW, canvasH } = t
   const halfW = canvasW / 2
   const halfH = canvasH / 2
@@ -113,7 +120,7 @@ export function drawFieldLayer(
 
   const entries = atlas.entries
   const { mask, delayMs } = field
-  const n = Math.min(entries.length, field.count)
+  const n = Math.min(entries.length, planes.count)
 
   for (let i = 0; i < n; i++) {
     if (mask[i] === 0) continue

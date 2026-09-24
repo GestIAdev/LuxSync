@@ -47,12 +47,23 @@ import type {
 import type { PhaseConfigPro } from '../../../../../core/hephaestus/phase/PhaseConfigPro'
 import type { PhaseOverrideMap } from '../../../../../core/hephaestus/phase/PhaseOverride'
 import type { NodeAtlas } from '../store/useAsteriaStore'
-import type { AsteriaProject } from '../model/AsteriaProject'
-import type { FieldSnapshot } from '../model/fieldEngine'
+import type { AsteriaProject, LayerPaint } from '../model/AsteriaProject'
+import type {
+  FieldPlanes,
+  FieldSnapshot,
+  PlaneField,
+  ScalarPlane,
+} from '../model/fieldEngine'
+import { OWNER_NONE } from '../model/fieldEngine'
 import { rotateCurveCyclic } from './curveRotate'
 import { quantizeGainCohorts } from './cohortQuantizer'
 import { hexToHsl } from './lutSynth'
-import { ASTERIA_DEFAULT_TARGET_COLOR } from '../model/AsteriaProject'
+import { specKey } from './synth/envelopes'
+import {
+  ASTERIA_DEFAULT_SYNTH,
+  ASTERIA_DEFAULT_TARGET_COLOR,
+  effectivePaint,
+} from '../model/AsteriaProject'
 
 /** Prefijo de propiedad Asteria — el consumidor solo reemplaza ast_*. */
 export const ASTERIA_TRACK_PREFIX = 'ast_'
@@ -92,21 +103,30 @@ function modD(m: number, D: number): number {
 }
 
 /**
- * 🜨 WAVE 8192: `defaultPaint.params` filtrados por las reglas duras —
- * los params sin canal sintetizable se omiten; warnings emitidos UNA vez.
- * (v1 leía `project.targetParams`; la pintura bajó a `defaultPaint`.)
+ * 🜨 WAVE 8193 (Crux 2): params a emitir = ∪ effectivePaint(g).params
+ * sobre el stack — cada capa targetea SUS planos (§3.1). Un gesto sin
+ * `paint` hereda `defaultPaint.params`. Los params sin canal
+ * sintetizable se omiten; warnings emitidos UNA vez por param.
+ * Orden determinista: primera aparición en orden de stack.
  */
 export function emitPaintParams(
   project: AsteriaProject,
   warnings: string[],
 ): HephParamId[] {
+  const seen = new Set<HephParamId>()
   const out: HephParamId[] = []
-  for (const param of project.defaultPaint.params) {
+  const push = (param: HephParamId): void => {
+    if (seen.has(param)) return
+    seen.add(param)
     if (!LAMBDA_SAFE_PARAMS.has(param)) {
       warnings.push(`PARAM_SKIPPED '${param}' — sin canal sintetizable`)
-      continue
+      return
     }
     out.push(param)
+  }
+  for (const g of project.stack) {
+    const ps = g.paint?.params ?? project.defaultPaint.params
+    for (const p of ps) push(p)
   }
   return out
 }
@@ -218,6 +238,14 @@ export interface PlanMember {
 export interface ValueClass {
   readonly key: string
   readonly members: readonly PlanMember[]
+  /**
+   * 🜨 WAVE 8193 (§4.4): índice en project.stack de la capa cuya
+   * effectivePaint gobierna la forma de onda de esta clase. Las clases
+   * se particionan por specKey(owner) — dos nodos con owners de distinta
+   * forma jamás comparten pista (G-SHAPE-ISOLATION). OWNER_NONE →
+   * defaultPaint.
+   */
+  readonly owner: number
   /** Delay representativo — rotación de la curva en ruta 'zoned'. */
   readonly repDelayMs: number
   /** Gain representativo — horneado en ruta 'zoned'/'surgical' por cohorte. */
@@ -254,7 +282,11 @@ export interface PlanResult {
 }
 
 export interface PlanArgs {
-  readonly field: FieldSnapshot
+  /**
+   * 🜨 WAVE 8193: planos reales del engine — `scalar.get(param)` da el
+   * ScalarPlane de cada param (delay/gain/mask/owner por nodo).
+   */
+  readonly field: FieldPlanes
   readonly atlas: NodeAtlas
   readonly project: AsteriaProject
   /** paint.params ya filtrados por emitPaintParams (warnings emitidos). */
@@ -295,18 +327,39 @@ function staticColorCurve(targetColorHex: string): HephCurve {
   }
 }
 
+/**
+ * 🜨 WAVE 8193: envuelve un FieldSnapshot plano (input legacy — fixtures,
+ * documentos pre-8193) como UN ScalarPlane compartido por `params`.
+ * owner = 0 para todos los nodos → la forma la dicta la capa base
+ * (= defaultPaint en stacks v1) — paridad exacta con el modelo único.
+ */
+export function flatFieldToPlanes(
+  field: FieldSnapshot,
+  params: readonly HephParamId[],
+): FieldPlanes {
+  const shared: ScalarPlane = {
+    delayMs: field.delayMs,
+    gain: field.gain,
+    mask: field.mask,
+    owner: new Uint16Array(field.count),
+  }
+  const scalar = new Map<HephParamId, ScalarPlane>()
+  for (const p of params) scalar.set(p, shared)
+  return { count: field.count, scalar }
+}
+
 /** Índices cubiertos (mask=1) del atlas filtrados por familia del param.
  *  fam=null → todos los cubiertos (params engine-internal). */
 function coveredMembers(
-  field: FieldSnapshot,
+  plane: PlaneField,
   atlas: NodeAtlas,
   fam: string | null,
 ): number[] {
   const entries = atlas.entries
-  const n = Math.min(field.count, entries.length)
+  const n = Math.min(plane.mask.length, entries.length)
   const out: number[] = []
   for (let i = 0; i < n; i++) {
-    if (field.mask[i] === 0) continue
+    if (plane.mask[i] === 0) continue
     if (fam !== null && entries[i].family !== fam) continue
     out.push(i)
   }
@@ -424,7 +477,7 @@ function cohortOverrides(
 
 function toMembers(
   idx: readonly number[],
-  field: FieldSnapshot,
+  plane: PlaneField,
   atlas: NodeAtlas,
   gainOverride?: number,
 ): PlanMember[] {
@@ -432,9 +485,50 @@ function toMembers(
     idx: i,
     nodeId: atlas.entries[i].nodeId,
     deviceId: atlas.entries[i].deviceId,
-    delayMs: field.delayMs[i],
-    gain: gainOverride ?? Math.min(1, Math.max(0, field.gain[i])),
+    delayMs: plane.delayMs[i],
+    gain: gainOverride ?? Math.min(1, Math.max(0, plane.gain[i])),
   }))
+}
+
+/**
+ * 🜨 WAVE 8193 (§4.4) — partición por FORMA: los miembros cubiertos se
+ * agrupan por la clave de forma de su owner (`specKey` del synth
+ * efectivo, o `ride:<trackId>` si la capa monta un Λ-Ride; para 'color'
+ * se concatena el color efectivo — paleta estática adelantada de 8194).
+ * Dos capas con la MISMA forma colapsan en un grupo (paridad V1: un
+ * solo grupo → emisión idéntica al campo escalar).
+ * `owner` del grupo = primer owner visto de la clave (representante).
+ */
+function partitionByShape(
+  project: AsteriaProject,
+  plane: ScalarPlane,
+  memberIdx: readonly number[],
+  param: HephParamId,
+): { owner: number; paint: LayerPaint; idx: number[] }[] {
+  const paintCache = new Map<number, LayerPaint>()
+  const paintOf = (owner: number): LayerPaint => {
+    let p = paintCache.get(owner)
+    if (p === undefined) {
+      const g = owner === OWNER_NONE ? undefined : project.stack[owner]
+      p = g === undefined ? project.defaultPaint : effectivePaint(project, g)
+      paintCache.set(owner, p)
+    }
+    return p
+  }
+  const groups = new Map<string, { owner: number; paint: LayerPaint; idx: number[] }>()
+  for (const i of memberIdx) {
+    const owner = plane.owner[i]
+    const paint = paintOf(owner)
+    const shape =
+      paint.lut?.kind === 'ride'
+        ? `ride:${paint.lut.trackId}`
+        : specKey(paint.synth ?? ASTERIA_DEFAULT_SYNTH)
+    const key = param === 'color' ? `${shape}|${paint.color ?? ''}` : shape
+    const grp = groups.get(key)
+    if (grp) grp.idx.push(i)
+    else groups.set(key, { owner, paint, idx: [i] })
+  }
+  return [...groups.values()]
 }
 
 /**
@@ -454,70 +548,17 @@ export function planEmission(args: PlanArgs): PlanResult {
   let isolatedCohorts = 0
   let isolatedNodes = 0
 
-  // Cohortes del campo compartido — una partición, consumida por param.
   const needCohorts = strategy === 'cohort' || strategy === 'mcc-device'
-  const cohorts = needCohorts
-    ? quantizeGainCohorts(field, entries, project.cohortBudget)
-    : []
-  if (needCohorts && cohorts.length === 0) {
-    warnings.push('COHORT_EMPTY — sin nodos cubiertos que cuantizar')
-  }
+  let cohortEmptyWarned = false
 
   for (const param of params) {
     const fam = paramNodeFamily(param)
-    const memberIdx = coveredMembers(field, atlas, fam)
-
-    // ── Regla de Propiedad de Luminancia (§2.4) ────────────────────────
-    // 'color' + intensity activo → la envolvente vive en intensity; el
-    // color se emite como constante (1 kf hold) en UNA clase.
-    if (param === 'color' && args.staticColor) {
-      if (memberIdx.length === 0) {
-        warnings.push(
-          `PARAM_NO_NODES 'color' — sin nodos COLOR cubiertos por el campo`,
-        )
-        continue
-      }
-      const members = toMembers(memberIdx, field, atlas)
-      const zones = memberZones(members, atlas)
-      const memberSet = new Set(members.map((m) => m.nodeId))
-      const spill = classSpill(atlas, fam, memberSet, zones, [])
-      for (const m of members) allDevices.add(m.deviceId)
-
-      let route: RouteKind = 'zoned'
-      if (spill.size > 0) {
-        if (args.colorFlood === 'contain') {
-          route = 'surgical' // constantes quirúrgicas (~300 B c/u)
-        } else {
-          const foreign = famDevicesInZones(atlas, zones, fam)
-          for (const d of memberSet) {
-            foreign.delete(atlas.byNodeId.get(d)?.deviceId ?? '')
-          }
-          warnings.push(
-            `COLOR_FLOOD — ${foreign.size} fixture(s) recibirán el color estático fuera de cobertura (policy 'allow')`,
-          )
-        }
-      }
-      plans.push({
-        param,
-        signature: 'uniform-static',
-        classes: [{
-          cls: {
-            key: 'static',
-            members,
-            repDelayMs: 0,
-            repGain: 1,
-            zones: (zones.length > 0 ? zones : ['all']) as ZoneTarget[],
-            staticCurve: staticColorCurve(
-              project.defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR,
-            ),
-          },
-          route,
-          idStem: 'static_0',
-        }],
-      })
+    const plane = field.scalar.get(param)
+    if (plane === undefined) {
+      warnings.push(`PARAM_NO_PLANE '${param}' — ninguna capa lo pinta`)
       continue
     }
-
+    const memberIdx = coveredMembers(plane, atlas, fam)
     if (memberIdx.length === 0) {
       warnings.push(
         `PARAM_NO_NODES '${param}' — sin nodos cubiertos de su familia`,
@@ -525,96 +566,229 @@ export function planEmission(args: PlanArgs): PlanResult {
       continue
     }
 
-    // ── Vía Λ: una clase, un track, bus de direcciones ─────────────────
-    if (strategy === 'lambda') {
-      const members = toMembers(memberIdx, field, atlas)
-      for (const m of members) allDevices.add(m.deviceId)
-      const overrides = lambdaOverrides(members, D)
-      overrideCount += Object.keys(overrides).length
-      plans.push({
-        param,
-        signature: 'uniform-animated',
-        classes: [{
+    // ── 🜨 WAVE 8193 (§4.4 · G-SHAPE-ISOLATION): partición por FORMA ──
+    //    Las clases se forman primero por specKey del owner efectivo.
+    //    Un solo grupo = una sola forma en el plano → emisión idéntica
+    //    al modelo escalar (paridad V1). Con varias formas, cada grupo
+    //    enruta por separado y el solape zonal fuerza aislamiento
+    //    celular — dos formas jamás alcanzan el mismo (fixture, param)
+    //    sin `cell`.
+    const groups = partitionByShape(project, plane, memberIdx, param)
+    const multiShape = groups.length > 1
+
+    // ── Regla de Propiedad de Luminancia (§2.4) ────────────────────────
+    // 'color' + intensity activo → la envolvente vive en intensity; el
+    // color se emite como constante (1 kf hold) por grupo — el color
+    // efectivo del owner adelanta la paleta estática de la 8194.
+    if (param === 'color' && args.staticColor) {
+      const membersPerGroup = groups.map((g) => toMembers(g.idx, plane, atlas))
+      const zonesList = membersPerGroup.map((ms) => memberZones(ms, atlas))
+      const classes: PlanClass[] = []
+      for (let gi = 0; gi < groups.length; gi++) {
+        const grp = groups[gi]
+        const members = membersPerGroup[gi]
+        const zones = zonesList[gi]
+        const memberSet = new Set(members.map((m) => m.nodeId))
+        const otherZones = zonesList.filter((_, j) => j !== gi)
+        const spill = classSpill(atlas, fam, memberSet, zones, otherZones)
+        for (const m of members) allDevices.add(m.deviceId)
+
+        let route: RouteKind = 'zoned'
+        if (spill.size > 0) {
+          if (args.colorFlood === 'contain' || multiShape) {
+            route = 'surgical' // constantes quirúrgicas (~300 B c/u)
+          } else {
+            const foreign = famDevicesInZones(atlas, zones, fam)
+            for (const d of memberSet) {
+              foreign.delete(atlas.byNodeId.get(d)?.deviceId ?? '')
+            }
+            warnings.push(
+              `COLOR_FLOOD — ${foreign.size} fixture(s) recibirán el color estático fuera de cobertura (policy 'allow')`,
+            )
+          }
+        }
+        classes.push({
           cls: {
-            key: 'lambda',
+            key: 'static',
             members,
+            owner: grp.owner,
             repDelayMs: 0,
             repGain: 1,
-            zones: ['all'],
-            overrides,
+            zones: (zones.length > 0 ? zones : ['all']) as ZoneTarget[],
+            staticCurve: staticColorCurve(
+              grp.paint.color ??
+                project.defaultPaint.color ??
+                ASTERIA_DEFAULT_TARGET_COLOR,
+            ),
           },
-          route: 'lambda',
-          idStem: 'lambda_0', // emitRoute lo retaggea a 'ride_0' si aplica
-        }],
-      })
+          route,
+          idStem: multiShape ? `static_${gi}` : 'static_0',
+        })
+      }
+      plans.push({ param, signature: 'uniform-static', classes })
       continue
     }
 
-    // ── MCC-Cell: una clase por nodo cubierto de la familia ────────────
+    // ── Vía Λ: una clase por grupo de forma, bus de direcciones ──────
+    if (strategy === 'lambda') {
+      const membersPerGroup = groups.map((g) => toMembers(g.idx, plane, atlas))
+      const zonesList = membersPerGroup.map((ms) => memberZones(ms, atlas))
+      const classes: PlanClass[] = []
+      for (let gi = 0; gi < groups.length; gi++) {
+        const grp = groups[gi]
+        const members = membersPerGroup[gi]
+        for (const m of members) allDevices.add(m.deviceId)
+        const overrides = lambdaOverrides(members, D)
+        overrideCount += Object.keys(overrides).length
+        if (!multiShape) {
+          classes.push({
+            cls: {
+              key: 'lambda',
+              members,
+              owner: grp.owner,
+              repDelayMs: 0,
+              repGain: 1,
+              zones: ['all'],
+              overrides,
+            },
+            route: 'lambda',
+            idStem: 'lambda_0', // emitRoute lo retaggea a 'ride_0' si aplica
+          })
+          continue
+        }
+        // Multi-forma: zones 'all' alcanzaría fixtures de otras formas —
+        // la clase se recorta a las zonas de sus miembros; si el recorte
+        // derrama sobre owners ajenos → quirúrgico (§4.4).
+        const zones = zonesList[gi]
+        const memberSet = new Set(members.map((m) => m.nodeId))
+        const spill = classSpill(
+          atlas, fam, memberSet, zones,
+          zonesList.filter((_, j) => j !== gi),
+        )
+        if (spill.size > 0) {
+          isolatedNodes += members.length
+          warnings.push(
+            `SHAPE_ISOLATED s${gi} [${param}] — ${members.length} nodo(s) → pistas cell-exactas (formas distintas no comparten pista)`,
+          )
+          classes.push({
+            cls: {
+              key: `s${gi}`,
+              members,
+              owner: grp.owner,
+              repDelayMs: 0,
+              repGain: 1,
+              zones: ['all'],
+            },
+            route: 'surgical',
+            idStem: `lam_${gi}`,
+          })
+        } else {
+          classes.push({
+            cls: {
+              key: `s${gi}`,
+              members,
+              owner: grp.owner,
+              repDelayMs: 0,
+              repGain: 1,
+              zones: (zones.length > 0 ? zones : ['all']) as ZoneTarget[],
+              overrides,
+            },
+            route: 'zoned',
+            idStem: `lambda_${gi}`,
+          })
+        }
+      }
+      plans.push({ param, signature: 'uniform-animated', classes })
+      continue
+    }
+
+    // ── MCC-Cell: una clase por grupo de forma; el routing celular ya
+    //    aísla por nodo — la forma llega vía `owner` de cada clase.
     if (strategy === 'mcc') {
-      const members = toMembers(memberIdx, field, atlas)
-      for (const m of members) allDevices.add(m.deviceId)
-      plans.push({
-        param,
-        signature: 'cellular',
-        classes: [{
+      const classes: PlanClass[] = []
+      for (const grp of groups) {
+        const members = toMembers(grp.idx, plane, atlas)
+        for (const m of members) allDevices.add(m.deviceId)
+        classes.push({
           cls: {
             key: 'cells',
             members,
+            owner: grp.owner,
             repDelayMs: 0,
             repGain: 1,
             zones: ['all'],
           },
           route: 'surgical',
           idStem: 'mcc', // id = ast_<param>_mcc_<idx> (índice de atlas)
-        }],
-      })
+        })
+      }
+      plans.push({ param, signature: 'cellular', classes })
       continue
     }
 
-    // ── Vía B: cohortes — ruta decidida por (cohorte × param) ──────────
-    // Pass 1: miembros de la familia por cohorte + sus zonas.
-    const perCohort: {
+    // ── Vía B: cohortes — ruta decidida por (cohorte × forma × param) ──
+    const cohorts = quantizeGainCohorts(plane, entries, project.cohortBudget)
+    if (needCohorts && cohorts.length === 0 && !cohortEmptyWarned) {
+      cohortEmptyWarned = true
+      warnings.push('COHORT_EMPTY — sin nodos cubiertos que cuantizar')
+    }
+
+    // Pass 1: miembros (familia ∩ grupo de forma) por cohorte + zonas.
+    const perClass: {
       members: PlanMember[]
       zones: string[]
       repDelayMs: number
       repGain: number
       ci: number
+      gi: number
+      owner: number
+      key: string
     }[] = []
-    for (let ci = 0; ci < cohorts.length; ci++) {
-      const c = cohorts[ci]
-      const idx: number[] = []
-      for (const nid of c.nodeIds) {
-        const i = indexByNodeId.get(nid)
-        if (i === undefined) continue
-        if (fam !== null && entries[i].family !== fam) continue
-        idx.push(i)
+    for (let gi = 0; gi < groups.length; gi++) {
+      const grp = groups[gi]
+      const inGroup = new Set(grp.idx)
+      for (let ci = 0; ci < cohorts.length; ci++) {
+        const c = cohorts[ci]
+        const idx: number[] = []
+        for (const nid of c.nodeIds) {
+          const i = indexByNodeId.get(nid)
+          if (i === undefined || !inGroup.has(i)) continue
+          if (fam !== null && entries[i].family !== fam) continue
+          idx.push(i)
+        }
+        if (idx.length === 0) continue // DECOUPLING: cohorte sin miembros
+        // de esta familia/forma → ningún track para esta combinación.
+        const gain = Math.min(1, Math.max(0, c.gain))
+        const members = toMembers(idx, plane, atlas, gain)
+        perClass.push({
+          members,
+          zones: memberZones(members, atlas),
+          repDelayMs: c.delayMs,
+          repGain: gain,
+          ci,
+          gi,
+          owner: grp.owner,
+          key: multiShape ? `s${gi}c${ci}` : `c${ci}`,
+        })
       }
-      if (idx.length === 0) continue // DECOUPLING: cohorte sin miembros
-      // de esta familia → ningún track para este param.
-      const gain = Math.min(1, Math.max(0, c.gain))
-      const members = toMembers(idx, field, atlas, gain)
-      perCohort.push({
-        members,
-        zones: memberZones(members, atlas),
-        repDelayMs: c.delayMs,
-        repGain: gain,
-        ci,
-      })
     }
-    const zonesList = perCohort.map((c) => c.zones)
+    const zonesList = perClass.map((c) => c.zones)
 
-    // Pass 2: spill por (cohorte × param) → ruta.
+    // Pass 2: spill por (clase × param) → ruta. Con formas distintas el
+    // spill fuerza aislamiento celular bajo CUALQUIER estrategia — dos
+    // formas no pueden compartir cobertura zonal (G-SHAPE-ISOLATION).
     const classes: PlanClass[] = []
-    const spilledByCohort = new Map<number, Set<string>>()
-    for (let k = 0; k < perCohort.length; k++) {
-      const pc = perCohort[k]
+    const spilledClasses: { key: string; spill: Set<string> }[] = []
+    for (let k = 0; k < perClass.length; k++) {
+      const pc = perClass[k]
       const memberSet = new Set(pc.members.map((m) => m.nodeId))
       const otherZones = zonesList.filter((_, j) => j !== k)
       const spill = classSpill(atlas, fam, memberSet, pc.zones, otherZones)
       const isolated =
-        strategy === 'mcc-device' && fam !== null && spill.size > 0
-      if (spill.size > 0) spilledByCohort.set(pc.ci, spill)
+        fam !== null &&
+        spill.size > 0 &&
+        (strategy === 'mcc-device' || multiShape)
+      if (spill.size > 0) spilledClasses.push({ key: pc.key, spill })
       if (isolated) {
         isolatedCohorts++
         isolatedNodes += pc.members.length
@@ -624,47 +798,56 @@ export function planEmission(args: PlanArgs): PlanResult {
       if (isolated) {
         classes.push({
           cls: {
-            key: `c${pc.ci}`,
+            key: pc.key,
             members: pc.members,
+            owner: pc.owner,
             repDelayMs: pc.repDelayMs,
             repGain: pc.repGain,
             zones: ['all'],
           },
           route: 'surgical',
-          idStem: `mccd_${pc.ci}`,
+          idStem: multiShape
+            ? `mccd_${pc.ci}_s${pc.gi}`
+            : `mccd_${pc.ci}`,
         })
       } else {
         const overrides = cohortOverrides(pc.members, pc.repDelayMs, D)
         overrideCount += Object.keys(overrides).length
         classes.push({
           cls: {
-            key: `c${pc.ci}`,
+            key: pc.key,
             members: pc.members,
+            owner: pc.owner,
             repDelayMs: pc.repDelayMs,
             repGain: pc.repGain,
             zones: (pc.zones.length > 0 ? pc.zones : ['all']) as ZoneTarget[],
             overrides,
           },
           route: 'zoned',
-          idStem: `cohort_${pc.ci}`,
+          idStem: multiShape
+            ? `cohort_${pc.ci}_s${pc.gi}`
+            : `cohort_${pc.ci}`,
         })
       }
     }
-    // Aviso agregado por cohorte (una línea por cohorte, params listados).
-    for (const [ci, spill] of spilledByCohort) {
+    // Aviso agregado por clase (una línea por clase, params listados).
+    for (const { key, spill } of spilledClasses) {
       const list = [...spill].slice(0, 8).join(', ')
       warnings.push(
-        `COHORT_ZONE_SPILL c${ci} [${param}] — ${spill.size} nodo(s) fuera del recorte de zonas: ${list}${spill.size > 8 ? ` +${spill.size - 8} más` : ''}`,
+        `COHORT_ZONE_SPILL ${key} [${param}] — ${spill.size} nodo(s) fuera del recorte de zonas: ${list}${spill.size > 8 ? ` +${spill.size - 8} más` : ''}`,
       )
     }
-    if (strategy === 'mcc-device') {
-      for (const k of classes) {
-        if (k.route === 'surgical') {
-          const devs = new Set(k.cls.members.map((m) => m.deviceId))
-          warnings.push(
-            `COHORT_ISOLATED ${k.cls.key} [${param}] — ${devs.size} fixture(s) → pistas cell-exactas (MCC-Device)`,
-          )
-        }
+    for (const k of classes) {
+      if (k.route !== 'surgical') continue
+      const devs = new Set(k.cls.members.map((m) => m.deviceId))
+      if (multiShape) {
+        warnings.push(
+          `SHAPE_ISOLATED ${k.cls.key} [${param}] — ${devs.size} fixture(s) → pistas cell-exactas (formas distintas no comparten pista)`,
+        )
+      } else if (strategy === 'mcc-device') {
+        warnings.push(
+          `COHORT_ISOLATED ${k.cls.key} [${param}] — ${devs.size} fixture(s) → pistas cell-exactas (MCC-Device)`,
+        )
       }
     }
     plans.push({ param, signature: 'graded-animated', classes })
@@ -711,7 +894,12 @@ function sanitizeCurve(curve: HephCurve, D: number): HephCurve {
 
 export interface EmitCtx {
   readonly D: number
-  readonly baseCurveFor: (param: HephParamId) => HephCurve
+  /**
+   * Curva base por (parámetro, owner) — 🜨 WAVE 8193 §4.4: la forma de
+   * onda la dicta la capa dominante de la clase (effectivePaint(owner)
+   * .synth/.lut), no una global.
+   */
+  readonly baseCurveFor: (param: HephParamId, owner: number) => HephCurve
   /** 'lambda' | 'ride' — etiqueta de id para la ruta Λ (§8.2). */
   readonly lambdaTag: 'lambda' | 'ride'
 }
@@ -736,7 +924,7 @@ export function emitRoute(
   if (route === 'surgical') {
     let di = 0
     for (const m of cls.members) {
-      const base = cls.staticCurve ?? ctx.baseCurveFor(param)
+      const base = cls.staticCurve ?? ctx.baseCurveFor(param, cls.owner)
       let curve = rotateCurveCyclic(base, m.delayMs, D)
       if (cls.staticCurve === undefined) {
         curve = bakeGainIntoCurve(curve, m.gain)
@@ -756,7 +944,7 @@ export function emitRoute(
     return
   }
 
-  const base = cls.staticCurve ?? ctx.baseCurveFor(param)
+  const base = cls.staticCurve ?? ctx.baseCurveFor(param, cls.owner)
   let curve: HephCurve
   if (route === 'lambda' || cls.staticCurve !== undefined) {
     curve = base // Λ: delay vive en overrides; static: constante

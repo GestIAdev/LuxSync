@@ -281,7 +281,7 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
 
   // ── CHRONO (§5.2/T3): tMs del punto más cercano ≤ radiusM ──
 
-  test('chrono captureRealTime: delay = tMs del punto más cercano', () => {
+  test('chrono captureRealTime: delay = tMs del punto más cercano (🜨 8197: el primero pintado dispara primero)', () => {
     const stack: Gesture[] = [
       {
         kind: 'chrono', id: 'c1', op: 'replace',
@@ -295,6 +295,8 @@ describe('🜨 FieldEngine — WAVE 8030-P2', () => {
       },
     ]
     const snap = ev(stack, makeAtlas())
+    // Dirección natural (sin INVERT): primer punto → menor delay →
+    // dispara primero; último punto → mayor delay → dispara último.
     expect(snap.delayMs[0]).toBe(0)
     expect(snap.delayMs[2]).toBe(800)
     expect(snap.mask[2]).toBe(1)

@@ -5,7 +5,12 @@
  *
  * Rotación cíclica exacta de una `HephCurve` sobre el dominio [0, D).
  *
- *   rot(C, d)(τ) = C((τ + d) mod D)
+ *   rot(C, d)(τ) = C((τ − d) mod D)      — delay = RETARDO real (lag)
+ *
+ * 🜨 8197 (Time Arrow Reversal): `d` es un retardo — la celda reproduce el
+ * instante τ−d de la fuente (llega tarde, nunca por delante). Internamente
+ * se implementa como el avance equivalente D−d; la matemática de costuras
+ * es idéntica.
  *
  * El blueprint §4.2/§8.3 lo usa para hornear el retardo espacial de cada celda
  * directamente en la curva (MCC-Cell) o en la curva maestra de cada cohorte
@@ -15,9 +20,10 @@
  *
  * CONSTRUCCIÓN (sin muestreo — se preserva la estructura de keyframes):
  *
- *   1. Cada keyframe s_i se desplaza a t'_i = (s_i − d) mod D y se reordena
+ *   1. Cada keyframe s_i se desplaza a t'_i = (s_i − d̂) mod D y se reordena
  *      ascendente → el orden rotado es [a, a+1, …, n−1, 0, …, a−1] donde
- *      a = primer índice con s_i ≥ d.
+ *      d̂ = D−d es el avance equivalente del retardo y a = primer índice
+ *      con s_i ≥ d̂.
  *   2. COSTURA DE BORDE (τ=0 / τ=D): el segmento fuente que cruzaba el punto
  *      de corte d (segmento a−1 → a) queda partido en dos piezas. Se inserta
  *      un keyframe en τ=0 con valor C(d) y un keyframe terminal en τ=D con el
@@ -42,7 +48,7 @@ import { CurveEvaluator } from '../../../../../core/hephaestus/CurveEvaluator'
  * Rotación cíclica de `curve` por `delayMs` ms sobre un periodo `durationMs`.
  *
  * @param curve      Curva fuente (no se muta).
- * @param delayMs    Desplazamiento temporal en ms (se normaliza mod durationMs).
+ * @param delayMs    Retardo temporal en ms — lag real (se normaliza mod durationMs).
  * @param durationMs Periodo del dominio cíclico D.
  * @returns Nueva HephCurve rotada, o la MISMA referencia si d ≡ 0 (mod D).
  */
@@ -59,8 +65,12 @@ export function rotateCurveCyclic(
   if (!Number.isFinite(D) || D <= 0 || kfs.length <= 1) return curve
 
   // Normalizar delay a [0, D) — acepta negativos y múltiplos de D.
-  const d = ((delayMs % D) + D) % D
-  if (d === 0) return curve // INVARIANTE: rot(C, 0) === C, byte a byte.
+  const dl = ((delayMs % D) + D) % D
+  if (dl === 0) return curve // INVARIANTE: rot(C, 0) === C, byte a byte.
+
+  // 🜨 8197: `dl` es RETARDO → el avance equivalente es D−dl. `d` denota el
+  // punto de corte fuente (avance) en toda la maquinaria de costuras.
+  const d = D - dl
 
   const n = kfs.length
 

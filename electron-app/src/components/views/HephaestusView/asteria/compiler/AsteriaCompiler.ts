@@ -14,6 +14,8 @@
  *     runtime ignora TODOS los overrides en silencio: HephaestusRuntime:1049)
  *   - overrides mode 'absolute' — determinismo puro         (PhaseOverride:83)
  *   - offsetMs clamp [0, D] + entero                       (clamp runtime + bytes)
+ *   - 🜨 8197: offsetMs es AVANCE en el runtime — el delay se
+ *     emite invertido: (D − delay mod D) mod D             (Time Arrow)
  *   - reemplazo solo de tracks ast_*                       (coexistencia Forge)
  *
  * Estrategias (§4.3 — árbol de decisión):

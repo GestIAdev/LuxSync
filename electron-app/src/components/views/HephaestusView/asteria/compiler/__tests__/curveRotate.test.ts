@@ -4,7 +4,8 @@
  *
  * Property tests obligatorios del blueprint §8.5-1:
  *   1. rot(C, 0) === C — byte a byte (misma referencia devuelta).
- *   2. |rot(C,d)(τ) − C((τ+d) mod D)| < 1e-6 evaluado con el
+ *   2. |rot(C,d)(τ) − C((τ−d) mod D)| < 1e-6 evaluado con el
+ *      (🜨 8197: d es RETARDO real — lag, nunca avance).
  *      `CurveEvaluator` DE PRODUCCIÓN — no una reimplementación.
  *
  * Más tests de costura: segmento partido en τ=0/τ=D, wrap D→0 con
@@ -43,10 +44,10 @@ function evalNum(curve: HephCurve, t: number): number {
   return ev.getValue(curve.paramId, t)
 }
 
-/** Barrido de paridad: rot(τ) ≈ C((τ+d) mod D) en los τ dados. */
+/** Barrido de paridad: rot(τ) ≈ C((τ−d) mod D) en los τ dados (lag). */
 function expectParity(src: HephCurve, rot: HephCurve, d: number, taus: number[], eps = 1e-6): void {
   for (const tau of taus) {
-    const expected = evalNum(src, ((tau + d) % D + D) % D)
+    const expected = evalNum(src, ((tau - d) % D + D) % D)
     const actual = evalNum(rot, tau)
     expect(Math.abs(actual - expected), `τ=${tau}`).toBeLessThan(eps)
   }
@@ -81,7 +82,7 @@ describe('🧬 rotateCurveCyclic — invariantes', () => {
   })
 })
 
-describe('🧬 rotateCurveCyclic — paridad rot(C,d)(τ) = C((τ+d) mod D)', () => {
+describe('🧬 rotateCurveCyclic — paridad rot(C,d)(τ) = C((τ−d) mod D)', () => {
 
   test('curva linear: paridad < 1e-6 en barrido completo (varios delays)', () => {
     const c = numCurve([[0, 0], [500, 1], [1000, 0]])
@@ -113,11 +114,11 @@ describe('🧬 rotateCurveCyclic — paridad rot(C,d)(τ) = C((τ+d) mod D)', ()
 
 describe('🧬 rotateCurveCyclic — estructura de costura', () => {
 
-  test('inserta keyframe en τ=0 con valor C(d) y terminal en τ=D', () => {
+  test('inserta keyframe en τ=0 con valor C(D−d) y terminal en τ=D', () => {
     const c = numCurve([[0, 0], [500, 1], [1000, 0]])
     const rot = rotateCurveCyclic(c, 250, D)
 
-    // C(250) = 0.5 → primer y último keyframe con ese valor
+    // 🜨 8197: rot(0) = C(−250 mod 1000) = C(750) = 0.5 (triángulo simétrico)
     expect(rot.keyframes[0].timeMs).toBe(0)
     expect(rot.keyframes[0].value).toBeCloseTo(0.5, 6)
     const last = rot.keyframes[rot.keyframes.length - 1]
@@ -135,9 +136,10 @@ describe('🧬 rotateCurveCyclic — estructura de costura', () => {
     expect(rot.keyframes[rot.keyframes.length - 1].timeMs).toBe(D)
   })
 
-  test('keyframe fuente aterrizando exactamente en d → no duplica en τ=0', () => {
+  test('keyframe fuente aterrizando exactamente en D−d → no duplica en τ=0', () => {
     const c = numCurve([[0, 0], [250, 1], [1000, 0]])
-    const rot = rotateCurveCyclic(c, 250, D)
+    // 🜨 8197: delay 750 → avance equivalente 250 → el kf en s=250 cae en τ=0.
+    const rot = rotateCurveCyclic(c, 750, D)
     const atZero = rot.keyframes.filter(k => k.timeMs === 0)
     expect(atZero).toHaveLength(1)
     expect(atZero[0].value).toBe(1) // es el kf fuente, no un interpolado
@@ -146,21 +148,24 @@ describe('🧬 rotateCurveCyclic — estructura de costura', () => {
   test('D-2: bezier en el segmento partido → solo la costura degrada a linear', () => {
     const handles: [number, number, number, number] = [0.42, 0, 0.58, 1]
     const c = numCurve([
-      [0, 0],
+      [0, 0, 'bezier', handles],
       [500, 1, 'bezier', handles],
-      [1000, 0, 'bezier', handles],
+      [1000, 0],
     ])
     const rot = rotateCurveCyclic(c, 250, D)
 
-    // El segmento partido es (kf0 → kf1): la costura es su interp 'bezier'→'linear'.
+    // 🜨 8197: d̂ = D−250 = 750 → el segmento partido es (kf1 → kf2):
+    // su interp 'bezier' degrada a 'linear' en ambas piezas de la costura.
     // kf@0 (seam derecho) debe ser 'linear'.
     expect(rot.keyframes[0].interpolation).toBe('linear')
-    // El clon de kf0 (pieza izquierda, penúltimo antes de T@D) también 'linear'.
+    // El clon de kf1 (pieza izquierda, penúltimo antes de T@D) también 'linear'.
     expect(rot.keyframes[rot.keyframes.length - 2].interpolation).toBe('linear')
-    // El segmento NO partido (kf1 → kf2) conserva bezier + handles intactos.
-    const preserved = rot.keyframes.find(k => k.bezierHandles !== undefined)
+    // El segmento NO partido (kf0 → kf1) conserva bezier + handles intactos
+    // (el clon de kf2 cae en la costura de wrap → 'hold': no cuenta).
+    const preserved = rot.keyframes.find(
+      k => k.interpolation === 'bezier' && k.bezierHandles !== undefined,
+    )
     expect(preserved).toBeDefined()
-    expect(preserved!.interpolation).toBe('bezier')
     expect(preserved!.bezierHandles).toEqual(handles)
   })
 
@@ -173,11 +178,12 @@ describe('🧬 rotateCurveCyclic — estructura de costura', () => {
     ])
     const d = 250
     const rot = rotateCurveCyclic(c, d, D)
-    // Región no-costura: τ ∈ [250, 750] ↔ fuente [500, 1000] (segmento bezier intacto)
+    // 🜨 8197: d̂=750 parte el segmento bezier fuente (500→1000). La región
+    // τ ∈ (250, 750) ↔ fuente (0, 500) es el segmento NO partido — pero su
+    // interp fuente aquí es 'linear' → paridad exacta igualmente.
     expectParity(c, rot, d, [300, 400, 500, 600, 700])
-    // Costura (τ ∈ (0, 250)): aproximación linear del bezier — tolerancia laxa
-    // pero debe seguir la forma general (monótona creciente hacia C(d)).
-    expect(evalNum(rot, 0)).toBeCloseTo(evalNum(c, 250), 6)
+    // Costura en τ=0: rot(0) = C(750) — valor exacto del punto de corte.
+    expect(evalNum(rot, 0)).toBeCloseTo(evalNum(c, 750), 6)
   })
 
   test('no muta la curva fuente', () => {

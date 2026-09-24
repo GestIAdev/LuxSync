@@ -263,7 +263,7 @@ function expectParity(
   eps = 1e-6,
 ): void {
   for (const tau of taus) {
-    const expected = evalNum(src, ((tau + d) % D + D) % D)
+    const expected = evalNum(src, ((tau - d) % D + D) % D)
     const actual = evalNum(rot, tau)
     expect(Math.abs(actual - expected), `τ=${tau}`).toBeLessThan(eps)
   }
@@ -271,18 +271,19 @@ function expectParity(
 
 describe('G-SYN-ROT — rotateCurveCyclic sobre las 8 formas', () => {
   for (const shape of SYNTH_SHAPES) {
-    test(`${shape}: paridad rot(C,d)(τ) = C((τ+d) mod D)`, () => {
+    test(`${shape}: paridad rot(C,d)(τ) = C((τ−d) mod D)`, () => {
       const src = materialize(envelope({ shape }), 'intensity', D)
       if (shape === 'sine') {
         // D-2: la costura degrada bezier→linear — paridad exacta solo en
-        // la región NO partida. d=1500 cae dentro del segundo segmento
-        // bezier; la mitad intacta verifica a 1e-6, la costura a 0.35.
+        // la región NO partida. 🜨 8197: d=1500 (retardo) corta en el
+        // avance equivalente d̂=2500 → dentro del segundo segmento bezier
+        // (2000→4000); el primero (0→2000) queda intacto.
         const d = 1500
         const rot = rotateCurveCyclic(src, d, D)
-        // τ ∈ [500, 2500] ↔ fuente [2000, 4000] — segmento intacto
-        expectParity(src, rot, d, [600, 1000, 1500, 2000, 2400], 1e-6)
+        // τ ∈ (1500, 3500) ↔ fuente (0, 2000) — segmento intacto
+        expectParity(src, rot, d, [1600, 2000, 2500, 3000, 3400], 1e-6)
         // costura: aproximación linear, forma general preservada
-        expectParity(src, rot, d, [0, 200, 400, 2600, 3000, 3500, 3900], 0.35)
+        expectParity(src, rot, d, [0, 200, 400, 600, 1000, 1400, 3600, 3900], 0.35)
         return
       }
       for (const d of [1, 250, 777.7, 1500, 3999]) {
@@ -292,7 +293,7 @@ describe('G-SYN-ROT — rotateCurveCyclic sobre las 8 formas', () => {
     })
   }
 
-  test('las 8 formas rotadas conservan extremos (rot(0)=rot(D)=C(d) por construcción)', () => {
+  test('las 8 formas rotadas conservan extremos (rot(0)=rot(D)=C(D−d) por construcción)', () => {
     for (const shape of SYNTH_SHAPES) {
       const src = materialize(envelope({ shape }), 'intensity', D)
       const rot = rotateCurveCyclic(src, 1370, D)
@@ -301,10 +302,11 @@ describe('G-SYN-ROT — rotateCurveCyclic sobre las 8 formas', () => {
   })
 
   test('square rotada: la discontinuidad del wrap sobrevive como salto interior', () => {
-    // Salto de bajada fuente en t=w=2000 → rotado en τ=2000−1370=630.
+    // 🜨 8197: retardo → el salto de bajada fuente en t=w=2000 cae en
+    // τ = 2000+1370 = 3370 (la fuente llega 1370 ms tarde).
     const src = materialize(envelope({ shape: 'square' }), 'intensity', D)
     const rot = rotateCurveCyclic(src, 1370, D)
-    expect(evalNum(rot, 620)).toBeGreaterThan(0.9) // ON (fuente ~1990)
-    expect(evalNum(rot, 640)).toBeLessThan(0.1)    // OFF (fuente ~2010)
+    expect(evalNum(rot, 3360)).toBeGreaterThan(0.9) // ON (fuente ~1990)
+    expect(evalNum(rot, 3380)).toBeLessThan(0.1)    // OFF (fuente ~2010)
   })
 })

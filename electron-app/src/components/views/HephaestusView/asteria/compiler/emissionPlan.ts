@@ -531,8 +531,11 @@ function classSpill(
   return spill
 }
 
-/** Bus de direcciones Λ: deviceId → offset absoluto = delay del PRIMER
- *  nodo miembro cubierto del device (orden canónico). Clamp+entero §8.1. */
+/** Bus de direcciones Λ: deviceId → offset absoluto del PRIMER nodo
+ *  miembro cubierto del device (orden canónico). Entero §8.1.
+ *  🜨 8197: el runtime evalúa `t + offsetMs` (offset positivo = AVANCE),
+ *  así que un retardo `delay` se emite como el avance equivalente
+ *  `offsetMs = (D − (delay mod D)) mod D` — delay=0 → 0. */
 function lambdaOverrides(
   members: readonly PlanMember[],
   D: number,
@@ -542,14 +545,16 @@ function lambdaOverrides(
     if (out[m.deviceId] !== undefined) continue
     out[m.deviceId] = {
       mode: 'absolute',
-      offsetMs: Math.round(Math.max(0, Math.min(D, m.delayMs))),
+      offsetMs: Math.round(modD(-m.delayMs, D)),
     }
   }
   return out
 }
 
-/** Bus de cohorte: clava cada device a su delay exacto —
- *  offset = (media de sus nodos miembros) − d̄, mod D. */
+/** Bus de cohorte: clava cada device a su delay exacto.
+ *  La curva rota en retardo `repDelay` ≡ avance `D−repDelay`; el offset
+ *  del miembro debe llevar el total a `D−m̄` → offset = d̄ − m̄ (mod D).
+ *  🜨 8197: signo invertido vs. la era de avance. */
 function cohortOverrides(
   members: readonly PlanMember[],
   repDelayMs: number,
@@ -566,7 +571,7 @@ function cohortOverrides(
   for (const [dev, a] of acc) {
     out[dev] = {
       mode: 'absolute',
-      offsetMs: Math.round(modD(a.s / a.n - repDelayMs, D)),
+      offsetMs: Math.round(modD(repDelayMs - a.s / a.n, D)),
     }
   }
   return out

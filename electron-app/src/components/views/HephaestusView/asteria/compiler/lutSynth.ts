@@ -145,9 +145,9 @@ export function synthesizeColorLut(
  *   - overrides: deviceId → { mode:'absolute', offsetMs } con el retardo
  *                del PRIMER nodo cubierto (mask=1) del fixture en orden
  *                canónico del atlas. Nodos sin cobertura no emiten
- *                dirección. offsetMs clampado a [0, durationMs] y
- *                redondeado a entero (regla dura §8.1 — clamp del runtime
- *                + ahorro de bytes).
+ *                dirección. offsetMs redondeado a entero (regla dura §8.1).
+ *                🜨 8197: el runtime trata offsetMs como AVANCE — el retardo
+ *                se emite invertido: (D − (delay mod D)) mod D.
  */
 export function synthesizeLambda(
   field: FieldSnapshot,
@@ -165,7 +165,11 @@ export function synthesizeLambda(
     if (mask[i] === 0) continue
     const deviceId = entries[i].deviceId
     if (overrides[deviceId] !== undefined) continue // primer nodo cubierto
-    const d = Math.round(Math.max(0, Math.min(durationMs, delayMs[i])))
+    // 🜨 8197: retardo real → avance equivalente mod D (delay=0 → 0).
+    const d = Math.round(
+      (durationMs - (((delayMs[i] % durationMs) + durationMs) % durationMs)) %
+        durationMs,
+    )
     overrides[deviceId] = { mode: 'absolute', offsetMs: d }
     devicesTargeted++
   }

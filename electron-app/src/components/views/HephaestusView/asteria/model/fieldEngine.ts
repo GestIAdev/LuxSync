@@ -533,6 +533,11 @@ export function createFieldEngine(atlas: NodeAtlas): FieldEngine {
         }
       }
       if (best < 0) continue
+      // 🜨 8197 (Time Arrow): delay = RETARDO real — el primer punto del
+      // trazo (tMs=0) recibe el menor delay y dispara primero. `invert`
+      // simplemente refleja la asignación: el final del trazo dispara
+      // primero. La corrección de signo vive en el compilador (rotación
+      // y phase bus), no aquí.
       let d =
         arcLen !== null && totalArc > 0
           ? (arcLen[best] / totalArc) * totalMs

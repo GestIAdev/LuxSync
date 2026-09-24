@@ -159,25 +159,30 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     const ov = out.tracks[0].phaseOverrides!
     // 4 nodos → 3 devices; fx-a recibe el retardo de su PRIMER nodo (0)
     expect(Object.keys(ov).sort()).toEqual(['fx-a', 'fx-b', 'fx-c'])
+    // 🜨 8197: offsetMs positivo = AVANCE en el runtime → el retardo se
+    // emite como el avance equivalente (D − delay) mod D.
     expect(ov['fx-a']).toEqual({ mode: 'absolute', offsetMs: 0 })
-    expect(ov['fx-b']).toEqual({ mode: 'absolute', offsetMs: 500 })
-    expect(ov['fx-c']).toEqual({ mode: 'absolute', offsetMs: 750 })
+    expect(ov['fx-b']).toEqual({ mode: 'absolute', offsetMs: 3500 }) // delay 500
+    expect(ov['fx-c']).toEqual({ mode: 'absolute', offsetMs: 3250 }) // delay 750
+    // Lag real: offset + delay ≡ 0 (mod D)
+    expect((ov['fx-b'].offsetMs + 500) % 4000).toBe(0)
+    expect((ov['fx-c'].offsetMs + 750) % 4000).toBe(0)
     expect(out.report.overrideCount).toBe(3)
     expect(out.report.devicesTargeted).toBe(3)
     expect(out.report.nodesCovered).toBe(4)
   })
 
-  test('offsetMs clampado a [0, durationMs] y redondeado', () => {
+  test('offsetMs envuelve mod D (delay → D−delay) y redondeado', () => {
     const field = makeField()
-    field.delayMs[2] = 99999.7   // fuera de rango → clamp a D
-    field.delayMs[3] = 333.777   // → 334
+    field.delayMs[2] = 99999.7   // mod 4000 → 3999.7 → offset 0.3 → 0
+    field.delayMs[3] = 333.777   // → offset 3666.223 → 3666
     const out = compile({
       atlas: makeAtlas(), field, clip: makeClip(4000),
       project: createDefaultProject('x'),
     })
     const ov = out.tracks[0].phaseOverrides!
-    expect(ov['fx-b'].offsetMs).toBe(4000)
-    expect(ov['fx-c'].offsetMs).toBe(334)
+    expect(ov['fx-b'].offsetMs).toBe(0)
+    expect(ov['fx-c'].offsetMs).toBe(3666)
   })
 
   test('nodos sin cobertura (mask=0) no emiten dirección', () => {
@@ -408,7 +413,7 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     const ast = ser.tracks.find((t) => t.id.startsWith('ast_'))!
     expect(ast).toBeDefined()
     expect(ast.phaseConfig?.spreadDeg).toBe(1)
-    expect(ast.phaseOverrides?.['fx-b'].offsetMs).toBe(500)
+    expect(ast.phaseOverrides?.['fx-b'].offsetMs).toBe(3500) // 🜨 8197: lag
     // El track Forge convive intacto
     expect(ser.tracks.some((t) => t.id === 'forge-track-01')).toBe(true)
   })
@@ -447,7 +452,7 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     // El ast_ viejo fue reemplazado por el nuevo (mismo id, contenido nuevo)
     const asts = next.tracks.filter((t) => isAsteriaTrack(t.id))
     expect(asts).toHaveLength(1)
-    expect(asts[0].phaseOverrides?.['fx-b'].offsetMs).toBe(500)
+    expect(asts[0].phaseOverrides?.['fx-b'].offsetMs).toBe(3500) // 🜨 8197
     // Forge intacto — misma referencia de track
     expect(next.tracks.find((t) => t.id === 'forge-track-01'))
       .toBe(clip.tracks[0])
@@ -658,14 +663,26 @@ describe('🧬 AsteriaCompiler — Vía B / MCC-Cell / auto (WAVE 8040B)', () =>
       expect(t.blendMode).toBe('replace')
       expect(t.zones.length).toBeGreaterThan(0)
     }
-    // La celda con delay 500 lleva la curva rotada: su kf[0] tiene el
-    // valor CORTADO C(500)=1 (meseta del pulso) — la de delay 0 abre en 0.
-    expect(out.tracks[0].curve.keyframes[0]).toMatchObject({
-      timeMs: 0, value: 0,
-    })
-    expect(out.tracks[1].curve.keyframes[0]).toMatchObject({
-      timeMs: 0, value: 1,
-    })
+    // 🜨 8197 (Time Arrow): delay = RETARDO real — la celda con delay 500
+    // reproduce la fuente 500 ms TARDE: rot(τ) = C((τ−500) mod 4000).
+    // Paridad contra la pista delay-0 (rot(C,0)===C, referencia intacta).
+    const ev0 = new CurveEvaluator(
+      new Map([[out.tracks[0].id, out.tracks[0].curve]]), 4000,
+    )
+    const ev1 = new CurveEvaluator(
+      new Map([[out.tracks[1].id, out.tracks[1].curve]]), 4000,
+    )
+    for (const tau of [0, 250, 500, 1000, 2000, 3500, 3999]) {
+      const expected = ev0.getValue(
+        out.tracks[0].id, (tau - 500 + 4000) % 4000,
+      )
+      const actual = ev1.getValue(out.tracks[1].id, tau)
+      expect(Math.abs(actual - expected), `τ=${tau}`).toBeLessThan(1e-6)
+    }
+    // El pulso llega TARDE, no por delante: a τ=0 la celda retardada está
+    // en la cola C(3500)=0 — la de delay 0 ya está en la meseta (320..1120).
+    expect(ev1.getValue(out.tracks[1].id, 0)).toBe(0)
+    expect(ev0.getValue(out.tracks[0].id, 500)).toBe(1)
     expect(out.report.devicesTargeted).toBe(3)
     expect(out.report.overrideCount).toBe(0)
   })

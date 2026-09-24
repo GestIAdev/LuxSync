@@ -254,13 +254,18 @@ esos nodos por zona (**A4**). Pero:
 desfasada*. El desfase se hornea como **rotación cíclica de keyframes**:
 
 ```
-            C(τ)                                  rot(C, d)(τ) = C((τ + d) mod D)
-   1 ┤   ╭─────╮                          1 ┤ ──╮            ╭──
-     │  ╱       ╲                           │   ╲           ╱
-   0 ┼─╯         ╲────►                   0 ┼    ╲─────────╯      ────►
-     0   1000   2000   4000                 0   1000      3000   4000
-        pista "petal-c"                          pista "petal-l" (d = 1000 ms)
+            C(τ)                                  rot(C, d)(τ) = C((τ − d) mod D)
+   1 ┤   ╭─────╮                          1 ┤              ╭─────╮
+     │  ╱       ╲                           │             ╱       ╲
+   0 ┼─╯         ╲────►                   0 ┼────────────╯         ╲───►
+     0   1000   2000   4000                 0   1000   2000   3000   4000
+        pista "petal-c"                          pista "petal-l" (d = 1000 ms → llega tarde)
 ```
+
+> 🜨 WAVE 8197 — *Time Arrow Reversal*: `d` es un **retardo real** (lag). La celda
+> evalúa el instante `τ−d` de la fuente — el pulso le llega `d` ms tarde. En el bus
+> `phaseOverrides` (offset = avance en el runtime) el delay se emite invertido:
+> `offsetMs = (D − (delay mod D)) mod D`.
 
 Cada celda recibe **su propia pista**, con **su propia curva rotada**, apuntada con
 `track.cell = '<aetherNodeId>'`. La fase per-celda se convierte en un problema de *authoring
@@ -284,7 +289,7 @@ offline* — exactamente donde el dogma zero-alloc quiere que esté.
  *      [DECISIÓN ABIERTA D-2: implementar De Casteljau en P4 si se mide artefacto]
  *
  * INVARIANTE: rot(C, 0) === C, byte a byte. Property test obligatorio.
- * INVARIANTE: ∀τ, |rot(C,d)(τ) − C((τ+d) mod D)| < 1e-6. Property test obligatorio.
+ * INVARIANTE: ∀τ, |rot(C,d)(τ) − C((τ−d) mod D)| < 1e-6. Property test obligatorio.
  */
 export function rotateCurveCyclic(curve: HephCurve, delayMs: number, durationMs: number): HephCurve
 ```
@@ -688,7 +693,7 @@ Hay margen. El límite práctico se alcanza antes por legibilidad del clip en Fo
 
 ### 8.5 Verificación del compilador (obligatoria antes de dar P4 por bueno)
 
-1. **Property test de rotación:** `rot(C,0) === C` byte a byte; `|rot(C,d)(τ) − C((τ+d)%D)| < 1e-6`
+1. **Property test de rotación:** `rot(C,0) === C` byte a byte; `|rot(C,d)(τ) − C((τ−d)%D)| < 1e-6`
    evaluado con el **`CurveEvaluator` de producción**, no con una reimplementación.
 2. **Round-trip Λ:** para un campo aleatorio, compilar → evaluar con `evaluateFixtureParams` →
    comparar contra el campo objetivo. Error máximo ≤ 1 nivel de cuantización.

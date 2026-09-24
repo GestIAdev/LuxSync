@@ -236,6 +236,11 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
       tracks: [],
       staticParams: {},
       schemaVersion: '3.0',
+      // 🜨 WAVE 8205 (M1): el clip "Untitled" nace con pasaporte
+      // cognitivo — diseñar en Asteria y guardar ya no produce un
+      // clip invisible para Selene (el Diplomat clampea a G4 en
+      // export; aquí vive el rango completo editable).
+      cognitiveDNA: { ...DEFAULT_COGNITIVE_DNA } as CognitiveDNA,
     } as HephAutomationClipV3,
     selection: { activeTrackId: null, selectedKeyframeIndices: new Set(), playheadMs: 0 },
     viewport: { zoom: 1, scrollX: 0, laneHeight: 120 },

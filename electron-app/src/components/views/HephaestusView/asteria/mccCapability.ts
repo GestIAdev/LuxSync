@@ -25,4 +25,4 @@ export const MCC_CELL_AVAILABLE = true
 
 /** Tooltip honesto cuando MCC-Cell no está disponible (§T7 verbatim). */
 export const MCC_CELL_UNAVAILABLE_TOOLTIP =
-  'Independencia por celda: requiere WAVE 8040. Usando agrupación por zona.'
+  'Per-cell independence: requires WAVE 8040. Falling back to zone grouping.'

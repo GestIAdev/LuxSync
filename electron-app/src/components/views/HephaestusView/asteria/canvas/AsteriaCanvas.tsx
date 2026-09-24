@@ -326,11 +326,11 @@ export const AsteriaCanvas: React.FC<{
       {rigDrift && !driftReadOnly && (
         <div className="asteria-drift-banner" role="alert">
           <div className="asteria-drift-banner__title">
-            ⚠ El rig ha cambiado
+            ⚠ Rig changed
           </div>
           <div className="asteria-drift-banner__body">
-            {rigDrift.missing.length} nodos de esta pila ya no existen ·{' '}
-            {rigDrift.unassigned.length} nodos nuevos sin asignar
+            {rigDrift.missing.length} stack nodes no longer exist ·{' '}
+            {rigDrift.unassigned.length} new nodes unassigned
           </div>
           <div className="asteria-drift-banner__actions">
             <button
@@ -338,21 +338,21 @@ export const AsteriaCanvas: React.FC<{
               className="asteria-drift-btn asteria-drift-btn--primary"
               onClick={resolveDriftRemap}
             >
-              Remapear por proximidad
+              Remap by proximity
             </button>
             <button
               type="button"
               className="asteria-drift-btn"
               onClick={resolveDriftDiscard}
             >
-              Descartar huérfanos
+              Discard orphans
             </button>
             <button
               type="button"
               className="asteria-drift-btn"
               onClick={() => setDriftReadOnly(true)}
             >
-              Solo lectura
+              Read only
             </button>
           </div>
         </div>
@@ -361,10 +361,10 @@ export const AsteriaCanvas: React.FC<{
         <button
           type="button"
           className="asteria-drift-chip"
-          title="Proyecto en solo lectura — compilación y gestos bloqueados. Clic para resolver el drift."
+          title="Read-only project — compilation and gestures locked. Click to resolve the drift."
           onClick={() => setDriftReadOnly(false)}
         >
-          🔒 SOLO LECTURA · rig drift pendiente
+          🔒 READ ONLY · pending rig drift
         </button>
       )}
 

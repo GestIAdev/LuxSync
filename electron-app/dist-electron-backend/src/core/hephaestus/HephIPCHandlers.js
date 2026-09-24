@@ -21,6 +21,8 @@ import { LfxFileLoader } from '../arsenal/LfxFileLoader';
 import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
 import { getHephaestusClipIndex } from './HephaestusClipIndex';
 import { getHephaestusRuntime } from '../orchestrator/IPCHandlers';
+import { prepareClipForExport } from './exportSanitizer';
+import { evaluateGates } from './gateEvaluators';
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -42,8 +44,25 @@ export function setupHephIPCHandlers() {
     const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry());
     ipcMain.handle('heph:save', async (_event, clipData) => {
         console.log('[HephIPC] Save clip:', clipData.name);
+        // 🜨 WAVE 8201 (M3): última línea de defensa — el renderer ya sanea y
+        // evalúa gates, pero cualquier payload que llegue por otro canal (o un
+        // renderer que bypassee el Diplomat) se sanea aquí y se RECHAZA si aún
+        // falla gates. Nada no-V3-estricto toca `userData/arsenal`.
+        const { clip: prepared, notes } = prepareClipForExport(clipData);
+        if (notes.length > 0) {
+            console.info('[HephIPC] 🜨 ExportSanitizer:', notes);
+        }
+        const fails = evaluateGates(prepared).filter(g => g.status === 'fail');
+        if (fails.length > 0) {
+            const detail = fails.map(g => `${g.id}: ${g.description}`).join(' · ');
+            console.error(`[HephIPC] 🛡 Save REJECTED — ${fails.length} gate(s) failing post-sanitize:`, fails);
+            return {
+                success: false,
+                error: `Safety gates failing — ${detail}`,
+            };
+        }
         try {
-            const filePath = await hephFileIO.saveClip(clipData);
+            const filePath = await hephFileIO.saveClip(prepared);
             // ⚒️ WAVE 7034: Hot-register in DynamicEffectRegistry so Selene IA
             // can see the clip immediately without requiring a restart.
             // If the clip has no cognitiveDNA, registerEffectV3 returns null
@@ -63,7 +82,7 @@ export function setupHephIPCHandlers() {
             return {
                 success: true,
                 filePath,
-                id: clipData.id,
+                id: prepared.id,
             };
         }
         catch (error) {

@@ -186,11 +186,39 @@ describe('M2 · Pasaporte Selene', () => {
     expect(s.length).toBeGreaterThan(0)
   })
 
-  test('sin cognitiveDNA → no se inventa (Hephaestus-only honesto)', () => {
-    const c = clip({ cognitiveDNA: undefined })
+  test('sin cognitiveDNA y sin Asteria → no se inventa (Hephaestus-only honesto)', () => {
+    const c = clip({
+      cognitiveDNA: undefined,
+      tracks: [track('dimmer_manual', ['front'])], // track Forge, no ast_*
+    })
     const { clip: out, notes } = prepareClipForExport(c)
     expect(out.cognitiveDNA).toBeUndefined()
     expect(notes.some((n) => n.includes('NO_DNA'))).toBe(true)
+  })
+
+  // ── WAVE 8205 (M2): inyección de pasaporte para clips Asteria ──
+  test('tracks ast_* sin DNA → pasaporte Selene inyectado (G4-safe)', () => {
+    const c = clip({ cognitiveDNA: undefined }) // fixture lleva ast_dimmer_x
+    const { clip: out, notes } = prepareClipForExport(c)
+    expect(out.cognitiveDNA).toBeDefined()
+    expect(out.cognitiveDNA!.compatibleVibes).toEqual(['chill-lounge'])
+    expect(out.cognitiveDNA!.visibility).toBe('manual_only')
+    expect(out.cognitiveDNA!.energyZone).toEqual({ min: 'gentle', max: 'active' })
+    expect(out.cognitiveDNA!.validSections.length).toBeGreaterThan(0)
+    expect(out.vibeCompat).toEqual(['chill-lounge'])
+    expect(notes.some((n) => n.includes('inyectado'))).toBe(true)
+    expect(FAILING(out)).toEqual([]) // pasa TODOS los gates post-inyección
+  })
+
+  test('envelope clip.asteria sin tracks ast_* → también inyecta', () => {
+    const c = clip({
+      cognitiveDNA: undefined,
+      tracks: [track('dimmer_manual', ['front'])],
+      asteria: {} as never, // receta presente, tracks compilados ausentes
+    })
+    const { clip: out } = prepareClipForExport(c)
+    expect(out.cognitiveDNA).toBeDefined()
+    expect(out.cognitiveDNA!.visibility).toBe('manual_only')
   })
 })
 

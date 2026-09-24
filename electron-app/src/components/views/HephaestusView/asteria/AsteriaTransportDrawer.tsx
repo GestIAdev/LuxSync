@@ -1,31 +1,35 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🜨 ASTERIA TRANSPORT DRAWER — WAVE 8150-F2: VISUALIZADOR INTEGRADO
+ * 🜨 ASTERIA TRANSPORT BAR — WAVE 8150-F2 → WAVE 8203 (M1)
  *
- * Panel de transporte superpuesto en la parte inferior del lienzo táctico
- * (Ruta A de la auditoría 8150-F1: overlay absoluto, el canvas no se
- * re-geometriza). Montado como hijo de <AsteriaCanvas> dentro de
- * `.asteria-canvas-host`.
+ * Barra de transporte permanente en la parte inferior del lienzo táctico
+ * (overlay absoluto dentro de `.asteria-canvas-host`, hijo de
+ * <AsteriaCanvas>). WAVE 8203: los controles salen del drawer colapsable —
+ * Play/Pause, Stop y Loop viven anclados a la izquierda de la timeline,
+ * accesibles a 0 clics, con área táctil generosa. La propia línea de
+ * tiempo ES el scrubber (input range transparente sobre la aguja).
  *
- *   Colapsado (24px): tira de progreso + aguja viva + botón ▲ PREVIEW.
- *   Expandido (72px): ▶ ⏸ ⏹ + scrubber range + readout de tiempo.
+ *   ┌─[▶|⏸]─[⏹]─[🔁]──0:04.20 / 0:12.00──┬────────●─────────────┬─[BUDGET]─┐
  *
  * ZERO-ALLOC DEL PLAYHEAD (M2): un RAF local lee `previewDataRef.current`
  * cada frame y escribe el DOM por ref (left/textContent/value) — el hook
  * actualiza ese ref a 44 Hz SIN setState (useHephPreview P2#3), así que
- * suscribir React al playhead lo congelaría. React solo ve `isPlaying`
- * (transiciones raras) y `durationMs` (cambia con el documento).
+ * suscribir React al playhead lo congelaría. React solo ve `isPlaying`,
+ * `loop` (transiciones raras) y `durationMs` (cambia con el documento).
  *
  * El scrubber llama `preview.seek(ms)` → escribe `previewDataRef` →
  * `FeedbackLayer` ya hace fallback a esos fixtures (WAVE 8070-M3): mover
  * la aguja ilumina el lienzo inmediatamente. Bucle ya cerrado.
  *
+ * WAVE 8203 (M2): el detalle de warnings del compilador ya NO vive aquí —
+ * se cuarentenó al `CompileLogDock` del rail (jamás tapa el canvas).
+ *
  * @module HephaestusView/asteria/AsteriaTransportDrawer
- * @version WAVE 8150-F2
+ * @version WAVE 8203
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import type { HephPreviewReturn } from '../useHephPreview'
 import { useHephaestusEditorStore } from '../../../../core/hephaestus/store/useHephaestusEditorStore'
 import { useAsteriaStore } from './store/useAsteriaStore'
@@ -44,9 +48,9 @@ function fmtMs(ms: number): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 🜨 WAVE 8181 (M1): HUD BUDGET — el bloque COMPILE del rail se mudó aquí,
-// a la barra inferior que el blueprint §6.2 reservó para el presupuesto.
-// Umbrales §8.4: <40 % verde · 40-70 % ámbar · >70 % rojo.
+// 🜨 WAVE 8181 (M1): HUD BUDGET — heredero del bloque COMPILE que el
+// blueprint §6.2 reservó para la barra inferior. Umbrales §8.4:
+// <40 % verde · 40-70 % ámbar · >70 % rojo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Límite del archivo .lfx — LfxFileLoader.ts:66 (blueprint §10). */
@@ -66,7 +70,7 @@ function budgetClass(pct: number): string {
   return 'asteria-budget--green'
 }
 
-/** Readout compacto del presupuesto — vive en la tira colapsada. */
+/** Readout compacto del presupuesto — anclado a la derecha de la barra. */
 const BudgetHud: React.FC = () => {
   const report = useAsteriaStore((s) => s.lastCompileReport)
   if (!report) return null
@@ -76,9 +80,9 @@ const BudgetHud: React.FC = () => {
     <div
       className={`asteria-budget ${cls}`}
       title={
-        `BUDGET — ${report.trackIds.length} pista(s) · ` +
+        `BUDGET — ${report.trackIds.length} track(s) · ` +
         `${report.keyframeCount} kf · ${report.overrideCount} overrides · ` +
-        `${report.nodesCovered} nodos · ${report.devicesTargeted} fixtures` +
+        `${report.nodesCovered} nodes · ${report.devicesTargeted} fixtures` +
         (report.warnings.length > 0
           ? `\n${report.warnings.join('\n')}`
           : '')
@@ -104,32 +108,9 @@ const BudgetHud: React.FC = () => {
   )
 }
 
-/** Detalle del presupuesto — fila extra dentro del panel expandido. */
-const BudgetDetail: React.FC = () => {
-  const report = useAsteriaStore((s) => s.lastCompileReport)
-  if (!report) return null
-  const pct = report.bytes / LFX_MAX_BYTES
-  return (
-    <div className={`asteria-transport__budgetDetail ${budgetClass(pct)}`}>
-      <span className="asteria-transport__budgetStats">
-        {STRATEGY_TAG[report.strategy] ?? report.strategy} ·{' '}
-        {report.trackIds.length} pista(s) · {report.keyframeCount} kf ·{' '}
-        {report.overrideCount} offsets · {report.nodesCovered} nodos ·{' '}
-        {report.devicesTargeted} fixtures · {(report.bytes / 1024).toFixed(1)} KB
-      </span>
-      {report.warnings.map((w) => (
-        <div key={w} className="asteria-transport__warn">
-          ⚠ {w}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export const AsteriaTransportDrawer: React.FC<AsteriaTransportDrawerProps> = ({
   preview,
 }) => {
-  const [open, setOpen] = useState(false)
   const durationMs = useHephaestusEditorStore((s) => s.clip?.durationMs ?? 0)
   const isPlaying = preview.isPlaying // transición rara — suscripción segura
 
@@ -177,80 +158,75 @@ export const AsteriaTransportDrawer: React.FC<AsteriaTransportDrawerProps> = ({
   if (durationMs <= 0) return null
 
   return (
-    <div
-      className={`asteria-transport${open ? ' asteria-transport--open' : ''}`}
-      aria-label="Clip transport"
-    >
-      {/* ── Tira colapsada: progreso + aguja viva (siempre visible) ── */}
+    <div className="asteria-transport" aria-label="Clip transport">
       <div className="asteria-transport__strip">
+        {/* ── 🜨 WAVE 8203 (M1): controles anclados — 0 clics, siempre
+            visibles, área táctil generosa ── */}
+        <div className="asteria-transport__buttons">
+          <button
+            type="button"
+            className="asteria-transport__btn asteria-transport__btn--play"
+            title={isPlaying ? 'Pause' : 'Play'}
+            onClick={isPlaying ? preview.pause : preview.play}
+          >
+            {isPlaying ? '⏸' : '▶'}
+          </button>
+          <button
+            type="button"
+            className="asteria-transport__btn"
+            title="Stop — playhead to 0"
+            onClick={preview.stop}
+          >
+            ⏹
+          </button>
+          <button
+            type="button"
+            className={`asteria-transport__btn asteria-transport__btn--loop ${preview.loop ? 'active' : ''}`}
+            title={
+              preview.loop
+                ? 'Loop ON — wraps at clip end'
+                : 'Loop OFF — stops at clip end'
+            }
+            onClick={() => preview.setLoop(!preview.loop)}
+          >
+            🔁
+          </button>
+        </div>
+
+        <span ref={timeRef} className="asteria-transport__time" />
+
+        {/* ── Timeline = scrubber: la aguja dibuja el progreso; un range
+            transparente a tamaño completo captura el drag (0 clics) ── */}
         <div className="asteria-transport__track">
           <div ref={needleRef} className="asteria-transport__needle" />
+          <input
+            ref={rangeRef}
+            type="range"
+            className="asteria-transport__scrubInput"
+            min={0}
+            max={durationMs}
+            step={1}
+            defaultValue={0}
+            onPointerDown={() => {
+              draggingRef.current = true
+            }}
+            onPointerUp={() => {
+              draggingRef.current = false
+            }}
+            onPointerCancel={() => {
+              draggingRef.current = false
+            }}
+            onBlur={() => {
+              draggingRef.current = false
+            }}
+            onChange={handleScrub}
+            aria-label="Clip playhead"
+          />
         </div>
-        <button
-          type="button"
-          className="asteria-transport__toggle"
-          title={open ? 'Ocultar transporte' : 'Transporte del clip — play / scrub'}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? '▼' : '▲ PREVIEW'}
-        </button>
-        {/* 🜨 WAVE 8181 (M1): HUD BUDGET — siempre visible en la tira,
-            heredero del bloque COMPILE que ocupaba el rail (§6.2). */}
+
+        {/* 🜨 HUD BUDGET — siempre visible, a la derecha de la barra */}
         <BudgetHud />
       </div>
-
-      {/* ── Panel expandido: transporte + scrubber ── */}
-      {open && (
-        <div className="asteria-transport__panel">
-          <div className="asteria-transport__buttons">
-            <button
-              type="button"
-              className="asteria-transport__btn"
-              title={isPlaying ? 'Pause' : 'Play'}
-              onClick={isPlaying ? preview.pause : preview.play}
-            >
-              {isPlaying ? '⏸' : '▶'}
-            </button>
-            <button
-              type="button"
-              className="asteria-transport__btn"
-              title="Stop — playhead a 0"
-              onClick={preview.stop}
-            >
-              ⏹
-            </button>
-            <span ref={timeRef} className="asteria-transport__time" />
-          </div>
-          <div className="asteria-transport__scrub">
-            <input
-              ref={rangeRef}
-              type="range"
-              className="asteria-transport__range"
-              min={0}
-              max={durationMs}
-              step={1}
-              defaultValue={0}
-              onPointerDown={() => {
-                draggingRef.current = true
-              }}
-              onPointerUp={() => {
-                draggingRef.current = false
-              }}
-              onPointerCancel={() => {
-                draggingRef.current = false
-              }}
-              onBlur={() => {
-                draggingRef.current = false
-              }}
-              onChange={handleScrub}
-              aria-label="Clip playhead"
-            />
-          </div>
-          {/* Detalle del presupuesto + warnings — el bloque COMPILE
-              del rail, reubicado bajo el transporte (§6.2). */}
-          <BudgetDetail />
-        </div>
-      )}
     </div>
   )
 }

@@ -92,6 +92,15 @@ function evaluateColorTrack(track, evaluator, timeMs, intensityMod) {
  */
 export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, timeMs, clipIntensity = 1.0, perTrackTimeMs) {
     const numeric = new Map();
+    // 🜨 WAVE 8196 — CELL-AWARE BLEND SLOTS (Preview Squelch fix):
+    // parity with the runtime's `blendSuffix = ':paramId#cell'`. A track
+    // with `cell` blends in its OWN slot — two surgical tracks on the same
+    // paramId never collapse into each other. Tracks without cell share the
+    // legacy `paramId` slot (identical to pre-8196 behavior). The fixture-
+    // level readout in `numeric` is LTP: the last track in array order
+    // that writes the param wins the fixture's single-channel display value
+    // — same consolidation rule the NodeArbiter applies downstream.
+    const numericSlots = new Map();
     // 🧬 AUDIT R.2 FIX: Color tracks are keyed by paramId — same as the
     // runtime's _blendMap (fixtureId:paramName). This ensures that:
     //   1. Two color tracks with the SAME paramId blend in array order
@@ -100,8 +109,10 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
     //      (matching runtime's separate outputBuffer entries).
     // The final color is resolved via LTP (last paramId written wins),
     // mirroring how the NodeArbiter consolidates multiple color intents.
+    // 🜨 8196: same cell-aware slotting — key = 'paramId#cell' for surgical
+    // tracks, plain 'paramId' for zone tracks.
     const colorMap = new Map();
-    let lastColorParam = null;
+    let lastColorKey = null;
     // Pre-resolve intensity track for color luminance modulation
     let cachedIntensityMod = null;
     for (const track of applicableTracks) {
@@ -125,7 +136,8 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
             const rgb = evaluateColorTrack(track, evaluator, t, cachedIntensityMod);
             if (!rgb)
                 continue;
-            const existing = colorMap.get(paramId);
+            const cKey = track.cell !== undefined ? `${paramId}#${track.cell}` : paramId;
+            const existing = colorMap.get(cKey);
             if (existing) {
                 const mode = track.blendMode ?? 'replace';
                 const [nr, ng, nb] = blendRgb(existing.r, existing.g, existing.b, rgb.r, rgb.g, rgb.b, mode);
@@ -134,28 +146,33 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
                 existing.b = nb;
             }
             else {
-                colorMap.set(paramId, { r: rgb.r, g: rgb.g, b: rgb.b });
+                colorMap.set(cKey, { r: rgb.r, g: rgb.g, b: rgb.b });
             }
-            lastColorParam = paramId;
+            lastColorKey = cKey;
             continue;
         }
-        // Numeric track
+        // Numeric track — 🜨 8196: slot key incluye cell (paridad runtime
+        // `blendSuffix ':paramId#cell'`); el readout `numeric` es LTP por
+        // paramId (la última pista que escribe el parámetro gana el display
+        // del fixture — igual que NodeArbiter consolida por canal).
         const raw = evaluator.getValue(paramId, t);
         const adjusted = raw * clipIntensity;
-        if (numeric.has(paramId)) {
-            const existing = numeric.get(paramId);
+        const nKey = track.cell !== undefined ? `${paramId}#${track.cell}` : paramId;
+        if (numericSlots.has(nKey)) {
+            const existing = numericSlots.get(nKey);
             const mode = track.blendMode ?? defaultBlendMode(paramId);
-            numeric.set(paramId, blendNumeric(existing, adjusted, mode));
+            numericSlots.set(nKey, blendNumeric(existing, adjusted, mode));
         }
         else {
-            numeric.set(paramId, adjusted);
+            numericSlots.set(nKey, adjusted);
         }
+        numeric.set(paramId, numericSlots.get(nKey));
     }
-    // Resolve final color via LTP (last paramId written wins, same as NodeArbiter)
+    // Resolve final color via LTP (last slot written wins, same as NodeArbiter)
     let cr = 0, cg = 0, cb = 0;
     let hasColor = false;
-    if (lastColorParam) {
-        const c = colorMap.get(lastColorParam);
+    if (lastColorKey) {
+        const c = colorMap.get(lastColorKey);
         cr = c.r;
         cg = c.g;
         cb = c.b;

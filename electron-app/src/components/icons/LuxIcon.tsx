@@ -47,6 +47,17 @@ import {
   StrobeIcon,
   LaserIcon,
   PrismIcon,
+  // Asteria toolbox (WAVE 8204 — Luxicons Strict Mode)
+  FocusIcon,
+  LoopIcon,
+  TrendUpIcon,
+  WaveFxIcon,
+  ClockIcon,
+  TagIcon,
+  SpectrumBarsIcon,
+  ZoomIcon,
+  ThermoColorIcon,
+  ZapIcon,
 } from './LuxIcons'
 
 // ─── REGISTRO DE NOMBRES ──────────────────────────────────────────────────────
@@ -96,6 +107,25 @@ const ICON_MAP = {
   strobe:         StrobeIcon,
   laser:          LaserIcon,
   prism:          PrismIcon,
+
+  // ── Asteria toolbox (WAVE 8204) — slugs por semántica de herramienta ──
+  cursor:         FocusIcon,          // select: crosshair de adquisición
+  lasso:          LoopIcon,           // lazo cerrado
+  radial:         TargetIcon,         // anillos concéntricos
+  polygon:        PrismIcon,          // polígono angular
+  line:           TrendUpIcon,        // segmento diagonal
+  wavefront:      WaveFxIcon,         // frentes de onda paralelos
+  chrono:         ClockIcon,          // tiempo / brush temporal
+  glyph:          TagIcon,            // sello de texto
+  text:           TagIcon,
+  slicer:         SpectrumBarsIcon,   // cortes verticales
+  noise:          AudioWaveIcon,      // campo de ruido (barras caóticas)
+  surgeon:        ZoomIcon,           // bisturí celular = inspección
+  cell:           ZoomIcon,
+  heat:           ThermoColorIcon,    // mapa térmico
+  thermo:         ThermoColorIcon,
+  poke:           ZapIcon,            // descarga física L3++
+  zap:            ZapIcon,
 } as const
 
 export type LuxIconName = keyof typeof ICON_MAP

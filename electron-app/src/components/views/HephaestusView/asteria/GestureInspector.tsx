@@ -162,7 +162,7 @@ export const GestureInspector: React.FC = () => {
       <div className="asteria-rail__section">
         <div className="asteria-rail__title">INSPECTOR</div>
         <div className="asteria-rail__muted">
-          selecciona una capa del stack para editar sus parámetros
+          select a stack layer to edit its parameters
         </div>
         {/* 🜨 WAVE 8184 (M2): STRATEGY es de proyecto — visible siempre */}
         <StrategyRows />
@@ -195,6 +195,11 @@ export const GestureInspector: React.FC = () => {
         {gesture.id}
         {maskCount !== null && ` · ${maskCount}n`}
       </div>
+
+      {/* 🜨 WAVE 8203 (M3): CARD UI — la superficie paramétrica del
+          gesto en su propio panel discreto (herramientas base) */}
+      <section className="asteria-card">
+        <div className="asteria-card__title">GESTURE</div>
 
       {/* ── OP de mezcla (todos los gestos enmascarados) ── */}
       {gesture.kind !== 'base' && gesture.kind !== 'manual' && (
@@ -229,13 +234,13 @@ export const GestureInspector: React.FC = () => {
           <NumRow
             label="SPEED" unit=" m/s" min={0.5} max={40} step={0.5}
             value={gesture.speedMps} disabled={ro}
-            title="Velocidad del frente — delay = distancia / speed"
+            title="Wavefront speed — delay = distance / speed"
             onChange={(v) => patch({ speedMps: v })}
           />
           <NumRow
             label="FALLOFF" unit=" m" min={0} max={20} step={0.25}
             value={gesture.falloffM ?? 0} disabled={ro}
-            title="Atenúa gain con la distancia — 0 = sin falloff"
+            title="Distance-based gain attenuation — 0 = no falloff"
             onChange={(v) =>
               patch({ falloffM: v <= 0 ? undefined : v })
             }
@@ -256,30 +261,30 @@ export const GestureInspector: React.FC = () => {
           <NumRow
             label="RADIUS" unit=" m" min={0.05} max={2} step={0.05}
             value={gesture.radiusM} disabled={ro}
-            title="Ancho del pincel — nodos a ≤ radiusM del trazo"
+            title="Brush width — nodes within ≤ radiusM of the stroke"
             onChange={(v) => patch({ radiusM: v })}
           />
           <NumRow
             label="T·SCALE" unit="×" min={0.25} max={4} step={0.05}
             value={gesture.timeScale ?? 1} disabled={ro}
-            title="Escala temporal — >1 estira el chase, <1 lo comprime"
+            title="Time scale — >1 stretches the chase, <1 compresses it"
             onChange={(v) => patch({ timeScale: v })}
           />
           <CheckRow
-            label="INVERT — el final del trazo dispara primero"
+            label="Reverse direction"
             checked={gesture.invert === true} disabled={ro}
             onChange={(v) => patch({ invert: v || undefined })}
           />
           <CheckRow
-            label="REALTIME — tempo del arrastre (off = arc-length)"
+            label="Capture velocity (off = arc-length)"
             checked={gesture.captureRealTime} disabled={ro}
             onChange={(v) => patch({ captureRealTime: v })}
           />
           <div className="asteria-rail__muted">
             {gesture.stroke.length} pts ·{' '}
             {gesture.stroke.length > 0
-              ? `${gesture.stroke[gesture.stroke.length - 1].tMs} ms capturados`
-              : 'trazo vacío'}
+              ? `${gesture.stroke[gesture.stroke.length - 1].tMs} ms captured`
+              : 'empty stroke'}
           </div>
         </>
       )}
@@ -308,7 +313,7 @@ export const GestureInspector: React.FC = () => {
           <NumRow
             label="SCALE" unit=" m" min={0.3} max={12} step={0.1}
             value={gesture.transform.scaleM} disabled={ro}
-            title="Alto del texto en metros (7 filas de la fuente 5×7)"
+            title="Text height in meters (7 rows of the 5×7 font)"
             onChange={(v) =>
               patch({ transform: { ...gesture.transform, scaleM: v } })
             }
@@ -321,17 +326,17 @@ export const GestureInspector: React.FC = () => {
             }
           />
           <CheckRow
-            label="ANTIALIAS — cobertura bilinear (off = muestreo duro)"
+            label="Bilinear antialiasing"
             checked={gesture.antialias} disabled={ro}
             onChange={(v) => patch({ antialias: v })}
           />
           <CheckRow
-            label="INVERT — el texto bloquea la luz (negro sobre blanco)"
+            label="Invert mask (stencil)"
             checked={gesture.invert === true} disabled={ro}
             onChange={(v) => patch({ invert: v || undefined })}
           />
           <CheckRow
-            label="THRESHOLD — meseta dura {0,1}"
+            label="Hard threshold (binary)"
             checked={gesture.threshold !== undefined} disabled={ro}
             onChange={(v) =>
               patch({ threshold: v ? 0.5 : undefined })
@@ -380,7 +385,7 @@ export const GestureInspector: React.FC = () => {
             onChange={(v) => patch({ symmetry: v })}
           />
           <CheckRow
-            label="SHUFFLE — hash PhaseConfigPro (paridad Phase Canvas)"
+            label="Shuffle (PhaseConfigPro hash)"
             checked={gesture.shuffleSeed !== undefined} disabled={ro}
             onChange={(v) => patch({ shuffleSeed: v ? 42 : undefined })}
           />
@@ -405,7 +410,7 @@ export const GestureInspector: React.FC = () => {
           <NumRow
             label="SCALE" unit=" m" min={0.1} max={10} step={0.1}
             value={gesture.scaleM} disabled={ro}
-            title="Tamaño del grano en metros"
+            title="Grain size in meters"
             onChange={(v) => patch({ scaleM: v })}
           />
           <NumRow
@@ -428,8 +433,8 @@ export const GestureInspector: React.FC = () => {
       {/* ── MANUAL ── */}
       {gesture.kind === 'manual' && (
         <div className="asteria-rail__muted">
-          {gesture.entries.length} entries — edición celular vía Cell
-          Surgeon (✜ doble clic sobre el fixture)
+          {gesture.entries.length} entries — cellular editing via Cell
+          Surgeon (✜ double-click a fixture)
         </div>
       )}
 
@@ -445,12 +450,13 @@ export const GestureInspector: React.FC = () => {
           disabled={ro}
           title={
             gesture.kind === 'glyph' && gesture.channel === 'delay'
-              ? 'El glifo barre en canal DELAY — gain no aplica'
-              : 'Gain estampado por esta capa sobre los nodos cubiertos'
+              ? 'Glyph sweeps the DELAY channel — gain does not apply'
+              : 'Gain stamped by this layer over covered nodes'
           }
           onChange={(v) => patch({ gain: v / 100 })}
         />
       )}
+      </section>
 
       {/* 🜨 WAVE 8194: PAINT — pintura por capa (Crux 2). `paint`
           undefined → hereda defaultPaint entero; con paint, cada campo
@@ -499,20 +505,11 @@ const PaintRows: React.FC<{
 
   return (
     <>
-      <div className="asteria-insp__divider" />
-      <div className="asteria-rail__title asteria-insp__strategy">
-        PAINT
-      </div>
-      <CheckRow
-        label="INHERIT — toda la pintura del DEFAULT PAINT"
-        checked={paint === undefined}
-        disabled={ro}
-        title="ON = la capa hereda defaultPaint completo; OFF = esta capa puede sobreescribir params/color/opacity"
-        onChange={(v) => patch({ paint: v ? undefined : {} })}
-      />
+      <section className="asteria-card">
+        <div className="asteria-card__title">PAINT</div>
       <div
         className="asteria-insp__row"
-        title="Parámetros que esta capa pinta — los planos escalares (y el plano de color) que reciben su geometría"
+        title="Parameters painted by this layer — the scalar planes (and the color plane) receiving its geometry"
       >
         <span className="asteria-insp__label">PARAMS</span>
         <div
@@ -535,7 +532,7 @@ const PaintRows: React.FC<{
       {effParams.includes('color') && (
         <label
           className="asteria-insp__row"
-          title="Color que esta capa vierte en el plano de color (sRGB — la mezcla se hace en RGB lineal)"
+          title="Color this layer pours into the color plane (sRGB — blending happens in linear RGB)"
         >
           <span className="asteria-insp__label">COLOR</span>
           <input
@@ -558,11 +555,12 @@ const PaintRows: React.FC<{
         step={1}
         value={Math.round(effOpacity * 100)}
         disabled={ro}
-        title="Cobertura de la capa sobre el lienzo de color — 0 % = transparente (el nodo conserva el color base de Selene)"
+        title="Layer coverage over the color canvas — 0% = transparent (the node keeps Selene's base color)"
         onChange={(v) =>
           patch({ paint: { ...(paint ?? {}), opacity: v / 100 } })
         }
       />
+      </section>
       {/* 🜨 WAVE 8195 (§4.5): SYNTH — la forma de onda ES de la capa.
           SOURCE: SYNTH (envelope local) o RIDE → pista Forge. */}
       <SynthRows gesture={gesture} patch={patch} ro={ro} />
@@ -613,14 +611,11 @@ const SynthRows: React.FC<{
     })
 
   return (
-    <>
-      <div className="asteria-insp__divider" />
-      <div className="asteria-rail__title asteria-insp__strategy">
-        SYNTH
-      </div>
+    <section className="asteria-card">
+      <div className="asteria-card__title">SYNTH</div>
       <label
         className="asteria-insp__row"
-        title="Fuente de la forma de onda de esta capa — SYNTH sintetiza la envolvente local; RIDE clona la curva de una pista Forge y emite solo retardos (phaseOverrides)"
+        title="Waveform source for this layer — SYNTH synthesizes the local envelope; RIDE clones a Forge track curve and emits delays only (phaseOverrides)"
       >
         <span className="asteria-insp__label">SOURCE</span>
         <select
@@ -648,14 +643,14 @@ const SynthRows: React.FC<{
               estado real en lugar de fingir SYNTH */}
           {rideMissing && riding && (
             <option value={lut.trackId}>
-              ⚠ {lut.trackId} (pista perdida)
+              ⚠ {lut.trackId} (track lost)
             </option>
           )}
         </select>
       </label>
       {rideMissing && (
         <div className="asteria-rail__warn">
-          ⚠ RIDE_SOURCE_MISSING — el compilador cae al synth local
+          ⚠ RIDE_SOURCE_MISSING — compiler falls back to local synth
         </div>
       )}
       {!riding && (
@@ -666,7 +661,7 @@ const SynthRows: React.FC<{
               className="asteria-insp__select"
               value={synth.shape}
               disabled={ro}
-              title="Forma de onda que el compilador sintetiza como curva base de los tracks de esta capa — PULSE es el trapezoide Λ clásico; LASER es un pulso ultra-estrecho de flancos duros"
+              title="Waveform the compiler synthesizes as the base curve of this layer's tracks — PULSE is the classic Λ trapezoid; LASER is an ultra-narrow hard-edge pulse"
               onChange={(e) =>
                 setSynth({ shape: e.target.value as SynthShape })
               }
@@ -687,7 +682,7 @@ const SynthRows: React.FC<{
             step={1}
             value={Math.round(synth.duty * 100)}
             disabled={ro}
-            title="Anchura del pulso dentro del ciclo — dónde cae el flanco de bajada"
+            title="Pulse width within the cycle — where the falling edge lands"
             onChange={(v) => setSynth({ duty: v / 100 })}
           />
           <NumRow
@@ -698,12 +693,12 @@ const SynthRows: React.FC<{
             step={1}
             value={Math.round(synth.edge * 100)}
             disabled={ro}
-            title="Dureza de los flancos — 100 % = ε=1 ms (duro); menos ablanda los hold/ε a rampas"
+            title="Edge hardness — 100% = ε=1 ms (hard); lower values soften hold/ε into ramps"
             onChange={(v) => setSynth({ edge: v / 100 })}
           />
         </>
       )}
-    </>
+    </section>
   )
 }
 
@@ -769,12 +764,9 @@ const StrategyRows: React.FC = () => {
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
 
   return (
-    <>
-      <div className="asteria-insp__divider" />
-      <div className="asteria-rail__title asteria-insp__strategy">
-        STRATEGY
-      </div>
-      <label className="asteria-insp__row" title="Estrategia de compilación del campo — sesgo del planner, no forma de onda. AUTO elige por el árbol; Λ una pista+offsets; COHORT cubos por gain; MCC-CELL pista por celda; MCC-DEVICE cohortes + aislamiento quirúrgico cell=nodeId en las que derraman (COHORT_ZONE_SPILL)">
+    <section className="asteria-card">
+      <div className="asteria-card__title">STRATEGY</div>
+      <label className="asteria-insp__row" title="Field compilation strategy — planner bias, not waveform. AUTO picks from the tree; Λ one track+offsets; COHORT gain cubes; MCC-CELL one track per cell; MCC-DEVICE cohorts + surgical cell=nodeId isolation on spills (COHORT_ZONE_SPILL)">
         <span className="asteria-insp__label">COMPILER</span>
         <select
           className="asteria-insp__select"
@@ -791,7 +783,7 @@ const StrategyRows: React.FC = () => {
           <option value="mcc-device">MCC · DEVICE</option>
         </select>
       </label>
-    </>
+    </section>
   )
 }
 
@@ -804,12 +796,12 @@ const GlyphLegibility: React.FC<{
   return (
     <>
       <div className="asteria-rail__muted">
-        {leg.nodesPerMeter.toFixed(1)} nodos/m · {leg.rowsResolved}/7 filas ·{' '}
+        {leg.nodesPerMeter.toFixed(1)} nodes/m · {leg.rowsResolved}/7 rows ·{' '}
         {leg.colsResolved} cols
       </div>
       {!leg.legible && (
         <div className="asteria-rail__warn">
-          ⚠ Resolución subóptima — el texto compila igualmente
+          ⚠ Suboptimal resolution — the text still compiles
         </div>
       )}
     </>

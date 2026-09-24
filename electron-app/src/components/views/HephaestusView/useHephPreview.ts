@@ -260,6 +260,10 @@ export type HephPreviewReturn = HephPreviewState & {
   pause: () => void
   stop: () => void
   seek: (ms: number) => void
+  /** 🜨 WAVE 8203 (M1): LOOP — true envuelve al llegar al final del clip
+      (doctrina histórica); false clava el playhead en durationMs. */
+  loop: boolean
+  setLoop: (on: boolean) => void
   previewDataRef: React.RefObject<HephPreviewData>
 }
 
@@ -292,6 +296,15 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
   const historyBufferRef = useRef<Array<{ timeMs: number; val: number }>>([])
   const lastTickTimeRef = useRef<number>(0)
   const frameCountRef = useRef<number>(0)
+
+  // 🜨 WAVE 8203 (M1): LOOP toggle — el ref alimenta el RAF (cero
+  // stale-closure); el state solo repinta el botón de la UI.
+  const [loop, setLoopState] = useState(true)
+  const loopRef = useRef(true)
+  const setLoop = useCallback((on: boolean) => {
+    loopRef.current = on
+    setLoopState(on)
+  }, [])
 
   // Keep stageFixtures ref current
   useEffect(() => {
@@ -514,9 +527,33 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
 
     // Loop
     if (clipTimeMs >= c.durationMs) {
-      clipTimeMs = clipTimeMs % c.durationMs
-      startRealTimeRef.current = timestamp
-      startClipTimeRef.current = 0
+      if (loopRef.current) {
+        clipTimeMs = clipTimeMs % c.durationMs
+        startRealTimeRef.current = timestamp
+        startClipTimeRef.current = 0
+      } else {
+        // 🜨 WAVE 8203: LOOP off — el playhead se clava en el final del
+        // clip y la reproducción muere aquí (no re-armar el RAF).
+        clipTimeMs = c.durationMs
+        const evs = trackEvaluatorsRef.current
+        const fixtures = evs ? resolveFixtures(c, evs, clipTimeMs) : []
+        previewDataRef.current = {
+          playheadMs: clipTimeMs,
+          progress: 1,
+          fixtures,
+          frameCount: frameCountRef.current,
+          history: historyBufferRef.current,
+        }
+        isPlayingRef.current = false
+        setState((prev) => ({
+          ...prev,
+          playheadMs: clipTimeMs,
+          progress: 1,
+          isPlaying: false,
+          fixtures,
+        }))
+        return
+      }
     }
 
     const evs = trackEvaluatorsRef.current
@@ -554,7 +591,12 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
     // Rebuild per-track evaluators fresh
     trackEvaluatorsRef.current = buildTrackEvaluators(c.tracks, c.durationMs)
     startRealTimeRef.current = performance.now()
-    startClipTimeRef.current = state.playheadMs
+    // 🜨 WAVE 8203: con LOOP off y playhead clavado en el final, un nuevo
+    // Play reinicia desde 0 — si no, moriría en el mismo frame.
+    startClipTimeRef.current =
+      !loopRef.current && state.playheadMs >= c.durationMs
+        ? 0
+        : state.playheadMs
     lastTickTimeRef.current = 0
 
     setState(prev => ({ ...prev, isPlaying: true }))
@@ -640,5 +682,5 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
     }
   }, [])
 
-  return { ...state, play, pause, stop, seek, previewDataRef }
+  return { ...state, play, pause, stop, seek, loop, setLoop, previewDataRef }
 }

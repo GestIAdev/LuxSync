@@ -58,7 +58,7 @@ function describe(g: Gesture): string {
     case 'slice':
       return `${g.axis} · ${g.buckets}×${g.spanMs}ms`
     case 'manual':
-      return `${g.entries.length} nodo(s)`
+      return `${g.entries.length} node(s)`
     case 'noise':
       return `seed ${g.seed} · ±${g.amountMs}ms`
   }
@@ -97,7 +97,7 @@ export const GestureStackPanel: React.FC = () => {
         <button
           type="button"
           className="asteria-stack__reset"
-          title="Deshacer (Ctrl+Z)"
+          title="Undo (Ctrl+Z)"
           disabled={!canUndo}
           onClick={undo}
         >
@@ -106,7 +106,7 @@ export const GestureStackPanel: React.FC = () => {
         <button
           type="button"
           className="asteria-stack__reset"
-          title="Rehacer (Ctrl+Shift+Z / Ctrl+Y)"
+          title="Redo (Ctrl+Shift+Z / Ctrl+Y)"
           disabled={!canRedo}
           onClick={redo}
         >
@@ -115,7 +115,7 @@ export const GestureStackPanel: React.FC = () => {
         <button
           type="button"
           className="asteria-stack__reset"
-          title="Reset pila — vuelve al gesto base identidad"
+          title="Reset stack — restores the identity base gesture"
           disabled={driftReadOnly}
           onClick={resetProject}
         >
@@ -162,7 +162,7 @@ export const GestureStackPanel: React.FC = () => {
               {g.kind === 'base' ? (
                 <span
                   className="asteria-layer__lock"
-                  title="Capa raíz — no se puede eliminar. Bájala a GAIN 0 % para el lienzo negro."
+                  title="Root layer — cannot be deleted. Drop GAIN to 0% for a black canvas."
                 >
                   🔒
                 </span>
@@ -170,7 +170,7 @@ export const GestureStackPanel: React.FC = () => {
                 <button
                   type="button"
                   className="asteria-layer__delete"
-                  title="Eliminar capa (no destructivo — la pila se recompila)"
+                  title="Delete layer (non-destructive — the stack recompiles)"
                   disabled={driftReadOnly}
                   onClick={(e) => {
                     e.stopPropagation()

@@ -2766,12 +2766,17 @@
 
 /* ═══════════════════════════════════════════════════════════════════════════
    🜨 ASTERIA — WAVE 8010-P1: LIENZO TÁCTICO (Pixel Mapper)
-   Layout: toolbox 56px | canvas 1fr | gesture-stack rail 260px
+   Layout: canvas 1fr (toolbox = HUD flotante) | gesture-stack rail 380px
+   WAVE 8202: rail ensanchado (ergonomía del inspector) + paleta
+   "The Astral Void" — violeta eléctrico #a855f7 / lavanda #c084fc /
+   cian láser #00f5ff para elementos activos.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .asteria-view {
   display: grid;
-  grid-template-columns: 56px 1fr 260px;
+  /* 🜨 WAVE 8204 (M5): el toolbox ya no es columna de grid — flota
+     como HUD absoluto sobre el canvas (ver .asteria-toolbox). */
+  grid-template-columns: minmax(0, 1fr) 380px;
   /* Fila única que llena el alto — sin ella la fila implícita 'auto'
      mediría por contenido y el canvas no llegaría abajo. */
   grid-template-rows: minmax(0, 1fr);
@@ -2783,19 +2788,29 @@
   height: 100%;
   min-height: 0;
   min-width: 0;
-  /* 🜨 WAVE 8055: fondo base cyberpunk — oscuro profundo como Genesis */
-  background: #0a0a0c;
+  /* 🜨 WAVE 8202: The Astral Void — oscuro profundo como Genesis */
+  background: #0a0a10;
 }
 
+/* 🜨 WAVE 8204 (M5): THE SHELL — panel flotante sobre el grid
+   espacial. blur + fondo semitransparente + borde tenue; eco-mode
+   suprime el backdrop-filter automáticamente en tiers bajos. */
 .asteria-toolbox {
-  /* WAVE 8055: panel elevado translúcido + borde tenue */
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 16;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding-top: 8px;
+  padding: 8px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(7, 7, 12, 0.8);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
 .asteria-canvas-host {
@@ -2810,20 +2825,68 @@
   inset: 0;
 }
 
+/* ── 🜨 WAVE 8202 (M1): HUD OVERLAY — telemetría atlas + selección
+   flotando top-left sobre el canvas (ex-bloques del rail). ── */
+
+.asteria-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 4px;
+  background: rgba(10, 10, 16, 0.72);
+  backdrop-filter: blur(4px);
+  color: #c084fc;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+}
+
+.asteria-hud__sep {
+  color: rgba(168, 85, 247, 0.45);
+}
+
+/* 🜨 Selección viva — cian láser (glow saneado por body.eco-mode) */
+.asteria-hud__hot {
+  color: #00f5ff;
+  text-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
+}
+
+.asteria-hud--warn {
+  color: #ffb35c;
+  border-color: rgba(255, 179, 92, 0.4);
+}
+
 .asteria-side-rail {
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border-left: 1px solid rgba(168, 85, 247, 0.2);
+  background: #0a0a10;
   overflow-y: auto;
-  padding: 10px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  padding: 12px;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
   /* números de HUD alineados — los KB/ms no saltan de ancho */
   font-variant-numeric: tabular-nums;
+  /* 🜨 WAVE 8203 (M2): columna flex — el CompileLogDock se ancla al
+     fondo con margin-top:auto cuando el contenido es corto */
+  display: flex;
+  flex-direction: column;
 }
 
 .asteria-rail__section {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 10px;
   margin-top: 10px;
+  /* en la columna flex cada sección conserva su alto natural — el
+     scroll lo da el rail, no el encogimiento de los hijos */
+  flex-shrink: 0;
 }
 
 .asteria-rail__section:first-child {
@@ -2833,10 +2896,10 @@
 }
 
 .asteria-rail__title {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
-  color: rgba(123, 92, 255, 0.85);
+  color: #a855f7;
   margin-bottom: 6px;
 }
 
@@ -2851,11 +2914,6 @@
   color: #5a5f78;
 }
 
-.asteria-rail__error {
-  font-size: 10px;
-  color: #ff7a7a;
-}
-
 /* 🜨 WAVE 8160 (M2): warning naranja — aviso no bloqueante
    (la legibilidad del glifo informa, no decide por el operador). */
 .asteria-rail__warn {
@@ -2863,59 +2921,93 @@
   color: #ffb35c;
 }
 
-/* ── WAVE 8020: toolbox de selección + badge POKE ── */
+/* ── 🜨 WAVE 8204 (M2/M3): HARDWARE BUTTONS + FAMILIAS CROMÁTICAS ──
+   Botón de 44×44 con peso táctil (card compacta). El estado activo
+   toma el acento de su familia via data-family → --tool-*. */
 
 .asteria-tool-btn {
-  width: 40px;
-  height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  background: rgba(16, 16, 26, 0.8);
+  /* Familia por defecto: modificadores — blanco táctico / gris acero */
+  --tool-accent: #cbd5e1;
+  --tool-tint: rgba(203, 213, 225, 0.14);
+  --tool-glow: rgba(203, 213, 225, 0.3);
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
   color: #8b8fa8;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s ease;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease,
+    color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.asteria-tool-btn[data-family='spatial'] {
+  /* Generadores espaciales — cian láser (geometría estricta) */
+  --tool-accent: #00f5ff;
+  --tool-tint: rgba(0, 245, 255, 0.14);
+  --tool-glow: rgba(0, 245, 255, 0.4);
+}
+
+.asteria-tool-btn[data-family='temporal'] {
+  /* Generadores temporales — magenta eléctrico (tiempo humano) */
+  --tool-accent: #d946ef;
+  --tool-tint: rgba(217, 70, 239, 0.14);
+  --tool-glow: rgba(217, 70, 239, 0.4);
+}
+
+.asteria-tool-btn[data-family='special'] {
+  /* Especiales — amarillo ácido (glyph / macros / heat) */
+  --tool-accent: #eab308;
+  --tool-tint: rgba(234, 179, 8, 0.14);
+  --tool-glow: rgba(234, 179, 8, 0.4);
+}
+
+.asteria-tool-btn[data-family='toxic'] {
+  /* Especiales — verde tóxico (cirugía celular / poke live) */
+  --tool-accent: #22c55e;
+  --tool-tint: rgba(34, 197, 94, 0.14);
+  --tool-glow: rgba(34, 197, 94, 0.4);
 }
 
 .asteria-tool-btn:hover {
-  border-color: rgba(123, 92, 255, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
   color: #d8dcff;
 }
 
 .asteria-tool-btn.active {
-  background: rgba(123, 92, 255, 0.22);
-  border-color: #7b5cff;
-  color: #fff;
+  background: var(--tool-tint);
+  border-color: var(--tool-accent);
+  color: var(--tool-accent);
   box-shadow:
-    0 0 10px rgba(123, 92, 255, 0.45),
-    inset 0 0 6px rgba(123, 92, 255, 0.2);
-  text-shadow: 0 0 6px rgba(123, 92, 255, 0.8);
+    0 0 10px var(--tool-glow),
+    inset 0 0 8px var(--tool-tint);
+}
+
+/* Icono activo brillante — eco-mode suprime el drop-shadow */
+.asteria-tool-btn.active .asteria-tool-btn__icon {
+  filter: drop-shadow(0 0 6px var(--tool-glow));
 }
 
 .asteria-tool-btn__icon {
-  font-size: 16px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
-.asteria-toolbox__spacer {
-  flex: 1;
-}
-
-.asteria-tool-btn--poke.active {
-  background: rgba(255, 179, 71, 0.18);
-  border-color: #ffb347;
-  box-shadow: 0 0 10px rgba(255, 179, 71, 0.35);
-  color: #ffd9a0;
-}
-
-/* 🜨 WAVE 8182: HEAT — toggle del FieldLayer (mapa térmico/isócronas) */
-.asteria-tool-btn--heat.active {
-  background: rgba(255, 92, 92, 0.16);
-  border-color: #ff6b6b;
-  box-shadow: 0 0 10px rgba(255, 92, 92, 0.35);
-  color: #ffb0a0;
+/* Separador tools ↔ toggles (el spacer murió con el rail fijo) */
+.asteria-toolbox__divider {
+  width: 28px;
+  height: 1px;
+  margin: 2px 0;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .asteria-poke-badge {
@@ -2945,13 +3037,17 @@
   gap: 6px;
 }
 
+/* 🜨 WAVE 8202 (M4): badge de stack — radio nítido 4px, chip compacto
+   en mayúsculas lavanda */
 .asteria-stack__count {
   margin-left: auto;
   padding: 1px 6px;
-  border-radius: 8px;
-  background: rgba(123, 92, 255, 0.15);
-  color: #b3a6ff;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
   font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2998,14 +3094,16 @@
 }
 
 .asteria-layer:hover {
-  border-color: rgba(123, 92, 255, 0.45);
-  background: rgba(123, 92, 255, 0.08);
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.08);
 }
 
+/* 🜨 WAVE 8202 (M4): capa activa — cian láser (glow saneado por
+   body.eco-mode cuando el tier ≠ HQ) */
 .asteria-layer--selected {
-  border-color: #7b5cff;
-  background: rgba(123, 92, 255, 0.16);
-  box-shadow: 0 0 8px rgba(123, 92, 255, 0.3);
+  border-color: #00f5ff;
+  background: rgba(0, 245, 255, 0.1);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
 }
 
 .asteria-layer__icon {
@@ -3018,7 +3116,7 @@
 
 .asteria-layer--selected .asteria-layer__icon {
   color: #fff;
-  text-shadow: 0 0 6px rgba(123, 92, 255, 0.9);
+  text-shadow: 0 0 6px rgba(0, 245, 255, 0.9);
 }
 
 .asteria-layer__body {
@@ -3090,83 +3188,6 @@
   cursor: default;
 }
 
-/* ── WAVE 8070 (M2): chips de TARGET ── */
-
-.asteria-target-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.asteria-target-chip {
-  padding: 3px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  background: rgba(16, 16, 26, 0.7);
-  color: #5a5f78;
-  font-family: inherit;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.asteria-target-chip:hover:not(:disabled) {
-  border-color: rgba(123, 92, 255, 0.55);
-  color: #d8dcff;
-}
-
-.asteria-target-chip.active {
-  border-color: #7b5cff;
-  background: rgba(123, 92, 255, 0.2);
-  color: #d8dcff;
-  box-shadow: 0 0 8px rgba(123, 92, 255, 0.3);
-}
-
-.asteria-target-chip:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ── WAVE 8120 (M1): selector de color del pulso CLR ── */
-
-.asteria-target-color {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.asteria-target-color input[type='color'] {
-  flex: 1;
-  min-width: 0;
-  height: 22px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 4px;
-  background: rgba(16, 16, 26, 0.7);
-  cursor: pointer;
-}
-
-.asteria-target-color input[type='color']:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.asteria-target-color input[type='color']::-webkit-color-swatch-wrapper {
-  padding: 2px;
-}
-
-.asteria-target-color input[type='color']::-webkit-color-swatch {
-  border: none;
-  border-radius: 2px;
-}
-
-.asteria-target-color__hex {
-  letter-spacing: 0.08em;
-}
-
 /* ── WAVE 8050 (M3): banner de Rig Drift ── */
 
 .asteria-drift-banner {
@@ -3208,7 +3229,7 @@
 
 .asteria-drift-btn {
   padding: 5px 10px;
-  border: 1px solid rgba(123, 92, 255, 0.35);
+  border: 1px solid rgba(168, 85, 247, 0.35);
   border-radius: 5px;
   background: rgba(16, 16, 26, 0.9);
   color: #8b8fa8;
@@ -3219,7 +3240,7 @@
 }
 
 .asteria-drift-btn:hover {
-  border-color: rgba(123, 92, 255, 0.7);
+  border-color: rgba(168, 85, 247, 0.7);
   color: #d8dcff;
 }
 
@@ -3257,7 +3278,9 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   🜨 WAVE 8150-F2 — TRANSPORT DRAWER (overlay inferior del canvas)
+   🜨 WAVE 8203 — TRANSPORT BAR (permanente, overlay inferior del canvas)
+   Los controles ya no viven en un drawer colapsable: Play/Pause/Stop/Loop
+   anclados a la izquierda, timeline-scrubber al centro, BUDGET a la derecha.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .asteria-transport {
@@ -3267,91 +3290,40 @@
   bottom: 0;
   z-index: 15;
   display: flex;
-  flex-direction: column;
   pointer-events: none; /* el hueco sin contenido deja pasar el drag del canvas */
 }
 
-.asteria-transport__strip,
-.asteria-transport__panel {
-  pointer-events: auto;
-}
-
 .asteria-transport__strip {
+  pointer-events: auto;
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 22px;
-  padding: 0 8px;
-  background: rgba(10, 10, 14, 0.78);
-  border-top: 1px solid rgba(123, 92, 255, 0.25);
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  background: rgba(10, 10, 16, 0.85);
+  border-top: 1px solid rgba(168, 85, 247, 0.25);
   backdrop-filter: blur(4px);
 }
 
-.asteria-transport__track {
-  position: relative;
-  flex: 1;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 2px;
-  overflow: visible;
-}
-
-.asteria-transport__needle {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  left: 0;
-  width: 2px;
-  margin-left: -1px;
-  background: #b8a6ff;
-  box-shadow: 0 0 6px rgba(123, 92, 255, 0.8);
-  border-radius: 1px;
-}
-
-.asteria-transport__toggle {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border: 1px solid rgba(123, 92, 255, 0.35);
-  border-radius: 3px;
-  background: transparent;
-  color: #b8a6ff;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  cursor: pointer;
-  line-height: 1.4;
-}
-
-.asteria-transport__toggle:hover {
-  background: rgba(123, 92, 255, 0.15);
-  color: #e6e1ff;
-}
-
-.asteria-transport__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px 10px;
-  background: rgba(10, 10, 14, 0.92);
-  border-top: 1px solid rgba(123, 92, 255, 0.2);
-  backdrop-filter: blur(6px);
-}
+/* ── Controles anclados (M1): área táctil generosa, siempre a 0 clics ── */
 
 .asteria-transport__buttons {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .asteria-transport__btn {
-  width: 30px;
-  height: 24px;
-  border: 1px solid rgba(123, 92, 255, 0.35);
+  width: 36px;
+  height: 28px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
   border-radius: 4px;
-  background: rgba(123, 92, 255, 0.08);
+  background: rgba(168, 85, 247, 0.08);
   color: #d8d0ff;
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -3359,53 +3331,76 @@
 }
 
 .asteria-transport__btn:hover {
-  background: rgba(123, 92, 255, 0.2);
-  border-color: rgba(123, 92, 255, 0.6);
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.6);
+}
+
+.asteria-transport__btn--play {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.16);
+  color: #fff;
+}
+
+/* 🜨 LOOP activo — cian láser (elemento activo, doctrina Astral Void;
+   el glow queda saneado por body.eco-mode) */
+.asteria-transport__btn--loop.active {
+  border-color: #00f5ff;
+  background: rgba(0, 245, 255, 0.14);
+  color: #d9fdff;
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
 }
 
 .asteria-transport__time {
-  margin-left: auto;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 10px;
+  flex-shrink: 0;
+  min-width: 112px;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
   color: #8a84a8;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.05em;
 }
 
-.asteria-transport__scrub {
-  display: flex;
-}
+/* ── Timeline = scrubber: el carril dibuja el progreso y un range
+   transparente a tamaño completo captura el drag ── */
 
-.asteria-transport__range {
+.asteria-transport__track {
+  position: relative;
   flex: 1;
-  appearance: none;
-  -webkit-appearance: none;
-  height: 6px;
+  align-self: stretch;
+}
+
+.asteria-transport__track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
   background: rgba(255, 255, 255, 0.07);
-  border-radius: 3px;
-  outline: none;
-  cursor: pointer;
+  border-radius: 2px;
 }
 
-.asteria-transport__range::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 10px;
+.asteria-transport__needle {
+  position: absolute;
+  top: 50%;
   height: 16px;
-  border-radius: 2px;
-  background: #b8a6ff;
-  border: 1px solid rgba(123, 92, 255, 0.9);
-  box-shadow: 0 0 8px rgba(123, 92, 255, 0.7);
-  cursor: ew-resize;
+  margin-top: -8px;
+  left: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #c084fc;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.8);
+  border-radius: 1px;
+  pointer-events: none;
 }
 
-.asteria-transport__range::-moz-range-thumb {
-  width: 10px;
-  height: 16px;
-  border-radius: 2px;
-  background: #b8a6ff;
-  border: 1px solid rgba(123, 92, 255, 0.9);
-  box-shadow: 0 0 8px rgba(123, 92, 255, 0.7);
+.asteria-transport__scrubInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
   cursor: ew-resize;
 }
 
@@ -3472,22 +3467,32 @@
   background: rgba(255, 122, 122, 0.08);
 }
 
-.asteria-transport__budgetDetail {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 9px;
-  color: #8a84a8;
-  font-variant-numeric: tabular-nums;
-}
-
-.asteria-transport__warn {
-  color: #ffb35c;
-  font-size: 9px;
-}
-
 /* ── 🜨 WAVE 8181 (M2): GESTURE INSPECTOR — controles paramétricos
    no destructivos (filas label + slider + readout). ── */
+
+/* ── 🜨 WAVE 8203 (M3): CARD UI — las sub-secciones del inspector
+   (GESTURE / PAINT / SYNTH / STRATEGY) como paneles discretos
+   escaneables: fondo sutil, radio 4px, aire entre bloques. ── */
+
+.asteria-card {
+  background: #121218;
+  border: 1px solid rgba(168, 85, 247, 0.14);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.asteria-card > :last-child {
+  margin-bottom: 0;
+}
+
+.asteria-card__title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #c084fc;
+  margin-bottom: 6px;
+}
 
 .asteria-insp__header {
   display: flex;
@@ -3509,19 +3514,22 @@
 .asteria-insp__row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 8px;
+  margin-bottom: 6px;
   min-width: 0;
 }
 
 .asteria-insp__row--check {
   cursor: pointer;
+  padding: 2px 0;
 }
 
+/* 🜨 WAVE 8202 (M2): labels a 11px monospaced — el rail creció a 380px
+   precisamente para que esta tipografía respire */
 .asteria-insp__label {
   flex-shrink: 0;
-  width: 58px;
-  font-size: 9px;
+  width: 74px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #8a84a8;
@@ -3536,14 +3544,16 @@
   letter-spacing: 0.02em;
 }
 
+/* 🜨 WAVE 8202 (M2/M4): track 6px + thumb táctil 14×18 cian láser con
+   glow — el drop-shadow queda saneado por body.eco-mode (tier ≠ HQ) */
 .asteria-insp__range {
   flex: 1;
   min-width: 0;
   appearance: none;
   -webkit-appearance: none;
-  height: 4px;
+  height: 6px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  border-radius: 3px;
   outline: none;
   cursor: pointer;
 }
@@ -3551,20 +3561,22 @@
 .asteria-insp__range::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
-  width: 8px;
-  height: 12px;
-  border-radius: 2px;
-  background: #b8a6ff;
-  border: 1px solid rgba(123, 92, 255, 0.9);
+  width: 14px;
+  height: 18px;
+  border-radius: 3px;
+  background: #00f5ff;
+  border: 1px solid rgba(0, 245, 255, 0.9);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
   cursor: ew-resize;
 }
 
 .asteria-insp__range::-moz-range-thumb {
-  width: 8px;
-  height: 12px;
-  border-radius: 2px;
-  background: #b8a6ff;
-  border: 1px solid rgba(123, 92, 255, 0.9);
+  width: 14px;
+  height: 18px;
+  border-radius: 3px;
+  background: #00f5ff;
+  border: 1px solid rgba(0, 245, 255, 0.9);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
   cursor: ew-resize;
 }
 
@@ -3575,9 +3587,9 @@
 
 .asteria-insp__val {
   flex-shrink: 0;
-  min-width: 52px;
+  min-width: 58px;
   text-align: right;
-  font-size: 10px;
+  font-size: 12px;
   color: #d8dcff;
   font-variant-numeric: tabular-nums;
 }
@@ -3585,20 +3597,20 @@
 .asteria-insp__text {
   flex: 1;
   min-width: 0;
-  padding: 3px 6px;
-  border: 1px solid rgba(123, 92, 255, 0.3);
+  padding: 4px 8px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
   border-radius: 3px;
   background: rgba(10, 10, 16, 0.7);
   color: #e6e1ff;
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
   font-size: 11px;
   letter-spacing: 0.1em;
   outline: none;
 }
 
 .asteria-insp__text:focus {
-  border-color: rgba(123, 92, 255, 0.8);
-  box-shadow: 0 0 8px rgba(123, 92, 255, 0.3);
+  border-color: rgba(0, 245, 255, 0.6);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
 }
 
 .asteria-insp__seg {
@@ -3610,27 +3622,29 @@
 
 .asteria-insp__segbtn {
   flex: 1;
-  padding: 2px 0;
+  padding: 4px 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  border-radius: 4px;
   background: rgba(16, 16, 26, 0.6);
   color: #8b8fa8;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 8px;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   cursor: pointer;
 }
 
 .asteria-insp__segbtn:hover:not(:disabled) {
-  border-color: rgba(123, 92, 255, 0.5);
+  border-color: rgba(168, 85, 247, 0.5);
   color: #d8dcff;
 }
 
+/* 🜨 WAVE 8202 (M4): segmento activo — cian láser con glow saneado */
 .asteria-insp__segbtn.active {
-  background: rgba(123, 92, 255, 0.22);
-  border-color: #7b5cff;
-  color: #fff;
+  background: rgba(0, 245, 255, 0.14);
+  border-color: #00f5ff;
+  color: #d9fdff;
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
 }
 
 .asteria-insp__segbtn:disabled {
@@ -3638,47 +3652,34 @@
   cursor: not-allowed;
 }
 
+/* 🜨 WAVE 8202 (M2): checkbox ≥14×14 con padding ergonómico */
 .asteria-insp input[type='checkbox'] {
-  accent-color: #7b5cff;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: #00f5ff;
   cursor: pointer;
-}
-
-/* 🜨 WAVE 8184 (M2): STRATEGY — selector de LUT Source (Λ-Ride) */
-.asteria-insp__divider {
-  height: 1px;
-  margin: 8px 0 4px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(123, 92, 255, 0.35),
-    transparent
-  );
-}
-
-.asteria-insp__strategy {
-  font-size: 9px;
-  opacity: 0.8;
-  margin-bottom: 2px;
 }
 
 .asteria-insp__select {
   flex: 1;
   min-width: 0;
-  padding: 3px 4px;
-  border: 1px solid rgba(123, 92, 255, 0.3);
+  padding: 4px 6px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
   border-radius: 3px;
   background: rgba(10, 10, 16, 0.85);
   color: #e6e1ff;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 9px;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
   letter-spacing: 0.06em;
   outline: none;
   cursor: pointer;
 }
 
 .asteria-insp__select:focus {
-  border-color: rgba(123, 92, 255, 0.8);
-  box-shadow: 0 0 8px rgba(123, 92, 255, 0.3);
+  border-color: rgba(0, 245, 255, 0.6);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
 }
 
 .asteria-insp__select:disabled {
@@ -3691,8 +3692,104 @@
   flex: 0 0 auto;
   align-self: center;
   margin-left: 4px;
-  color: #7b5cff;
+  color: #c084fc;
   background: rgba(10, 10, 16, 0.85);
-  border: 1px solid rgba(123, 92, 255, 0.3);
+  border: 1px solid rgba(168, 85, 247, 0.3);
   border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🜨 WAVE 8203 (M2) — COMPILE LOG DOCK: mini-terminal colapsable
+   acoplada al fondo del rail (cuarentena — jamás overlay sobre el canvas)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.asteria-logdock {
+  /* el rail es flex-column: margin-top:auto ancla el dock al fondo
+     cuando el contenido es corto; con contenido largo fluye normal */
+  margin-top: auto;
+}
+
+.asteria-logdock__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.asteria-logdock__head .asteria-rail__title {
+  margin-bottom: 0;
+}
+
+.asteria-logdock__badge {
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.asteria-logdock__badge--err {
+  background: rgba(255, 122, 122, 0.14);
+  border-color: rgba(255, 122, 122, 0.4);
+  color: #ff7a7a;
+}
+
+.asteria-logdock__badge--warn {
+  background: rgba(255, 179, 92, 0.12);
+  border-color: rgba(255, 179, 92, 0.35);
+  color: #ffb35c;
+}
+
+.asteria-logdock__chev {
+  margin-left: auto;
+  color: #8a84a8;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.asteria-logdock__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  max-height: 148px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  border: 1px solid rgba(168, 85, 247, 0.14);
+  border-radius: 4px;
+  background: #0c0c12;
+}
+
+.asteria-logdock__line {
+  font-size: 10px;
+  line-height: 1.45;
+  color: #8a84a8;
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+
+/* 🜨 Severidad: rojo = emisión rota / intención violada;
+   ámbar = nota de optimización aceptable (PARAM_*, SPILL, COLOR_*…) */
+.asteria-logdock__line--err {
+  color: #ff7a7a;
+}
+
+.asteria-logdock__line--warn {
+  color: #ffb35c;
+}
+
+.asteria-logdock__line--ok {
+  color: #6fe3a0;
+}
+
+.asteria-logdock__line--dim {
+  color: #5a5f78;
 }

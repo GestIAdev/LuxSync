@@ -4,16 +4,22 @@
  *
  * Layout interno del Pixel Mapper (blueprint §Arquitectura):
  *
- *   ┌──────────┬──────────────────────────────┬────────────────┐
- *   │ TOOLBOX  │      TACTICAL CANVAS         │  GESTURE STACK │
- *   │ (56px)   │      <AsteriaCanvas />       │  (260px)       │
- *   └──────────┴──────────────────────────────┴────────────────┘
+ *   ┌──────────────────────────────────────┬────────────────┐
+ *   │  TACTICAL CANVAS <AsteriaCanvas />   │  STACK + INSP. │
+ *   │  + TOOLBOX flotante (HUD, left 12px) │  (380px)       │
+ *   └──────────────────────────────────────┴────────────────┘
  *
  * WAVE 8020:
  *   - Toolbox con Select (V) · Lasso (L) · Radial (R) + kill-switch POKE.
  *   - useAsteriaTouch montado: hover ∪ selección → CalibrationBus →
  *     L3++ real. Heartbeat 400 ms, fade-out 180 ms, Esc libera.
- *   - El rail muestra atlas + conteo de selección + badge POKE ACTIVO.
+ *   - Badge POKE ACTIVE al pie del rail.
+ *
+ * WAVE 8202:
+ *   - La telemetría NODE ATLAS / SELECCIÓN sale del rail y vive en el
+ *     HUDOverlay flotante sobre el canvas (`300 nodes · 0 selected`).
+ *   - El bloque DEFAULT PAINT muere: los gestos son autónomos (paint +
+ *     synth propios) — el rail queda STACK → CELL SURGEON → INSPECTOR.
  *
  * `preview`/`temporalActions` entran por contrato con la shell — la
  * TimeBar / AUDITION llegan en waves posteriores.
@@ -35,12 +41,13 @@ import { useAsteriaStore, type AsteriaToolId } from './store/useAsteriaStore'
 import { getTool } from './tools/ToolRegistry'
 import { GestureStackPanel } from './GestureStackPanel'
 import { GestureInspector } from './GestureInspector'
-import type { HephParamId } from '../../../../core/hephaestus/types'
+import { HUDOverlay } from './HUDOverlay'
+import { CompileLogDock } from './CompileLogDock'
+import LuxIcon, { type LuxIconName } from '../../../icons/LuxIcon'
 import {
   MCC_CELL_AVAILABLE,
   MCC_CELL_UNAVAILABLE_TOOLTIP,
 } from './mccCapability'
-import { ASTERIA_DEFAULT_TARGET_COLOR } from './model/AsteriaProject'
 import './tools' // side-effect: puebla TOOL_REGISTRY
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -64,26 +71,48 @@ const TOOL_ORDER: readonly AsteriaToolId[] = [
 ]
 
 /**
- * 🜨 WAVE 8070 (M2): params ofrecidos en el rail — subestricto de
- * LAMBDA_SAFE_PARAMS.
- * WAVE 8080 (M1): STB desbloqueado — el gate G6 era paternalismo;
- * el operador decide si su campo pinta estrobo.
- * WAVE 8110 (M1): CLR — el compilador sintetiza LUT arcoíris y
- * hornea gain→lightness; el campo ya puede pintar color.
+ * 🜨 WAVE 8204 (M1): LUXICONS STRICT MODE — cada tool mapea al SVG
+ * custom más cercano de la librería interna (trazos gruesos, cero
+ * glyphs unicode / librerías genéricas).
  */
-const TARGET_PARAM_CHOICES: readonly { id: HephParamId; label: string }[] = [
-  { id: 'intensity', label: 'DIM' },
-  { id: 'white', label: 'WHT' },
-  { id: 'amber', label: 'AMB' },
-  { id: 'color', label: 'CLR' },
-  { id: 'pan', label: 'PAN' },
-  { id: 'tilt', label: 'TILT' },
-  { id: 'zoom', label: 'ZOOM' },
-  { id: 'focus', label: 'FOCUS' },
-  { id: 'iris', label: 'IRIS' },
-  { id: 'speed', label: 'SPD' },
-  { id: 'strobe', label: 'STB' },
-]
+const TOOL_ICON: Record<AsteriaToolId, LuxIconName> = {
+  select: 'cursor',
+  lasso: 'lasso',
+  radial: 'radial',
+  polygon: 'polygon',
+  line: 'line',
+  wavefront: 'wavefront',
+  chrono: 'chrono',
+  glyph: 'glyph',
+  slicer: 'slicer',
+  noise: 'noise',
+  cell: 'surgeon',
+}
+
+/**
+ * 🜨 WAVE 8204 (M3): familias cromáticas — el estado activo del botón
+ * tiñe con el color de su familia (modificadores acero, generadores
+ * espaciales cian, temporales magenta, especiales ácido/tóxico).
+ */
+type AsteriaToolFamily = 'mod' | 'spatial' | 'temporal' | 'special' | 'toxic'
+
+const TOOL_FAMILY: Record<AsteriaToolId, AsteriaToolFamily> = {
+  // Modificadores / selección — blanco táctico / gris acero
+  select: 'mod',
+  lasso: 'mod',
+  radial: 'mod',
+  polygon: 'mod',
+  line: 'mod',
+  // Generadores espaciales — geometría estricta, cian láser
+  wavefront: 'spatial',
+  slicer: 'spatial',
+  // Generadores temporales — orgánico / tiempo humano, magenta
+  chrono: 'temporal',
+  noise: 'temporal',
+  // Especiales — amarillo ácido / verde tóxico
+  glyph: 'special',
+  cell: 'toxic',
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -105,15 +134,6 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
   const hoverCount = useAsteriaStore((s) => s.hoverNodeIds.size)
   const touchLive = selectionCount + hoverCount
   const surgeonDeviceId = useAsteriaStore((s) => s.surgeonDeviceId)
-  // 🜨 WAVE 8192 (§3.1): el TARGET global murió — el rail edita la
-  // pintura por defecto del documento (la que hereda toda capa sin
-  // `paint` propio).
-  const defaultPaint = useAsteriaStore((s) => s.project.defaultPaint)
-  const setDefaultPaint = useAsteriaStore((s) => s.setDefaultPaint)
-  const targetParams = defaultPaint.params
-  const targetColor =
-    defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR
-  const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
 
   // ── Hotkeys de herramientas: V / L / R ──
   useEffect(() => {
@@ -172,131 +192,74 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
 
   return (
     <div className="asteria-view">
-      {/* ── TOOLBOX ── */}
-      <div className="asteria-toolbox" aria-label="Asteria tools">
-        {TOOL_ORDER.map((id) => {
-          const tool = getTool(id)
-          if (!tool) return null
-          const active = activeToolId === id
-          return (
-            <button
-              key={id}
-              type="button"
-              className={`asteria-tool-btn ${active ? 'active' : ''}`}
-              title={`${tool.label} (${tool.hotkey.toUpperCase()})`}
-              onClick={() => {
-                getTool(useAsteriaStore.getState().activeToolId)?.cancel?.()
-                setActiveTool(id)
-              }}
-            >
-              <span className="asteria-tool-btn__icon">{tool.icon}</span>
-            </button>
-          )
-        })}
-        <div className="asteria-toolbox__spacer" />
-        <button
-          type="button"
-          className={`asteria-tool-btn asteria-tool-btn--heat ${heatEnabled ? 'active' : ''}`}
-          title={`HEAT ${heatEnabled ? 'ON' : 'OFF'} — mapa térmico del delay + isócronas 250/100 ms (FieldLayer)`}
-          onClick={() => setHeatEnabled(!heatEnabled)}
-        >
-          <span className="asteria-tool-btn__icon">🔥</span>
-        </button>
-        <button
-          type="button"
-          className={`asteria-tool-btn asteria-tool-btn--poke ${pokeEnabled ? 'active' : ''}`}
-          title={`POKE ${pokeEnabled ? 'ON' : 'OFF'} — tacto físico por L3++ (kill-switch)`}
-          onClick={() => setPokeEnabled(!pokeEnabled)}
-        >
-          <span className="asteria-tool-btn__icon">⚡</span>
-        </button>
-      </div>
-
       {/* ── LIENZO TÁCTICO ── */}
       <AsteriaCanvas preview={preview}>
+        {/* 🜨 WAVE 8204 (M5): THE SHELL — toolbox como HUD flotante
+            sobre el grid espacial (absoluto, blur, fuera del flujo
+            del grid). Cada botón lleva su familia cromática en
+            data-family y su LuxIcon; tooltips `Label [ K ]`. */}
+        <div className="asteria-toolbox" aria-label="Asteria tools">
+          {TOOL_ORDER.map((id) => {
+            const tool = getTool(id)
+            if (!tool) return null
+            const active = activeToolId === id
+            return (
+              <button
+                key={id}
+                type="button"
+                data-family={TOOL_FAMILY[id]}
+                className={`asteria-tool-btn ${active ? 'active' : ''}`}
+                title={`${tool.label} [ ${tool.hotkey.toUpperCase()} ]`}
+                onClick={() => {
+                  getTool(useAsteriaStore.getState().activeToolId)?.cancel?.()
+                  setActiveTool(id)
+                }}
+              >
+                <span className="asteria-tool-btn__icon">
+                  <LuxIcon name={TOOL_ICON[id]} size={22} color="currentColor" />
+                </span>
+              </button>
+            )
+          })}
+          <div className="asteria-toolbox__divider" />
+          <button
+            type="button"
+            data-family="special"
+            className={`asteria-tool-btn ${heatEnabled ? 'active' : ''}`}
+            title={`HEAT ${heatEnabled ? 'ON' : 'OFF'} — delay heatmap + 250/100 ms isochrones (FieldLayer)`}
+            aria-pressed={heatEnabled}
+            onClick={() => setHeatEnabled(!heatEnabled)}
+          >
+            <span className="asteria-tool-btn__icon">
+              <LuxIcon name="heat" size={22} color="currentColor" />
+            </span>
+          </button>
+          <button
+            type="button"
+            data-family="toxic"
+            className={`asteria-tool-btn ${pokeEnabled ? 'active' : ''}`}
+            title={`POKE ${pokeEnabled ? 'ON' : 'OFF'} — physical touch via L3++ (kill-switch)`}
+            aria-pressed={pokeEnabled}
+            onClick={() => setPokeEnabled(!pokeEnabled)}
+          >
+            <span className="asteria-tool-btn__icon">
+              <LuxIcon name="poke" size={22} color="currentColor" />
+            </span>
+          </button>
+        </div>
+
+        {/* 🜨 WAVE 8202 (M1): HUD de telemetría — atlas + selección en
+            badge flotante top-left; libera el rail para stack/inspector */}
+        <HUDOverlay loading={loading} error={error} />
         {/* 🜨 WAVE 8150-F2: drawer de transporte — overlay inferior del
             canvas; el scrub alimenta FeedbackLayer vía previewDataRef */}
         <AsteriaTransportDrawer preview={preview} />
       </AsteriaCanvas>
 
-      {/* ── RAIL: atlas + selección + badge POKE ── */}
+      {/* ── RAIL: stack + inspector + badge POKE ── */}
       <div className="asteria-side-rail" aria-label="Gesture stack">
-        <div className="asteria-rail__section">
-          <div className="asteria-rail__title">NODE ATLAS</div>
-          {loading && <div className="asteria-rail__muted">cargando topología…</div>}
-          {!loading && error && (
-            <div className="asteria-rail__error">{error}</div>
-          )}
-          {!loading && !error && atlas && (
-            <>
-              <div className="asteria-rail__stat">
-                {atlas.entries.length} nodos
-              </div>
-              <div className="asteria-rail__muted">
-                {atlas.entries.filter((e) => e.position).length} con posición
-              </div>
-            </>
-          )}
-          {!loading && !error && !atlas && (
-            <div className="asteria-rail__muted">sin datos del grafo</div>
-          )}
-        </div>
-
-        <div className="asteria-rail__section">
-          <div className="asteria-rail__title">SELECCIÓN</div>
-          <div className="asteria-rail__stat">{selectionCount} nodos</div>
-        </div>
-
         {/* 🜨 WAVE 8055: panel de capas (selección/eliminar/reset) */}
         <GestureStackPanel />
-
-        {/* 🜨 WAVE 8192 (§3.6): DEFAULT PAINT — ex-panel TARGET. La
-            pintura que hereda toda capa sin `paint` propio: a qué
-            canales DMX aplica el campo y con qué color. Toggle
-            multi-selección; params nunca vacío (el store lo rechaza).
-            En solo-lectura queda congelado. */}
-        <div className="asteria-rail__section">
-          <div className="asteria-rail__title">DEFAULT PAINT</div>
-          <div className="asteria-target-chips">
-            {TARGET_PARAM_CHOICES.map(({ id, label }) => {
-              const on = targetParams.includes(id)
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className={`asteria-target-chip ${on ? 'active' : ''}`}
-                  disabled={driftReadOnly}
-                  title={`${id}${on ? ' — activo' : ''}`}
-                  onClick={() =>
-                    setDefaultPaint({
-                      params: on
-                        ? targetParams.filter((p) => p !== id)
-                        : [...targetParams, id],
-                    })
-                  }
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-          {/* 🌈 WAVE 8120 (M1): con CLR activo, el operador elige el
-              color exacto — el pulso hornea su H/S y modula solo L. */}
-          {targetParams.includes('color') && (
-            <div className="asteria-target-color">
-              <input
-                type="color"
-                value={targetColor}
-                disabled={driftReadOnly}
-                onChange={(e) => setDefaultPaint({ color: e.target.value })}
-                title="Color del pulso — H/S constantes, el campo modula Lightness"
-              />
-              <span className="asteria-rail__stat asteria-target-color__hex">
-                {targetColor.toUpperCase()}
-              </span>
-            </div>
-          )}
-        </div>
 
         {/* 🜨 WAVE 8040B (T7): banda de estado del Cell Surgeon — §T7
             exige MCC-Cell/MCC-Z explícito, nunca una promesa falsa. */}
@@ -307,7 +270,7 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
               className={`asteria-rail__stat ${MCC_CELL_AVAILABLE ? '' : 'asteria-rail__muted'}`}
               title={MCC_CELL_AVAILABLE ? undefined : MCC_CELL_UNAVAILABLE_TOOLTIP}
             >
-              {MCC_CELL_AVAILABLE ? 'MCC-Cell · Δ1–Δ3' : 'MCC-Z · por zona'}
+              {MCC_CELL_AVAILABLE ? 'MCC-Cell · Δ1–Δ3' : 'MCC-Z · per zone'}
             </div>
             {surgeonDeviceId ? (
               <>
@@ -315,12 +278,12 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
                 <div className="asteria-rail__muted">
                   {atlas?.entries.filter((e) => e.deviceId === surgeonDeviceId)
                     .length ?? 0}{' '}
-                  celdas
+                  cells
                 </div>
               </>
             ) : (
               <div className="asteria-rail__muted">
-                doble clic en un fixture compuesto
+                double-click a compound fixture
               </div>
             )}
           </div>
@@ -334,8 +297,13 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
         <GestureInspector />
 
         {touchLive > 0 && pokeEnabled && (
-          <div className="asteria-poke-badge">⚡ POKE ACTIVO · {touchLive} nodos</div>
+          <div className="asteria-poke-badge">⚡ POKE ACTIVE · {touchLive} nodes</div>
         )}
+
+        {/* 🜨 WAVE 8203 (M2): logger en cuarentena — mini-terminal
+            acoplada al fondo del rail; el canvas ya no se tapa. Los
+            warnings del compilador viven aquí, no en el transporte. */}
+        <CompileLogDock />
       </div>
     </div>
   )

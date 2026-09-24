@@ -23,9 +23,14 @@
 
 import { create } from 'zustand'
 import type { NodeAtlasEntry } from '../../../../../core/aether/types'
-import type { AsteriaProject, CompileStrategy, Gesture, LutSource } from '../model/AsteriaProject'
-import type { SynthSpec } from '../compiler/synth/SynthSpec'
-import { createDefaultProject } from '../model/AsteriaProject'
+import type {
+  AsteriaProject,
+  AsteriaProjectV1,
+  CompileStrategy,
+  Gesture,
+  LayerPaint,
+} from '../model/AsteriaProject'
+import { createDefaultProject, migrateV1toV2 } from '../model/AsteriaProject'
 import {
   computeRigDrift,
   discardOrphans,
@@ -35,7 +40,6 @@ import {
 } from '../model/rigDrift'
 import type { CompileReport } from '../compiler/AsteriaCompiler'
 import type { FieldSnapshot } from '../model/fieldEngine'
-import type { HephParamId } from '../../../../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -161,8 +165,12 @@ export interface AsteriaStore extends AsteriaCamera {
    * UI) re-renderizan solo cuando la receta cambia.
    */
   project: AsteriaProject
-  /** Carga un proyecto desde un `.lfx` abierto (reemplazo completo). */
-  setProject: (project: AsteriaProject) => void
+  /**
+   * Carga un proyecto desde un `.lfx` abierto (reemplazo completo).
+   * 🜨 WAVE 8192: acepta documentos v1 — se normalizan a v2 por
+   * `migrateV1toV2` aquí (el store jamás ve la forma legacy).
+   */
+  setProject: (project: AsteriaProject | AsteriaProjectV1) => void
   /** Documento nuevo: pila con el único gesto `base` identidad. */
   resetProject: () => void
   /**
@@ -192,31 +200,14 @@ export interface AsteriaStore extends AsteriaCamera {
   selectedGestureId: string | null
   setSelectedGesture: (id: string | null) => void
   /**
-   * 🜨 WAVE 8070 (M2): params Heph a los que el compilador aplica el
-   * campo (`project.targetParams` — intensity, pan, tilt, zoom…).
-   * Nunca vacío: el campo siempre tiene que apuntar a algo.
+   * 🜨 WAVE 8192 (§3.1): pintura por defecto del documento — lo que toda
+   * capa sin `paint` propio hereda (`project.defaultPaint`: params,
+   * color, opacity, synth, lut). Merge parcial — solo los campos del
+   * patch se tocan. Guardas heredadas de las acciones v1 que sustituye:
+   * `params` nunca vacío (el campo siempre apunta a algo) y `color`
+   * solo '#rrggbb'. Undoable; congelada en drift.
    */
-  setTargetParams: (params: readonly HephParamId[]) => void
-  /**
-   * 🌈 WAVE 8120 (M1): color del canal 'color' — HEX '#rrggbb'.
-   * Persiste en `project.targetColor` → viaja dentro del `.lfx` con el
-   * resto de la receta. Rechaza formatos no-HEX y queda congelado en
-   * solo-lectura (drift).
-   */
-  setTargetColor: (color: string) => void
-  /**
-   * 🜨 WAVE 8184 (M2): fuente de la curva-LUT de los tracks `ast_*`.
-   * 'preset' = el compilador sintetiza el pulso Λ (Auto-Synth);
-   * 'ride' = clona la curva de una pista Forge existente (Λ-Ride §8.2 —
-   * la pista ast_* emite SOLO phaseOverrides sobre esa curva exacta).
-   */
-  setLutSource: (src: LutSource) => void
-  /**
-   * 🜨 WAVE 8191 (M3): forma de síntesis provisional del proyecto —
-   * la curva base que el compilador materializa cuando LUT SRC es
-   * AUTO-SYNTH. Undoable vía historyPush; congelada en drift.
-   */
-  setDefaultSynth: (spec: SynthSpec) => void
+  setDefaultPaint: (patch: Partial<LayerPaint>) => void
   /**
    * 🜨 WAVE 8186 (M2): estrategia de compilación del campo → tracks.
    * 'auto' | 'lambda' | 'cohort' | 'mcc' | 'mcc-device' — ver
@@ -230,7 +221,7 @@ export interface AsteriaStore extends AsteriaCamera {
    * Historial local del documento — snapshots por referencia (gratis
    * por structural sharing). Solo mutaciones creativas del operador:
    * addGesture/removeGesture/moveGesture/updateGesture(coalesced)/
-   * setTargetParams/setTargetColor/setLutSource/setStrategy/resetProject. sealRig y la carga de
+   * setDefaultPaint/setStrategy/resetProject. sealRig y la carga de
    * documentos quedan fuera (frontera de documento / evento de sistema).
    */
   past: AsteriaProject[]
@@ -463,14 +454,17 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
   project: createDefaultProject(),
   setProject: (project) =>
     set((s) => {
+      // 🜨 WAVE 8192 (§3.2): un documento v1 se normaliza a v2 aquí —
+      // migración idempotente; el store jamás ve la forma legacy.
+      const doc = migrateV1toV2(project)
       // 🜨 WAVE 8050 (M3): cargar un documento ajeno dispara el drift —
       // su huella describe OTRO rig. Si coincide, rigDrift = null.
-      const rigDrift = computeRigDrift(project, s.nodeAtlas)
+      const rigDrift = computeRigDrift(doc, s.nodeAtlas)
       // 🜨 WAVE 8150-F3: frontera de documento — el historial del
       // documento anterior muere aquí (undo jamás cruza documentos).
       clearPendingBurst()
       return {
-        project,
+        project: doc,
         rigDrift,
         driftReadOnly: rigDrift !== null && s.driftReadOnly,
         // Documento nuevo → la selección de capa no sobrevive
@@ -582,36 +576,26 @@ export const useAsteriaStore = create<AsteriaStore>((set, get) => ({
   setSelectedGesture: (id) =>
     set((s) => (s.selectedGestureId === id ? {} : { selectedGestureId: id })),
 
-  setTargetParams: (params) =>
-    set((s) =>
-      s.driftReadOnly || params.length === 0
-        ? {}
-        : { ...historyPush(s), project: { ...s.project, targetParams: params } },
-    ),
-
-  setTargetColor: (color) =>
-    set((s) =>
-      s.driftReadOnly || !/^#[0-9a-fA-F]{6}$/.test(color)
-        ? {}
-        : { ...historyPush(s), project: { ...s.project, targetColor: color } },
-    ),
-
-  setLutSource: (src) =>
-    set((s) =>
-      s.driftReadOnly
-        ? {}
-        : { ...historyPush(s), project: { ...s.project, lutSource: src } },
-    ),
-
-  setDefaultSynth: (spec) =>
-    set((s) =>
-      s.driftReadOnly
-        ? {}
-        : {
-            ...historyPush(s),
-            project: { ...s.project, defaultSynth: spec },
-          },
-    ),
+  setDefaultPaint: (patch) =>
+    set((s) => {
+      if (s.driftReadOnly) return {}
+      // 🜨 WAVE 8192 — guardas heredadas de las acciones v1:
+      // params nunca vacío; color solo '#rrggbb'; patch vacío = no-op.
+      if (Object.keys(patch).length === 0) return {}
+      if (patch.params !== undefined && patch.params.length === 0) return {}
+      if (
+        patch.color !== undefined &&
+        !/^#[0-9a-fA-F]{6}$/.test(patch.color)
+      )
+        return {}
+      return {
+        ...historyPush(s),
+        project: {
+          ...s.project,
+          defaultPaint: { ...s.project.defaultPaint, ...patch },
+        },
+      }
+    }),
 
   setStrategy: (strategy) =>
     set((s) =>

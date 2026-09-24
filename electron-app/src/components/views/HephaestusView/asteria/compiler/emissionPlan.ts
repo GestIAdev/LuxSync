@@ -92,15 +92,16 @@ function modD(m: number, D: number): number {
 }
 
 /**
- * targetParams filtrados por las reglas duras: los params sin canal
- * sintetizable se omiten — warnings emitidos UNA vez.
+ * 🜨 WAVE 8192: `defaultPaint.params` filtrados por las reglas duras —
+ * los params sin canal sintetizable se omiten; warnings emitidos UNA vez.
+ * (v1 leía `project.targetParams`; la pintura bajó a `defaultPaint`.)
  */
-export function emitTargetParams(
+export function emitPaintParams(
   project: AsteriaProject,
   warnings: string[],
 ): HephParamId[] {
   const out: HephParamId[] = []
-  for (const param of project.targetParams) {
+  for (const param of project.defaultPaint.params) {
     if (!LAMBDA_SAFE_PARAMS.has(param)) {
       warnings.push(`PARAM_SKIPPED '${param}' — sin canal sintetizable`)
       continue
@@ -256,7 +257,7 @@ export interface PlanArgs {
   readonly field: FieldSnapshot
   readonly atlas: NodeAtlas
   readonly project: AsteriaProject
-  /** targetParams ya filtrados por emitTargetParams (warnings emitidos). */
+  /** paint.params ya filtrados por emitPaintParams (warnings emitidos). */
   readonly params: readonly HephParamId[]
   readonly strategy: 'lambda' | 'cohort' | 'mcc' | 'mcc-device'
   readonly D: number
@@ -268,8 +269,8 @@ export interface PlanArgs {
    */
   readonly staticColor: boolean
   /**
-   * §2.5 — política de inundación del color estático. WAVE 8190 fuerza
-   * 'allow' (paridad V1); 'contain' llega con el modelo v2 (WAVE 8192).
+   * §2.5 — política de inundación del color estático. WAVE 8192 la lee
+   * del documento: migrados='allow' (paridad V1), nuevos='contain'.
    */
   readonly colorFlood: 'contain' | 'allow'
   readonly warnings: string[]
@@ -507,7 +508,7 @@ export function planEmission(args: PlanArgs): PlanResult {
             repGain: 1,
             zones: (zones.length > 0 ? zones : ['all']) as ZoneTarget[],
             staticCurve: staticColorCurve(
-              project.targetColor ?? ASTERIA_DEFAULT_TARGET_COLOR,
+              project.defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR,
             ),
           },
           route,

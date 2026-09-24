@@ -520,8 +520,13 @@ export interface HephTrack {
  * la estrategia de compilación y el presupuesto de cohortes.
  */
 export interface AsteriaProject {
-  /** Versión del esquema de proyecto Asteria. Literal 1. */
-  readonly version: 1
+  /**
+   * Versión del esquema de proyecto Asteria. v1 = TARGET global;
+   * v2 (WAVE 8192) = LayerPaint por capa + defaultPaint. El migrador
+   * `migrateV1toV2` (asteria/model/AsteriaProject.ts) es el único que
+   * interpreta la versión — el envelope la transporta opaca.
+   */
+  readonly version: number
   /**
    * Huella determinista del rig contra el que se pintó el proyecto
    * (hash de los nodeIds del atlas en orden canónico). Base del Rig

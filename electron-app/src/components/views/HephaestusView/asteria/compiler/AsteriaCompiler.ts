@@ -61,7 +61,11 @@ import type {
   ZoneTarget,
 } from '../../../../../core/hephaestus/types'
 import type { NodeAtlas } from '../store/useAsteriaStore'
-import type { AsteriaProject, Gesture } from '../model/AsteriaProject'
+import type {
+  AsteriaProject,
+  AsteriaProjectV1,
+  Gesture,
+} from '../model/AsteriaProject'
 import type { FieldSnapshot } from '../model/fieldEngine'
 import { hexToHsl } from './lutSynth'
 import { envelope } from './synth/envelopes'
@@ -69,12 +73,13 @@ import { materialize } from './synth/materialize'
 import {
   ASTERIA_DEFAULT_SYNTH,
   ASTERIA_DEFAULT_TARGET_COLOR,
+  migrateV1toV2,
 } from '../model/AsteriaProject'
 import { measureGlyphLegibility } from '../model/glyphRaster'
 import {
   ASTERIA_TRACK_PREFIX,
+  emitPaintParams,
   emitPlans,
-  emitTargetParams,
   isAsteriaTrack,
   planEmission,
 } from './emissionPlan'
@@ -95,7 +100,12 @@ export interface CompileInput {
   readonly atlas: NodeAtlas
   readonly field: FieldSnapshot
   readonly clip: HephAutomationClipV3
-  readonly project: AsteriaProject
+  /**
+   * 🜨 WAVE 8192: acepta documentos v1 — se normalizan a v2 por
+   * `migrateV1toV2` antes de planear (un documento viejo nunca tumba
+   * el compilador; la salida es idéntica a la de v1 — gate G-MIG).
+   */
+  readonly project: AsteriaProject | AsteriaProjectV1
 }
 
 export interface CompileReport {
@@ -237,7 +247,9 @@ export function validateAstTrack(t: HephTrack, D: number): string | null {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function compile(input: CompileInput): CompileOutput {
-  const { atlas, field, clip, project } = input
+  const { atlas, field, clip } = input
+  // 🜨 WAVE 8192 — frontera de versión: todo lo interno opera sobre v2.
+  const project = migrateV1toV2(input.project)
   const warnings: string[] = []
   const D = Math.max(1, clip.durationMs)
 
@@ -322,9 +334,11 @@ export function compile(input: CompileInput): CompileOutput {
 
   // ── Λ-Ride (§8.2): la curva esculpida en Forge es la base de TODAS las
   //    estrategias — el compilador no sintetiza, solo inyecta geometría ──
+  //    🜨 WAVE 8192: la fuente vive en defaultPaint.lut (undefined = synth).
+  const lut = project.defaultPaint.lut
   let rideCurve: HephCurve | null = null
-  if (project.lutSource.kind === 'ride') {
-    const srcId = project.lutSource.trackId
+  if (lut?.kind === 'ride') {
+    const srcId = lut.trackId
     const src = clip.tracks.find((t) => t.id === srcId)
     if (src) {
       rideCurve = src.curve
@@ -333,12 +347,11 @@ export function compile(input: CompileInput): CompileOutput {
     }
   }
 
-  // 🜨 WAVE 8191 — la forma de onda ya no es constante global: la spec
-  // provisional del proyecto (SHAPE en STRATEGY) alimenta el único
-  // embudo de materialización. En la WAVE 8195 pasa a ser por capa.
-  const synthSpec = project.defaultSynth ?? ASTERIA_DEFAULT_SYNTH
+  // 🜨 WAVE 8191/8192 — la forma de onda vive en defaultPaint.synth
+  // (SHAPE en STRATEGY). En la WAVE 8195 pasa a ser por capa.
+  const synthSpec = project.defaultPaint.synth ?? ASTERIA_DEFAULT_SYNTH
   const colorHsl = hexToHsl(
-    project.targetColor ?? ASTERIA_DEFAULT_TARGET_COLOR,
+    project.defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR,
   )
 
   /** Curva base por parámetro: clone del ride o síntesis por spec
@@ -366,7 +379,7 @@ export function compile(input: CompileInput): CompileOutput {
   //    clasifica su firma y cada clase enruta por separado
   //    (CRUX_RESOLUTION §2). La estrategia queda como sesgo global.
   let tracks: HephTrack[] = []
-  const params = emitTargetParams(project, warnings)
+  const params = emitPaintParams(project, warnings)
 
   // §2.4 — Regla de Propiedad de Luminancia: intensity posee la
   // envolvente; 'color' se emite estático (1 kf). Un ride de color
@@ -385,7 +398,9 @@ export function compile(input: CompileInput): CompileOutput {
     strategy,
     D,
     staticColor,
-    colorFlood: 'allow', // §2.5 — paridad V1; 'contain' llega con el modelo v2
+    // §2.5 — del documento: migrados 'allow' (paridad V1), nuevos
+    // 'contain' por defecto. `?? 'allow'` cubre JSON corrupto a mano.
+    colorFlood: project.colorFlood ?? 'allow',
     warnings,
   })
 

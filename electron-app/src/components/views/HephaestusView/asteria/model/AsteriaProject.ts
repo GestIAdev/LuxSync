@@ -59,12 +59,46 @@ export interface WorldPoint2D {
   readonly z: number
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8192 — LAYER PAINT (CRUX_RESOLUTION §3.1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * QUÉ pinta una capa — ortogonal a CÓMO la capa reparte tiempo/gain en
+ * el espacio (geometría). En v1 esto era global del proyecto
+ * (targetParams/targetColor/lutSource/defaultSynth); en v2 es por capa
+ * con herencia de `project.defaultPaint`.
+ */
+export interface LayerPaint {
+  /** Planos de salida que esta capa escribe (parámetros DMX). */
+  readonly params: readonly HephParamId[]
+  /** Color de la capa, '#rrggbb'. Solo relevante si params incluye 'color'. */
+  readonly color?: string
+  /** Opacidad en los planos de VALOR (color) — [0,1], default 1. */
+  readonly opacity?: number
+  /** Forma de onda local (Crux 3). undefined → defaultPaint.synth. */
+  readonly synth?: SynthSpec
+  /** Λ-Ride por capa (la curva de una pista Forge). undefined → synth. */
+  readonly lut?: LutSource
+}
+
+/**
+ * Mixin común a los 7 kinds (§3.1): pintura opcional por capa.
+ * `undefined` = HEREDA `project.defaultPaint` (compatibilidad total —
+ * los gestos persistidos en v1 no traen paint). Un paint parcial solo
+ * sobrescribe los campos presentes: `effectivePaint(g) =
+ * { ...project.defaultPaint, ...g.paint }`.
+ */
+export interface GestureCommon {
+  readonly paint?: Partial<LayerPaint>
+}
+
 /**
  * BASE — el suelo del campo. Delay/gain uniforme para todo el rig
  * (o para la selección si se le aplicara máscara en el futuro).
  * Es la "capa fondo" — normalmente la primera de la pila.
  */
-export interface BaseGesture {
+export interface BaseGesture extends GestureCommon {
   readonly kind: 'base'
   readonly id: string
   readonly delayMs: number
@@ -76,7 +110,7 @@ export interface BaseGesture {
  * `shape`: 'point' (punto), 'line' (frente direccional), 'ring'.
  * `huygens`: multi-emisor — el delay usa min(dist) a cualquier emisor.
  */
-export interface WaveGesture {
+export interface WaveGesture extends GestureCommon {
   readonly kind: 'wave'
   readonly id: string
   readonly mask: NodeMask
@@ -105,7 +139,7 @@ export interface WaveGesture {
  * guarda (x, z, tMs) — el tempo del arrastre ES la coreografía.
  * `captureRealTime` = true usa el tempo capturado; false lo aplana.
  */
-export interface ChronoGesture {
+export interface ChronoGesture extends GestureCommon {
   readonly kind: 'chrono'
   readonly id: string
   readonly mask: NodeMask
@@ -139,7 +173,7 @@ export interface ChronoGesture {
  * La imagen se rasteriza al campo: los nodos bajo el trazo reciben
  * delay/gain según la cobertura del glifo.
  */
-export interface GlyphGesture {
+export interface GlyphGesture extends GestureCommon {
   readonly kind: 'glyph'
   readonly id: string
   readonly mask: NodeMask
@@ -177,7 +211,7 @@ export interface GlyphGesture {
  * `shuffleSeed` usa el MISMO hash que PhaseConfigPro → paridad con el
  * spread del Phase Canvas (blueprint §7.5).
  */
-export interface SliceGesture {
+export interface SliceGesture extends GestureCommon {
   readonly kind: 'slice'
   readonly id: string
   readonly mask: NodeMask
@@ -199,7 +233,7 @@ export interface SliceGesture {
  * — se cuenta en el HUD de presupuesto del `.lfx` (§5.3). Sin mask ni op:
  * las entries SON el campo.
  */
-export interface ManualGesture {
+export interface ManualGesture extends GestureCommon {
   readonly kind: 'manual'
   readonly id: string
   readonly entries: readonly { nodeId: string; delayMs?: number; gain?: number }[]
@@ -214,7 +248,7 @@ export interface ManualGesture {
  * NOISE — ruido Perlin muestreado en la posición de cada nodo.
  * Rompe la simetría perfecta — "orgánico" en vez de "mecánico".
  */
-export interface NoiseGesture {
+export interface NoiseGesture extends GestureCommon {
   readonly kind: 'noise'
   readonly id: string
   readonly mask: NodeMask
@@ -267,33 +301,34 @@ export type LutSource =
   | { kind: 'ride'; trackId: string }
 
 /**
- * El proyecto Asteria — persiste en `clip.asteria` (D-4, embebido).
+ * El proyecto Asteria V2 — persiste en `clip.asteria` (D-4, embebido).
  * Extiende el envelope del core (`version` + `rigFingerprint`).
+ *
+ * 🜨 WAVE 8192 (Crux 2, §3.1): el TARGET dejó de ser global — params,
+ * color, síntesis y fuente LUT son PINTURA (`defaultPaint` + override
+ * por capa en `gesture.paint`). La herencia pasiva mantiene la paridad
+ * hasta que el fieldEngine multi-plano aterrice (WAVE 8193).
  */
 export interface AsteriaProject extends AsteriaProjectEnvelope {
+  readonly version: 2
   /** La pila no destructiva — el modelo re-editable. */
   readonly stack: readonly Gesture[]
   readonly strategy: CompileStrategy
-  /** A qué parámetros Heph aplica el campo (dimmer, r/g/b, pan, tilt…). */
-  readonly targetParams: readonly HephParamId[]
   /**
-   * 🌈 WAVE 8120 (M1): color elegido por el operador para el canal
-   * 'color' — HEX '#rrggbb'. El sintetizador lo convierte en un pulso
-   * monocromático (H/S constantes, L en forma de pulso). Opcional:
-   * proyectos persistidos antes del 8120 no lo traen — el compilador
-   * cae a ASTERIA_DEFAULT_TARGET_COLOR.
+   * Pintura por defecto del documento — la heredan todas las capas sin
+   * `paint` propio. Sustituye a los campos root v1 (targetParams,
+   * targetColor, lutSource, defaultSynth).
    */
-  readonly targetColor?: string
-  readonly lutSource: LutSource
+  readonly defaultPaint: LayerPaint
   /**
-   * 🜨 WAVE 8191: forma de síntesis provisional a nivel de PROYECTO.
-   * El compilador materializa `envelope(defaultSynth)` como curva base
-   * cuando `lutSource.kind === 'preset'`. En la WAVE 8195 esta spec baja
-   * a `paint.synth` por capa — el campo desaparecerá del root entonces.
-   * Opcional: proyectos persistidos antes del 8191 no lo traen — el
-   * compilador cae a ASTERIA_DEFAULT_SYNTH ('pulse' ≡ V1 byte a byte).
+   * §2.5 — política de inundación del color estático cuando la ruta
+   * zonal derramaría sobre fixtures ajenos: 'contain' reemite como
+   * constantes quirúrgicas por nodo; 'allow' acepta el flood (paridad
+   * V1 — los proyectos migrados la fijan siempre en 'allow').
    */
-  readonly defaultSynth?: SynthSpec
+  readonly colorFlood: 'contain' | 'allow'
+  /** K máximo de clases de color (median-cut OKLab en WAVE 8194). */
+  readonly colorBudget: number
   /** K máximo de cohortes para strategy 'cohort' (default 16). */
   readonly cohortBudget: number
   /**
@@ -302,6 +337,25 @@ export interface AsteriaProject extends AsteriaProjectEnvelope {
    * ESTABA un nodo perdido. Opcional (proyectos viejos no la traen —
    * esos nodos se reportan `unmappable`).
    */
+  readonly nodePositions?: Readonly<Record<string, { readonly x: number; readonly z: number }>>
+}
+
+/**
+ * 🜨 WAVE 8192 (§3.2): la forma persistida pre-v2 — entrada del
+ * migrador. En v1 el TARGET era GLOBAL del proyecto (la causa del
+ * Crux 2): un solo color/conjunto de params por documento entero.
+ * Solo existe para tipar documentos viejos y fixtures — el código
+ * nuevo jamás la construye.
+ */
+export interface AsteriaProjectV1 extends AsteriaProjectEnvelope {
+  readonly version: 1
+  readonly stack: readonly Gesture[]
+  readonly strategy: CompileStrategy
+  readonly targetParams: readonly HephParamId[]
+  readonly targetColor?: string
+  readonly lutSource: LutSource
+  readonly defaultSynth?: SynthSpec
+  readonly cohortBudget: number
   readonly nodePositions?: Readonly<Record<string, { readonly x: number; readonly z: number }>>
 }
 
@@ -318,8 +372,25 @@ export const ASTERIA_DEFAULT_TARGET_COLOR = '#ff0000'
 export const ASTERIA_DEFAULT_LUT_SOURCE: LutSource = { kind: 'preset', name: 'default' }
 /** Forma por defecto — el trapezoide Λ de siempre (byte-parity V1). */
 export const ASTERIA_DEFAULT_SYNTH: SynthSpec = { shape: 'pulse' }
+/**
+ * 🜨 WAVE 8192 (§2.5/R1): política por defecto en proyectos NUEVOS —
+ * 'contain' (un color estático jamás inunda fixtures ajenos). Los
+ * proyectos migrados quedan en 'allow' para preservar la salida V1.
+ */
+export const ASTERIA_DEFAULT_COLOR_FLOOD: 'contain' | 'allow' = 'contain'
+/** K máximo de clases de color (cuantización OKLab, WAVE 8194). */
+export const ASTERIA_DEFAULT_COLOR_BUDGET = 16
 /** El gesto suelo de todo proyecto nuevo: campo uniforme identidad. */
 export const ASTERIA_BASE_GESTURE_ID = 'base'
+
+/** La pintura por defecto de un documento nuevo (equivale al TARGET V1). */
+export function createDefaultPaint(): LayerPaint {
+  return {
+    params: ASTERIA_DEFAULT_TARGET_PARAMS,
+    color: ASTERIA_DEFAULT_TARGET_COLOR,
+    synth: ASTERIA_DEFAULT_SYNTH,
+  }
+}
 
 /**
  * Proyecto nuevo: pila con un único gesto `base` (identidad — el campo
@@ -329,13 +400,47 @@ export const ASTERIA_BASE_GESTURE_ID = 'base'
  */
 export function createDefaultProject(rigFingerprint = ''): AsteriaProject {
   return {
-    version: 1,
+    version: 2,
     stack: [{ kind: 'base', id: ASTERIA_BASE_GESTURE_ID, delayMs: 0, gain: 1 }],
     strategy: ASTERIA_DEFAULT_STRATEGY,
-    targetParams: ASTERIA_DEFAULT_TARGET_PARAMS,
-    targetColor: ASTERIA_DEFAULT_TARGET_COLOR,
-    lutSource: ASTERIA_DEFAULT_LUT_SOURCE,
+    defaultPaint: createDefaultPaint(),
+    colorFlood: ASTERIA_DEFAULT_COLOR_FLOOD,
+    colorBudget: ASTERIA_DEFAULT_COLOR_BUDGET,
     cohortBudget: ASTERIA_DEFAULT_COHORT_BUDGET,
     rigFingerprint,
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8192 — MIGRACIÓN v1 → v2 (§3.2: sin pérdidas, sin sorpresa)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convierte un documento v1 al modelo v2: el TARGET global aterriza en
+ * `defaultPaint` y `colorFlood` queda en 'allow' para que la compilación
+ * del proyecto migrado sea byte a byte idéntica a la de v1 (gate G-MIG).
+ * Ningún gesto recibe `paint` → todos heredan el default.
+ *
+ * Idempotente: un proyecto ya v2 se devuelve tal cual. No muta la
+ * entrada. Los campos legacy ausentes caen a sus defaults históricos —
+ * documentos pre-8120/8184/8191 siguen cargando.
+ */
+export function migrateV1toV2(
+  p: AsteriaProjectV1 | AsteriaProject,
+): AsteriaProject {
+  if (p.version === 2) return p
+  const { targetParams, targetColor, lutSource, defaultSynth, ...rest } = p
+  return {
+    ...rest,
+    version: 2,
+    defaultPaint: {
+      params: targetParams ?? ASTERIA_DEFAULT_TARGET_PARAMS,
+      color: targetColor ?? ASTERIA_DEFAULT_TARGET_COLOR,
+      // 'preset' no se persiste en el paint: undefined = síntesis local
+      lut: lutSource?.kind === 'ride' ? lutSource : undefined,
+      synth: defaultSynth ?? ASTERIA_DEFAULT_SYNTH,
+    },
+    colorFlood: 'allow', // v1 no contenía → preservar salida idéntica
+    colorBudget: ASTERIA_DEFAULT_COLOR_BUDGET,
   }
 }

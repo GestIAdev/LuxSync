@@ -24,7 +24,10 @@
 import { useEffect } from 'react'
 import { useAsteriaStore } from '../store/useAsteriaStore'
 import { useHephaestusEditorStore } from '../../../../../core/hephaestus/store/useHephaestusEditorStore'
-import type { AsteriaProject } from '../model/AsteriaProject'
+import type {
+  AsteriaProject,
+  AsteriaProjectV1,
+} from '../model/AsteriaProject'
 
 /**
  * Último clip.id visto — MÓDULO, no ref: sobrevive a desmontar la
@@ -39,7 +42,9 @@ let lastClipId: string | null = null
  * Comparación por contenido (JSON) — referencias distintas del mismo
  * documento no disparan recarga.
  */
-function foreignProject(clip: unknown): AsteriaProject | null {
+function foreignProject(
+  clip: unknown,
+): AsteriaProject | AsteriaProjectV1 | null {
   const embedded = (clip as { asteria?: unknown }).asteria
   if (!embedded || typeof embedded !== 'object') return null
   const live = useAsteriaStore.getState().project
@@ -50,10 +55,19 @@ function foreignProject(clip: unknown): AsteriaProject | null {
   }
   // El envelope mínimo exige version + rigFingerprint — sin ellos no es
   // un documento Asteria válido (un .lfx corrupto no tumba la vista).
-  const p = embedded as Partial<AsteriaProject>
-  if (p.version !== 1 || typeof p.rigFingerprint !== 'string') return null
+  // 🜨 WAVE 8192: version 1 y 2 son cargables — setProject migra v1→v2.
+  const p = embedded as {
+    version?: unknown
+    rigFingerprint?: unknown
+    stack?: unknown
+  }
+  if (
+    (p.version !== 1 && p.version !== 2) ||
+    typeof p.rigFingerprint !== 'string'
+  )
+    return null
   if (!Array.isArray(p.stack)) return null
-  return p as AsteriaProject
+  return p as AsteriaProject | AsteriaProjectV1
 }
 
 /** Monta la sincronía clip→proyecto. Llamar una vez desde AsteriaView. */

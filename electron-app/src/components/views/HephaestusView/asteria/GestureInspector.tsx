@@ -21,8 +21,8 @@
  * `gain` es el campo de capa añadido en 8181: para gestos delay-only lo
  * estampa uniforme sobre los nodos cubiertos; para wave/glyph/manual
  * multiplica la contribución gain propia. Solo se muestra cuando el
- * TARGET incluye DIM (intensity) — sin dimmer en el campo, el slider
- * sería una promesa vacía.
+ * DEFAULT PAINT incluye DIM (intensity) — sin dimmer en el campo, el
+ * slider sería una promesa vacía.
  *
  * @module HephaestusView/asteria/GestureInspector
  * ═══════════════════════════════════════════════════════════════════════════
@@ -150,7 +150,7 @@ export const GestureInspector: React.FC = () => {
   const updateGesture = useAsteriaStore((s) => s.updateGesture)
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
   const dimTarget = useAsteriaStore((s) =>
-    s.project.targetParams.includes('intensity'),
+    s.project.defaultPaint.params.includes('intensity'),
   )
   const atlas = useAsteriaStore((s) => s.nodeAtlas)
 
@@ -465,10 +465,11 @@ export const GestureInspector: React.FC = () => {
  *             (la pista madre jamás se sobreescribe — §8.2).
  */
 const StrategyRows: React.FC = () => {
-  const lutSource = useAsteriaStore((s) => s.project.lutSource)
-  const setLutSource = useAsteriaStore((s) => s.setLutSource)
-  const defaultSynth = useAsteriaStore((s) => s.project.defaultSynth)
-  const setDefaultSynth = useAsteriaStore((s) => s.setDefaultSynth)
+  // 🜨 WAVE 8192: LUT/SYNTH viven en defaultPaint (aún de proyecto —
+  // el paint por capa llega con el fieldEngine multi-plano).
+  const lut = useAsteriaStore((s) => s.project.defaultPaint.lut)
+  const synth = useAsteriaStore((s) => s.project.defaultPaint.synth)
+  const setDefaultPaint = useAsteriaStore((s) => s.setDefaultPaint)
   const strategy = useAsteriaStore((s) => s.project.strategy)
   const setStrategy = useAsteriaStore((s) => s.setStrategy)
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
@@ -483,10 +484,10 @@ const StrategyRows: React.FC = () => {
     [clipTracks],
   )
 
-  const value = lutSource.kind === 'ride' ? lutSource.trackId : ''
+  const value = lut?.kind === 'ride' ? lut.trackId : ''
   const rideMissing =
-    lutSource.kind === 'ride' &&
-    !forgeTracks.some((t) => t.id === lutSource.trackId)
+    lut?.kind === 'ride' &&
+    !forgeTracks.some((t) => t.id === lut.trackId)
 
   return (
     <>
@@ -519,11 +520,11 @@ const StrategyRows: React.FC = () => {
           disabled={driftReadOnly}
           onChange={(e) => {
             const v = e.target.value
-            setLutSource(
-              v === ''
-                ? { kind: 'preset', name: 'default' }
-                : { kind: 'ride', trackId: v },
-            )
+            setDefaultPaint({
+              // undefined = síntesis local (la v1 'preset' no se
+              // materializa en el paint — §3.1)
+              lut: v === '' ? undefined : { kind: 'ride', trackId: v },
+            })
           }}
         >
           <option value="">AUTO-SYNTH Λ</option>
@@ -537,7 +538,7 @@ const StrategyRows: React.FC = () => {
               estado real en lugar de fingir Auto-Synth */}
           {rideMissing && (
             <option value={value}>
-              ⚠ {lutSource.kind === 'ride' ? lutSource.trackId : ''} (pista perdida)
+              ⚠ {lut?.kind === 'ride' ? lut.trackId : ''} (pista perdida)
             </option>
           )}
         </select>
@@ -551,15 +552,20 @@ const StrategyRows: React.FC = () => {
           a nivel de proyecto (baja a por-capa en la WAVE 8195). Solo
           tiene sentido con LUT SRC = AUTO-SYNTH; con Ride la curva
           la dicta la pista Forge clonada. */}
-      {lutSource.kind === 'preset' && (
+      {lut?.kind !== 'ride' && (
         <label className="asteria-insp__row" title="Forma de onda que el compilador sintetiza como curva base de los tracks ast_* — PULSE es el trapezoide Λ clásico; LASER es un pulso ultra-estrecho de flancos duros (la línea de luz que barre el rig con un gesto Wave)">
           <span className="asteria-insp__label">SHAPE</span>
           <select
             className="asteria-insp__select"
-            value={defaultSynth?.shape ?? 'pulse'}
+            value={synth?.shape ?? 'pulse'}
             disabled={driftReadOnly}
             onChange={(e) =>
-              setDefaultSynth({ shape: e.target.value as SynthShape })
+              setDefaultPaint({
+                synth: {
+                  ...(synth ?? { shape: 'pulse' as const }),
+                  shape: e.target.value as SynthShape,
+                },
+              })
             }
           >
             {SYNTH_SHAPES.map((s) => (

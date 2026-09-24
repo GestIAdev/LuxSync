@@ -20,8 +20,11 @@ import type {
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../core/aether/types'
 import type { FieldSnapshot } from '../../model/fieldEngine'
-import { createDefaultProject } from '../../model/AsteriaProject'
-import type { GlyphGesture } from '../../model/AsteriaProject'
+import { createDefaultProject, migrateV1toV2 } from '../../model/AsteriaProject'
+import type {
+  AsteriaProjectV1,
+  GlyphGesture,
+} from '../../model/AsteriaProject'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FIXTURES
@@ -209,7 +212,10 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     const clip = makeClip()
     const project = {
       ...createDefaultProject('x'),
-      lutSource: { kind: 'ride' as const, trackId: 'forge-track-01' },
+      defaultPaint: {
+        params: ['intensity'] as const,
+        lut: { kind: 'ride' as const, trackId: 'forge-track-01' },
+      },
     }
     const out = compile({
       atlas: makeAtlas(), field: makeField(), clip,
@@ -291,7 +297,10 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
   test('Λ-Ride con trackId inexistente → warning + fallback a pulso', () => {
     const project = {
       ...createDefaultProject('x'),
-      lutSource: { kind: 'ride' as const, trackId: 'no-existe' },
+      defaultPaint: {
+        params: ['intensity'] as const,
+        lut: { kind: 'ride' as const, trackId: 'no-existe' },
+      },
     }
     const out = compile({
       atlas: makeAtlas(), field: makeField(), clip: makeClip(),
@@ -303,10 +312,10 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
     expect(out.tracks[0].curve.keyframes).toHaveLength(5) // pulso sintetizado
   })
 
-  test('strobe en targetParams → compila como cualquier param (8080-M1, G6 retirado)', () => {
+  test('strobe en paint.params → compila como cualquier param (8080-M1, G6 retirado)', () => {
     const project = {
       ...createDefaultProject('x'),
-      targetParams: ['intensity', 'strobe'] as const,
+      defaultPaint: { params: ['intensity', 'strobe'] as const },
     }
     const out = compile({
       atlas: makeAtlas(), field: makeField(), clip: makeClip(),
@@ -347,7 +356,7 @@ describe('🜨 AsteriaCompiler — Vía Λ (WAVE 8030-P6)', () => {
 
   test('AST_SHADOWS_FORGE: paramId distinto o zona disjunta → silencio', () => {
     const clip = makeClip()
-    // El track Forge apunta a 'zoom' — targetParams = ['intensity']
+    // El track Forge apunta a 'zoom' — paint.params = ['intensity']
     clip.tracks[0] = { ...clip.tracks[0], paramId: 'zoom' }
     const out = compile({
       atlas: makeAtlas(), field: makeField(), clip,
@@ -742,11 +751,11 @@ const peakL = (t: HephTrack): number =>
   Math.max(...t.curve.keyframes.map((k) => hslOf(k).l))
 
 describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
-  test('Λ + color: pulso HSL — H/S del targetColor constantes, solo L pulsa', () => {
+  test('Λ + color: pulso HSL — H/S del paint.color constantes, solo L pulsa', () => {
     const project = {
       ...createDefaultProject('x'),
-      targetParams: ['color'] as const,
-      // default '#ff0000' → h=0, s=100, l=50
+      defaultPaint: { params: ['color'] as const },
+      // color default '#ff0000' → h=0, s=100, l=50
     }
     const out = compile({
       atlas: makeColorAtlas(), field: makeField(), clip: makeClip(), project,
@@ -775,11 +784,13 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     ).toBe(false)
   })
 
-  test('Λ + color: targetColor custom — H/S del hex horneados en el pulso', () => {
+  test('Λ + color: paint.color custom — H/S del hex horneados en el pulso', () => {
     const project = {
       ...createDefaultProject('x'),
-      targetParams: ['color'] as const,
-      targetColor: '#0080ff', // azul azure → h≈210, s=100, l=50
+      defaultPaint: {
+        params: ['color'] as const,
+        color: '#0080ff', // azul azure → h≈210, s=100, l=50
+      },
     }
     const out = compile({
       atlas: makeColorAtlas(), field: makeField(), clip: makeClip(), project,
@@ -805,7 +816,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     }
     const project = {
       ...createDefaultProject('x'),
-      targetParams: ['intensity', 'color'] as const,
+      defaultPaint: { params: ['intensity', 'color'] as const },
     }
     const out = compile({
       atlas: makeDualAtlas(), field, clip: makeClip(), project,
@@ -834,7 +845,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       ...createDefaultProject('x'),
       strategy: 'cohort' as const,
       cohortBudget: 2,
-      targetParams: ['color'] as const,
+      defaultPaint: { params: ['color'] as const },
     }
     const out = compile({
       atlas: makeColorCohortAtlas(), field, clip: makeClip(), project,
@@ -870,7 +881,7 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
     const project = {
       ...createDefaultProject('x'),
       strategy: 'mcc' as const,
-      targetParams: ['color'] as const,
+      defaultPaint: { params: ['color'] as const },
     }
     const out = compile({
       atlas: makeColorAtlas(), field, clip: makeClip(), project,
@@ -907,8 +918,10 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       atlas: makeColorAtlas(), field: makeField(), clip,
       project: {
         ...createDefaultProject('x'),
-        targetParams: ['color'] as const,
-        lutSource: { kind: 'ride' as const, trackId: 'forge-color-01' },
+        defaultPaint: {
+          params: ['color'] as const,
+          lut: { kind: 'ride' as const, trackId: 'forge-color-01' },
+        },
       },
     })
     const rt = rideColor.tracks[0]
@@ -926,8 +939,10 @@ describe('🌈 AsteriaCompiler — Pulso Monocromático (WAVE 8120)', () => {
       atlas: makeColorAtlas(), field: makeField(), clip,
       project: {
         ...createDefaultProject('x'),
-        targetParams: ['color'] as const,
-        lutSource: { kind: 'ride' as const, trackId: 'forge-track-01' },
+        defaultPaint: {
+          params: ['color'] as const,
+          lut: { kind: 'ride' as const, trackId: 'forge-track-01' },
+        },
       },
     })
     expect(
@@ -1356,7 +1371,7 @@ describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () =
       project: {
         ...createDefaultProject('x'),
         strategy: 'mcc-device' as const,
-        targetParams: ['intensity', 'color'] as const,
+        defaultPaint: { params: ['intensity', 'color'] as const },
       },
     })
     const colorTracks = out.tracks.filter((t) => t.paramId === 'color')
@@ -1385,7 +1400,7 @@ describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () =
       project: {
         ...createDefaultProject('x'),
         strategy: 'mcc-device' as const,
-        targetParams: ['intensity', 'color'] as const,
+        defaultPaint: { params: ['intensity', 'color'] as const },
         cohortBudget: 16,
       },
     })
@@ -1404,7 +1419,7 @@ describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () =
       project: {
         ...createDefaultProject('x'),
         strategy: 'mcc-device' as const,
-        targetParams: ['intensity'] as const,
+        defaultPaint: { params: ['intensity'] as const },
       },
     })
     for (const t of out.tracks) {
@@ -1444,7 +1459,7 @@ describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () =
         ...createDefaultProject('x'),
         strategy: 'cohort' as const,
         cohortBudget: 2,
-        targetParams: ['color'] as const, // animado — sin regla de luminancia
+        defaultPaint: { params: ['color'] as const }, // animado — sin regla de luminancia
       },
     })
     const colorTracks = out.tracks.filter((t) => t.paramId === 'color')
@@ -1452,6 +1467,144 @@ describe('🜨 AsteriaCompiler — Plan de Emisión (WAVE 8190 · Crux 1)', () =
     for (const t of colorTracks) {
       expect(t.zones).toEqual(['back'])
       expect(t.zones).not.toContain('front')
+    }
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 🜨 WAVE 8192 — G-MIG: PAINT MIGRATION (CRUX_RESOLUTION §3.2, §5)
+// compile(v1) ≡ compile(migrateV1toV2(v1)) — deepEqual de tracks.
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('🜨 AsteriaCompiler — G-MIG (WAVE 8192: migración v1→v2)', () => {
+  /** Documento v1 representativo: TARGET global + Λ-Ride + synth + cohort. */
+  const v1Doc = (): AsteriaProjectV1 => ({
+    version: 1,
+    rigFingerprint: 'sha1:v1rig',
+    stack: [
+      { kind: 'base', id: 'base', delayMs: 0, gain: 1 },
+      {
+        kind: 'wave', id: 'w1', op: 'replace',
+        mask: { nodeIds: ['fx-a:impact', 'fx-b:impact'] },
+        emitter: { x: 0, z: 0 }, shape: 'point', speedMps: 8,
+      },
+    ],
+    strategy: 'cohort',
+    targetParams: ['intensity', 'color'],
+    targetColor: '#0080ff',
+    lutSource: { kind: 'ride', trackId: 'forge-track-01' },
+    defaultSynth: { shape: 'triangle' },
+    cohortBudget: 8,
+    nodePositions: { 'fx-a:impact': { x: 0, z: 0 } },
+  })
+
+  test('mapeo de campos: TARGET root → defaultPaint; colorFlood allow', () => {
+    const v1 = v1Doc()
+    const snapshot = JSON.parse(JSON.stringify(v1))
+    const v2 = migrateV1toV2(v1)
+    // El documento migrado ES el v2 canónico equivalente — toEqual lo
+    // clava campo a campo (el gate no es solo track-parity).
+    expect(v2).toEqual({
+      version: 2,
+      rigFingerprint: 'sha1:v1rig',
+      stack: v1.stack, // pila intacta — ningún gesto recibe paint
+      strategy: 'cohort',
+      defaultPaint: {
+        params: ['intensity', 'color'],
+        color: '#0080ff',
+        lut: { kind: 'ride', trackId: 'forge-track-01' },
+        synth: { shape: 'triangle' },
+      },
+      colorFlood: 'allow', // paridad visual V1 garantizada (§3.2)
+      colorBudget: 16,
+      cohortBudget: 8,
+      nodePositions: { 'fx-a:impact': { x: 0, z: 0 } },
+    })
+    // Los campos v1 no sobreviven en el documento migrado
+    for (const dead of ['targetParams', 'targetColor', 'lutSource', 'defaultSynth']) {
+      expect(dead in v2).toBe(false)
+    }
+    // La entrada NO se muta
+    expect(v1).toEqual(snapshot)
+  })
+
+  test('preset LUT no materializa `lut` en el paint (undefined = synth)', () => {
+    const v1: AsteriaProjectV1 = {
+      version: 1, rigFingerprint: 'sha1:r',
+      stack: [{ kind: 'base', id: 'base', delayMs: 0, gain: 1 }],
+      strategy: 'auto',
+      targetParams: ['intensity'],
+      lutSource: { kind: 'preset', name: 'default' },
+      cohortBudget: 16,
+    }
+    const v2 = migrateV1toV2(v1)
+    expect(v2.defaultPaint).toEqual({
+      params: ['intensity'],
+      color: '#ff0000',
+      synth: { shape: 'pulse' },
+    })
+  })
+
+  test('campos v1 ausentes → defaults históricos (docs pre-8120/8191)', () => {
+    const v1: AsteriaProjectV1 = {
+      version: 1, rigFingerprint: 'sha1:r',
+      stack: [{ kind: 'base', id: 'base', delayMs: 0, gain: 1 }],
+      strategy: 'auto',
+      targetParams: ['pan'],
+      // sin targetColor (pre-8120) ni defaultSynth (pre-8191)
+      lutSource: { kind: 'preset', name: 'default' },
+      cohortBudget: 4,
+    }
+    const v2 = migrateV1toV2(v1)
+    expect(v2.defaultPaint).toEqual({
+      params: ['pan'],
+      color: '#ff0000',
+      synth: { shape: 'pulse' },
+    })
+    expect(v2.cohortBudget).toBe(4)
+  })
+
+  test('idempotente: migrate(v2) devuelve el MISMO objeto', () => {
+    const p = createDefaultProject('x')
+    expect(migrateV1toV2(p)).toBe(p)
+  })
+
+  test('G-MIG: compile(v1) ≡ compile(migrateV1toV2(v1)) — tracks byte a byte', () => {
+    const atlas = makeDualAtlas()
+    const field: FieldSnapshot = {
+      count: 6,
+      delayMs: new Float32Array([0, 100, 500, 200, 750, 900]),
+      gain: new Float32Array([1, 0.8, 0.5, 1, 0.6, 0.9]),
+      mask: new Uint8Array([1, 1, 1, 1, 1, 1]),
+    }
+    const clip = makeClip()
+    for (const strategy of ['lambda', 'cohort', 'mcc'] as const) {
+      const v1: AsteriaProjectV1 = { ...v1Doc(), strategy }
+      const outV1 = compile({ atlas, field, clip, project: v1 })
+      const v2 = migrateV1toV2(v1)
+      const outV2 = compile({ atlas, field, clip, project: v2 })
+      // El gate: salida visual bit a bit idéntica tras la migración.
+      expect(outV2.tracks).toEqual(outV1.tracks)
+      expect(outV2.report.warnings).toEqual(outV1.report.warnings)
+      // Y el migrado coincide con el v2 escrito a mano equivalente.
+      const v2Hand = {
+        ...createDefaultProject('x'),
+        rigFingerprint: 'sha1:v1rig',
+        strategy,
+        cohortBudget: 8,
+        stack: v1.stack,
+        nodePositions: v1.nodePositions,
+        defaultPaint: {
+          params: ['intensity', 'color'] as const,
+          color: '#0080ff',
+          lut: { kind: 'ride' as const, trackId: 'forge-track-01' },
+          synth: { shape: 'triangle' as const },
+        },
+        colorFlood: 'allow' as const,
+      }
+      expect(
+        compile({ atlas, field, clip, project: v2Hand }).tracks,
+      ).toEqual(outV1.tracks)
     }
   })
 })

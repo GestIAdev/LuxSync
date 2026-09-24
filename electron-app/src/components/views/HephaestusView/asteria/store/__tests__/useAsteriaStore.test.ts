@@ -44,13 +44,21 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
 
   test('proyecto por defecto: pila con un único gesto base identidad', () => {
     const { project } = useAsteriaStore.getState()
-    expect(project.version).toBe(1)
+    expect(project.version).toBe(2)
     expect(project.stack).toHaveLength(1)
     expect(project.stack[0]).toEqual({
       kind: 'base', id: 'base', delayMs: 0, gain: 1,
     })
     expect(project.strategy).toBe('auto')
     expect(project.cohortBudget).toBe(16)
+    // 🜨 WAVE 8192: la pintura por defecto equivale al TARGET v1
+    expect(project.defaultPaint).toEqual({
+      params: ['intensity'],
+      color: '#ff0000',
+      synth: { shape: 'pulse' },
+    })
+    expect(project.colorFlood).toBe('contain') // proyectos nuevos (§2.5/R1)
+    expect(project.colorBudget).toBe(16)
   })
 
   test('addGesture empuja a la cima (final del array)', () => {
@@ -100,17 +108,21 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
     expect(base.kind === 'base' ? base.gain : -1).toBe(0)
   })
 
-  test('setLutSource (WAVE 8184-M2): preset↔ride, undoable', () => {
+  test('setDefaultPaint — lut (WAVE 8192): synth↔ride, undoable', () => {
     const s = useAsteriaStore.getState()
-    expect(s.project.lutSource).toEqual({ kind: 'preset', name: 'default' })
-    s.setLutSource({ kind: 'ride', trackId: 'forge-track-01' })
-    expect(useAsteriaStore.getState().project.lutSource).toEqual({
+    expect(s.project.defaultPaint.lut).toBeUndefined() // synth local
+    s.setDefaultPaint({ lut: { kind: 'ride', trackId: 'forge-track-01' } })
+    expect(useAsteriaStore.getState().project.defaultPaint.lut).toEqual({
       kind: 'ride', trackId: 'forge-track-01',
     })
+    // Los demás campos de la pintura no se tocan (merge parcial)
+    expect(useAsteriaStore.getState().project.defaultPaint.params).toEqual([
+      'intensity',
+    ])
     useAsteriaStore.getState().undo()
-    expect(useAsteriaStore.getState().project.lutSource).toEqual({
-      kind: 'preset', name: 'default',
-    })
+    expect(
+      useAsteriaStore.getState().project.defaultPaint.lut,
+    ).toBeUndefined()
   })
 
   test('moveGesture reordena con clamp', () => {
@@ -174,15 +186,42 @@ describe('🜨 AsteriaStore — Gesture Stack (WAVE 8030-P3)', () => {
     expect(useAsteriaStore.getState().selectedGestureId).toBeNull()
   })
 
-  test('8070-M2: setTargetParams muta el proyecto; [] se rechaza', () => {
+  test('8192: setDefaultPaint.params muta el proyecto; [] se rechaza', () => {
     const s = useAsteriaStore.getState()
-    s.setTargetParams(['intensity', 'pan'])
-    expect(useAsteriaStore.getState().project.targetParams).toEqual([
+    s.setDefaultPaint({ params: ['intensity', 'pan'] })
+    expect(useAsteriaStore.getState().project.defaultPaint.params).toEqual([
       'intensity', 'pan',
     ])
     const before = useAsteriaStore.getState().project
-    s.setTargetParams([]) // el campo siempre apunta a algo — no-op
+    s.setDefaultPaint({ params: [] }) // el campo siempre apunta a algo — no-op
     expect(useAsteriaStore.getState().project).toBe(before)
+  })
+
+  test('8192: setDefaultPaint.color solo acepta #rrggbb', () => {
+    const s = useAsteriaStore.getState()
+    s.setDefaultPaint({ color: '#0080ff' })
+    expect(useAsteriaStore.getState().project.defaultPaint.color).toBe(
+      '#0080ff',
+    )
+    const before = useAsteriaStore.getState().project
+    s.setDefaultPaint({ color: 'rojo' }) // formato inválido — no-op
+    expect(useAsteriaStore.getState().project).toBe(before)
+  })
+
+  test('8192: updateGesture tolera paint (parche por capa, §3.1)', () => {
+    const s = useAsteriaStore.getState()
+    s.addGesture(wave('w1'))
+    s.updateGesture('w1', {
+      paint: { color: '#0000ff', synth: { shape: 'laser' } },
+    })
+    const w = useAsteriaStore.getState().project.stack[1]
+    expect(w.paint).toEqual({
+      color: '#0000ff',
+      synth: { shape: 'laser' },
+    })
+    // El patch parcial no inventa campos: params/color de la capa siguen
+    // heredando el defaultPaint (paint ausente en otros gestos)
+    expect(useAsteriaStore.getState().project.stack[0].paint).toBeUndefined()
   })
 })
 
@@ -310,6 +349,30 @@ describe('🜨 AsteriaStore — Rig Drift (WAVE 8050-M3)', () => {
     const st = useAsteriaStore.getState()
     expect(st.driftReadOnly).toBe(true)
     expect(st.rigDrift).not.toBeNull()
+  })
+
+  test('8192 (§3.2): setProject migra documentos v1 → v2 en la hidratación', () => {
+    const s = useAsteriaStore.getState()
+    s.setProject({
+      version: 1,
+      rigFingerprint: 'sha1:foreign',
+      stack: [{ kind: 'base', id: 'base', delayMs: 0, gain: 1 }],
+      strategy: 'cohort',
+      targetParams: ['intensity', 'color'],
+      targetColor: '#00ff00',
+      lutSource: { kind: 'ride', trackId: 'forge-track-01' },
+      cohortBudget: 4,
+    })
+    const p = useAsteriaStore.getState().project
+    expect(p.version).toBe(2)
+    expect(p.colorFlood).toBe('allow') // paridad visual v1 (§3.2)
+    expect(p.defaultPaint).toEqual({
+      params: ['intensity', 'color'],
+      color: '#00ff00',
+      lut: { kind: 'ride', trackId: 'forge-track-01' },
+      synth: { shape: 'pulse' },
+    })
+    expect(p.cohortBudget).toBe(4)
   })
 
   test('8070-M1: documento nuevo sin asteria → unlock + reset limpia todo', () => {

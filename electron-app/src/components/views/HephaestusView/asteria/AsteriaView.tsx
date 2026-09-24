@@ -105,12 +105,14 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
   const hoverCount = useAsteriaStore((s) => s.hoverNodeIds.size)
   const touchLive = selectionCount + hoverCount
   const surgeonDeviceId = useAsteriaStore((s) => s.surgeonDeviceId)
-  const targetParams = useAsteriaStore((s) => s.project.targetParams)
-  const setTargetParams = useAsteriaStore((s) => s.setTargetParams)
+  // 🜨 WAVE 8192 (§3.1): el TARGET global murió — el rail edita la
+  // pintura por defecto del documento (la que hereda toda capa sin
+  // `paint` propio).
+  const defaultPaint = useAsteriaStore((s) => s.project.defaultPaint)
+  const setDefaultPaint = useAsteriaStore((s) => s.setDefaultPaint)
+  const targetParams = defaultPaint.params
   const targetColor =
-    useAsteriaStore((s) => s.project.targetColor) ??
-    ASTERIA_DEFAULT_TARGET_COLOR
-  const setTargetColor = useAsteriaStore((s) => s.setTargetColor)
+    defaultPaint.color ?? ASTERIA_DEFAULT_TARGET_COLOR
   const driftReadOnly = useAsteriaStore((s) => s.driftReadOnly)
 
   // ── Hotkeys de herramientas: V / L / R ──
@@ -248,11 +250,13 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
         {/* 🜨 WAVE 8055: panel de capas (selección/eliminar/reset) */}
         <GestureStackPanel />
 
-        {/* 🜨 WAVE 8070 (M2): TARGET — a qué canales DMX aplica el
-            campo. Toggle multi-selección; nunca vacío (el store lo
-            rechaza). En solo-lectura queda congelado. */}
+        {/* 🜨 WAVE 8192 (§3.6): DEFAULT PAINT — ex-panel TARGET. La
+            pintura que hereda toda capa sin `paint` propio: a qué
+            canales DMX aplica el campo y con qué color. Toggle
+            multi-selección; params nunca vacío (el store lo rechaza).
+            En solo-lectura queda congelado. */}
         <div className="asteria-rail__section">
-          <div className="asteria-rail__title">TARGET</div>
+          <div className="asteria-rail__title">DEFAULT PAINT</div>
           <div className="asteria-target-chips">
             {TARGET_PARAM_CHOICES.map(({ id, label }) => {
               const on = targetParams.includes(id)
@@ -264,11 +268,11 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
                   disabled={driftReadOnly}
                   title={`${id}${on ? ' — activo' : ''}`}
                   onClick={() =>
-                    setTargetParams(
-                      on
+                    setDefaultPaint({
+                      params: on
                         ? targetParams.filter((p) => p !== id)
                         : [...targetParams, id],
-                    )
+                    })
                   }
                 >
                   {label}
@@ -284,7 +288,7 @@ export const AsteriaView: React.FC<AsteriaViewProps> = ({ preview }) => {
                 type="color"
                 value={targetColor}
                 disabled={driftReadOnly}
-                onChange={(e) => setTargetColor(e.target.value)}
+                onChange={(e) => setDefaultPaint({ color: e.target.value })}
                 title="Color del pulso — H/S constantes, el campo modula Lightness"
               />
               <span className="asteria-rail__stat asteria-target-color__hex">

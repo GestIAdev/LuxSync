@@ -7,8 +7,8 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import type { HephAutomationClipV3 } from '../../../../core/hephaestus/types'
-import { evaluateGates, autoFixGate } from './gateEvaluators'
-import type { GateResult, GateId, GateStatus } from './gateEvaluators'
+import { evaluateGates, autoFixGate } from '../../../../core/hephaestus/gateEvaluators'
+import type { GateResult, GateId, GateStatus } from '../../../../core/hephaestus/gateEvaluators'
 import './SafetyStrip.css'
 
 // ─── PROPS ──────────────────────────────────────────────────────────────────

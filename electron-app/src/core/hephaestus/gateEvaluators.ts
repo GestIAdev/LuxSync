@@ -5,9 +5,9 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import type { HephAutomationClipV3 } from '../../../../core/hephaestus/types'
-import type { CognitiveDNA, SimulationMeta } from '../../../../core/arsenal/lfxTypes'
-import { ENERGY_ZONES } from '../../../../core/arsenal/LfxClipInstance'
+import type { HephAutomationClipV3 } from './types'
+import type { CognitiveDNA, SimulationMeta } from '../arsenal/lfxTypes'
+import { ENERGY_ZONES } from '../arsenal/LfxClipInstance'
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 

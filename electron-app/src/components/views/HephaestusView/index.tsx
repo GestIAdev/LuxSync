@@ -33,7 +33,8 @@ import type {
   HephAutomationClip,
 } from '../../../core/hephaestus/types'
 import { serializeHephClip } from '../../../core/hephaestus/types'
-import { evaluateGates } from './safety/gateEvaluators'
+import { evaluateGates } from '../../../core/hephaestus/gateEvaluators'
+import { prepareClipForExport } from '../../../core/hephaestus/exportSanitizer'
 import './HephaestusView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -109,7 +110,14 @@ const HephaestusView: React.FC = () => {
   const paramCount = useMemo(() => clip?.tracks.length ?? 0, [clip])
 
   // ── WAVE 7123: Gate evaluation for save blocking ──
-  const gateResults = useMemo(() => clip ? evaluateGates(clip) : [], [clip])
+  // 🜨 WAVE 8201 (The Diplomat): los gates evalúan el clip SANEADO para
+  // export — `prepareClipForExport` repara zonas/DNA pre-save; lo que se
+  // evalúa aquí es exactamente lo que se serializa a `userdata/arsenal`.
+  const exportView = useMemo(() => clip ? prepareClipForExport(clip) : null, [clip])
+  const gateResults = useMemo(
+    () => exportView ? evaluateGates(exportView.clip) : [],
+    [exportView],
+  )
   const failingGates = useMemo(() => gateResults.filter(g => g.status === 'fail'), [gateResults])
   const hasGateFailures = failingGates.length > 0
 
@@ -166,32 +174,42 @@ const HephaestusView: React.FC = () => {
       return
     }
 
-    // WAVE 7123: Block save if any safety gate is failing
-    if (hasGateFailures) {
-      const messages = failingGates.map(g => `${g.id}: ${g.description}`).join(' · ')
-      setSaveMessage(`🛡 ${failingGates.length} gate(s) failing — ${messages}`)
+    // 🜨 WAVE 8201 (M3): sanitize → gates estrictos sobre el payload REAL → IPC.
+    // Si un gate aún falla tras el Diplomat, el save se aborta aquí — nada
+    // que no sea V3-estricto toca `userdata/arsenal`.
+    if (!exportView) return
+    const { clip: prepared, notes } = exportView
+    if (notes.length > 0) {
+      console.info('[Hephaestus] 🜨 ExportSanitizer:', notes)
+    }
+    const postFails = evaluateGates(prepared).filter(g => g.status === 'fail')
+    if (postFails.length > 0) {
+      const messages = postFails.map(g => `${g.id}: ${g.description}`).join(' · ')
+      console.error(`[Hephaestus] 🛡 Export blocked post-sanitize — ${postFails.length} gate(s) failing`, postFails)
+      setSaveMessage(`🛡 ${postFails.length} gate(s) failing — ${messages}`)
       return
     }
 
     setIsSaving(true)
     try {
-      const serialized = serializeHephClip(clip)
+      const serialized = serializeHephClip(prepared)
       const result = await window.luxsync.hephaestus.save(serialized)
 
       if (result.success) {
         console.log(`[Hephaestus] Saved clip to ${result.filePath}`)
         setSaveMessage('✅ Saved!')
+        // El editor adopta el clip saneado — editor == disco, preview no stale.
+        setClip(() => prepared)
         setIsDirty(false)
         await refreshMetadata()
 
-        const serializedForEvent = serializeHephClip(clip)
         window.dispatchEvent(new CustomEvent('luxsync:heph-clip-saved', {
           detail: {
-            clipId: clip.id,
-            clip: serializedForEvent,
+            clipId: prepared.id,
+            clip: serialized,
           },
         }))
-        console.log(`[Hephaestus] ⚒️ HOT-RELOAD: Dispatched luxsync:heph-clip-saved → ${clip.id}`)
+        console.log(`[Hephaestus] ⚒️ HOT-RELOAD: Dispatched luxsync:heph-clip-saved → ${prepared.id}`)
       } else {
         console.error('[Hephaestus] Save failed:', result.error)
         setSaveMessage(`❌ ${result.error}`)
@@ -202,7 +220,7 @@ const HephaestusView: React.FC = () => {
     } finally {
       setIsSaving(false)
     }
-  }, [clip, refreshMetadata, hasGateFailures, failingGates])
+  }, [exportView, refreshMetadata, setClip])
 
   // 📑 WAVE 8080 (M2): SAVE AS pide nombre real — el modal propone
   // `${clip.name} (Copy)` pero el operador escribe el nombre exacto.
@@ -235,13 +253,26 @@ const HephaestusView: React.FC = () => {
       clonedClip.id = crypto.randomUUID()
       clonedClip.name = newName
 
-      const serialized = serializeHephClip(clonedClip)
+      // 🜨 WAVE 8201 (M3): el clon también pasa por el Diplomat + gates.
+      const { clip: prepared, notes } = prepareClipForExport(clonedClip)
+      if (notes.length > 0) {
+        console.info('[Hephaestus] 🜨 ExportSanitizer (clone):', notes)
+      }
+      const postFails = evaluateGates(prepared).filter(g => g.status === 'fail')
+      if (postFails.length > 0) {
+        const messages = postFails.map(g => `${g.id}: ${g.description}`).join(' · ')
+        console.error('[Hephaestus] 🛡 Save As blocked post-sanitize:', postFails)
+        setSaveMessage(`🛡 ${postFails.length} gate(s) failing — ${messages}`)
+        return
+      }
+
+      const serialized = serializeHephClip(prepared)
       const result = await window.luxsync.hephaestus.save(serialized)
 
       if (result.success) {
         console.log(`[Hephaestus] Saved clone to ${result.filePath}`)
         setSaveMessage('✅ Copy saved!')
-        temporalActions.resetWithClip(clonedClip)
+        temporalActions.resetWithClip(prepared)
         setIsDirty(false)
         await refreshMetadata()
       } else {
@@ -380,18 +411,35 @@ const HephaestusView: React.FC = () => {
 
   // WAVE 2030.8: Create clip from modal and save immediately
   const handleCreateClip = useCallback(async (newClip: HephAutomationClip) => {
-    temporalActions.resetWithClip(newClip)
-    const intensityTrack = newClip.tracks.find(t => t.paramId === 'intensity')
+    // 🜨 WAVE 8201 (M3): el create-path también pasa por el Diplomat — WAVE
+    // 8200 auditó que este camino bypasseaba gates y escribía DNA roto.
+    const { clip: prepared, notes } = prepareClipForExport(newClip)
+    if (notes.length > 0) {
+      console.info('[Hephaestus] 🜨 ExportSanitizer (create):', notes)
+    }
+    const postFails = evaluateGates(prepared).filter(g => g.status === 'fail')
+    if (postFails.length > 0) {
+      const messages = postFails.map(g => `${g.id}: ${g.description}`).join(' · ')
+      console.error('[Hephaestus] 🛡 Create-save blocked post-sanitize:', postFails)
+      setSaveMessage(`🛡 ${postFails.length} gate(s) failing — ${messages}`)
+      // El clip se carga igualmente en el editor — solo el disco se protege.
+      temporalActions.resetWithClip(prepared)
+      setIsDirty(true)
+      return
+    }
+
+    temporalActions.resetWithClip(prepared)
+    const intensityTrack = prepared.tracks.find(t => t.paramId === 'intensity')
     if (intensityTrack) selectTrack(intensityTrack.id)
-    else if (newClip.tracks.length > 0) selectTrack(newClip.tracks[0].id)
+    else if (prepared.tracks.length > 0) selectTrack(prepared.tracks[0].id)
     setIsDirty(true)
 
     if (window.luxsync?.hephaestus?.save) {
       try {
-        const serialized = serializeHephClip(newClip)
+        const serialized = serializeHephClip(prepared)
         const result = await window.luxsync.hephaestus.save(serialized)
         if (result.success) {
-          console.log(`[Hephaestus] Created & saved new clip: ${newClip.name}`)
+          console.log(`[Hephaestus] Created & saved new clip: ${prepared.name}`)
           setSaveMessage('✅ Created!')
           setIsDirty(false)
           await refreshMetadata()
@@ -525,7 +573,7 @@ const HephaestusView: React.FC = () => {
           <span className="heph-header__param-count">{paramCount} PARAMS</span>
           <span style={{ color: '#333' }}>│</span>
           <SafetyStrip
-            clip={clip}
+            clip={exportView?.clip ?? clip}
             onClipPatch={(patch) => {
               setClip(prev => ({ ...prev, ...patch } as HephAutomationClipV3))
               setIsDirty(true)

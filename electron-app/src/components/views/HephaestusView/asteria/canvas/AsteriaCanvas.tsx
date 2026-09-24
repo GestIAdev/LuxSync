@@ -180,7 +180,11 @@ export const AsteriaCanvas: React.FC<{
       drawGridLayer(ctx, t)
       drawCrystalBox(ctx, t, stage)          // sombreado fuera del mundo + perímetro
       // 🜨 WAVE 8194: tinte por color compuesto (fieldPlanes.color).
-      drawNodeLayer(ctx, t, s.nodeAtlas, deviceMeta, s.fieldPlanes?.color)
+      // 🜨 WAVE 8198: modulado por la salida real (plano intensity).
+      drawNodeLayer(
+        ctx, t, s.nodeAtlas, deviceMeta,
+        s.fieldPlanes?.color, s.fieldPlanes?.scalar.get('intensity'),
+      )
       // 🜨 WAVE 8182 (M1): HEAT — mapa térmico del delay + isócronas.
       //  Bajo Feedback: los halos físicos mandan sobre la tinta del campo.
       if (s.heatEnabled) {

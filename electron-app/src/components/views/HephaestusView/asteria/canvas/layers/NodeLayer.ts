@@ -35,7 +35,7 @@
 import type { WorldTransform } from '../useWorldTransform'
 import type { NodeAtlas } from '../../store/useAsteriaStore'
 import type { FixtureV2 } from '../../../../../../core/stage/ShowFileV2'
-import type { ColorPlane } from '../../model/fieldEngine'
+import type { ColorPlane, PlaneField } from '../../model/fieldEngine'
 import { linearToSrgb } from '../../model/colorMath'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -335,6 +335,10 @@ export function drawNodeLayer(
   atlas: NodeAtlas | null,
   deviceMeta?: Map<string, DeviceGlyphMeta>,
   colorPlane?: ColorPlane | null,
+  /** 🜨 WAVE 8198: plano escalar de intensidad (mask+gain) — la salida
+   *  real de fotones del diseño. Sin plano → tinte latente pleno
+   *  (comportamiento legado pre-8198). */
+  intensityField?: PlaneField | null,
 ): void {
   if (!atlas) return
 
@@ -405,18 +409,31 @@ export function drawNodeLayer(
       i < colorPlane.mask.length &&
       colorPlane.mask[i] === 1
     ) {
-      const j = i * 3
-      ctx.globalAlpha =
-        Math.min(1, Math.max(0, colorPlane.alpha[i])) * 0.85
-      ctx.fillStyle = colorTintFill(
-        colorPlane.rgb[j],
-        colorPlane.rgb[j + 1],
-        colorPlane.rgb[j + 2],
-      )
-      ctx.beginPath()
-      ctx.arc(sx, sy, r * 0.55, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = 1
+      // 🜨 WAVE 8198 (True-Black): el tinte latente se modula por la
+      // salida real de fotones — Visual Alpha = Latent Alpha × gain.
+      // Sin plano de intensidad → iGain=1 (legado). Nodo fuera de la
+      // máscara de intensidad (mask=0) → 0 fotones → negro táctico:
+      // se omite el disco aunque el ColorPlane tenga color latente.
+      const iGain =
+        intensityField === null || intensityField === undefined
+          ? 1
+          : i < intensityField.mask.length && intensityField.mask[i] === 1
+            ? Math.min(1, Math.max(0, intensityField.gain[i]))
+            : 0
+      if (iGain > 1e-3) {
+        const j = i * 3
+        ctx.globalAlpha =
+          Math.min(1, Math.max(0, colorPlane.alpha[i]) * iGain) * 0.85
+        ctx.fillStyle = colorTintFill(
+          colorPlane.rgb[j],
+          colorPlane.rgb[j + 1],
+          colorPlane.rgb[j + 2],
+        )
+        ctx.beginPath()
+        ctx.arc(sx, sy, r * 0.55, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+      }
     }
 
     // 🜨 8173-M1 + 8174-M2: UNA etiqueta por deviceId, y la etiqueta es

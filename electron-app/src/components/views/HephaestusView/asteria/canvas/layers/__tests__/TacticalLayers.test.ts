@@ -25,6 +25,7 @@ import type { WorldTransform } from '../../useWorldTransform'
 import type { NodeAtlas } from '../../../store/useAsteriaStore'
 import type { NodeAtlasEntry } from '../../../../../../../core/aether/types'
 import type { FixtureV2 } from '../../../../../../../core/stage/ShowFileV2'
+import type { ColorPlane, PlaneField } from '../../../model/fieldEngine'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FIXTURES
@@ -42,6 +43,8 @@ function fakeCtx() {
     moveTo: 0, lineTo: 0, arc: 0, rect: 0,
     stroke: 0, fill: 0, fillRect: 0, strokeRect: 0,
     texts: [] as string[],
+    /** 🜨 8198: (fillStyle, globalAlpha) en el momento de cada fill. */
+    fills: [] as { style: string; alpha: number }[],
   }
   const ctx = {
     font: '', fillStyle: '', strokeStyle: '', lineWidth: 1,
@@ -54,7 +57,10 @@ function fakeCtx() {
     arc: () => { calls.arc++ },
     rect: () => { calls.rect++ },
     stroke: () => { calls.stroke++ },
-    fill: () => { calls.fill++ },
+    fill: () => {
+      calls.fill++
+      calls.fills.push({ style: ctx.fillStyle, alpha: ctx.globalAlpha })
+    },
     fillRect: () => { calls.fillRect++ },
     strokeRect: () => { calls.strokeRect++ },
     fillText: (s: string) => { calls.texts.push(s) },
@@ -400,8 +406,101 @@ describe('🜨 WAVE 8174 — Tungsten compuesto (parent-aware heuristics)', () =
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// M3 — HOVER TAG
+// WAVE 8198 — TRUE-BLACK: el tinte latente obedece a la intensidad real
 // ─────────────────────────────────────────────────────────────────────────────
+
+describe('🜨 WAVE 8198 — NodeLayer true-black (tinte × intensidad)', () => {
+  /** ColorPlane de 2 nodos: ambos con cobertura plena, rojo/verde lineal. */
+  const mkColorPlane = (): ColorPlane => ({
+    delayMs: new Float32Array(2),
+    gain: new Float32Array([1, 1]),
+    mask: new Uint8Array([1, 1]),
+    owner: new Uint16Array(2),
+    rgb: new Float32Array([1, 0, 0, 0, 1, 0]),
+    alpha: new Float32Array([0.8, 0.8]),
+  })
+  const mkIntensity = (
+    mask: readonly number[],
+    gain: readonly number[],
+  ): PlaneField => ({
+    delayMs: new Float32Array(mask.length),
+    gain: new Float32Array(gain),
+    mask: new Uint8Array(mask),
+  })
+  const hasTintFill = (calls: { fills: { style: string }[] }): boolean =>
+    calls.fills.some((f) => f.style.startsWith('rgb('))
+  const tintAlpha = (calls: { fills: { style: string; alpha: number }[] }): number =>
+    calls.fills.find((f) => f.style.startsWith('rgb('))!.alpha
+
+  test('intensidad mask=1 gain=1 → disco de tinte con alpha pleno (0.8·0.85)', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [1]),
+    )
+    expect(hasTintFill(calls)).toBe(true)
+    expect(tintAlpha(calls)).toBeCloseTo(0.8 * 0.85, 6)
+  })
+
+  test('gain=0 → SIN disco: el nodo queda en estado apagado táctico', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [0]),
+    )
+    expect(hasTintFill(calls)).toBe(false)
+    expect(calls.arc).toBe(3) // el glifo (chasis) sigue dibujándose
+  })
+
+  test('nodo fuera de la máscara de intensidad → 0 fotones → negro', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([0], [1]),
+    )
+    expect(hasTintFill(calls)).toBe(false)
+  })
+
+  test('gain=0.5 → Visual Alpha = Latent × Intensity (0.8·0.5·0.85)', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), mkIntensity([1], [0.5]),
+    )
+    expect(hasTintFill(calls)).toBe(true)
+    expect(tintAlpha(calls)).toBeCloseTo(0.8 * 0.5 * 0.85, 6)
+  })
+
+  test('sin plano de intensidad → tinte pleno (legado pre-8198)', () => {
+    const atlas = mkAtlas([entry('fx-a:dim', 'fx-a', 0, 0)])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, getDeviceMeta([fx('fx-a', 'par')]),
+      mkColorPlane(), null,
+    )
+    expect(hasTintFill(calls)).toBe(true)
+    expect(tintAlpha(calls)).toBeCloseTo(0.8 * 0.85, 6)
+  })
+
+  test('dos nodos: solo el que emite muestra tinte', () => {
+    const atlas = mkAtlas([
+      entry('fx-a:dim', 'fx-a', -1, 0),
+      entry('fx-b:dim', 'fx-b', 1, 0),
+    ])
+    const meta = getDeviceMeta([fx('fx-a', 'par'), fx('fx-b', 'par')])
+    const { ctx, calls } = fakeCtx()
+    drawNodeLayer(
+      ctx, T, atlas, meta,
+      mkColorPlane(), mkIntensity([1, 1], [1, 0]),
+    )
+    // Un solo fill 'rgb(' — el nodo apagado no tira disco
+    expect(calls.fills.filter((f) => f.style.startsWith('rgb('))).toHaveLength(1)
+  })
+})
 
 describe('🜨 NodeLayer — hover tag (WAVE 8170-M3)', () => {
   test('hover sobre un nodo → placa + etiqueta con ID corto', () => {

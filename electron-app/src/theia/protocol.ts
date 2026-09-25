@@ -19,6 +19,8 @@ export type ThetaMessageType =
   | 'theia:unload-stream'
   // 🎬 WAVE 8207 — Live canvas attach (post-start preview mirror)
   | 'theia:attach-canvas'
+  // 🌊 WAVE 8218 — Dynamic preview resize (DOM → worker mirror dims)
+  | 'theia:resize-preview'
   // 🌊 WAVE 8215 — Glass Bridge: transferable video port + link lifecycle
   | 'theia:video-port'
   | 'theia:video-unlink'
@@ -28,6 +30,9 @@ export type ThetaMessageType =
   | 'theia:set-uniform'
   // �🎬 WAVE 4921 — Atomic cognitive seek (Selene → orchestrator → worker)
   | 'theia:seek'
+  // 🔮 WAVE 8229 — Euclid Oracle · E3: shader contract (§4.3)
+  | 'theia:load-shader'
+  | 'theia:activate-shader'
   // Lifecycle (worker → orchestrator)
   | 'theia:ready'
   | 'theia:heartbeat-ack'
@@ -39,6 +44,9 @@ export type ThetaMessageType =
   | 'theia:asset-state'
   // 🎬 WAVE 4903 — ack del seek (worker → orchestrator)
   | 'theia:seek-ack'
+  // 🔮 WAVE 8229 — Euclid · E3 (worker → orchestrator)
+  | 'theia:shader-status'
+  | 'theia:perf-report'
 
 export interface ThetaInitPayload {
   /**
@@ -115,6 +123,21 @@ export interface ThetaLoadStreamPayload {
  */
 export interface ThetaAttachCanvasPayload {
   canvas: OffscreenCanvas
+}
+
+/**
+ * 🌊 WAVE 8218 — Dynamic preview resize. `transferControlToOffscreen`
+ * freezes the DOM element's bitmap at the size measured on mount — later
+ * DOM resizes cannot reach the transferred OffscreenCanvas. The EngineView
+ * forwards ResizeObserver rects here and the worker resizes the mirror
+ * backing in place. The internal GL render target (1920×1080) is NOT
+ * affected — this only rescales the 2D preview blit destination.
+ */
+export interface ThetaResizePreviewPayload {
+  /** CSS px × devicePixelRatio (physical pixels of the viewport). */
+  width: number
+  /** CSS px × devicePixelRatio. */
+  height: number
 }
 
 /**
@@ -254,6 +277,64 @@ export interface ThetaSeekAckPayload {
   snapshotOk: boolean
   /** Total de ticks programados para el crossfade. */
   crossfadeTicks: number
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 🔮 WAVE 8229 — EUCLID ORACLE · E3: Shader Contract (blueprint §4.3)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * `theia:load-shader` — compila (sin activar) un fragment shader de artista.
+ * El worker ensambla preámbulo+cuerpo+epílogo y compila en paralelo con
+ * KHR_parallel_shader_compile si existe — nunca congela el render.
+ */
+export interface ThetaLoadShaderPayload {
+  /** Identificador del shader (átomo); también clave de la caché LRU. */
+  shaderId: string
+  /** Cuerpo del artista — debe definir `mainImage(out vec4, in vec2)`. */
+  source: string
+  /** Meta opcional — p.ej. `{ steps: 96 }` desde `@euclid steps`. */
+  meta?: { steps?: number }
+}
+
+/**
+ * `theia:activate-shader` — conmuta el programa activo con crossfade
+ * (`prevFrame` snapshot + rampa u_blend). `shaderId='builtin'` vuelve al
+ * plasma interno de WAVE 8207.
+ */
+export interface ThetaActivateShaderPayload {
+  shaderId: string
+  /** Duración del crossfade visual (ms). 0/undefined → corte directo. */
+  crossfadeMs?: number
+}
+
+/** `theia:shader-status` — resultado de una compilación generativa. */
+export interface ThetaShaderStatusPayload {
+  shaderId: string
+  ok: boolean
+  /** ms de compilación+link (solo si ok). */
+  compileMs?: number
+  /** Log del driver (líneas ya re-mapeadas al código del artista). */
+  log?: string
+  /** Primera línea de error DENTRO del cuerpo del artista (1-based). */
+  line?: number
+  /** true si el shader sigue compilando en background (KHR parallel). */
+  pending?: boolean
+  /** true si el contexto no es WebGL2 — camino generativo no soportado. */
+  unsupported?: boolean
+}
+
+/** `theia:perf-report` — telemetría del governor (~1 Hz). */
+export interface ThetaPerfReportPayload {
+  fps: number
+  frameMs: number
+  /** GPU real si EXT_disjoint_timer_query_webgl2 está disponible. */
+  gpuMs?: number
+  renderScale: number
+  /** Shader generativo activo ('builtin' = plasma interno). */
+  activeShader: string
+  downgrades: number
+  upgrades: number
 }
 
 export interface ThetaMessage<T = unknown> {

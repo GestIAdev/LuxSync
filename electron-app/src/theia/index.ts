@@ -74,6 +74,33 @@ export * as EuclidTelemetry from './telemetry/TheiaTelemetryRing'
 // (worker-side; isomórfico y testeable en Node).
 export { TelemetrySmoother } from './telemetry/TelemetrySmoother'
 
+// 🔮 WAVE 8229 — Euclid Oracle · Fase E3: Shader Contract & Assembler
+export {
+  assembleFragmentShader,
+  buildPreamble,
+  buildEpilogue,
+  remapShaderLog,
+  parseStepsHint,
+  hasMainImage,
+  hashSource,
+  GEN_VERTEX_SRC,
+  BLIT_VERTEX_SRC,
+  BLIT_FRAG_SRC,
+  FLASH_STATS_FRAG_SRC,
+  EUCLID_GLSL_VERSION,
+  DEFAULT_MAX_STEPS,
+  DEFAULT_FLASH_MAX_DELTA,
+  FLASH_BUDGET,
+  FLASH_BUDGET_RATE,
+  type AssembledShader,
+  type RemappedLog,
+} from './shader/ShaderAssembler'
+export {
+  RenderGovernor,
+  GOVERNOR_DEFAULTS,
+  type GovernorConfig,
+} from './shader/RenderGovernor'
+
 export {
   AssetStateMachine,
   type AssetStateId,

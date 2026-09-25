@@ -34,6 +34,8 @@ import {
   type ThetaMessage,
   type ThetaSeekAckPayload,
   type ThetaSeekPayload,
+  type ThetaShaderStatusPayload,
+  type ThetaPerfReportPayload,
   type ThetaStateReportPayload,
   type ThetaVideoPortPayload,
   type ThetaVideoStatusPayload,
@@ -81,7 +83,7 @@ const CIRCUIT_HALF_OPEN_SUCCESS = 2
 export interface ThetaOrchestratorConfig {
   /** ms entre heartbeats (default 1000). */
   heartbeatInterval: number
-  /** ms sin ACK antes de marcar fallo (default 3000). */
+  /** ms sin ACK antes de marcar fallo (default 10000). */
   heartbeatTimeout: number
   /** Máximo de resurrecciones antes de rendirse (default 5). */
   maxResurrections: number
@@ -93,7 +95,10 @@ export interface ThetaOrchestratorConfig {
 
 const DEFAULT_CONFIG: ThetaOrchestratorConfig = {
   heartbeatInterval: 1000,
-  heartbeatTimeout: 3000,
+  // 🌊 WAVE 8221 — STALL TOLERANCE: el ack del worker comparte el event
+  // loop con `gl.readPixels` (8.3MB/tick) — un stall de GPU de 3-5s es
+  // recuperable y matar al worker por él cuesta mucho más que esperarlo.
+  heartbeatTimeout: 10000,
   maxResurrections: 5,
   resurrectionDelay: 500,
   workerPollIntervalMs: 22,
@@ -139,6 +144,22 @@ export class ThetaOrchestrator {
   private isRunning = false
   private isReady = false
   private resurrections = 0
+  // 🌊 WAVE 8220 — PHOENIX LOCK: resurrecciones concurrentes (heartbeat tick +
+  // worker 'error'/'messageerror'/'theia:error' en la misma ventana) spawnearían
+  // workers duales — el perdedor queda zombie (contexto GL + pool 16.6MB +
+  // loop 22ms con readPixels para siempre). El candado colapsa callers
+  // solapados en una única resurrección.
+  private isResurrecting = false
+  // 🌊 WAVE 8221 — invalida resurrecciones en vuelo: si el operador hace
+  // stop→start dentro del resurrectionDelay (500ms), el Phoenix pendiente
+  // vería isRunning=true y spawnearía un segundo worker (zombie). El seq
+  // cambia en cada start() → la resurrección vieja aborta tras su await.
+  private lifecycleSeq = 0
+  // 🌊 WAVE 8223 — listeners de epoch de worker (cada spawn = epoch nuevo).
+  // La UI los usa para remontar el <canvas> de preview: un canvas DOM solo
+  // puede transferirse una vez — tras un respawn el offscreen viejo murió
+  // con el worker y hay que re-transferir un elemento nuevo.
+  private workerEpochListeners = new Set<() => void>()
 
   private circuit: CircuitBreaker = {
     state: CircuitState.CLOSED,
@@ -196,6 +217,16 @@ export class ThetaOrchestrator {
   // Phoenix respawn replays them on 'theia:ready' (the worker is stateless).
   private desiredUniforms = new Map<string, number>()
 
+  // 🔮 WAVE 8229 — EUCLID · E3: shader contract (§4.3). Las fuentes de
+  // artista se persisten aquí — un worker nuevo (spawn/respawn Phoenix)
+  // pierde toda su caché GL y necesita el replay completo.
+  private desiredShaders = new Map<string, { source: string; meta?: { steps?: number } }>()
+  private desiredActiveShader = 'builtin'
+  private shaderStatusListeners = new Set<(p: ThetaShaderStatusPayload) => void>()
+  private perfReportListeners = new Set<(p: ThetaPerfReportPayload) => void>()
+  private lastShaderStatus: ThetaShaderStatusPayload | null = null
+  private lastPerfReport: ThetaPerfReportPayload | null = null
+
   constructor(config: Partial<ThetaOrchestratorConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
   }
@@ -222,6 +253,32 @@ export class ThetaOrchestrator {
       return
     }
     this.offscreenCanvas = canvas
+  }
+
+  /**
+   * 🌊 WAVE 8218 — Reenvío de resizes del viewport al espejo de preview.
+   * `transferControlToOffscreen` congela el backing del canvas DOM al tamaño
+   * medido en el mount; el DOM ya no puede alcanzarlo, así que el
+   * ResizeObserver de TheiaEngineView pasa por aquí los rects vivos y el
+   * worker re-aloja el bitmap del OffscreenCanvas. El GL render target
+   * (1920×1080) NO se ve afectado — solo el destino del blit 2D.
+   * Best-effort: sin worker vivo no hay espejo que redimensionar.
+   */
+  // 🌊 WAVE 8225 — dims del viewport pendientes: el RO/UI puede medir
+  // mientras el worker no existe (engine off, respawn en vuelo). Antes se
+  // descartaban en silencio → el espejo quedaba a las dims horneadas en el
+  // transfer (0×0 o el intrínseco 300×150) para siempre. Se reenvían al
+  // worker en el handler de 'theia:ready'.
+  private pendingPreviewDims: { width: number; height: number } | null = null
+
+  resizePreviewCanvas(width: number, height: number): void {
+    this.pendingPreviewDims = { width, height }
+    if (!this.worker) return
+    try {
+      this.worker.postMessage(
+        makeThetaMessage('theia:resize-preview', { width, height }),
+      )
+    } catch { /* worker may be dead — el replay en 'theia:ready' lo cubre */ }
   }
 
   async start(): Promise<void> {
@@ -251,7 +308,20 @@ export class ThetaOrchestrator {
     this.armGlassBridge()
 
     this.isRunning = true
+    // 🌊 WAVE 8221 — CLEAN SLATE: un restart manual es una orden del
+    // operador — borra la memoria penal del watchdog. Sin esto, un circuit
+    // OPEN de la sesión anterior hacía que spawnWorker() retornara en
+    // silencio y el motor quedara muerto (isRunning=true, worker=null)
+    // hasta que expirara el backoff de 30s.
+    this.circuit.state = CircuitState.CLOSED
+    this.circuit.failures = 0
+    this.circuit.lastFailure = 0
+    this.circuit.successesInHalfOpen = 0
     this.resurrections = 0
+    // Baseline fresca: ningún tick futuro puede evaluar contra el ack del
+    // worker anterior (doble seguro con el reset en 'theia:ready', 8220).
+    this.lastHeartbeatAt = Date.now()
+    this.lifecycleSeq++
     await this.spawnWorker()
     this.startHeartbeat()
   }
@@ -765,6 +835,67 @@ export class ThetaOrchestrator {
     } catch { /* worker may be dead — the replay on ready covers it */ }
   }
 
+  // ───────────────────────────────────────────────────────────────────────
+  // 🔮 WAVE 8229 — EUCLID · E3: Shader Contract facade (§4.3)
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Compila un fragment shader de artista (cuerpo `mainImage`) sin activarlo.
+   * La fuente queda persistida para replay post-respawn. Resultado vía
+   * `onShaderStatus` (o `lastShaderStatus`).
+   */
+  loadShader(shaderId: string, source: string, meta?: { steps?: number }): void {
+    this.desiredShaders.set(shaderId, { source, meta })
+    if (!this.worker) return
+    try {
+      this.worker.postMessage(
+        makeThetaMessage('theia:load-shader', { shaderId, source, meta }),
+      )
+    } catch { /* worker may be dead — replay on ready covers it */ }
+  }
+
+  /**
+   * Conmuta al shader `shaderId` con crossfade opcional. `'builtin'` vuelve
+   * al plasma interno de WAVE 8207. La elección persiste para replay.
+   */
+  activateShader(shaderId: string, crossfadeMs = 0): void {
+    this.desiredActiveShader = shaderId
+    if (!this.worker) return
+    try {
+      this.worker.postMessage(
+        makeThetaMessage('theia:activate-shader', { shaderId, crossfadeMs }),
+      )
+    } catch { /* worker may be dead */ }
+  }
+
+  /** Suscripción a `theia:shader-status`. Devuelve unsubscribe. */
+  onShaderStatus(
+    listener: (p: ThetaShaderStatusPayload) => void,
+  ): () => void {
+    this.shaderStatusListeners.add(listener)
+    return () => {
+      this.shaderStatusListeners.delete(listener)
+    }
+  }
+
+  /** Suscripción a `theia:perf-report` (governor, ~1 Hz). */
+  onPerfReport(
+    listener: (p: ThetaPerfReportPayload) => void,
+  ): () => void {
+    this.perfReportListeners.add(listener)
+    return () => {
+      this.perfReportListeners.delete(listener)
+    }
+  }
+
+  getLastShaderStatus(): ThetaShaderStatusPayload | null {
+    return this.lastShaderStatus
+  }
+
+  getLastPerfReport(): ThetaPerfReportPayload | null {
+    return this.lastPerfReport
+  }
+
   /**
    * Unload the current video, stopping the stream and cleaning up resources.
    */
@@ -889,6 +1020,28 @@ export class ThetaOrchestrator {
       this.deliverVideoPort(this.pendingVideoPort)
       this.pendingVideoPort = null
     }
+
+    // 🌊 WAVE 8223 — epoch bump: notifica a la UI que hay un worker nuevo.
+    // El preview <canvas> se remonta vía key={epoch} y re-transfiere un
+    // OffscreenCanvas fresco (el anterior pertenece al worker muerto).
+    for (const listener of this.workerEpochListeners) {
+      try {
+        listener()
+      } catch {
+        /* listener errors must not break spawn */
+      }
+    }
+  }
+
+  /**
+   * 🌊 WAVE 8223 — suscripción al epoch del worker. Devuelve unsubscribe.
+   * Cada spawn (start inicial o respawn Phoenix) dispara los listeners.
+   */
+  onWorkerEpoch(listener: () => void): () => void {
+    this.workerEpochListeners.add(listener)
+    return () => {
+      this.workerEpochListeners.delete(listener)
+    }
   }
 
   private handleWorkerMessage(msg: ThetaMessage | undefined): void {
@@ -896,6 +1049,12 @@ export class ThetaOrchestrator {
     switch (msg.type) {
       case 'theia:ready':
         this.isReady = true
+        // 🌊 WAVE 8220 — baseline de vida del worker NUEVO. Sin esto el
+        // watchdog hereda el ack del worker muerto: el primer tick tras
+        // 'ready' mide elapsed ≈ timeout+delay+spawn (>3000ms) contra una
+        // referencia stale y ejecuta un falso positivo → el bucle de
+        // resurrecciones se auto-perpetúa hasta agotar maxResurrections.
+        this.lastHeartbeatAt = Date.now()
         this.circuit.state = CircuitState.CLOSED
         this.circuit.failures = 0
         // eslint-disable-next-line no-console
@@ -906,6 +1065,42 @@ export class ThetaOrchestrator {
             try {
               this.worker?.postMessage(makeThetaMessage('theia:set-uniform', { name, value }))
             } catch { /* replay is best-effort */ }
+          }
+        }
+        // 🌊 WAVE 8225 — replay de las dims del viewport medidas mientras el
+        // worker no existía (resizePreviewCanvas las stashó). El worker las
+        // aplica si el preview ya llegó, o las retiene en pendingPreviewDims
+        // hasta el attach del canvas.
+        if (this.pendingPreviewDims) {
+          try {
+            this.worker?.postMessage(
+              makeThetaMessage('theia:resize-preview', this.pendingPreviewDims),
+            )
+          } catch { /* replay best-effort */ }
+        }
+        // 🔮 WAVE 8229 · E3 — replay de shaders tras respawn: el worker
+        // nuevo llega sin caché GL; reenviar fuentes + activación deseada.
+        if (this.desiredShaders.size > 0) {
+          for (const [shaderId, s] of this.desiredShaders) {
+            try {
+              this.worker?.postMessage(
+                makeThetaMessage('theia:load-shader', {
+                  shaderId,
+                  source: s.source,
+                  meta: s.meta,
+                }),
+              )
+            } catch { /* replay best-effort */ }
+          }
+          if (this.desiredActiveShader !== 'builtin') {
+            try {
+              this.worker?.postMessage(
+                makeThetaMessage('theia:activate-shader', {
+                  shaderId: this.desiredActiveShader,
+                  crossfadeMs: 0,
+                }),
+              )
+            } catch { /* replay best-effort */ }
           }
         }
         break
@@ -950,6 +1145,31 @@ export class ThetaOrchestrator {
       case 'theia:seek-ack':
         this.lastSeekAck = msg.payload as ThetaSeekAckPayload
         break
+
+      // 🔮 WAVE 8229 · E3 — shader contract status + governor telemetry
+      case 'theia:shader-status': {
+        this.lastShaderStatus = msg.payload as ThetaShaderStatusPayload
+        const s = this.lastShaderStatus
+        if (!s.ok && !s.pending) {
+          // eslint-disable-next-line no-console
+          console.error(`[THETA] shader '${s.shaderId}' failed${s.line ? ` @line ${s.line}` : ''}: ${s.log}`)
+        }
+        for (const l of this.shaderStatusListeners) {
+          try {
+            l(s)
+          } catch { /* listener errors must not break dispatch */ }
+        }
+        break
+      }
+      case 'theia:perf-report': {
+        this.lastPerfReport = msg.payload as ThetaPerfReportPayload
+        for (const l of this.perfReportListeners) {
+          try {
+            l(this.lastPerfReport)
+          } catch { /* listener errors must not break dispatch */ }
+        }
+        break
+      }
 
       case 'theia:error': {
         const err = msg.payload as ThetaErrorPayload
@@ -1026,31 +1246,41 @@ export class ThetaOrchestrator {
   }
 
   private async resurrectWorker(): Promise<void> {
-    if (this.worker) {
-      try {
-        this.worker.terminate()
-      } catch {
-        /* noop */
-      }
-      this.worker = null
-    }
-    this.isReady = false
-    this.resurrections++
-    // eslint-disable-next-line no-console
-    console.log(`[THETA] 🔥 PHOENIX: resurrecting worker (attempt ${this.resurrections})`)
-    await new Promise((r) => setTimeout(r, this.config.resurrectionDelay))
-    if (!this.isRunning) return
+    // 🌊 WAVE 8220 — un solo Phoenix en vuelo: callers solapados retornan
+    // (la resurrección en curso ya termina y re-spawnea al worker).
+    if (this.isResurrecting) return
+    this.isResurrecting = true
     try {
-      await this.spawnWorker()
-      // 🌊 WAVE 8215 — el video port murió con el worker terminado (era
-      // propiedad suya): re-pull → el broker entrega un channel FRESCO a
-      // ambos extremos y el nuevo worker recibe el extremo productor.
-      // El telemetry port NO se re-pulle: vive en esta página y el ring
-      // SAB ya pasó al worker nuevo en el INIT.
-      requestTheiaPort('video-port')
-    } catch (err) {
+      if (this.worker) {
+        try {
+          this.worker.terminate()
+        } catch {
+          /* noop */
+        }
+        this.worker = null
+      }
+      this.isReady = false
+      this.resurrections++
       // eslint-disable-next-line no-console
-      console.error('[THETA] resurrect failed:', err)
+      console.log(`[THETA] 🔥 PHOENIX: resurrecting worker (attempt ${this.resurrections})`)
+      const seq = this.lifecycleSeq
+      await new Promise((r) => setTimeout(r, this.config.resurrectionDelay))
+      // Abort si el motor se apagó O si un restart manual invalidó este ciclo.
+      if (!this.isRunning || seq !== this.lifecycleSeq) return
+      try {
+        await this.spawnWorker()
+        // 🌊 WAVE 8215 — el video port murió con el worker terminado (era
+        // propiedad suya): re-pull → el broker entrega un channel FRESCO a
+        // ambos extremos y el nuevo worker recibe el extremo productor.
+        // El telemetry port NO se re-pulle: vive en esta página y el ring
+        // SAB ya pasó al worker nuevo en el INIT.
+        requestTheiaPort('video-port')
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[THETA] resurrect failed:', err)
+      }
+    } finally {
+      this.isResurrecting = false
     }
   }
 }

@@ -38,17 +38,37 @@ import {
   type ThetaInitPayload,
   type ThetaLoadStreamPayload,
   type ThetaMessage,
+  type ThetaPerfReportPayload,
   type ThetaResizePreviewPayload,
   type ThetaSeekAckPayload,
   type ThetaSeekPayload,
   type ThetaSetUniformPayload,
+  type ThetaShaderStatusPayload,
+  type ThetaLoadShaderPayload,
+  type ThetaActivateShaderPayload,
   type ThetaStateReportPayload,
   type ThetaVideoPortPayload,
   type ThetaVideoStatusPayload,
 } from './protocol'
 // 🎬 WAVE 4864: Phase 4 — Asset State Machine + Crossfade Unit
 import { AssetStateMachine, type AssetStateId } from './AssetStateMachine'
-import { CrossfadeUnit, type CrossfadeCurve } from './CrossfadeUnit'
+import { CrossfadeUnit, type CrossfadeCurve, type CrossfadeStep } from './CrossfadeUnit'
+// 🔮 WAVE 8229 — Euclid Oracle · E3: Shader Contract & Governor (§4.x)
+import {
+  assembleFragmentShader,
+  parseStepsHint,
+  hasMainImage,
+  remapShaderLog,
+  GEN_VERTEX_SRC,
+  BLIT_VERTEX_SRC,
+  BLIT_FRAG_SRC,
+  FLASH_STATS_FRAG_SRC,
+  DEFAULT_MAX_STEPS,
+  DEFAULT_FLASH_MAX_DELTA,
+  FLASH_BUDGET,
+  FLASH_BUDGET_RATE,
+} from './shader/ShaderAssembler'
+import { RenderGovernor } from './shader/RenderGovernor'
 // � WAVE 8215 — Glass Bridge: transferable frame writers (ping-pong pool)
 import {
   createVideoFrameBuffer,
@@ -275,6 +295,58 @@ interface WorkerState {
   euPredictiveETA: WebGLUniformLocation | null
   euApproach: WebGLUniformLocation | null
   euImpact: WebGLUniformLocation | null
+  // 🔮 WAVE 8229 — EUCLID ORACLE · E3 (Shader Contract & Governor)
+  /** El contexto GL es WebGL2 — requisito del camino generativo (§4.1). */
+  glIsWebGL2: boolean
+  /** Caché LRU de programas compilados (máx 8 — §4.4). */
+  genPrograms: Map<string, GenProgram>
+  /** Fuentes de artista por shaderId — rebuild tras context-loss (§4.5). */
+  genSources: Map<string, { source: string; steps: number }>
+  /** Compilaciones en vuelo (KHR_parallel_shader_compile). */
+  genPending: Map<string, PendingGenCompile>
+  /** Programa generativo activo — null = plasma interno (Modo A legacy). */
+  genActive: GenProgram | null
+  genActiveId: string
+  /** Activación diferida a la finalización de una compilación paralela. */
+  genPendingActivate: { shaderId: string; crossfadeMs: number } | null
+  /** FBO escalado del governor (renderScale × resolución canvas). */
+  genFbo: WebGLFramebuffer | null
+  genFboTex: WebGLTexture | null
+  genFboW: number
+  genFboH: number
+  /** Frame anterior del path generativo (canvas-res, crossfade §4.3). */
+  genPrevTex: WebGLTexture | null
+  genPrevW: number
+  genPrevH: number
+  genPrevValid: boolean
+  /** Programa passthrough FBO→canvas. */
+  blitProgram: WebGLProgram | null
+  blitTexLoc: WebGLUniformLocation | null
+  blitPos: number
+  /** Stats fotosensibles — texel 1×1 {mean,budgetNorm} ping-pong (§4.6). */
+  statsProgram: WebGLProgram | null
+  statsTexA: WebGLTexture | null
+  statsTexB: WebGLTexture | null
+  statsFboA: WebGLFramebuffer | null
+  statsFboB: WebGLFramebuffer | null
+  statsFlip: boolean
+  statsSceneLoc: WebGLUniformLocation | null
+  statsPrevLoc: WebGLUniformLocation | null
+  statsDtLoc: WebGLUniformLocation | null
+  statsBudgetLoc: WebGLUniformLocation | null
+  statsRateLoc: WebGLUniformLocation | null
+  statsPos: number
+  /** KHR_parallel_shader_compile (si existe). */
+  khrCompile: { COMPLETION_STATUS_KHR: number } | null
+  /** EXT_disjoint_timer_query_webgl2 + query en vuelo (GPU real, §4.5). */
+  timerExt: { TIME_ELAPSED_EXT: number } | null
+  gpuQuery: WebGLQuery | null
+  gpuMs: number
+  /** Governor adaptativo (renderScale). */
+  governor: RenderGovernor
+  /** Contador para LRU y fps del perf-report. */
+  renderSeq: number
+  framesRendered: number
 }
 
 const state: WorkerState = {
@@ -357,6 +429,101 @@ const state: WorkerState = {
   euPredictiveETA: null,
   euApproach: null,
   euImpact: null,
+  // 🔮 WAVE 8229 — EUCLID · E3
+  glIsWebGL2: false,
+  genPrograms: new Map(),
+  genSources: new Map(),
+  genPending: new Map(),
+  genActive: null,
+  genActiveId: 'builtin',
+  genPendingActivate: null,
+  genFbo: null,
+  genFboTex: null,
+  genFboW: 0,
+  genFboH: 0,
+  genPrevTex: null,
+  genPrevW: 0,
+  genPrevH: 0,
+  genPrevValid: false,
+  blitProgram: null,
+  blitTexLoc: null,
+  blitPos: -1,
+  statsProgram: null,
+  statsTexA: null,
+  statsTexB: null,
+  statsFboA: null,
+  statsFboB: null,
+  statsFlip: false,
+  statsSceneLoc: null,
+  statsPrevLoc: null,
+  statsDtLoc: null,
+  statsBudgetLoc: null,
+  statsRateLoc: null,
+  statsPos: -1,
+  khrCompile: null,
+  timerExt: null,
+  gpuQuery: null,
+  gpuMs: 0,
+  governor: new RenderGovernor(),
+  renderSeq: 0,
+  framesRendered: 0,
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 🔮 WAVE 8229 — EUCLID · E3: tipos del pipeline generativo
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Locations estándar del contrato §3.5/§4 — cacheadas en link (una vez). */
+interface GenUniformLocs {
+  tel: WebGLUniformLocation | null
+  flags: WebGLUniformLocation | null
+  enums: WebGLUniformLocation | null
+  time: WebGLUniformLocation | null
+  dt: WebGLUniformLocation | null
+  resolution: WebGLUniformLocation | null
+  beatTime: WebGLUniformLocation | null
+  kickPulse: WebGLUniformLocation | null
+  snarePulse: WebGLUniformLocation | null
+  predictiveETA: WebGLUniformLocation | null
+  approach: WebGLUniformLocation | null
+  impact: WebGLUniformLocation | null
+  brightness: WebGLUniformLocation | null
+  contrast: WebGLUniformLocation | null
+  blackout: WebGLUniformLocation | null
+  renderScale: WebGLUniformLocation | null
+  prevFrame: WebGLUniformLocation | null
+  flashState: WebGLUniformLocation | null
+  hasPrev: WebGLUniformLocation | null
+  blend: WebGLUniformLocation | null
+  flashGuard: WebGLUniformLocation | null
+  flashMaxDelta: WebGLUniformLocation | null
+  flashBudget: WebGLUniformLocation | null
+}
+
+interface GenProgram {
+  program: WebGLProgram
+  locs: GenUniformLocs
+  /** Locations de uniforms de artista (`@euclid param`) — lazy per nombre. */
+  paramLocs: Map<string, WebGLUniformLocation | null>
+  /** Location del atributo a_pos (fullscreen triangle). */
+  posLoc: number
+  /** Marca de uso para la evicción LRU. */
+  lastUsed: number
+  /** MAX_STEPS con que se ensambló (hint @euclid steps). */
+  steps: number
+}
+
+/** Compilación en vuelo (KHR_parallel_shader_compile — §4.4). */
+interface PendingGenCompile {
+  shaderId: string
+  source: string
+  steps: number
+  program: WebGLProgram
+  vs: WebGLShader
+  fs: WebGLShader
+  preambleLines: number
+  bodyLines: number
+  t0: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -503,8 +670,22 @@ function startStateReports(): void {
       uptimeMs: Date.now() - state.startTime,
     }
     send('theia:state-report', payload)
-    // Reset ticksObserved so each report is per-window.
+    // 🔮 WAVE 8229 · E3 — perf-report del governor (§4.3, ~1 Hz):
+    // fps = frames renderizados en la ventana; frameMs = EMA del governor;
+    // gpuMs solo si EXT_disjoint_timer_query_webgl2 está disponible.
+    const perf: ThetaPerfReportPayload = {
+      fps: state.framesRendered,
+      frameMs: state.governor.frameEmaMs,
+      gpuMs: state.timerExt && state.gpuMs > 0 ? state.gpuMs : undefined,
+      renderScale: state.governor.renderScale,
+      activeShader: state.genActiveId,
+      downgrades: state.governor.downgrades,
+      upgrades: state.governor.upgrades,
+    }
+    send('theia:perf-report', perf)
+    // Reset per-window counters.
     state.ticksObserved = 0
+    state.framesRendered = 0
   }, STATE_REPORT_INTERVAL_MS) as unknown as number
 }
 
@@ -603,6 +784,111 @@ function buildGLResources(): boolean {
   state.euApproach = gl.getUniformLocation(prog, 'u_approach')
   state.euImpact = gl.getUniformLocation(prog, 'u_impact')
 
+  // 🔮 WAVE 8229 · E3 — programa blit FBO→canvas (passthrough ES 3.00).
+  // Solo bajo WebGL2; el camino generativo cae al plasma sin él.
+  if (state.glIsWebGL2) {
+    state.blitProgram = null
+    state.blitTexLoc = null
+    state.blitPos = -1
+    const bvs = compileShader(gl, gl.VERTEX_SHADER, BLIT_VERTEX_SRC)
+    const bfs = compileShader(gl, gl.FRAGMENT_SHADER, BLIT_FRAG_SRC)
+    if (bvs && bfs) {
+      const bprog = gl.createProgram()
+      if (bprog) {
+        gl.attachShader(bprog, bvs)
+        gl.attachShader(bprog, bfs)
+        gl.linkProgram(bprog)
+        if (gl.getProgramParameter(bprog, gl.LINK_STATUS)) {
+          state.blitProgram = bprog
+          state.blitTexLoc = gl.getUniformLocation(bprog, 'u_tex')
+          state.blitPos = gl.getAttribLocation(bprog, 'a_pos')
+        } else {
+          gl.deleteProgram(bprog)
+        }
+      }
+      gl.deleteShader(bvs)
+      gl.deleteShader(bfs)
+    }
+    // Pass de stats fotosensibles 1×1 (§4.6) — texel {mean,budgetNorm}
+    // ping-pong; el epílogo lo lee como u_flashState.
+    state.statsProgram = null
+    const svs = compileShader(gl, gl.VERTEX_SHADER, GEN_VERTEX_SRC)
+    const sfs = compileShader(gl, gl.FRAGMENT_SHADER, FLASH_STATS_FRAG_SRC)
+    if (svs && sfs) {
+      const sprog = gl.createProgram()
+      if (sprog) {
+        gl.attachShader(sprog, svs)
+        gl.attachShader(sprog, sfs)
+        gl.linkProgram(sprog)
+        if (gl.getProgramParameter(sprog, gl.LINK_STATUS)) {
+          state.statsProgram = sprog
+          state.statsSceneLoc = gl.getUniformLocation(sprog, 'u_scene')
+          state.statsPrevLoc = gl.getUniformLocation(sprog, 'u_statsPrev')
+          state.statsDtLoc = gl.getUniformLocation(sprog, 'u_dt')
+          state.statsBudgetLoc = gl.getUniformLocation(sprog, 'u_flashBudget')
+          state.statsRateLoc = gl.getUniformLocation(sprog, 'u_budgetRate')
+          state.statsPos = gl.getAttribLocation(sprog, 'a_pos')
+        } else {
+          gl.deleteProgram(sprog)
+        }
+      }
+      gl.deleteShader(svs)
+      gl.deleteShader(sfs)
+    }
+    const gl2 = gl as WebGL2RenderingContext
+    const initStatsTexel = (): WebGLTexture | null => {
+      const t = gl2.createTexture()
+      if (!t) return null
+      gl2.bindTexture(gl2.TEXTURE_2D, t)
+      // {mean=0.5, budget=full} — el primer frame arranca sin miedo.
+      gl2.texImage2D(
+        gl2.TEXTURE_2D, 0, gl2.RGBA, 1, 1, 0,
+        gl2.RGBA, gl2.UNSIGNED_BYTE, new Uint8Array([128, 255, 0, 255]),
+      )
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MIN_FILTER, gl2.NEAREST)
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MAG_FILTER, gl2.NEAREST)
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_S, gl2.CLAMP_TO_EDGE)
+      gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_T, gl2.CLAMP_TO_EDGE)
+      return t
+    }
+    state.statsTexA = initStatsTexel()
+    state.statsTexB = initStatsTexel()
+    state.statsFboA = gl2.createFramebuffer()
+    state.statsFboB = gl2.createFramebuffer()
+    state.statsFlip = false
+    if (state.statsFboA && state.statsTexA) {
+      gl2.bindFramebuffer(gl2.FRAMEBUFFER, state.statsFboA)
+      gl2.framebufferTexture2D(
+        gl2.FRAMEBUFFER, gl2.COLOR_ATTACHMENT0, gl2.TEXTURE_2D, state.statsTexA, 0,
+      )
+    }
+    if (state.statsFboB && state.statsTexB) {
+      gl2.bindFramebuffer(gl2.FRAMEBUFFER, state.statsFboB)
+      gl2.framebufferTexture2D(
+        gl2.FRAMEBUFFER, gl2.COLOR_ATTACHMENT0, gl2.TEXTURE_2D, state.statsTexB, 0,
+      )
+    }
+    gl2.bindFramebuffer(gl2.FRAMEBUFFER, null)
+    // Context-restore (§4.5): los programas generativos murieron con el
+    // contexto — reconstruir la caché desde las fuentes guardadas y
+    // re-activar el shader que estaba en pantalla.
+    if (state.genSources.size > 0) {
+      for (const [id, s] of state.genSources) {
+        loadShaderSource(id, s.source, s.steps)
+      }
+      const activeId = state.genActiveId
+      if (activeId !== BUILTIN_SHADER_ID && !state.khrCompile) {
+        // Sin KHR ext la compilación fue síncrona → activación inmediata.
+        const ent = state.genPrograms.get(activeId)
+        if (ent) activateGenProgram(ent, activeId, 0)
+      } else {
+        state.genPendingActivate = { shaderId: activeId, crossfadeMs: 0 }
+      }
+      state.genActive = null
+    }
+    state.genPrevValid = false
+  }
+
   // VideoFrame upload target + crossfade snapshot texture + 1×1 black dummy.
   state.videoTex = makeTexture(gl)
   state.prevTex = makeTexture(gl)
@@ -633,6 +919,25 @@ function teardownGL(): void {
       if (state.dummyTex) gl.deleteTexture(state.dummyTex)
       if (state.glVbo) gl.deleteBuffer(state.glVbo)
       if (state.glProgram) gl.deleteProgram(state.glProgram)
+      // 🔮 WAVE 8229 · E3 — recursos del path generativo
+      for (const ent of state.genPrograms.values()) {
+        gl.deleteProgram(ent.program)
+      }
+      if (state.blitProgram) gl.deleteProgram(state.blitProgram)
+      if (state.statsProgram) gl.deleteProgram(state.statsProgram)
+      if (state.genFboTex) gl.deleteTexture(state.genFboTex)
+      if (state.genPrevTex) gl.deleteTexture(state.genPrevTex)
+      if (state.statsTexA) gl.deleteTexture(state.statsTexA)
+      if (state.statsTexB) gl.deleteTexture(state.statsTexB)
+      if (state.genFbo) (gl as WebGL2RenderingContext).deleteFramebuffer?.(state.genFbo)
+      if (state.statsFboA) (gl as WebGL2RenderingContext).deleteFramebuffer?.(state.statsFboA)
+      if (state.statsFboB) (gl as WebGL2RenderingContext).deleteFramebuffer?.(state.statsFboB)
+      if (state.gpuQuery) (gl as WebGL2RenderingContext).deleteQuery?.(state.gpuQuery)
+      for (const p of state.genPending.values()) {
+        gl.deleteProgram(p.program)
+        gl.deleteShader(p.vs)
+        gl.deleteShader(p.fs)
+      }
     } catch { /* context may already be lost */ }
   }
   state.gl = null
@@ -646,6 +951,28 @@ function teardownGL(): void {
   state.dummyTex = null
   state.hasVideoTex = false
   state.glContextLost = false
+  // 🔮 E3 — punteros GL inválidos tras teardown
+  state.genPrograms.clear()
+  state.genPending.clear()
+  state.genFbo = null
+  state.genFboTex = null
+  state.genFboW = 0
+  state.genFboH = 0
+  state.genPrevTex = null
+  state.genPrevW = 0
+  state.genPrevH = 0
+  state.genPrevValid = false
+  state.blitProgram = null
+  state.blitTexLoc = null
+  state.blitPos = -1
+  state.statsProgram = null
+  state.statsTexA = null
+  state.statsTexB = null
+  state.statsFboA = null
+  state.statsFboB = null
+  state.statsFlip = false
+  state.gpuQuery = null
+  state.glIsWebGL2 = false
 }
 
 function initGL(): boolean {
@@ -661,13 +988,27 @@ function initGL(): boolean {
     premultipliedAlpha: false, // readPixels → straight RGBA8 into the SAB
     powerPreference: 'high-performance',
   }
+  // 🔮 WAVE 8229 · E3 — el camino generativo exige WebGL2 (§4.1); WebGL1
+  // queda como fallback del plasma interno únicamente.
+  const gl2 = canvas.getContext('webgl2', attrs) as WebGL2RenderingContext | null
   const gl =
-    (canvas.getContext('webgl2', attrs) as WebGL2RenderingContext | null) ??
-    (canvas.getContext('webgl', attrs) as WebGLRenderingContext | null)
+    gl2 ?? (canvas.getContext('webgl', attrs) as WebGLRenderingContext | null)
 
   if (!gl) {
     sendError('WebGL unavailable in theta worker — no video output this session', false)
     return false
+  }
+  state.glIsWebGL2 = gl2 !== null
+  if (gl2) {
+    // Extensiones §4.4/§4.5 — ambas opcionales, degradación elegante.
+    state.khrCompile =
+      (gl2.getExtension('KHR_parallel_shader_compile') as {
+        COMPLETION_STATUS_KHR: number
+      } | null) ?? null
+    state.timerExt =
+      (gl2.getExtension('EXT_disjoint_timer_query_webgl2') as {
+        TIME_ELAPSED_EXT: number
+      } | null) ?? null
   }
 
   canvas.addEventListener('webglcontextlost', (ev) => {
@@ -689,6 +1030,515 @@ function initGL(): boolean {
   state.gl = gl
   if (!buildGLResources()) return false
   return true
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 🔮 WAVE 8229 — EUCLID ORACLE · E3: GENERATIVE SHADER PIPELINE (§4.x)
+//
+//   load-shader → assemble(preamble+body+epilogue) → compile
+//     KHR_parallel ext presente → pending set (sondeo por frame, §4.4)
+//     ausente → finalize sync
+//   activate-shader → genPrevTex snapshot + crossfade ramp (§4.3)
+//   render → FBO escalado (governor §4.5) → blit → canvas
+// ─────────────────────────────────────────────────────────────────────────
+
+const BUILTIN_SHADER_ID = 'builtin'
+const GEN_CACHE_MAX = 8
+
+/** Uniforms estándar del contrato — no se resuelven como params de artista. */
+const GEN_STD_UNIFORMS = new Set([
+  'u_tel', 'u_flags', 'u_enums', 'u_time', 'u_dt', 'u_resolution',
+  'u_beatTime', 'u_kickPulse', 'u_snarePulse', 'u_predictiveETA',
+  'u_approach', 'u_impact', 'u_brightness', 'u_contrast', 'u_blackout',
+  'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
+  'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget',
+])
+
+function emitShaderStatus(payload: ThetaShaderStatusPayload): void {
+  send('theia:shader-status', payload)
+}
+
+/** compileShader que devuelve el log (el FS lleva las líneas del artista). */
+function compileShaderEx(
+  gl: GLContext,
+  type: number,
+  src: string,
+): { shader: WebGLShader; ok: boolean; log: string } {
+  const sh = gl.createShader(type)!
+  gl.shaderSource(sh, src)
+  gl.compileShader(sh)
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    return { shader: sh, ok: false, log: gl.getShaderInfoLog(sh) ?? 'unknown' }
+  }
+  return { shader: sh, ok: true, log: '' }
+}
+
+function cacheGenLocs(prog: WebGLProgram): GenUniformLocs {
+  const gl = state.gl!
+  return {
+    tel: gl.getUniformLocation(prog, 'u_tel'),
+    flags: gl.getUniformLocation(prog, 'u_flags'),
+    enums: gl.getUniformLocation(prog, 'u_enums'),
+    time: gl.getUniformLocation(prog, 'u_time'),
+    dt: gl.getUniformLocation(prog, 'u_dt'),
+    resolution: gl.getUniformLocation(prog, 'u_resolution'),
+    beatTime: gl.getUniformLocation(prog, 'u_beatTime'),
+    kickPulse: gl.getUniformLocation(prog, 'u_kickPulse'),
+    snarePulse: gl.getUniformLocation(prog, 'u_snarePulse'),
+    predictiveETA: gl.getUniformLocation(prog, 'u_predictiveETA'),
+    approach: gl.getUniformLocation(prog, 'u_approach'),
+    impact: gl.getUniformLocation(prog, 'u_impact'),
+    brightness: gl.getUniformLocation(prog, 'u_brightness'),
+    contrast: gl.getUniformLocation(prog, 'u_contrast'),
+    blackout: gl.getUniformLocation(prog, 'u_blackout'),
+    renderScale: gl.getUniformLocation(prog, 'u_renderScale'),
+    prevFrame: gl.getUniformLocation(prog, 'u_prevFrame'),
+    flashState: gl.getUniformLocation(prog, 'u_flashState'),
+    hasPrev: gl.getUniformLocation(prog, 'u_hasPrev'),
+    blend: gl.getUniformLocation(prog, 'u_blend'),
+    flashGuard: gl.getUniformLocation(prog, 'u_flashGuard'),
+    flashMaxDelta: gl.getUniformLocation(prog, 'u_flashMaxDelta'),
+    flashBudget: gl.getUniformLocation(prog, 'u_flashBudget'),
+  }
+}
+
+/** Evicción LRU — el programa ACTIVO nunca sale (§4.4, máx 8). */
+function evictGenCache(): void {
+  while (state.genPrograms.size > GEN_CACHE_MAX) {
+    let oldestId = ''
+    let oldest = Infinity
+    for (const [id, ent] of state.genPrograms) {
+      if (ent === state.genActive) continue
+      if (ent.lastUsed < oldest) {
+        oldest = ent.lastUsed
+        oldestId = id
+      }
+    }
+    if (oldestId === '') break
+    const ent = state.genPrograms.get(oldestId)!
+    if (state.gl) {
+      try {
+        state.gl.deleteProgram(ent.program)
+      } catch { /* context may be lost */ }
+    }
+    state.genPrograms.delete(oldestId)
+  }
+}
+
+/**
+ * Compila + linkea un shader de artista. Con `KHR_parallel_shader_compile`
+ * queda en `genPending` (sondeado por frame — el programa anterior sigue
+ * renderizando); sin la extensión se finaliza aquí (§4.4).
+ */
+function loadShaderSource(shaderId: string, source: string, steps: number): void {
+  const gl = state.gl as WebGL2RenderingContext | null
+  if (!gl || !state.glIsWebGL2) {
+    emitShaderStatus({
+      shaderId,
+      ok: false,
+      unsupported: true,
+      log: 'generative path requires WebGL2 — builtin plasma stays active',
+    })
+    return
+  }
+  // Reemplazo del mismo shaderId: libera el programa previo.
+  const old = state.genPrograms.get(shaderId)
+  if (old) {
+    try {
+      gl.deleteProgram(old.program)
+    } catch { /* noop */ }
+    state.genPrograms.delete(shaderId)
+    if (state.genActive === old) {
+      state.genActive = null
+      state.genActiveId = BUILTIN_SHADER_ID
+    }
+  }
+  const stalePending = state.genPending.get(shaderId)
+  if (stalePending) {
+    // Reemplazo de una compilación en vuelo: liberar sus objetos GL o la
+    // entrada huérfana fugaría programa+shaders hasta el próximo respawn.
+    try {
+      gl.deleteProgram(stalePending.program)
+      gl.deleteShader(stalePending.vs)
+      gl.deleteShader(stalePending.fs)
+    } catch { /* noop */ }
+    state.genPending.delete(shaderId)
+  }
+
+  const asm = assembleFragmentShader(source, steps)
+  const t0 = performance.now()
+  const vs = compileShaderEx(gl, gl.VERTEX_SHADER, GEN_VERTEX_SRC)
+  const fs = compileShaderEx(gl, gl.FRAGMENT_SHADER, asm.fragSource)
+  if (!vs.ok || !fs.ok) {
+    // §4.4/§4.6 — el log del FS referencia el source ENSAMBLADO: restar
+    // las líneas del preámbulo para que el error apunte al código artista.
+    const badFs = !fs.ok
+    const mapped = badFs
+      ? remapShaderLog(fs.log, asm.preambleLines, asm.bodyLines)
+      : { log: vs.log, line: null }
+    gl.deleteShader(vs.shader)
+    gl.deleteShader(fs.shader)
+    emitShaderStatus({
+      shaderId,
+      ok: false,
+      log: mapped.log,
+      line: mapped.line ?? undefined,
+    })
+    return
+  }
+  const prog = gl.createProgram()!
+  gl.attachShader(prog, vs.shader)
+  gl.attachShader(prog, fs.shader)
+  gl.linkProgram(prog)
+  const pending: PendingGenCompile = {
+    shaderId,
+    source,
+    steps,
+    program: prog,
+    vs: vs.shader,
+    fs: fs.shader,
+    preambleLines: asm.preambleLines,
+    bodyLines: asm.bodyLines,
+    t0,
+  }
+  if (state.khrCompile) {
+    state.genPending.set(shaderId, pending)
+    emitShaderStatus({ shaderId, ok: true, pending: true })
+  } else {
+    finalizeGenCompile(pending)
+  }
+}
+
+/** Cierra una compilación: link status → caché+status o error mapeado. */
+function finalizeGenCompile(p: PendingGenCompile): void {
+  const gl = state.gl as WebGL2RenderingContext
+  // Logs ANTES de borrar shaders — el FS log lleva las líneas artista.
+  const fsLog = gl.getShaderInfoLog(p.fs) ?? ''
+  const progLog = gl.getProgramInfoLog(p.program) ?? ''
+  const ok = !!gl.getProgramParameter(p.program, gl.LINK_STATUS)
+  gl.deleteShader(p.vs)
+  gl.deleteShader(p.fs)
+  const compileMs = performance.now() - p.t0
+  if (ok) {
+    const ent: GenProgram = {
+      program: p.program,
+      locs: cacheGenLocs(p.program),
+      paramLocs: new Map(),
+      posLoc: gl.getAttribLocation(p.program, 'a_pos'),
+      lastUsed: state.renderSeq,
+      steps: p.steps,
+    }
+    state.genPrograms.set(p.shaderId, ent)
+    evictGenCache()
+    emitShaderStatus({ shaderId: p.shaderId, ok: true, compileMs })
+    const pa = state.genPendingActivate
+    if (pa && pa.shaderId === p.shaderId) {
+      state.genPendingActivate = null
+      activateGenProgram(ent, p.shaderId, pa.crossfadeMs)
+    }
+  } else {
+    const raw = fsLog.length > 0 ? fsLog : progLog || 'link failed'
+    const mapped = remapShaderLog(raw, p.preambleLines, p.bodyLines)
+    try {
+      gl.deleteProgram(p.program)
+    } catch { /* noop */ }
+    emitShaderStatus({
+      shaderId: p.shaderId,
+      ok: false,
+      log: mapped.log,
+      line: mapped.line ?? undefined,
+    })
+  }
+}
+
+/** Sondeo por frame — §4.4: el render nunca se congela compilando. */
+function probeGenCompiles(): void {
+  if (state.genPending.size === 0) return
+  const gl = state.gl as WebGL2RenderingContext | null
+  const ext = state.khrCompile
+  if (!gl || !ext) return
+  for (const [id, p] of state.genPending) {
+    if (gl.getProgramParameter(p.program, ext.COMPLETION_STATUS_KHR)) {
+      state.genPending.delete(id)
+      finalizeGenCompile(p)
+    }
+  }
+}
+
+function handleLoadShader(p: ThetaLoadShaderPayload): void {
+  if (!p || typeof p.shaderId !== 'string' || typeof p.source !== 'string') return
+  const steps = p.meta?.steps ?? parseStepsHint(p.source) ?? DEFAULT_MAX_STEPS
+  if (!hasMainImage(p.source)) {
+    emitShaderStatus({
+      shaderId: p.shaderId,
+      ok: false,
+      log: 'missing `void mainImage(out vec4, in vec2)` — Euclid contract §4.1',
+    })
+    return
+  }
+  state.genSources.set(p.shaderId, { source: p.source, steps })
+  loadShaderSource(p.shaderId, p.source, steps)
+}
+
+function handleActivateShader(p: ThetaActivateShaderPayload): void {
+  if (!p || typeof p.shaderId !== 'string') return
+  const fadeMs = Math.max(0, p.crossfadeMs ?? 0)
+  if (p.shaderId === BUILTIN_SHADER_ID) {
+    if (state.genActive) {
+      // Vuelta al plasma: snapshot del frame generativo actual en prevTex
+      // (mecanismo crossfade 8207) — la salida no parpadea.
+      captureCurrentSnapshot()
+      if (fadeMs > 0) {
+        state.crossfade.start({
+          totalTicks: Math.max(2, Math.round(fadeMs / 16.7)),
+        })
+      }
+    }
+    state.genActive = null
+    state.genActiveId = BUILTIN_SHADER_ID
+    return
+  }
+  const ent = state.genPrograms.get(p.shaderId)
+  if (!ent) {
+    if (state.genPending.has(p.shaderId)) {
+      // Aún compilando en paralelo → activar al finalizar (§4.4).
+      state.genPendingActivate = { shaderId: p.shaderId, crossfadeMs: fadeMs }
+      return
+    }
+    emitShaderStatus({ shaderId: p.shaderId, ok: false, log: 'shader not loaded' })
+    return
+  }
+  activateGenProgram(ent, p.shaderId, fadeMs)
+}
+
+/** Conmuta el programa activo: snapshot prev-frame + rampa crossfade. */
+function activateGenProgram(ent: GenProgram, id: string, fadeMs: number): void {
+  captureGenPrevFrame() // el shader saliente queda como u_prevFrame
+  state.genActive = ent
+  state.genActiveId = id
+  ent.lastUsed = state.renderSeq
+  if (fadeMs > 0) {
+    state.crossfade.start({ totalTicks: Math.max(2, Math.round(fadeMs / 16.7)) })
+  } else {
+    state.crossfade.abort()
+    state.prevSnapshotValid = false
+  }
+  state.governor.reset()
+}
+
+// ── Render target escalado del governor + prev-frame mipmapped ─────────────
+
+function ensureGenFbo(w: number, h: number): boolean {
+  const gl = state.gl as WebGL2RenderingContext
+  if (!state.genFbo) {
+    state.genFbo = gl.createFramebuffer()
+    state.genFboTex = gl.createTexture()
+    state.genFboW = 0
+    state.genFboH = 0
+    if (!state.genFbo || !state.genFboTex) return false
+  }
+  if (state.genFboW === w && state.genFboH === h) return true
+  state.genFboW = w
+  state.genFboH = h
+  gl.bindTexture(gl.TEXTURE_2D, state.genFboTex)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.genFbo)
+  gl.framebufferTexture2D(
+    gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, state.genFboTex, 0,
+  )
+  const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  return ok
+}
+
+/** Textura prev-frame del path generativo (crossfade + referencia visual). */
+function ensureGenPrevTex(w: number, h: number): void {
+  const gl = state.gl as WebGL2RenderingContext
+  if (!state.genPrevTex) {
+    state.genPrevTex = gl.createTexture()
+    state.genPrevW = 0
+    state.genPrevH = 0
+  }
+  if (state.genPrevW === w && state.genPrevH === h) return
+  state.genPrevW = w
+  state.genPrevH = h
+  gl.bindTexture(gl.TEXTURE_2D, state.genPrevTex)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+}
+
+/** Captura el canvas actual en genPrevTex (crossfade + presencia de prev). */
+function captureGenPrevFrame(): void {
+  const gl = state.gl as WebGL2RenderingContext
+  const canvas = state.glCanvas
+  if (!gl || !canvas || canvas.width <= 0 || canvas.height <= 0) return
+  ensureGenPrevTex(canvas.width, canvas.height)
+  gl.bindTexture(gl.TEXTURE_2D, state.genPrevTex)
+  gl.copyTexImage2D(
+    gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, canvas.width, canvas.height, 0,
+  )
+  state.genPrevValid = true
+}
+
+/** Resultado del GPU timer query (EXT_disjoint_timer_query_webgl2, §4.5). */
+function pollGpuTimer(): void {
+  const gl = state.gl as WebGL2RenderingContext | null
+  const q = state.gpuQuery
+  if (!gl || !q || !state.timerExt) return
+  if (gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) {
+    const ns = Number(gl.getQueryParameter(q, gl.QUERY_RESULT))
+    state.gpuMs = ns / 1e6
+    gl.deleteQuery(q)
+    state.gpuQuery = null
+  }
+}
+
+/**
+ * Frame generativo: escena del artista a FBO escalado (governor) → blit a
+ * canvas → capture del frame para el limitador/crossfade del siguiente.
+ */
+function renderGenerativeFrame(
+  xfStep: CrossfadeStep,
+  w: number,
+  h: number,
+  dtMs: number,
+  perfNow: number,
+): void {
+  const gl = state.gl as WebGL2RenderingContext
+  const ent = state.genActive
+  if (!ent || !state.blitProgram) return
+  const scale = state.governor.renderScale
+  const sw = Math.max(1, Math.round(w * scale))
+  const sh = Math.max(1, Math.round(h * scale))
+  if (!ensureGenFbo(sw, sh)) {
+    sendError('generative FBO incomplete — falling back to builtin plasma', false)
+    state.genActive = null
+    state.genActiveId = BUILTIN_SHADER_ID
+    return
+  }
+  const sm = state.smoother
+
+  // ── Escena del artista → FBO escalado ──────────────────────────────
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.genFbo)
+  gl.viewport(0, 0, sw, sh)
+  gl.useProgram(ent.program)
+  gl.activeTexture(gl.TEXTURE0)
+  gl.bindTexture(gl.TEXTURE_2D, state.genPrevTex ?? state.dummyTex)
+  gl.activeTexture(gl.TEXTURE1)
+  gl.bindTexture(
+    gl.TEXTURE_2D,
+    (state.statsFlip ? state.statsTexA : state.statsTexB) ?? state.dummyTex,
+  )
+
+  const L = ent.locs
+  gl.uniform1fv(L.tel, sm.out)
+  gl.uniform1i(L.flags, sm.flags)
+  gl.uniform4i(L.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone)
+  gl.uniform1f(L.time, perfNow * 0.001)
+  gl.uniform1f(L.dt, dtMs * 0.001)
+  gl.uniform3f(L.resolution, sw, sh, 1)
+  gl.uniform1f(L.beatTime, sm.beatTime)
+  gl.uniform1f(L.kickPulse, sm.kickPulse)
+  gl.uniform1f(L.snarePulse, sm.snarePulse)
+  gl.uniform1f(L.predictiveETA, sm.predictiveEtaSec)
+  gl.uniform1f(L.approach, sm.approach)
+  gl.uniform1f(L.impact, sm.impact)
+  gl.uniform1f(L.brightness, state.uniforms.get('u_brightness') ?? 1.0)
+  gl.uniform1f(L.contrast, state.uniforms.get('u_contrast') ?? 1.0)
+  gl.uniform1f(L.blackout, state.uniforms.get('u_blackout') ?? 0.0)
+  gl.uniform1f(L.renderScale, scale)
+  gl.uniform1i(L.prevFrame, 0)
+  gl.uniform1i(L.flashState, 1)
+  gl.uniform1f(L.hasPrev, state.genPrevValid ? 1 : 0)
+  gl.uniform1f(L.blend, xfStep.alphaSecondary)
+  gl.uniform1f(L.flashGuard, state.uniforms.get('u_flashGuard') ?? 1.0)
+  gl.uniform1f(
+    L.flashMaxDelta,
+    state.uniforms.get('u_flashMaxDelta') ?? DEFAULT_FLASH_MAX_DELTA,
+  )
+  gl.uniform1f(
+    L.flashBudget,
+    state.uniforms.get('u_flashBudget') ?? FLASH_BUDGET,
+  )
+  // Params de artista (@euclid param → theia:set-uniform) — lazy locs.
+  for (const [name, value] of state.uniforms) {
+    if (GEN_STD_UNIFORMS.has(name)) continue
+    let loc = ent.paramLocs.get(name)
+    if (loc === undefined) {
+      loc = gl.getUniformLocation(ent.program, name)
+      ent.paramLocs.set(name, loc)
+    }
+    if (loc) gl.uniform1f(loc, value)
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, state.glVbo)
+  gl.enableVertexAttribArray(ent.posLoc)
+  gl.vertexAttribPointer(ent.posLoc, 2, gl.FLOAT, false, 0, 0)
+
+  // GPU timer query (opcional — §4.5): un query en vuelo por frame.
+  let q: WebGLQuery | null = null
+  if (state.timerExt && state.gpuQuery === null) {
+    q = gl.createQuery()
+    if (q) gl.beginQuery(state.timerExt.TIME_ELAPSED_EXT, q)
+  }
+  gl.drawArrays(gl.TRIANGLES, 0, 3)
+  if (q && state.timerExt) {
+    gl.endQuery(state.timerExt.TIME_ELAPSED_EXT)
+    state.gpuQuery = q
+  }
+
+  // ── Stats fotosensibles 1×1 (§4.6): media de luma + presupuesto
+  // leaky-bucket — el epílogo del PRÓXIMO frame leerá este texel.
+  const statsIn = state.statsFlip ? state.statsTexA : state.statsTexB
+  const statsOutFbo = state.statsFlip ? state.statsFboB : state.statsFboA
+  if (state.statsProgram && statsIn && statsOutFbo) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, statsOutFbo)
+    gl.viewport(0, 0, 1, 1)
+    gl.useProgram(state.statsProgram)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, state.genFboTex)
+    gl.activeTexture(gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, statsIn)
+    gl.uniform1i(state.statsSceneLoc, 0)
+    gl.uniform1i(state.statsPrevLoc, 1)
+    gl.uniform1f(state.statsDtLoc, dtMs * 0.001)
+    gl.uniform1f(
+      state.statsBudgetLoc,
+      state.uniforms.get('u_flashBudget') ?? FLASH_BUDGET,
+    )
+    gl.uniform1f(
+      state.statsRateLoc,
+      state.uniforms.get('u_flashBudgetRate') ?? FLASH_BUDGET_RATE,
+    )
+    gl.bindBuffer(gl.ARRAY_BUFFER, state.glVbo)
+    gl.enableVertexAttribArray(state.statsPos)
+    gl.vertexAttribPointer(state.statsPos, 2, gl.FLOAT, false, 0, 0)
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
+    state.statsFlip = !state.statsFlip
+  }
+
+  // ── Blit FBO→canvas (upscale lineal) ───────────────────────────────
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  gl.viewport(0, 0, w, h)
+  gl.useProgram(state.blitProgram)
+  gl.activeTexture(gl.TEXTURE0)
+  gl.bindTexture(gl.TEXTURE_2D, state.genFboTex)
+  gl.uniform1i(state.blitTexLoc, 0)
+  gl.bindBuffer(gl.ARRAY_BUFFER, state.glVbo)
+  gl.enableVertexAttribArray(state.blitPos)
+  gl.vertexAttribPointer(state.blitPos, 2, gl.FLOAT, false, 0, 0)
+  gl.drawArrays(gl.TRIANGLES, 0, 3)
+
+  // Prev-frame continuo para el limitador fotosensible (mip 1×1) y el
+  // crossfade de activaciones — el canvas completo pasa a genPrevTex.
+  captureGenPrevFrame()
 }
 
 /**
@@ -846,6 +1696,16 @@ function renderCurrentFrame(timestampMs: number): void {
     perfNow,
   )
 
+  // 🔮 WAVE 8229 · E3 — sondeo de compilaciones paralelas (§4.4) + governor
+  // (§4.5): una evaluación por frame de render, sin bloquear el hilo.
+  probeGenCompiles()
+  pollGpuTimer()
+  state.renderSeq++
+  state.governor.step(
+    state.timerExt !== null && state.gpuMs > 0 ? state.gpuMs : dtMs,
+    perfNow,
+  )
+
   // Crossfade step (only meaningful if a crossfade is in progress) —
   // we step it BEFORE drawing so we know the alphas for THIS tick.
   const xfStep = state.crossfade.step()
@@ -881,8 +1741,16 @@ function renderCurrentFrame(timestampMs: number): void {
   // ── Draw fullscreen triangle ──────────────────────────────────────────
   const w = canvas.width
   const h = canvas.height
-  gl.viewport(0, 0, w, h)
-  gl.useProgram(state.glProgram)
+
+  // 🔮 WAVE 8229 · E3 — camino generativo (shader de artista activo y
+  // contexto WebGL2): escena → FBO escalado → blit → canvas. En cualquier
+  // otro caso, el plasma/video builtin de siempre.
+  if (state.genActive && state.glIsWebGL2) {
+    renderGenerativeFrame(xfStep, w, h, dtMs, perfNow)
+    state.framesRendered++
+  } else {
+    gl.viewport(0, 0, w, h)
+    gl.useProgram(state.glProgram)
 
   gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, state.videoTex ?? state.dummyTex)
@@ -930,6 +1798,9 @@ function renderCurrentFrame(timestampMs: number): void {
   gl.enableVertexAttribArray(state.glAttribPos)
   gl.vertexAttribPointer(state.glAttribPos, 2, gl.FLOAT, false, 0, 0)
   gl.drawArrays(gl.TRIANGLES, 0, 3)
+
+    state.framesRendered++
+  }
 
   if (xfStep.finished) {
     // Promote: from now on, prev snapshot stops being relevant.
@@ -1310,6 +2181,21 @@ function handleShutdown(): void {
   state.prevSnapshotValid = false
   state.crossfade.abort()
   state.fsm.reset()
+  // 🔮 WAVE 8229 · E3 — el contexto GL muere con el worker: los objetos
+  // quedan inválidos, pero las FUENTES se conservan en genSources (el
+  // siguiente init/restart las recompila vía loadShaderSource).
+  state.genPending.clear()
+  state.genPrograms.clear()
+  state.genActive = null
+  state.genActiveId = 'builtin'
+  state.genPendingActivate = null
+  state.genPrevValid = false
+  state.gpuQuery = null
+  state.gpuMs = 0
+  state.khrCompile = null
+  state.timerExt = null
+  state.governor = new RenderGovernor()
+  state.framesRendered = 0
   // 🌊 WAVE 8207 — GL cleanup (textures, program, VBO, internal canvas)
   teardownGL()
   // No process.exit() — Web Workers are torn down by `worker.terminate()` on
@@ -1393,6 +2279,13 @@ self.addEventListener('message', (ev: MessageEvent<ThetaMessage>) => {
       // La output window murió / se cerró — los buffers en vuelo se pierden.
       case 'theia:video-unlink':
         detachVideoLink()
+        break
+      // 🔮 WAVE 8229 · E3 — shader contract (§4.3)
+      case 'theia:load-shader':
+        handleLoadShader(msg.payload as ThetaLoadShaderPayload)
+        break
+      case 'theia:activate-shader':
+        handleActivateShader(msg.payload as ThetaActivateShaderPayload)
         break
       default:
         sendError(`Unknown message type: ${msg.type}`, false)

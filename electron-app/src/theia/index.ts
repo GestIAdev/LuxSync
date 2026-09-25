@@ -148,6 +148,24 @@ export {
   GENOME_MUTATE_BARS,
 } from './genome/GenomeEvolver'
 
+// 🧬 WAVE 8236 — Infinite Genome · Fase G4: Darwin loop (fitness + torneo)
+export {
+  darwinTournament,
+  trackBeauty,
+  favoriteAtom,
+  skipAtom,
+  stepFitness,
+  stepFitnessAll,
+  getFitness,
+  getPopulation,
+  GENOME_POPULATION_MAX,
+  GENOME_TOURNAMENT_SIZE,
+  FITNESS_EMA_ALPHA,
+  FITNESS_W_BEAUTY,
+  FITNESS_W_FAV,
+  FITNESS_W_SKIP,
+} from './genome/GenomePool'
+
 // 🔮 WAVE 8230 — Euclid Oracle · Fase E4: átomo generativo builtin
 export {
   ORACLE_KIFS_SOURCE,

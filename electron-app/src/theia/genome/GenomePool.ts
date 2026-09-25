@@ -26,6 +26,7 @@ import { parseEuclidMeta, type EuclidMeta } from '../shader/ShaderAssembler'
 import {
   crossoverGenome,
   expandGenome,
+  pcg32,
   type ExpandedPhenotype,
 } from './GenomeExpander'
 import type { ITheiaAtom, ITheiaPack } from '../../types/theiaTypes'
@@ -81,12 +82,14 @@ export interface SpawnResult {
  *
  * @param seed semilla u32; `0` = fenotipo canónico (devuelve el propio core).
  * @param registry inyectable para tests; por defecto el singleton.
+ * @param protectedId individuo a proteger de la extinción §4.6 (el activo).
  * @returns null si el core no existe o no es un shader-atom con genes.
  */
 export function spawnGenomeVariant(
   coreAtomId: string,
   seed: number,
   registry: TheiaRegistry = getTheiaRegistry(),
+  protectedId?: string,
 ): SpawnResult | null {
   const core = registry.getAtom(coreAtomId)
   const glsl = core?.source?.glsl
@@ -103,17 +106,21 @@ export function spawnGenomeVariant(
   const phenotype = expandGenome(meta, glsl, s32)
   if (s32 === 0) {
     // Fenotipo canónico: sin variante — el core ya ES ese individuo.
+    _recordIndividual(core.id, core.id)
     return { atomId: core.id, genomeId: phenotype.genomeId, created: false, phenotype }
   }
 
   const known = _genomeIndex.get(phenotype.genomeId)
   if (known !== undefined && registry.getAtom(known)) {
+    _recordIndividual(core.id, known)
     return { atomId: known, genomeId: phenotype.genomeId, created: false, phenotype }
   }
 
   const variant = buildVariantAtom(core, s32, phenotype)
   if (!registry.register(variant)) return null // rechazo estructural
   _genomeIndex.set(phenotype.genomeId, variant.id)
+  _genomeOfAtom.set(variant.id, phenotype.genomeId)
+  _recordIndividual(core.id, variant.id)
 
   // LiveDeck — el variante aparece junto a su core en el mismo pack.
   const store = useTheiaPackStore.getState()
@@ -132,12 +139,286 @@ export function spawnGenomeVariant(
     store.upsertPack(next)
   }
 
+  // §4.6 — el recién nacido entra protegido; los peores se extinguen.
+  const keep = new Set<string>([variant.id])
+  if (protectedId) keep.add(protectedId)
+  _enforcePopulationLimit(core.id, keep, registry)
+
   return {
     atomId: variant.id,
     genomeId: phenotype.genomeId,
     created: true,
     phenotype,
   }
+}
+
+// ─────────── Población viva + Fitness (§4.6 — WAVE 8236 · G4) ───────────
+
+/** Máximo de individuos vivos por core — paridad con la LRU del worker. */
+export const GENOME_POPULATION_MAX = 8
+/** Tamaño del torneo (§4.6: torneo de 3). */
+export const GENOME_TOURNAMENT_SIZE = 3
+/** EMA del fitness: `F ← 0.9·F + 0.1·score`. */
+export const FITNESS_EMA_ALPHA = 0.9
+/** Pesos del score: belleza Selene, favorito y skip del operador. */
+export const FITNESS_W_BEAUTY = 1.0
+export const FITNESS_W_FAV = 1.0
+export const FITNESS_W_SKIP = 1.0
+
+/** Ventana de observación + EMA de un individuo (score por frontera). */
+interface FitnessRecord {
+  /** EMA acumulada del fitness. */
+  F: number
+  /** Σu_beauty observado mientras el individuo está en pantalla. */
+  beautySum: number
+  beautyN: number
+  /** Impulsos del operador pendientes de consumir. */
+  fav: number
+  skip: number
+}
+
+/** atomId → fitness. */
+const _fitness = new Map<string, FitnessRecord>()
+/** coreId → atomIds vivos (core incluido). */
+const _populations = new Map<string, Set<string>>()
+/** atomId → genomeId (para poder retirar la entrada de `_genomeIndex`). */
+const _genomeOfAtom = new Map<string, string>()
+
+function _freshRecord(): FitnessRecord {
+  return { F: 0, beautySum: 0, beautyN: 0, fav: 0, skip: 0 }
+}
+
+/** Registra un individuo en la población de su core (idempotente). */
+function _recordIndividual(coreId: string, atomId: string): void {
+  let pop = _populations.get(coreId)
+  if (!pop) {
+    pop = new Set()
+    _populations.set(coreId, pop)
+  }
+  if (!pop.has(coreId)) {
+    pop.add(coreId)
+    _fitness.set(coreId, _fitness.get(coreId) ?? _freshRecord())
+  }
+  pop.add(atomId)
+  if (!_fitness.has(atomId)) _fitness.set(atomId, _freshRecord())
+}
+
+/**
+ * §4.6 — observación continua: el `u_beauty` que Selene mide mientras el
+ * individuo está en pantalla. Se acumula en la ventana y se consume en el
+ * siguiente `stepFitness` (frontera de frase).
+ */
+export function trackBeauty(atomId: string, beauty: number): void {
+  if (!Number.isFinite(beauty)) return
+  // Auto-adscripción: un átomo cargado sin pasar por el pool se une a la
+  // población de su prefijo core (`core#seed` → `core`; sin '#' → self).
+  const rec = _ensureRecord(atomId)
+  rec.beautySum += beauty
+  rec.beautyN++
+}
+
+/** Asegura record + adscripción a población (sin observación de belleza). */
+function _ensureRecord(atomId: string): FitnessRecord {
+  let rec = _fitness.get(atomId)
+  if (!rec) {
+    rec = _freshRecord()
+    _fitness.set(atomId, rec)
+    const hashIdx = atomId.lastIndexOf('#')
+    _recordIndividual(hashIdx >= 0 ? atomId.slice(0, hashIdx) : atomId, atomId)
+  }
+  return rec
+}
+
+/** §4.6 — impulso del operador: FAVORITO (LiveDeck). */
+export function favoriteAtom(atomId: string): void {
+  _ensureRecord(atomId).fav++
+}
+
+/** §4.6 — impulso del operador: SKIP (LiveDeck). */
+export function skipAtom(atomId: string): void {
+  _ensureRecord(atomId).skip++
+}
+
+/** Fitness EMA actual de un individuo (0 = sin evaluar todavía). */
+export function getFitness(atomId: string): number {
+  return _fitness.get(atomId)?.F ?? 0
+}
+
+/** Individuos vivos del core (core incluido) — orden de incorporación. */
+export function getPopulation(coreId: string): readonly string[] {
+  const pop = _populations.get(coreId)
+  return pop ? [...pop] : []
+}
+
+/**
+ * §4.6 — paso de la EMA del fitness:
+ *   `F ← 0.9·F + 0.1·(w_b·ū_beauty + w_f·fav − w_s·skip)`
+ * donde `ū_beauty` es la media de la ventana (solo si hubo observaciones)
+ * y `fav`/`skip` son impulsos pendientes del operador. Sin señal en la
+ * ventana → sin paso (un individuo no observado no decae a la deriva).
+ */
+export function stepFitness(atomId: string): void {
+  const rec = _fitness.get(atomId)
+  if (!rec) return
+  if (rec.beautyN === 0 && rec.fav === 0 && rec.skip === 0) return
+  const mean = rec.beautyN > 0 ? rec.beautySum / rec.beautyN : 0
+  const score =
+    (rec.beautyN > 0 ? FITNESS_W_BEAUTY * mean : 0) +
+    FITNESS_W_FAV * rec.fav -
+    FITNESS_W_SKIP * rec.skip
+  rec.F = FITNESS_EMA_ALPHA * rec.F + (1 - FITNESS_EMA_ALPHA) * score
+  rec.beautySum = 0
+  rec.beautyN = 0
+  rec.fav = 0
+  rec.skip = 0
+}
+
+/** Consume las ventanas de TODOS los individuos del core (frontera §4.6). */
+export function stepFitnessAll(coreId: string): void {
+  const pop = _populations.get(coreId)
+  if (!pop) return
+  for (const id of pop) stepFitness(id)
+}
+
+/**
+ * §4.6 — extinción: el individuo sale de la población viva, del índice de
+ * dedupe, del registry y del pack (LiveDeck). Protegidos: el propio core
+ * (la especie raíz) y los atomIds en `protectedIds` (activo en pantalla,
+ * hijo recién nacido).
+ */
+function _extinguish(
+  coreId: string,
+  atomId: string,
+  protectedIds: ReadonlySet<string>,
+  registry: TheiaRegistry,
+): boolean {
+  if (atomId === coreId || protectedIds.has(atomId)) return false
+  const pop = _populations.get(coreId)
+  if (!pop?.delete(atomId)) return false
+  _fitness.delete(atomId)
+  const genomeId = _genomeOfAtom.get(atomId)
+  if (genomeId) {
+    if (_genomeIndex.get(genomeId) === atomId) _genomeIndex.delete(genomeId)
+    _genomeOfAtom.delete(atomId)
+  }
+  registry.unregister(atomId)
+  // LiveDeck — sale del pack de su core.
+  const core = registry.getAtom(coreId)
+  const store = useTheiaPackStore.getState()
+  const pack = core ? store.packs.get(core.packId) : undefined
+  if (pack && pack.atoms.some((a) => a.id === atomId)) {
+    const next: ITheiaPack = {
+      ...pack,
+      atoms: pack.atoms.filter((a) => a.id !== atomId),
+      manifest: pack.manifest
+        ? {
+            ...pack.manifest,
+            atomOrder: (pack.manifest.atomOrder ?? []).filter(
+              (id) => id !== atomId,
+            ),
+          }
+        : pack.manifest,
+    }
+    store.upsertPack(next)
+  }
+  return true
+}
+
+/**
+ * §4.6 — cota de población: mientras supere `GENOME_POPULATION_MAX`,
+ * extingue el individuo de MENOR fitness no protegido. Los empatados se
+ * purgan por antigüedad (orden del Set = orden de incorporación).
+ */
+function _enforcePopulationLimit(
+  coreId: string,
+  protectedIds: ReadonlySet<string>,
+  registry: TheiaRegistry,
+): void {
+  const pop = _populations.get(coreId)
+  if (!pop) return
+  while (pop.size > GENOME_POPULATION_MAX) {
+    let worstId = ''
+    let worstF = Infinity
+    for (const id of pop) {
+      if (id === coreId || protectedIds.has(id)) continue
+      const f = _fitness.get(id)?.F ?? 0
+      if (f < worstF) {
+        worstF = f
+        worstId = id
+      }
+    }
+    if (worstId === '' || !_extinguish(coreId, worstId, protectedIds, registry)) break
+  }
+}
+
+/**
+ * §4.6 — BUCLE DE DARWIN en frontera de frase:
+ *   1. `stepFitnessAll` consume las ventanas (belleza + eventos operador).
+ *   2. Torneo de `GENOME_TOURNAMENT_SIZE` individuos (muestra determinista
+ *      por `seed`): los dos mejores del torneo se reproducen por
+ *      `spawnCrossoverVariant`; con población < 2 el individuo muta
+ *      (`spawnGenomeVariant`).
+ *   3. Extinción: la población queda acotada a `GENOME_POPULATION_MAX`
+ *      purgando a los peores (nunca el core, el activo ni el hijo nuevo).
+ *
+ * @returns el hijo resultante (o el individuo preexistente si el fenotipo
+ *          colapsó por genomeId — revivir al mejor conocido también cuenta).
+ */
+export function darwinTournament(
+  coreId: string,
+  seed: number,
+  protectedId?: string,
+  registry: TheiaRegistry = getTheiaRegistry(),
+): SpawnResult | null {
+  const core = registry.getAtom(coreId)
+  const glsl = core?.source?.glsl
+  if (!core || core.source?.kind !== 'shader' || !glsl) return null
+  let meta = _metaCache.get(coreId)
+  if (!meta) {
+    meta = parseEuclidMeta(glsl)
+    _metaCache.set(coreId, meta)
+  }
+  if (meta.genes.length === 0) return null
+
+  const s32 = seed >>> 0
+  // La ventana de la frase se cierra aquí — el torneo ve el F más fresco.
+  stepFitnessAll(coreId)
+
+  const pop = _populations.get(coreId) ?? new Set([coreId])
+  const members = [...pop]
+  let result: SpawnResult | null = null
+
+  if (members.length >= 2) {
+    // Torneo de 3 (o todos si la población es menor) — muestreo sin
+    // reemplazo determinista por PCG(seed ⊕ lane).
+    const k = Math.min(GENOME_TOURNAMENT_SIZE, members.length)
+    const sample: string[] = []
+    for (let i = 0; i < k; i++) {
+      let idx = pcg32((s32 ^ i) >>> 0) % members.length
+      let guard = 0
+      while (sample.includes(members[idx]) && guard++ < members.length) {
+        idx = (idx + 1) % members.length
+      }
+      if (!sample.includes(members[idx])) sample.push(members[idx])
+    }
+    sample.sort((a, b) => getFitness(b) - getFitness(a))
+    const [pA, pB] = sample
+    result =
+      pA && pB && pA !== pB
+        ? spawnCrossoverVariant(coreId, pA, pB, s32, registry, protectedId)
+        : spawnGenomeVariant(coreId, s32, registry, protectedId)
+  } else {
+    // Población insuficiente para torneo → mutación directa (path G3).
+    result = spawnGenomeVariant(coreId, s32, registry, protectedId)
+  }
+
+  // §4.6 — los peores se extinguen: la población nunca supera 8.
+  const keep = new Set<string>([coreId])
+  if (protectedId) keep.add(protectedId)
+  if (result) keep.add(result.atomId)
+  _enforcePopulationLimit(coreId, keep, registry)
+
+  return result
 }
 
 /** Lookup inverso §4.5 — ¿qué átomo expresa este fenotipo? */
@@ -159,6 +440,7 @@ export function spawnCrossoverVariant(
   parentBId: string,
   seed: number,
   registry: TheiaRegistry = getTheiaRegistry(),
+  protectedId?: string,
 ): SpawnResult | null {
   const core = registry.getAtom(coreAtomId)
   const glsl = core?.source?.glsl
@@ -202,12 +484,15 @@ export function spawnCrossoverVariant(
 
   const known = _genomeIndex.get(phenotype.genomeId)
   if (known !== undefined && registry.getAtom(known)) {
+    _recordIndividual(core.id, known)
     return { atomId: known, genomeId: phenotype.genomeId, created: false, phenotype }
   }
 
   const variant = buildVariantAtom(core, s32, phenotype)
   if (!registry.register(variant)) return null
   _genomeIndex.set(phenotype.genomeId, variant.id)
+  _genomeOfAtom.set(variant.id, phenotype.genomeId)
+  _recordIndividual(core.id, variant.id)
 
   const store = useTheiaPackStore.getState()
   const pack = store.packs.get(core.packId)
@@ -225,6 +510,11 @@ export function spawnCrossoverVariant(
     store.upsertPack(next)
   }
 
+  // §4.6 — cota de población: los peores se extinguen (hijo y activo a salvo).
+  const keep = new Set<string>([variant.id])
+  if (protectedId) keep.add(protectedId)
+  _enforcePopulationLimit(core.id, keep, registry)
+
   return {
     atomId: variant.id,
     genomeId: phenotype.genomeId,
@@ -233,8 +523,11 @@ export function spawnCrossoverVariant(
   }
 }
 
-/** Test hook — vacía índices de dedupe y caché de metas. */
+/** Test hook — vacía índices de dedupe, caché de metas, fitness y poblaciones. */
 export function resetGenomePool(): void {
   _genomeIndex.clear()
   _metaCache.clear()
+  _fitness.clear()
+  _populations.clear()
+  _genomeOfAtom.clear()
 }

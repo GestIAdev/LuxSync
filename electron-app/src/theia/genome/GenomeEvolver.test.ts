@@ -15,10 +15,14 @@ import {
   GENOME_APPROACH_GATE,
   GENOME_PHRASE_BARS,
 } from './GenomeEvolver'
+import { getFitness, resetGenomePool, stepFitness } from './GenomePool'
 import type { ThetaOrchestrator } from '../ThetaOrchestrator'
 
-const mkTheta = () =>
-  ({ evolveGenome: vi.fn() }) as unknown as ThetaOrchestrator
+const mkTheta = (activeId = 'builtin') =>
+  ({
+    evolveGenome: vi.fn(),
+    getActiveShaderId: () => activeId,
+  }) as unknown as ThetaOrchestrator
 
 const PHRASE = GENOME_PHRASE_BARS // 16 compases
 
@@ -103,5 +107,25 @@ describe('G3 — GenomeEvolver (§4.6 frontera de frase)', () => {
     expect(theta.evolveGenome).not.toHaveBeenCalled()
     expect(ev.isAttached()).toBe(false)
     expect(ev.phraseCount).toBe(0)
+  })
+
+  it('G4 — acumula u_beauty en el fitness del individuo activo', () => {
+    resetGenomePool()
+    const theta = mkTheta('core_x#3')
+    const ev = new GenomeEvolver()
+    ev.attach(theta)
+    ev.notify(0, 0, false, 2000, 0.9)
+    ev.notify(4, 0, false, 2000, 0.9)
+    ev.notify(8, 0, false, 2000, 0.9)
+    // La ventana se consume en stepFitness — EMA: F = 0.1·w_b·ū.
+    stepFitness('core_x#3')
+    expect(getFitness('core_x#3')).toBeCloseTo(0.09, 9)
+    // 'builtin' jamás registra fitness (es el plasma interno, no un genoma).
+    const builtin = mkTheta('builtin')
+    ev.attach(builtin)
+    ev.notify(0, 0, false, 2000, 0.9)
+    stepFitness('builtin')
+    expect(getFitness('builtin')).toBe(0)
+    resetGenomePool()
   })
 })

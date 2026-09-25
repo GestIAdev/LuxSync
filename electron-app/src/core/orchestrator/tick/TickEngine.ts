@@ -2340,6 +2340,9 @@ export class TickEngine {
         approachNow,
         dropActive,
         msPerBeat > 0 ? msPerBeat * 4 : 0,
+        // 🧬 WAVE 8236 · G4 — u_beauty (slot 35) alimenta el fitness EMA
+        // del individuo activo en pantalla (ventana por frase, §4.6).
+        sel.beautyScore,
       )
     }
 

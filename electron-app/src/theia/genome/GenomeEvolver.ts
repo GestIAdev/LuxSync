@@ -23,6 +23,7 @@
  */
 
 import type { ThetaOrchestrator } from '../ThetaOrchestrator'
+import { trackBeauty } from './GenomePool'
 
 /** Compases por frase (§4.6: 16 u 32). */
 export const GENOME_PHRASE_BARS = 16
@@ -75,15 +76,22 @@ export class GenomeEvolver {
    *                   conservador: adelanta el veto respecto al EMA).
    * @param dropActive zona `peak` / apocalypse — jamás mutar en el clímax.
    * @param barMs      duración real de un compás (ms) — base del crossfade.
+   * @param beauty     u_beauty (slot 35) — se acumula en el fitness del
+   *                   individuo activo mientras esté en pantalla (§4.6 G4).
    */
   notify(
     barCount: number,
     approach: number,
     dropActive: boolean,
     barMs: number,
+    beauty = 0,
   ): void {
     const theta = this._theta
     if (!theta || !this.enabled) return
+    // §4.6 G4 — ventana de fitness: u_beauty solo cuenta para el individuo
+    // que está en pantalla. Zero-alloc: dos sumas sobre el record.
+    const activeId = theta.getActiveShaderId()
+    if (activeId !== 'builtin') trackBeauty(activeId, beauty)
     const idx = Math.floor(barCount / this.phraseBars)
     if (this._phraseIdx < 0) {
       // Primera observación: siembra el índice — mutar exige un CRUCE real.

@@ -64,7 +64,11 @@ import {
   type EuclidMeta,
 } from './shader/ShaderAssembler'
 // 🧬 WAVE 8235 — INFINITE GENOME · G3: mutación en frontera de frase (§4.6)
-import { spawnGenomeVariant } from './genome/GenomePool'
+import {
+  darwinTournament,
+  favoriteAtom,
+  skipAtom,
+} from './genome/GenomePool'
 import { genomeChildSeed } from './genome/GenomeExpander'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -975,12 +979,15 @@ export class ThetaOrchestrator {
   }
 
   /**
-   * 🧬 WAVE 8235 · G3 — mutación en frontera de frase (Infinite Genome
-   * §4.6). El `GenomeEvolver` la llama tras verificar las compuertas
+   * 🧬 WAVE 8235/8236 · G3+G4 — evolución en frontera de frase (Infinite
+   * Genome §4.6). El `GenomeEvolver` la llama tras verificar las compuertas
    * (`approach < 0.2`, sin drop activo):
    *
    *   1. `childSeed = PCG(seed_actual ⊕ contador_de_frases)` (§4.6-1).
-   *   2. `spawnGenomeVariant` expande + empadrona (dedupe por genomeId).
+   *   2. `darwinTournament` (G4): torneo de 3 sobre la población viva del
+   *      core activo — los dos mejores fitness se reproducen por crossover
+   *      (o mutación si la población es < 2) y los peores se extinguen
+   *      hasta la cota de 8. El activo en pantalla está protegido.
    *   3. Solo `expr` cambió → `activateShader(..., 0)` y el worker fija
    *      `u_gene` sin recompilar ni crossfade (fast-path por programKey).
    *   4. Cambió algún `struct` → crossfade de 2 compases (`barMs·2`).
@@ -995,7 +1002,7 @@ export class ThetaOrchestrator {
     const curSeed =
       hashIdx >= 0 ? (parseInt(id.slice(hashIdx + 1), 10) >>> 0) : 0
     const childSeed = genomeChildSeed(curSeed, phraseIndex)
-    const spawned = spawnGenomeVariant(coreId, childSeed)
+    const spawned = darwinTournament(coreId, childSeed, id)
     if (!spawned || spawned.atomId === id) return
     const shaderSrc = this._shaderSourceResolver?.(spawned.atomId) ?? null
     if (!shaderSrc) return
@@ -1010,6 +1017,22 @@ export class ThetaOrchestrator {
         ? Math.min(6000, Math.max(400, barMs * 2))
         : 0
     this.activateShader(spawned.atomId, fadeMs)
+  }
+
+  /**
+   * 🧬 WAVE 8236 · G4 — impulso del operador desde el LiveDeck (§4.6):
+   * FAVORITO. Sube el fitness del individuo en el próximo paso EMA.
+   */
+  markFavorite(atomId: string): void {
+    favoriteAtom(atomId)
+  }
+
+  /**
+   * 🧬 WAVE 8236 · G4 — impulso del operador desde el LiveDeck (§4.6):
+   * SKIP. Baja el fitness del individuo en el próximo paso EMA.
+   */
+  markSkip(atomId: string): void {
+    skipAtom(atomId)
   }
 
   /** Suscripción a `theia:shader-status`. Devuelve unsubscribe. */

@@ -17,6 +17,12 @@
  *        `compatibleVibes`/`validSections` vacíos → rechazo silencioso en
  *        `DynamicEffectRegistry.registerEffectV3` (G4: vibes ≠ ∅).
  *
+ *   WAVE 8205 (M2) — Zero-Friction DNA: si el clip fue tocado por
+ *   Asteria (`clip.asteria` o tracks `ast_*`) y carece de
+ *   `cognitiveDNA`, el Diplomat le inyecta el pasaporte seguro
+ *   ('chill-lounge' + 'manual_only' + ventana ≤2) en lugar de
+ *   dejarlo invisible para Selene.
+ *
  * Doctrina: patch-time, sin Electron, cero mutación del input. Nada que
  * no pase `evaluateGates` debe llegar al IPC `heph:save` ni a
  * `userData/arsenal`.
@@ -27,6 +33,7 @@
 import { CANONICAL_ZONES, normalizeZone, } from '../stage/ShowFileV2';
 import { normalizeZoneId } from '../aether/adapters/zoneUtils';
 import { ARCHETYPE_BIAS_MAP, ENERGY_ZONES, } from '../arsenal/LfxClipInstance';
+import { DEFAULT_COGNITIVE_DNA } from './defaults';
 // ─── HIGIENE ESPACIAL (M1) ──────────────────────────────────────────────────
 /** Targets válidos del contrato V3: las 9 canónicas + helpers de grupo. */
 const VALID_ZONE_TARGETS = new Set([
@@ -143,6 +150,16 @@ function sectionsForWindow(min, max) {
     return out.size > 0 ? [...out] : ['verse', 'chorus'];
 }
 /**
+ * 🜨 WAVE 8205 (M2): "tocado por Asteria" = lleva el envelope de receta
+ * (`clip.asteria`, serializado por types.ts) o tracks compilados `ast_*`.
+ * El prefijo se duplica como literal — `core/` no importa de
+ * `components/` (fuente: ASTERIA_TRACK_PREFIX en emissionPlan.ts).
+ */
+function isAsteriaTouched(clip) {
+    return (clip.asteria !== undefined ||
+        clip.tracks.some((t) => t.id.startsWith('ast_')));
+}
+/**
  * Sanea el `cognitiveDNA` existente para que pase G4 (renderer + registry):
  *   - `energyZone` span → ≤ 2 (Montecarlo).
  *   - `compatibleVibes` vacío → vibe genérica + `visibility:'manual_only'`
@@ -228,6 +245,21 @@ export function prepareClipForExport(clip) {
             // Espejo de serializeHephClip: vibeCompat = dna.compatibleVibes.
             vibeCompat = [...clean.compatibleVibes];
         }
+    }
+    else if (isAsteriaTouched(clip)) {
+        // 🜨 WAVE 8205 (M2): la regla "DNA ausente → no se inventa" ya no
+        // aplica a clips Asteria — el operador diseña y guarda sin pasar
+        // por Laboratory. Pasaporte seguro: vibe genérica + manual_only
+        // (Selene cataloga, jamás auto-selecciona) y el propio pipeline
+        // de saneamiento clampea energyZone a ≤2 zonas (G4).
+        const injected = {
+            ...DEFAULT_COGNITIVE_DNA,
+            compatibleVibes: [GENERIC_VIBE],
+            visibility: 'manual_only',
+        };
+        cognitiveDNA = sanitizeCognitiveDNA(injected, notes);
+        vibeCompat = [...cognitiveDNA.compatibleVibes];
+        notes.push('DNA: inyectado — clip Asteria sin cognitiveDNA');
     }
     else {
         notes.push('NO_DNA — clip Hephaestus-only (invisible para Selene)');

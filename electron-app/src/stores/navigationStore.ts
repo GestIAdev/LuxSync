@@ -253,7 +253,7 @@ export const SIDEBAR_LABELS: Partial<Record<TabId, string>> = {
  * Tabs that are locked as "ALPHA" — visually disabled in the sidebar
  * with a glowing badge. The user cannot navigate to them by clicking.
  */
-export const ALPHA_LOCKED_TABS: readonly TabId[] = ['theia', 'vibe-lab'] as const
+export const ALPHA_LOCKED_TABS: readonly TabId[] = ['vibe-lab'] as const
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

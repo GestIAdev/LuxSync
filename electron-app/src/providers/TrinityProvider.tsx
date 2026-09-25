@@ -11,7 +11,8 @@
  */
 
 import { createContext, useContext, useEffect, useRef, ReactNode, useCallback, useState } from 'react'
-import { ThetaOrchestrator, ENABLE_THETA_ORCHESTRATOR } from '../theia'
+import { ThetaOrchestrator, getThetaOrchestrator, ENABLE_THETA_ORCHESTRATOR } from '../theia'
+import { usePerformanceStore } from '../stores/performanceStore'
 import { useAudioCapture, AudioMetrics } from '../hooks/useAudioCapture'
 import { useAudioStore, selectTrinityAudioActions } from '../stores/audioStore'
 import { useSeleneStore, LogEntryType, selectTrinitySeleneActions } from '../stores/seleneStore'
@@ -639,16 +640,19 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
   // 🎬 WAVE 4860: ThetaOrchestrator lifecycle — mirrors power state
   // 🛠️ WAVE 5033: Guard temprano — si Theta está killswitcheado, NO instanciar
   // ni crear OffscreenCanvas (evita fantasma GPU ~8 MB).
+  // 🌊 WAVE 8207: quarantine lifted — usa el SINGLETON (un solo worker = un
+  // solo productor sobre los SAB de vídeo/thumb) y queda gateado por Vanguard:
+  // en tier 'eco' (isCanvasWorkerDisabled) Theta no arranca.
   useEffect(() => {
     if (!ENABLE_THETA_ORCHESTRATOR) return
 
     if (powerState === 'ONLINE' && !thetaRef.current) {
-      const theta = new ThetaOrchestrator()
+      if (usePerformanceStore.getState().isCanvasWorkerDisabled) {
+        console.log('[TrinityProvider] 🌊 Theta skipped — eco tier (isCanvasWorkerDisabled)')
+        return
+      }
+      const theta = getThetaOrchestrator()
       thetaRef.current = theta
-
-      // Create the offscreen canvas directly; no DOM attachment needed.
-      const offscreen = new OffscreenCanvas(1920, 1080)
-      theta.attachOffscreenCanvas(offscreen)
 
       theta.start().catch((err: unknown) => {
         console.error('[TrinityProvider] ThetaOrchestrator start failed:', err)

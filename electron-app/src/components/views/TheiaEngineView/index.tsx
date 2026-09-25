@@ -5,33 +5,36 @@
  *
  *   ┌─────────────────────────────────────────────────────────────────┐
  *   │                  HEADER TOOLBAR (60px)                          │
- *   │  [POWER] [BRIGHT][SPEED][BLACKOUT]  [DROP ZONE]  [BETA]         │
+ *   │  [POWER] [BRIGHT][SPEED][CONTRAST][BLACKOUT]  [LOAD]  [OUTPUT]  │
  *   ├──────────────────────────────────────────┬──────────────────────┤
  *   │                                          │   INSPECTOR          │
- *   │   MAIN VIEWPORT [RAW | PATCH PREVIEW]    │   (retractable,      │
- *   │   (the canvas + scanlines)               │    glassmorphism)    │
+ *   │   MAIN VIEWPORT (worker canvas)          │   (retractable)      │
  *   │                                          │                      │
  *   │                                          │   ▸ Section Monitor  │
- *   │                                          │   ▸ Active Clip Meta │
  *   │                                          │   ▸ Manual Overrides │
  *   ├──────────────────────────────────────────┤                      │
- *   │   ASSET DECK (horizontal clip timeline)  │                      │
+ *   │   DECK (LiveDeck packs | Workshop queue) │                      │
  *   └──────────────────────────────────────────┴──────────────────────┘
  *
  * MIDI BINDINGS (every control carries data-midi-bind for MidiLearn):
- *   theia.power · theia.brightness · theia.speed · theia.blackout
- *   theia.mode-toggle · theia.force-drop · theia.force-ambient
- *   theia.force-blackout · theia.next-clip · theia.prev-clip
+ *   theia.power · theia.brightness · theia.speed · theia.contrast · theia.blackout
+ *   theia.editor-mode · theia.force-drop · theia.force-ambient
+ *   theia.toggle-output · theia.load-assets · theia.load-pack
+ *
+ * 🌊 WAVE 8211 (H1+H2): mock clips, synthetic heartbeat, PATCH PREVIEW and
+ * dead buttons purged; masters wired to the worker via `theia:set-uniform`.
+ * 🌊 WAVE 8211.5: WORKSHOP FREEZE — authoring surface quarantined, view is
+ * always LIVE (WORKSHOP_FROZEN flag).
  *
  * @module views/TheiaEngineView
- * @version WAVE 4862 (mockup — wired to ThetaOrchestrator in F4)
+ * @version WAVE 8211.5
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './TheiaEngineView.css'
 import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
 import { useControlStore } from '../../../stores/controlStore'
-import { useTheiaEditorStore } from '../../../stores/useTheiaEditorStore'
+import { useTheiaEditorStore, type EditorMode } from '../../../stores/useTheiaEditorStore'
 import { useTheiaPackStore } from '../../../stores/useTheiaPackStore'
 import { useAuthoringShortcuts } from '../../../hooks/useAuthoringShortcuts'
 import TheiaDNALab from '../../theia/TheiaDNALab'
@@ -43,88 +46,17 @@ import LiveDeck from '../../theia/LiveDeck'
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-type ViewportMode = 'raw' | 'patch'
-type AssetState = 'ambient' | 'drop' | 'transition' | 'idle'
 type SectionTag = 'silence' | 'verse' | 'buildup' | 'drop' | 'breakdown' | 'outro'
 
-interface AssetZone {
-  /** Position 0..1 along clip duration */
-  t: number
-  /** Energy peak score 0..1 */
-  energy: number
-  /** Optional human label */
-  label?: string
-}
+// 🌊 WAVE 8211 (H1) — MOCK_CLIPS, ClipManifest, AssetZone, PATCH PREVIEW and
+// the synthetic heartbeat were purged. Telemetry blocks stay but report
+// OFFLINE until the TheiaTelemetryRing (Euclid blueprint, WAVE 8208) lands.
 
-interface ClipManifest {
-  id: string
-  name: string
-  durationMs: number
-  /** Current playback state of the asset state-machine */
-  state: AssetState
-  /** Color palette swatch (3 colors) for the card chip */
-  palette: [string, string, string]
-  /** Asset DNA — interest zones the engine will sync lights to */
-  zones: AssetZone[]
-  /** Whether this clip is the currently routed asset */
-  active: boolean
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MOCK DATA — replace with ThetaOrchestrator + .theia parser in F4
-// ═══════════════════════════════════════════════════════════════════════════
-
-const MOCK_CLIPS: ClipManifest[] = [
-  {
-    id: 'clip-aurora',
-    name: 'Aurora Flow',
-    durationMs: 184_000,
-    state: 'ambient',
-    palette: ['#06b6d4', '#a855f7', '#22c55e'],
-    zones: [
-      { t: 0.18, energy: 0.4, label: 'lift' },
-      { t: 0.42, energy: 0.85, label: 'drop' },
-      { t: 0.71, energy: 0.55, label: 'wave' },
-    ],
-    active: true,
-  },
-  {
-    id: 'clip-vortex',
-    name: 'Vortex Pulse',
-    durationMs: 96_000,
-    state: 'idle',
-    palette: ['#ef4444', '#fbbf24', '#f97316'],
-    zones: [
-      { t: 0.30, energy: 0.95, label: 'impact' },
-      { t: 0.65, energy: 0.7 },
-    ],
-    active: false,
-  },
-  {
-    id: 'clip-monolith',
-    name: 'Monolith',
-    durationMs: 240_000,
-    state: 'idle',
-    palette: ['#3b82f6', '#06b6d4', '#94a3b8'],
-    zones: [
-      { t: 0.50, energy: 0.6 },
-    ],
-    active: false,
-  },
-  {
-    id: 'clip-saturn',
-    name: 'Saturn Rings',
-    durationMs: 132_000,
-    state: 'idle',
-    palette: ['#a855f7', '#06b6d4', '#fbbf24'],
-    zones: [
-      { t: 0.22, energy: 0.5 },
-      { t: 0.55, energy: 0.8, label: 'apex' },
-      { t: 0.88, energy: 0.4 },
-    ],
-    active: false,
-  },
-]
+// 🌊 WAVE 8211.5 — WORKSHOP FREEZE. The authoring surface (WorkshopDeck /
+// TheiaTrimmer / TheiaDNALab + the LIVE◐WORKSHOP toggle) is quarantined
+// until the Hybrid Deck redesign lands. Components stay imported so the
+// .theia type pipeline keeps compiling; flip to false to thaw.
+const WORKSHOP_FROZEN: boolean = true
 
 const SECTION_LABELS: Record<SectionTag, { label: string; color: string; emoji: string }> = {
   silence: { label: 'SILENCE',   color: '#475569', emoji: '◦' },
@@ -135,16 +67,12 @@ const SECTION_LABELS: Record<SectionTag, { label: string; color: string; emoji: 
   outro:   { label: 'OUTRO',     color: '#94a3b8', emoji: '◇' },
 }
 
+/** 🌊 WAVE 8211 (H1) — flat baseline shown while telemetry is offline. */
+const OFFLINE_SPARK: readonly number[] = Object.freeze(new Array(60).fill(0))
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
-
-function fmtDuration(ms: number): string {
-  const total = Math.floor(ms / 1000)
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.webm', '.mov'] as const
 
@@ -165,21 +93,17 @@ const TheiaEngineView: React.FC = () => {
   const [blackout, setBlackout] = useState(false)
   const [contrast, setContrast] = useState(0.5)
 
-  // ── Viewport mode ──────────────────────────────────────────────────────
-  const [viewportMode, setViewportMode] = useState<ViewportMode>('raw')
-
   // ── Inspector ──────────────────────────────────────────────────────────
   const [inspectorOpen, setInspectorOpen] = useState(true)
 
-  // ── Live section monitor (mocked — wire to BrainTheiaBridge in F5) ────
-  const [section, setSection] = useState<SectionTag>('verse')
-  const [sectionConfidence, setSectionConfidence] = useState(0.72)
-  const [bpm, setBpm] = useState(124)
-  const [energyValue, setEnergyValue] = useState(0.42)
-
-  // ── Sparkline history for the section monitor ────────────────────────
-  const sparkRef = useRef<number[]>(new Array(60).fill(0.3))
-  const [sparkData, setSparkData] = useState<number[]>(sparkRef.current)
+  // ── Live telemetry — 🌊 WAVE 8211 (H1): synthetic heartbeat removed.
+  // These stay null/empty (displayed as '—' / 'NO SIGNAL') until the
+  // TheiaTelemetryRing feeds real Selene/GodEar/Omniliquid data. ──────────
+  const section: SectionTag | null = null
+  const sectionConfidence: number | null = null
+  const bpm: number | null = null
+  const energyValue: number | null = null
+  const sparkData = OFFLINE_SPARK
 
   // ── Output window state ──────────────────────────────────────────────
   const [isOutputActive, setIsOutputActive] = useState(false)
@@ -188,15 +112,14 @@ const TheiaEngineView: React.FC = () => {
   const aiEnabled = useControlStore((s) => s.aiEnabled)
 
   // ── Theia Editor Mode (WAVE 4910.1) ──────────────────────────────────
-  const editorMode    = useTheiaEditorStore((s) => s.editorMode)
-  const setEditorMode = useTheiaEditorStore((s) => s.setEditorMode)
+  const storeEditorMode = useTheiaEditorStore((s) => s.editorMode)
+  const setEditorMode   = useTheiaEditorStore((s) => s.setEditorMode)
+  // 🌊 WAVE 8211.5 — freeze: the rendered surface is always LIVE while the
+  // workshop is quarantined. The store subscription stays for the thaw.
+  const editorMode: EditorMode = WORKSHOP_FROZEN ? 'live' : storeEditorMode
 
   // ── WAVE 4910.7: atajos de teclado en modo AUTHOR ────────────────────
   useAuthoringShortcuts()
-
-  // ── Clips ─────────────────────────────────────────────────────────────
-  const [clips, setClips] = useState<ClipManifest[]>(MOCK_CLIPS)
-  const activeClip = useMemo(() => clips.find((c) => c.active) ?? clips[0], [clips])
 
   // ─── WAVE 4870: SeleneTheiaBridge — attach/detach por aiEnabled ─────────
   useEffect(() => {
@@ -219,28 +142,26 @@ const TheiaEngineView: React.FC = () => {
     // En 'live', el efecto de aiEnabled es la fuente de verdad para attach.
   }, [editorMode])
 
-  // ─── Mock heartbeat: drives the live section monitor every 100ms ──────
+  // ─── 🌊 WAVE 8211.5: Workshop freeze — pin the store to 'live'. ───────
+  // Defensive: any stray setEditorMode('workshop') (HMR state, future
+  // callers) is reverted so no workshop surface can mount.
   useEffect(() => {
-    if (!enginePower) return
-    const handle = window.setInterval(() => {
-      // Wobble energy with a sine + noise
-      const t = Date.now() / 1000
-      const e = 0.5 + 0.35 * Math.sin(t * 0.6) + 0.15 * (Math.random() - 0.5)
-      const clamped = Math.max(0, Math.min(1, e))
-      setEnergyValue(clamped)
-      sparkRef.current.push(clamped)
-      if (sparkRef.current.length > 60) sparkRef.current.shift()
-      setSparkData([...sparkRef.current])
+    if (WORKSHOP_FROZEN && useTheiaEditorStore.getState().editorMode !== 'live') {
+      useTheiaEditorStore.getState().setEditorMode('live')
+    }
+  }, [])
 
-      // Section heuristic for the mock
-      if (clamped > 0.85) setSection('drop')
-      else if (clamped > 0.65) setSection('buildup')
-      else if (clamped > 0.35) setSection('verse')
-      else setSection('silence')
-      setSectionConfidence(0.55 + Math.abs(clamped - 0.5))
-    }, 120)
-    return () => window.clearInterval(handle)
-  }, [enginePower])
+  // ─── 🌊 WAVE 8211 (H2) — Push initial master values to the worker once.
+  // The orchestrator replays them on every 'theia:ready' (Phoenix respawn),
+  // so this just keeps the UI and the shader in sync at mount. ────────────
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    theta.setUniform('u_brightness', brightness)
+    theta.setUniform('u_contrast', contrast)
+    theta.setUniform('u_speed', speed)
+    theta.setUniform('u_blackout', blackout ? 1 : 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ─── Handlers ─────────────────────────────────────────────────────────
   const handlePower = useCallback(() => {
@@ -260,30 +181,14 @@ const TheiaEngineView: React.FC = () => {
     })
   }, [])
 
-  const handleSelectClip = useCallback((id: string) => {
-    setClips((prev) =>
-      prev.map((c) => ({
-        ...c,
-        active: c.id === id,
-        state: c.id === id ? (c.state === 'idle' ? 'ambient' : c.state) : 'idle',
-      }))
-    )
-  }, [])
-
   // 🎬 WAVE 4864 — Phase 4: Force Drop / Force Ambient now drive the
   // ThetaOrchestrator's AssetStateMachine through `forceState()`. The worker
   // runs a 500ms crossfade between the previous frame and the new one.
   const handleForceDrop = useCallback(() => {
-    setClips((prev) =>
-      prev.map((c) => (c.active ? { ...c, state: 'drop' } : c))
-    )
     getThetaOrchestrator().forceState('drop', { manual: true })
   }, [])
 
   const handleForceAmbient = useCallback(() => {
-    setClips((prev) =>
-      prev.map((c) => (c.active ? { ...c, state: 'ambient' } : c))
-    )
     getThetaOrchestrator().forceState('ambient', { manual: true })
   }, [])
 
@@ -305,9 +210,30 @@ const TheiaEngineView: React.FC = () => {
     }
   }, [])
 
+  // ── 🌊 WAVE 8211 (H2) — Masters wired to the worker via set-uniform ───
+  const handleBrightnessChange = useCallback((value: number) => {
+    setBrightness(value)
+    getThetaOrchestrator().setUniform('u_brightness', value)
+  }, [])
+
+  const handleContrastChange = useCallback((value: number) => {
+    setContrast(value)
+    getThetaOrchestrator().setUniform('u_contrast', value)
+  }, [])
+
+  const handleBlackout = useCallback(() => {
+    setBlackout((prev) => {
+      const next = !prev
+      getThetaOrchestrator().setUniform('u_blackout', next ? 1 : 0)
+      return next
+    })
+  }, [])
+
   const handleSpeedChange = useCallback((value: number) => {
     setSpeed(value)
-    getThetaOrchestrator().setPlaybackRate(value)
+    const theta = getThetaOrchestrator()
+    theta.setPlaybackRate(value)
+    theta.setUniform('u_speed', value)
   }, [])
 
   // ── File Picker ──────────────────────────────────────────────────────
@@ -360,7 +286,7 @@ const TheiaEngineView: React.FC = () => {
         : 0
       if (durMs > 0) updateRawClip(primary.id, { durationMs: durMs })
 
-      if (mode === 'workshop') {
+      if (mode === 'workshop' && !WORKSHOP_FROZEN) {
         useTheiaEditorStore.getState().newDraftFromPath(primary.filePath, durMs, primary.id)
         updateRawClip(primary.id, { state: 'editing' })
       }
@@ -407,7 +333,9 @@ const TheiaEngineView: React.FC = () => {
           </button>
         </div>
 
-        {/* ── WAVE 4921: LIVE ◐ WORKSHOP mode toggle ── */}
+        {/* ── WAVE 4921: LIVE ◐ WORKSHOP mode toggle ──
+            🌊 WAVE 8211.5 — hidden while the workshop is quarantined. */}
+        {!WORKSHOP_FROZEN && (
         <div
           className={`theia-mode-toggle${editorMode === 'workshop' ? ' is-author' : ' is-perform'}`}
           data-midi-bind="theia.editor-mode"
@@ -428,6 +356,7 @@ const TheiaEngineView: React.FC = () => {
             WORKSHOP
           </button>
         </div>
+        )}
 
         {/* ── Power button (huge, glowing) ── */}
         <button
@@ -447,7 +376,7 @@ const TheiaEngineView: React.FC = () => {
             label="BRIGHT"
             bindId="theia.brightness"
             value={brightness}
-            onChange={setBrightness}
+            onChange={handleBrightnessChange}
             color="#06b6d4"
           />
           <MasterSlider
@@ -464,7 +393,7 @@ const TheiaEngineView: React.FC = () => {
             label="CONTRAST"
             bindId="theia.contrast"
             value={contrast}
-            onChange={setContrast}
+            onChange={handleContrastChange}
             color="#14b8a6"
           />
         </div>
@@ -472,7 +401,7 @@ const TheiaEngineView: React.FC = () => {
         {/* ── BLACKOUT toggle ── */}
         <button
           className={`theia-blackout ${blackout ? 'is-active' : ''}`}
-          onClick={() => setBlackout((b) => !b)}
+          onClick={handleBlackout}
           data-midi-bind="theia.blackout"
           title="Force Blackout"
         >
@@ -534,16 +463,12 @@ const TheiaEngineView: React.FC = () => {
         {/* ─── LEFT COLUMN: viewport + (asset deck | trimmer) ─── */}
         <div className="theia-stage">
           <Viewport
-            mode={viewportMode}
-            onModeChange={setViewportMode}
-            showModeToggle={editorMode !== 'workshop'}
             enginePower={enginePower}
             blackout={blackout}
-            activeClip={activeClip}
             section={section}
           />
 
-          {editorMode === 'live' ? (
+          {editorMode === 'live' || WORKSHOP_FROZEN ? (
             <LiveDeck />
           ) : (
             <>
@@ -554,14 +479,12 @@ const TheiaEngineView: React.FC = () => {
         </div>
 
         {/* ─── RIGHT COLUMN: inspector | dna-lab placeholder ─── */}
-        {editorMode === 'live' ? (
+        {editorMode === 'live' || WORKSHOP_FROZEN ? (
           <Inspector
             open={inspectorOpen}
-            activeClip={activeClip}
             section={section}
             sectionConfidence={sectionConfidence}
             bpm={bpm}
-            setBpm={setBpm}
             energyValue={energyValue}
             sparkData={sparkData}
             onForceDrop={handleForceDrop}
@@ -631,26 +554,21 @@ const MasterSlider: React.FC<MasterSliderProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ViewportProps {
-  mode: ViewportMode
-  onModeChange: (m: ViewportMode) => void
-  showModeToggle: boolean
   enginePower: boolean
   blackout: boolean
-  activeClip: ClipManifest
-  section: SectionTag
+  /** 🌊 WAVE 8211 (H1): real section feed is offline until the telemetry ring. */
+  section: SectionTag | null
 }
 
-const Viewport: React.FC<ViewportProps> = ({
-  mode, onModeChange, showModeToggle, enginePower, blackout, activeClip, section
-}) => {
-  const sectionMeta = SECTION_LABELS[section]
+const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) => {
+  const sectionMeta = section ? SECTION_LABELS[section] : null
 
   // ── WAVE 4910.14 M3: Author mode — native video viewer ──────────────────
   // En AUTHOR el canvas/worker no está activo. Mostramos el <video> nativo
   // directamente en el viewport usando un div contenedor como slot.
   const editorMode = useTheiaEditorStore((s) => s.editorMode)
   const draftId    = useTheiaEditorStore((s) => s.draftAtom?.id)  // dep para re-trigger
-  const isAuthorMode = editorMode === 'workshop'
+  const isAuthorMode = !WORKSHOP_FROZEN && editorMode === 'workshop'
   const videoSlotRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -722,25 +640,8 @@ const Viewport: React.FC<ViewportProps> = ({
 
   return (
     <section className={`theia-viewport ${blackout ? 'is-blackout' : ''}`}>
-      {/* ── Mode toggle ── */}
+      {/* ── Live tag (mode toggle removed — RAW canvas only, WAVE 8211) ── */}
       <div className="theia-vp__bar">
-        {showModeToggle && (
-          <div className="theia-vp__mode-toggle" data-midi-bind="theia.mode-toggle">
-            <button
-              className={mode === 'raw' ? 'is-active' : ''}
-              onClick={() => onModeChange('raw')}
-            >
-              RAW
-            </button>
-            <button
-              className={mode === 'patch' ? 'is-active' : ''}
-              onClick={() => onModeChange('patch')}
-            >
-              PATCH PREVIEW
-            </button>
-          </div>
-        )}
-
         <div className="theia-vp__live-tag">
           <span className={`theia-vp__live-dot ${enginePower ? 'is-on' : ''}`} />
           <span className="theia-vp__live-text">
@@ -749,9 +650,9 @@ const Viewport: React.FC<ViewportProps> = ({
           <span className="theia-vp__divider" />
           <span
             className="theia-vp__section"
-            style={{ color: sectionMeta.color }}
+            style={{ color: sectionMeta?.color ?? '#475569' }}
           >
-            {sectionMeta.emoji} {sectionMeta.label}
+            {sectionMeta ? `${sectionMeta.emoji} ${sectionMeta.label}` : '—'}
           </span>
         </div>
       </div>
@@ -794,18 +695,6 @@ const Viewport: React.FC<ViewportProps> = ({
           </div>
         )}
 
-        {/* PATCH PREVIEW overlay: 3 totem mock */}
-        {mode === 'patch' && enginePower && !blackout && (
-          <div className="theia-vp__patch-overlay">
-            <Totem index={0} palette={activeClip.palette} />
-            <Totem index={1} palette={activeClip.palette} />
-            <Totem index={2} palette={activeClip.palette} />
-            <div className="theia-vp__patch-info">
-              <span>3 TÓTEMS · 1920×1080 SOURCE → 256×512 EACH</span>
-            </div>
-          </div>
-        )}
-
         {/* Corner brackets */}
         <span className="theia-vp__bracket theia-vp__bracket--tl" />
         <span className="theia-vp__bracket theia-vp__bracket--tr" />
@@ -813,28 +702,6 @@ const Viewport: React.FC<ViewportProps> = ({
         <span className="theia-vp__bracket theia-vp__bracket--br" />
       </div>
     </section>
-  )
-}
-
-// ─── Totem mock ─────────────────────────────────────────────────────────
-const Totem: React.FC<{ index: number; palette: [string, string, string] }> = ({
-  index, palette,
-}) => {
-  const colors = [palette[0], palette[1], palette[2]]
-  return (
-    <div className={`theia-totem theia-totem--${index}`}>
-      {[0, 1, 2, 3, 4].map((row) => (
-        <div
-          key={row}
-          className="theia-totem__cell"
-          style={{
-            background: `linear-gradient(180deg, ${colors[row % 3]}88, ${colors[(row + 1) % 3]}88)`,
-            animationDelay: `${row * 0.15 + index * 0.3}s`,
-          }}
-        />
-      ))}
-      <div className="theia-totem__label">T-{index + 1}</div>
-    </div>
   )
 }
 
@@ -848,23 +715,22 @@ const Totem: React.FC<{ index: number; palette: [string, string, string] }> = ({
 
 interface InspectorProps {
   open: boolean
-  activeClip: ClipManifest
-  section: SectionTag
-  sectionConfidence: number
-  bpm: number
-  setBpm: (v: number) => void
-  energyValue: number
-  sparkData: number[]
+  /** 🌊 WAVE 8211 (H1): all telemetry fields are nullable — '—' until the ring lands. */
+  section: SectionTag | null
+  sectionConfidence: number | null
+  bpm: number | null
+  energyValue: number | null
+  sparkData: readonly number[]
   onForceDrop: () => void
   onForceAmbient: () => void
   enginePower: boolean
 }
 
 const Inspector: React.FC<InspectorProps> = ({
-  open, activeClip, section, sectionConfidence, bpm, energyValue, sparkData,
+  open, section, sectionConfidence, bpm, energyValue, sparkData,
   onForceDrop, onForceAmbient, enginePower,
 }) => {
-  const sectionMeta = SECTION_LABELS[section]
+  const sectionMeta = section ? SECTION_LABELS[section] : null
 
   // ── Sparkline path ──
   const sparkPath = useMemo(() => {
@@ -900,26 +766,28 @@ const Inspector: React.FC<InspectorProps> = ({
               <span className={`theia-insp__pulse ${enginePower ? 'is-on' : ''}`} />
             </div>
 
-            {/* Section banner */}
+            {/* Section banner — offline until the telemetry ring lands */}
             <div
               className="theia-insp__section"
               style={{
-                borderColor: `${sectionMeta.color}66`,
-                background: `${sectionMeta.color}15`,
+                borderColor: `${sectionMeta?.color ?? '#475569'}66`,
+                background: `${sectionMeta?.color ?? '#475569'}15`,
               }}
             >
-              <span
-                className="theia-insp__section-emoji"
-              >{sectionMeta.emoji}</span>
+              <span className="theia-insp__section-emoji">
+                {sectionMeta?.emoji ?? '◦'}
+              </span>
               <div className="theia-insp__section-body">
                 <span
                   className="theia-insp__section-label"
-                  style={{ color: sectionMeta.color }}
+                  style={{ color: sectionMeta?.color ?? '#94a3b8' }}
                 >
-                  {sectionMeta.label}
+                  {sectionMeta?.label ?? 'NO SIGNAL'}
                 </span>
                 <span className="theia-insp__section-conf">
-                  CONFIDENCE {Math.round(sectionConfidence * 100)}%
+                  {sectionConfidence !== null
+                    ? `CONFIDENCE ${Math.round(sectionConfidence * 100)}%`
+                    : 'TELEMETRY OFFLINE'}
                 </span>
               </div>
             </div>
@@ -941,69 +809,33 @@ const Inspector: React.FC<InspectorProps> = ({
                 <line x1="0" y1="20" x2="100" y2="20" stroke="rgba(255,255,255,0.06)" strokeWidth="0.4" />
                 <path d={`${sparkPath} L100,40 L0,40 Z`} fill="url(#theia-spark-fill)" />
                 <path d={sparkPath} fill="none" stroke="url(#theia-spark-grad)" strokeWidth="1.2" />
-                <circle
-                  cx="100"
-                  cy={40 - energyValue * 36 - 2}
-                  r="2"
-                  fill={sectionMeta.color}
-                />
+                {energyValue !== null && (
+                  <circle
+                    cx="100"
+                    cy={40 - energyValue * 36 - 2}
+                    r="2"
+                    fill={sectionMeta?.color ?? '#475569'}
+                  />
+                )}
               </svg>
             </div>
 
-            {/* BPM + Energy strip */}
+            {/* BPM + Energy strip — offline until the telemetry ring lands */}
             <div className="theia-insp__metrics">
               <div className="theia-insp__metric">
                 <span className="theia-insp__metric-label">BPM</span>
-                <span className="theia-insp__metric-value">{bpm}</span>
+                <span className="theia-insp__metric-value">{bpm ?? '—'}</span>
               </div>
               <div className="theia-insp__metric">
                 <span className="theia-insp__metric-label">ENERGY</span>
                 <span className="theia-insp__metric-value">
-                  {Math.round(energyValue * 100)}%
+                  {energyValue !== null ? `${Math.round(energyValue * 100)}%` : '—'}
                 </span>
               </div>
               <div className="theia-insp__metric">
                 <span className="theia-insp__metric-label">FPS</span>
                 <span className="theia-insp__metric-value">
                   {enginePower ? '44.0' : '—'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── SECTION 2: Active Clip metadata ── */}
-          <div className="theia-insp__block">
-            <div className="theia-insp__block-header">
-              <span className="theia-insp__block-icon">◈</span>
-              <span className="theia-insp__block-title">ACTIVE ASSET</span>
-            </div>
-
-            <div className="theia-insp__clip-info">
-              <div className="theia-insp__clip-name">{activeClip.name}</div>
-              <div className="theia-insp__clip-id">{activeClip.id}</div>
-
-              <div className="theia-insp__kv">
-                <span>Duration</span>
-                <span>{fmtDuration(activeClip.durationMs)}</span>
-              </div>
-              <div className="theia-insp__kv">
-                <span>State</span>
-                <span className={`theia-insp__state-pill theia-insp__state-pill--${activeClip.state}`}>
-                  {activeClip.state.toUpperCase()}
-                </span>
-              </div>
-              <div className="theia-insp__kv">
-                <span>Zones</span>
-                <span>{activeClip.zones.length} interest peaks</span>
-              </div>
-
-              {/* Palette swatches */}
-              <div className="theia-insp__kv">
-                <span>Palette</span>
-                <span className="theia-insp__swatches">
-                  {activeClip.palette.map((c, i) => (
-                    <span key={i} style={{ background: c }} />
-                  ))}
                 </span>
               </div>
             </div>
@@ -1032,20 +864,6 @@ const Inspector: React.FC<InspectorProps> = ({
               >
                 <span className="theia-insp__btn-icon">▒</span>
                 <span>FORCE AMBIENT</span>
-              </button>
-              <button
-                className="theia-insp__btn theia-insp__btn--blackout"
-                data-midi-bind="theia.force-blackout"
-              >
-                <span className="theia-insp__btn-icon">◉</span>
-                <span>BLACK FRAME</span>
-              </button>
-              <button
-                className="theia-insp__btn theia-insp__btn--reset"
-                data-midi-bind="theia.reset-state"
-              >
-                <span className="theia-insp__btn-icon">↻</span>
-                <span>RESET</span>
               </button>
             </div>
           </div>

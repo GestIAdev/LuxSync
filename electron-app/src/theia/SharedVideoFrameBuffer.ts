@@ -194,6 +194,58 @@ export interface TheiaAckMessage {
   buffer: ArrayBuffer
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// 🔮 WAVE 8231 — EUCLID · E5: mensajes de CONTROL generativo (Modo B, §6)
+//
+// El mismo video-port que transporta frames de 8.3MB lleva control del
+// shader de artista: cuando un átomo `kind:'shader'` está activo el worker
+// DEJA de enviar frames (la ventana renderiza el .glsl nativamente a su
+// resolución) y este canal queda como bus de comandos.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const THEIA_GEN_LOAD_MSG = 'theia:gen-load'
+export const THEIA_GEN_ACTIVATE_MSG = 'theia:gen-activate'
+export const THEIA_GEN_UNIFORM_MSG = 'theia:gen-uniform'
+
+/** Fuente GLSL del artista → la ventana compila su copia local (§6). */
+export interface TheiaGenLoadMessage {
+  type: typeof THEIA_GEN_LOAD_MSG
+  shaderId: string
+  source: string
+  steps: number
+}
+
+/** Conmuta el shader activo en la ventana (`builtin` → vuelve a Modo A). */
+export interface TheiaGenActivateMessage {
+  type: typeof THEIA_GEN_ACTIVATE_MSG
+  shaderId: string
+  crossfadeMs: number
+}
+
+/** Uniform de artista/master → se aplica al programa activo local. */
+export interface TheiaGenUniformMessage {
+  type: typeof THEIA_GEN_UNIFORM_MSG
+  name: string
+  value: number
+}
+
+export type TheiaGenControlMessage =
+  | TheiaGenLoadMessage
+  | TheiaGenActivateMessage
+  | TheiaGenUniformMessage
+
+export function isGenControlMessage(
+  data: unknown,
+): data is TheiaGenControlMessage {
+  if (typeof data !== 'object' || data === null) return false
+  const t = (data as { type?: unknown }).type
+  return (
+    t === THEIA_GEN_LOAD_MSG ||
+    t === THEIA_GEN_ACTIVATE_MSG ||
+    t === THEIA_GEN_UNIFORM_MSG
+  )
+}
+
 /** Type-guard laxo para el tráfico entrante del puerto. */
 export function isVideoFrameMessage(data: unknown): data is TheiaVideoFrameMessage {
   const d = data as TheiaVideoFrameMessage | null

@@ -35,7 +35,11 @@
 import { useEffect, useRef } from 'react'
 import {
   isVideoFrameMessage,
+  isGenControlMessage,
   readVideoFrame,
+  THEIA_GEN_LOAD_MSG,
+  THEIA_GEN_ACTIVATE_MSG,
+  THEIA_GEN_UNIFORM_MSG,
   type TheiaVideoFrameMessage,
 } from '../../../theia/SharedVideoFrameBuffer'
 import {
@@ -44,11 +48,20 @@ import {
   isTelemetryMessage,
   mirrorTelemetryIntoRing,
 } from '../../../theia/TheiaTelemetryRing'
+import { TelemetryWireReader } from '../../../theia/telemetry/TheiaTelemetryRing'
+import { TelemetrySmoother } from '../../../theia/telemetry/TelemetrySmoother'
+import {
+  GenRuntime,
+  BUILTIN_SHADER_ID,
+} from '../../../theia/shader/GenRuntime'
+import { RenderGovernor } from '../../../theia/shader/RenderGovernor'
 import { onTheiaGlassMessage, requestTheiaPort } from '../../../theia/glassBridge'
 import './TheiaOutputView.css'
 
 const TheiaOutputView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // 🔮 WAVE 8231 · E5 — canvas dedicado Modo B (WebGL2 propio, overlay).
+  const genCanvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -76,6 +89,73 @@ const TheiaOutputView: React.FC = () => {
       telemetryRing = null // sin crossOriginIsolated — Modo B espera al fix
     }
 
+    // ── 🔮 WAVE 8231 · E5 — MODO B: render nativo del shader ──────────
+    // Su propio Uniform Bridge: wire reader sobre el ring local + smoother
+    // + governor (§6). El GenRuntime compila el MISMO .glsl del worker con
+    // el preámbulo/epílogo idéntico — la escena coincide píxel a píxel en
+    // geometría, solo cambia la resolución (nativa aquí, 64×64 en worker).
+    let genRuntime: GenRuntime | null = null
+    let genMode = false
+    let genRafHandle = 0
+    const genUniforms = new Map<string, number>()
+    const telReader = telemetryRing ? new TelemetryWireReader(telemetryRing) : null
+    const smoother = new TelemetrySmoother()
+    const genGovernor = new RenderGovernor()
+    let lastGenPerfMs = 0
+
+    const genCanvas = genCanvasRef.current
+
+    function ensureGenRuntime(): GenRuntime | null {
+      if (genRuntime || !genCanvas) return genRuntime
+      genRuntime = GenRuntime.create(genCanvas)
+      if (!genRuntime) {
+        // eslint-disable-next-line no-console
+        console.warn('[TheiaOutput] WebGL2 unavailable — Modo B degradado')
+      }
+      return genRuntime
+    }
+
+    function genLoop(nowMs: number): void {
+      if (cancelled || !genMode) return
+      const rt = genRuntime
+      if (rt && rt.isActive) {
+        const dtMs =
+          lastGenPerfMs > 0 ? Math.min(nowMs - lastGenPerfMs, 100) : 16.7
+        lastGenPerfMs = nowMs
+        const fresh = telReader ? telReader.read() : false
+        smoother.step(
+          telReader ? telReader.scratch : null,
+          telReader ? telReader.flags : 0,
+          telReader ? telReader.enums : 0,
+          fresh,
+          dtMs,
+          nowMs,
+        )
+        genGovernor.step(dtMs, nowMs)
+        rt.render(smoother, genUniforms, genGovernor.renderScale, dtMs, nowMs)
+      }
+      genRafHandle = requestAnimationFrame(genLoop)
+    }
+
+    function enterGenMode(): void {
+      const rt = ensureGenRuntime()
+      if (!rt || genMode) return
+      genMode = true
+      if (genCanvas) genCanvas.style.visibility = 'visible'
+      lastGenPerfMs = 0
+      genGovernor.reset()
+      genRafHandle = requestAnimationFrame(genLoop)
+    }
+
+    function exitGenMode(): void {
+      if (!genMode) return
+      genMode = false
+      if (genRafHandle) cancelAnimationFrame(genRafHandle)
+      genRafHandle = 0
+      genRuntime?.deactivate()
+      if (genCanvas) genCanvas.style.visibility = 'hidden'
+    }
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -88,6 +168,13 @@ const TheiaOutputView: React.FC = () => {
       canvas.height = Math.floor(window.innerHeight * dpr)
       canvas.style.width = `${window.innerWidth}px`
       canvas.style.height = `${window.innerHeight}px`
+      // 🔮 E5 · Modo B — el canvas generativo sigue la resolución nativa.
+      if (genCanvas) {
+        genCanvas.width = canvas.width
+        genCanvas.height = canvas.height
+        genCanvas.style.width = canvas.style.width
+        genCanvas.style.height = canvas.style.height
+      }
       if (lastSrc.w > 0 && lastSrc.h > 0) {
         drawScaled(lastSrc.w, lastSrc.h)
       }
@@ -175,8 +262,25 @@ const TheiaOutputView: React.FC = () => {
       videoPort = port
       port.onmessage = (ev: MessageEvent) => {
         if (cancelled) return
-        if (isVideoFrameMessage(ev.data)) {
-          handleVideoFrame(ev.data, port)
+        const data = ev.data
+        if (isVideoFrameMessage(data)) {
+          handleVideoFrame(data, port)
+          return
+        }
+        // 🔮 WAVE 8231 · E5 — control generativo Modo B por el mismo port.
+        if (isGenControlMessage(data)) {
+          if (data.type === THEIA_GEN_LOAD_MSG) {
+            ensureGenRuntime()?.load(data.shaderId, data.source, data.steps)
+          } else if (data.type === THEIA_GEN_ACTIVATE_MSG) {
+            if (data.shaderId === BUILTIN_SHADER_ID) {
+              exitGenMode()
+            } else {
+              enterGenMode()
+              genRuntime?.activate(data.shaderId, data.crossfadeMs)
+            }
+          } else if (data.type === THEIA_GEN_UNIFORM_MSG) {
+            genUniforms.set(data.name, data.value)
+          }
         }
         // El resto del tráfico del port se ignora — el canal es dedicado.
       }
@@ -224,6 +328,9 @@ const TheiaOutputView: React.FC = () => {
         // muerto). Soltamos el extremo — el próximo pull re-brokerea.
         try { videoPort?.close() } catch { /* noop */ }
         videoPort = null
+        // 🔮 E5 — el flujo de control generativo muere con el port:
+        // salir de Modo B (el re-attach reenviará el estado completo).
+        exitGenMode()
       }
     })
     requestTheiaPort('video-port')
@@ -236,6 +343,10 @@ const TheiaOutputView: React.FC = () => {
       cancelled = true
       unsubGlass()
       window.removeEventListener('resize', resizeCanvas)
+      if (genRafHandle) cancelAnimationFrame(genRafHandle)
+      genMode = false
+      genRuntime?.dispose()
+      genRuntime = null
       try { videoPort?.close() } catch { /* noop */ }
       try { telemetryPort?.close() } catch { /* noop */ }
       videoPort = null
@@ -249,6 +360,12 @@ const TheiaOutputView: React.FC = () => {
   return (
     <div className="theia-output-root">
       <canvas ref={canvasRef} className="theia-output-canvas" />
+      {/* 🔮 WAVE 8231 · E5 — overlay Modo B: WebGL2 nativo del shader */}
+      <canvas
+        ref={genCanvasRef}
+        className="theia-output-gencanvas"
+        style={{ visibility: 'hidden' }}
+      />
     </div>
   )
 }

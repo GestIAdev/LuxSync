@@ -319,3 +319,53 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
     expect(wi32[WIRE_FLAGS_SLOT]).toBe(0)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// 🔮 WAVE 8231 · E5 — control generativo sobre el video-port (Modo B §6)
+// ─────────────────────────────────────────────────────────────────────────
+
+import {
+  isGenControlMessage,
+  THEIA_GEN_LOAD_MSG,
+  THEIA_GEN_ACTIVATE_MSG,
+  THEIA_GEN_UNIFORM_MSG,
+} from '../SharedVideoFrameBuffer'
+
+describe('🌊 WAVE 8231 — gen control protocol (Modo B)', () => {
+  it('acepta los tres tipos de control generativo', () => {
+    expect(
+      isGenControlMessage({
+        type: THEIA_GEN_LOAD_MSG,
+        shaderId: 'oracle_kifs',
+        source: 'void mainImage(out vec4 c, in vec2 f){c=vec4(0.);}',
+        steps: 96,
+      }),
+    ).toBe(true)
+    expect(
+      isGenControlMessage({
+        type: THEIA_GEN_ACTIVATE_MSG,
+        shaderId: 'oracle_kifs',
+        crossfadeMs: 500,
+      }),
+    ).toBe(true)
+    expect(
+      isGenControlMessage({
+        type: THEIA_GEN_UNIFORM_MSG,
+        name: 'u_twist',
+        value: 1.2,
+      }),
+    ).toBe(true)
+  })
+
+  it('rechaza frames de vídeo, acks y ruido — el canal es dedicado', () => {
+    // Un video-frame NO es control (el consumer los despacha aparte).
+    expect(
+      isGenControlMessage({ type: 'theia:video-frame', seq: 1, buffer: new ArrayBuffer(8) }),
+    ).toBe(false)
+    // Un ack de retorno tampoco.
+    expect(isGenControlMessage({ ack: true, seq: 1, buffer: new ArrayBuffer(8) })).toBe(false)
+    expect(isGenControlMessage(null)).toBe(false)
+    expect(isGenControlMessage('theia:gen-load')).toBe(false)
+    expect(isGenControlMessage({ type: 'theia:telemetry' })).toBe(false)
+  })
+})

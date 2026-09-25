@@ -26,3 +26,14 @@ body,
   background: #000000;
   image-rendering: auto;
 }
+
+/* 🔮 WAVE 8231 · E5 — Modo B: overlay WebGL2 nativo sobre el canvas 2D.
+   Activo solo cuando un átomo kind:'shader' está en pantalla. */
+.theia-output-gencanvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+}

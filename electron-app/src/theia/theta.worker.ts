@@ -75,7 +75,14 @@ import {
   isAckMessage,
   THEIA_VIDEO_FRAME_MSG,
   VIDEO_FRAME_BUFFER_BYTES,
+  VIDEO_SLOT_BYTES,
+  VIDEO_MAX_WIDTH,
+  VIDEO_MAX_HEIGHT,
   VideoFrameWriter,
+  // 🔮 WAVE 8231 · E5 — control generativo por el mismo port (Modo B §6)
+  THEIA_GEN_LOAD_MSG,
+  THEIA_GEN_ACTIVATE_MSG,
+  THEIA_GEN_UNIFORM_MSG,
 } from './SharedVideoFrameBuffer'
 // 🎬 WAVE 4867: Phase 6 — Thumb SAB writer (64×64 → AetherCanvasManager twin-output)
 import { ThumbFrameWriter } from './TheiaThumbBuffer'
@@ -347,6 +354,22 @@ interface WorkerState {
   /** Contador para LRU y fps del perf-report. */
   renderSeq: number
   framesRendered: number
+  /** 🔮 WAVE 8231 · E5 — slots PBO de readback asíncrono (Modo A, WebGL2). */
+  pboSlots: PboReadbackSlot[]
+}
+
+/** 🔮 WAVE 8231 · E5 — un readback en vuelo: readPixels→PBO + fenceSync;
+ *  el `getBufferSubData` se difiere al frame siguiente (§6, Misión 3). */
+interface PboReadbackSlot {
+  pbo: WebGLBuffer | null
+  fence: WebGLSync | null
+  /** Writer retenido hasta que el fence señale — su payload es el destino
+   *  del getBufferSubData; luego commit + transfer al pool del consumidor. */
+  writer: VideoFrameWriter | null
+  w: number
+  h: number
+  tickId: number
+  seq: number
 }
 
 const state: WorkerState = {
@@ -467,6 +490,7 @@ const state: WorkerState = {
   governor: new RenderGovernor(),
   renderSeq: 0,
   framesRendered: 0,
+  pboSlots: [],
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -973,6 +997,9 @@ function teardownGL(): void {
   state.statsFlip = false
   state.gpuQuery = null
   state.glIsWebGL2 = false
+  // 🔮 WAVE 8231 · E5 — PBOs + fences mueren con el contexto; los writers
+  // retenidos vuelven al pool (el buffer nunca se transfirió).
+  releasePboSlots()
 }
 
 function initGL(): boolean {
@@ -1018,6 +1045,9 @@ function initGL(): boolean {
   })
   canvas.addEventListener('webglcontextrestored', () => {
     state.glContextLost = false
+    // 🔮 E5 — los PBOs/fences murieron con el contexto anterior: soltar
+    // los handles y reciclar los writers retenidos antes de reconstruir.
+    releasePboSlots()
     if (buildGLResources()) {
       // eslint-disable-next-line no-console
       console.log('[THETA] WebGL context restored')
@@ -1278,11 +1308,25 @@ function handleLoadShader(p: ThetaLoadShaderPayload): void {
   }
   state.genSources.set(p.shaderId, { source: p.source, steps })
   loadShaderSource(p.shaderId, p.source, steps)
+  // 🔮 WAVE 8231 · E5 — Modo B: la ventana HDMI compila su copia nativa.
+  state.videoPort?.postMessage({
+    type: THEIA_GEN_LOAD_MSG,
+    shaderId: p.shaderId,
+    source: p.source,
+    steps,
+  })
 }
 
 function handleActivateShader(p: ThetaActivateShaderPayload): void {
   if (!p || typeof p.shaderId !== 'string') return
   const fadeMs = Math.max(0, p.crossfadeMs ?? 0)
+  // 🔮 WAVE 8231 · E5 — Modo B: la ventana HDMI sigue la misma activación
+  // ('builtin' la devuelve al blit de vídeo del Modo A).
+  state.videoPort?.postMessage({
+    type: THEIA_GEN_ACTIVATE_MSG,
+    shaderId: p.shaderId,
+    crossfadeMs: fadeMs,
+  })
   if (p.shaderId === BUILTIN_SHADER_ID) {
     if (state.genActive) {
       // Vuelta al plasma: snapshot del frame generativo actual en prevTex
@@ -1400,9 +1444,18 @@ function pollGpuTimer(): void {
   }
 }
 
+/** 🔮 WAVE 8231 · E5 — resolución del gemelo Modo B (§6): con un átomo
+ *  `kind:'shader'` activo el worker solo renderiza el thumb DMX + preview. */
+const GEN_THUMB_RES = 64
+
 /**
  * Frame generativo: escena del artista a FBO escalado (governor) → blit a
  * canvas → capture del frame para el limitador/crossfade del siguiente.
+ *
+ * 🔮 WAVE 8231 · E5 — MODO B: el FBO de escena queda fijado a 64×64 — el
+ * único consumidor local es el thumb DMX + el preview espejo; la ventana
+ * HDMI renderiza el mismo .glsl a resolución nativa (§6). El governor sigue
+ * corriendo para el perf-report pero no influye en el gemelo.
  */
 function renderGenerativeFrame(
   xfStep: CrossfadeStep,
@@ -1415,8 +1468,8 @@ function renderGenerativeFrame(
   const ent = state.genActive
   if (!ent || !state.blitProgram) return
   const scale = state.governor.renderScale
-  const sw = Math.max(1, Math.round(w * scale))
-  const sh = Math.max(1, Math.round(h * scale))
+  const sw = GEN_THUMB_RES
+  const sh = GEN_THUMB_RES
   if (!ensureGenFbo(sw, sh)) {
     sendError('generative FBO incomplete — falling back to builtin plasma', false)
     state.genActive = null
@@ -1453,7 +1506,7 @@ function renderGenerativeFrame(
   gl.uniform1f(L.brightness, state.uniforms.get('u_brightness') ?? 1.0)
   gl.uniform1f(L.contrast, state.uniforms.get('u_contrast') ?? 1.0)
   gl.uniform1f(L.blackout, state.uniforms.get('u_blackout') ?? 0.0)
-  gl.uniform1f(L.renderScale, scale)
+  gl.uniform1f(L.renderScale, w > 0 ? sw / w : scale)
   gl.uniform1i(L.prevFrame, 0)
   gl.uniform1i(L.flashState, 1)
   gl.uniform1f(L.hasPrev, state.genPrevValid ? 1 : 0)
@@ -1604,6 +1657,27 @@ function attachVideoPort(port: MessagePort): void {
   }
   port.start()
   topUpVideoPool()
+  // 🔮 WAVE 8231 · E5 — replay del estado generativo al consumidor Modo B:
+  // fuentes → uniforms (masters + params de artista) → activación. La
+  // ventana HDMI compila su copia local del .glsl y rinde nativa (§6).
+  for (const [shaderId, s] of state.genSources) {
+    port.postMessage({
+      type: THEIA_GEN_LOAD_MSG,
+      shaderId,
+      source: s.source,
+      steps: s.steps,
+    })
+  }
+  for (const [name, value] of state.uniforms) {
+    port.postMessage({ type: THEIA_GEN_UNIFORM_MSG, name, value })
+  }
+  if (state.genActiveId !== BUILTIN_SHADER_ID) {
+    port.postMessage({
+      type: THEIA_GEN_ACTIVATE_MSG,
+      shaderId: state.genActiveId,
+      crossfadeMs: 0,
+    })
+  }
   // eslint-disable-next-line no-console
   console.log('[THETA] 🌉 video Glass-Bridge attached (double-buffer pool)')
 }
@@ -1825,37 +1899,208 @@ function renderCurrentFrame(timestampMs: number): void {
     }
   }
 
-  // ── Publish al Glass Bridge — readPixels directo a un buffer pooled,
-  //    luego ownership transfer a la output window (zero-copy Mojo). ────
+  // ── Publish al Glass Bridge ──────────────────────────────────────────
+  // 🔮 WAVE 8231 · E5 — MODO B (átomo kind:'shader' activo): la ventana
+  // HDMI renderiza el .glsl nativamente a su resolución — el bridge NO
+  // transporta los 8.3MB (§6); solo se drenan los PBOs que quedaran en
+  // vuelo del último frame de vídeo antes del switch.
+  // MODO A (vídeo/plasma): WebGL2 → readPixels ASÍNCRONO sobre PBO +
+  // fenceSync (getBufferSubData diferido al frame siguiente — la GPU no
+  // bloquea el hilo); WebGL1 → readPixels síncrono legacy.
   const port = state.videoPort
   if (port) {
-    const writer = state.videoPool.pop()
-    if (!writer) {
-      // Consumidor lento (acks pendientes) → frame drop intencional.
-      // ZERO-ALLOC: nunca `new ArrayBuffer` aquí — se espera el retorno.
-      state.framesNoBuffer++
-    } else {
-      const dst = writer.beginWrite(w, h)
-      if (!dst) {
-        state.videoPool.push(writer)
+    if (state.glIsWebGL2) {
+      flushPboReadbacks(port)
+      if (!state.genActive) issuePboReadback(w, h)
+    } else if (!state.genActive) {
+      // WebGL1 — camino síncrono original (los shaders gen no existen aquí).
+      const writer = state.videoPool.pop()
+      if (!writer) {
+        // Consumidor lento (acks pendientes) → frame drop intencional.
+        // ZERO-ALLOC: nunca `new ArrayBuffer` aquí — se espera el retorno.
+        state.framesNoBuffer++
       } else {
-        try {
-          gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, dst)
-          const seq = (state.videoFrameSeq + 1) | 0
-          state.videoFrameSeq = seq
-          writer.commit(w, h, state.lastTickId, seq)
-          const msg = { type: THEIA_VIDEO_FRAME_MSG, seq, buffer: writer.transferable }
-          port.postMessage(msg, [writer.transferable])
-        } catch (err) {
-          // readPixels o el transfer fallaron → el buffer sigue siendo
-          // nuestro (si postMessage lanza, no hay detach): vuelve al pool.
+        const dst = writer.beginWrite(w, h)
+        if (!dst) {
           state.videoPool.push(writer)
-          const msg = err instanceof Error ? err.message : String(err)
-          sendError(`readPixels→transfer failed: ${msg}`, false)
+        } else {
+          try {
+            gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, dst)
+            const seq = (state.videoFrameSeq + 1) | 0
+            state.videoFrameSeq = seq
+            writer.commit(w, h, state.lastTickId, seq)
+            const msg = { type: THEIA_VIDEO_FRAME_MSG, seq, buffer: writer.transferable }
+            port.postMessage(msg, [writer.transferable])
+          } catch (err) {
+            // readPixels o el transfer fallaron → el buffer sigue siendo
+            // nuestro (si postMessage lanza, no hay detach): vuelve al pool.
+            state.videoPool.push(writer)
+            const msg = err instanceof Error ? err.message : String(err)
+            sendError(`readPixels→transfer failed: ${msg}`, false)
+          }
         }
       }
     }
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 🔮 WAVE 8231 · E5 — READBACK ASÍNCRONO PBO (Modo A · Misión 3, §6)
+//
+//   frame N   readPixels → PBO (la GPU vuelca sin bloquear) + fenceSync
+//   frame N+1 fence SIGNALED → getBufferSubData → commit → transfer
+//
+// El stall síncrono desaparece: la CPU jamás espera al pipeline GL; solo
+// cosecha fences ya señalados. Dos slots = un readback en vuelo mientras el
+// anterior se extrae. Los PBOs se alojan una vez a tamaño máximo
+// (VIDEO_SLOT_BYTES) — zero-alloc en el hot path preservado.
+// ─────────────────────────────────────────────────────────────────────────
+
+const PBO_POOL_SIZE = 2
+
+function ensurePboSlots(): void {
+  const gl = state.gl as WebGL2RenderingContext | null
+  if (!gl || !state.glIsWebGL2) return
+  while (state.pboSlots.length < PBO_POOL_SIZE) {
+    const pbo = gl.createBuffer()
+    if (!pbo) return
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo)
+    gl.bufferData(gl.PIXEL_PACK_BUFFER, VIDEO_SLOT_BYTES, gl.STREAM_READ)
+    state.pboSlots.push({
+      pbo,
+      fence: null,
+      writer: null,
+      w: 0,
+      h: 0,
+      tickId: 0,
+      seq: 0,
+    })
+  }
+  gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null)
+}
+
+/** Cosecha fences señalados: getBufferSubData → commit → ownership transfer. */
+function flushPboReadbacks(port: MessagePort): void {
+  const gl = state.gl as WebGL2RenderingContext | null
+  if (!gl) return
+  for (const slot of state.pboSlots) {
+    if (!slot.fence || !slot.writer || !slot.pbo) continue
+    if (
+      gl.getSyncParameter(slot.fence, gl.SYNC_STATUS) !== gl.SIGNALED
+    ) {
+      continue // la GPU aún vuelca — el hilo no espera; próximo frame.
+    }
+    const writer = slot.writer
+    const dst = writer.beginWrite(slot.w, slot.h)
+    let sent = false
+    if (dst) {
+      try {
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, slot.pbo)
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, dst)
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null)
+        writer.commit(slot.w, slot.h, slot.tickId, slot.seq)
+        port.postMessage(
+          {
+            type: THEIA_VIDEO_FRAME_MSG,
+            seq: slot.seq,
+            buffer: writer.transferable,
+          },
+          [writer.transferable],
+        )
+        sent = true
+      } catch (err) {
+        try {
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null)
+        } catch { /* noop */ }
+        const msg = err instanceof Error ? err.message : String(err)
+        sendError(`PBO getBufferSubData→transfer failed: ${msg}`, false)
+      }
+    }
+    if (!sent) {
+      // El writer nunca salió — vuelve al pool intacto (mismo contrato
+      // que el camino síncrono: postMessage exitoso o buffer nuestro).
+      state.videoPool.push(writer)
+    }
+    try {
+      gl.deleteSync(slot.fence)
+    } catch { /* noop */ }
+    slot.fence = null
+    slot.writer = null
+  }
+}
+
+/** Lanza el readback asíncrono del frame actual (solo Modo A / WebGL2). */
+function issuePboReadback(w: number, h: number): void {
+  const gl = state.gl as WebGL2RenderingContext | null
+  if (!gl) return
+  if (w <= 0 || h <= 0 || w > VIDEO_MAX_WIDTH || h > VIDEO_MAX_HEIGHT) return
+  ensurePboSlots()
+  let free: PboReadbackSlot | null = null
+  for (const s of state.pboSlots) {
+    if (s.fence === null) {
+      free = s
+      break
+    }
+  }
+  if (!free || !free.pbo) {
+    // Ambos PBOs en vuelo — drop intencional (el consumidor va a su ritmo).
+    state.framesNoBuffer++
+    return
+  }
+  const writer = state.videoPool.pop()
+  if (!writer) {
+    // Pool agotado (acks pendientes) → drop. ZERO-ALLOC: nunca alojar aquí.
+    state.framesNoBuffer++
+    return
+  }
+  try {
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, free.pbo)
+    // Offset- overload: el destino es el PBO, NO memoria CPU — asíncrono.
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 0)
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null)
+    const fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)
+    if (!fence) throw new Error('fenceSync returned null')
+    const seq = (state.videoFrameSeq + 1) | 0
+    state.videoFrameSeq = seq
+    free.writer = writer
+    free.w = w
+    free.h = h
+    free.tickId = state.lastTickId
+    free.seq = seq
+    free.fence = fence
+  } catch (err) {
+    try {
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null)
+    } catch { /* noop */ }
+    state.videoPool.push(writer)
+    const msg = err instanceof Error ? err.message : String(err)
+    sendError(`PBO readPixels→fence failed: ${msg}`, false)
+  }
+}
+
+/** Limpieza del readback (shutdown/teardown): writers retenidos → pool. */
+function releasePboSlots(): void {
+  const gl = state.gl as WebGL2RenderingContext | null
+  for (const slot of state.pboSlots) {
+    if (slot.fence && gl) {
+      try {
+        gl.deleteSync(slot.fence)
+      } catch { /* noop */ }
+    }
+    if (slot.pbo && gl) {
+      try {
+        gl.deleteBuffer(slot.pbo)
+      } catch { /* noop */ }
+    }
+    if (slot.writer) {
+      // Nunca se posteó — el buffer sigue siendo nuestro: reciclar.
+      state.videoPool.push(slot.writer)
+      slot.writer = null
+    }
+    slot.fence = null
+    slot.pbo = null
+  }
+  state.pboSlots = []
 }
 
 /**
@@ -2243,6 +2488,13 @@ self.addEventListener('message', (ev: MessageEvent<ThetaMessage>) => {
         const p = msg.payload as ThetaSetUniformPayload
         if (p && typeof p.name === 'string' && typeof p.value === 'number') {
           state.uniforms.set(p.name, p.value)
+          // 🔮 WAVE 8231 · E5 — relay al render nativo de la ventana (Modo B):
+          // masters y params de artista se aplican al programa local.
+          state.videoPort?.postMessage({
+            type: THEIA_GEN_UNIFORM_MSG,
+            name: p.name,
+            value: p.value,
+          })
         }
         break
       }

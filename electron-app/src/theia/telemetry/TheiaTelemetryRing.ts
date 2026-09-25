@@ -369,3 +369,103 @@ export function snapshotTelemetryPayload(
   }
   return false
 }
+
+// ───────────── TelemetryWireReader (worker, WAVE 8228 · E2) ─────────────
+
+/** Slot Int32 de la barrera `generation` en el layout wire (= FrameContext). */
+const WIRE_GEN_SLOT = 3
+
+/**
+ * Lector del ESPEJO local del wire buffer (worker/renderer). El mirror
+ * (`mirrorTelemetryIntoRing`) escribe el payload antes que `generation`
+ * (Atomics.store final) → la doble lectura de gen es una barrera válida:
+ * `g1 === g2` certifica que el payload copiado es íntegro de un frame.
+ *
+ * A diferencia del `TelemetryReader` (seqlock sobre SEQ en el ring de main),
+ * aquí slot 0 es el TICK_ID del FrameContext — la novedad se detecta por gen.
+ *
+ * Zero-alloc: `scratch` y los campos escalares se reutilizan; `read()`
+ * devuelve `true` solo cuando consumió un frame nuevo.
+ */
+export class TelemetryWireReader {
+  /** Copia verbatim del ring (64 slots). Los slots 56/57 quedan a 0:
+   *  FLAGS/ENUMS llegan como bits Int32 y se exponen en `flags`/`enums`. */
+  readonly scratch = new Float32Array(TELEMETRY_RING_SLOTS)
+  /** FLAGS del último frame consistente (bits — ver TEL_FLAG). */
+  flags = 0
+  /** ENUMS empaquetados (schemaVersion|predictionType|huntState|energyZone). */
+  enums = 0
+  /** tickId del FrameContext — correlación con el master tick. */
+  tickId = 0
+  /** Timestamp epoch-ms del FrameContext. */
+  timestampMs = 0
+  /** generation consumida (diagnóstico). */
+  generation = 0
+
+  private readonly i32: Int32Array
+  private readonly f32: Float32Array
+  private lastGen = -1
+  private hasValid = false
+
+  constructor(sab: SharedArrayBuffer | ArrayBuffer) {
+    if (sab.byteLength !== TELEMETRY_RING_BYTES) {
+      throw new Error(
+        `[TelemetryWireReader] expected ${TELEMETRY_RING_BYTES}B, got ${sab.byteLength}B`,
+      )
+    }
+    this.i32 = new Int32Array(sab)
+    this.f32 = new Float32Array(sab)
+  }
+
+  /**
+   * Intenta consumir un frame nuevo.
+   * @returns `true` si generation cambió y la copia fue consistente.
+   *          `false` si no hay novedad o los reintentos colisionaron (el
+   *          caller reutiliza el scratch anterior — jamás data rasgada).
+   */
+  read(): boolean {
+    const i32 = this.i32
+    const f32 = this.f32
+    const out = this.scratch
+    for (let attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
+      const g1 = Atomics.load(i32, WIRE_GEN_SLOT)
+      if (g1 === this.lastGen) return false
+      const tickId = Atomics.load(i32, 0)
+      const tsLo = Atomics.load(i32, 1) >>> 0
+      const tsHi = Atomics.load(i32, 2)
+      // Payload verbatim (slots 4..63).
+      for (let i = SLOT_PAYLOAD_BASE; i < TELEMETRY_RING_SLOTS; i++) {
+        out[i] = f32[i]
+      }
+      // 56/57 transportan bits Int32 — se leen como bits, no como float.
+      const flags = Atomics.load(i32, WIRE_FLAGS_SLOT)
+      const enums = Atomics.load(i32, WIRE_ENUMS_SLOT)
+      out[WIRE_FLAGS_SLOT] = 0
+      out[WIRE_ENUMS_SLOT] = 0
+      const g2 = Atomics.load(i32, WIRE_GEN_SLOT)
+      if (g1 === g2) {
+        this.tickId = tickId
+        this.timestampMs = tsHi * 0x100000000 + tsLo
+        this.flags = flags
+        this.enums = enums
+        this.generation = g1
+        this.lastGen = g1
+        this.hasValid = true
+        return true
+      }
+      // g1 !== g2: el mirror escribió durante la copia — descartar, reintentar.
+    }
+    return false
+  }
+
+  /** Devuelve el scratch si alguna vez se consumió un frame válido. */
+  getScratch(): Float32Array | null {
+    return this.hasValid ? this.scratch : null
+  }
+
+  /** Reinicia la detección de novedad (tras recolgar el SAB). */
+  resync(): void {
+    this.lastGen = Atomics.load(this.i32, WIRE_GEN_SLOT)
+    this.hasValid = false
+  }
+}

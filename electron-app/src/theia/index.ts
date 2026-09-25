@@ -70,6 +70,10 @@ export {
 // contrato de transporte Glass Bridge de arriba.
 export * as EuclidTelemetry from './telemetry/TheiaTelemetryRing'
 
+// 🔮 WAVE 8228 — Euclid Oracle · Fase E2: Uniform Bridge & Smoother
+// (worker-side; isomórfico y testeable en Node).
+export { TelemetrySmoother } from './telemetry/TelemetrySmoother'
+
 export {
   AssetStateMachine,
   type AssetStateId,

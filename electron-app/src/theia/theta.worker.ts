@@ -38,6 +38,7 @@ import {
   type ThetaInitPayload,
   type ThetaLoadStreamPayload,
   type ThetaMessage,
+  type ThetaResizePreviewPayload,
   type ThetaSeekAckPayload,
   type ThetaSeekPayload,
   type ThetaSetUniformPayload,
@@ -53,10 +54,14 @@ import {
   createVideoFrameBuffer,
   isAckMessage,
   THEIA_VIDEO_FRAME_MSG,
+  VIDEO_FRAME_BUFFER_BYTES,
   VideoFrameWriter,
 } from './SharedVideoFrameBuffer'
 // 🎬 WAVE 4867: Phase 6 — Thumb SAB writer (64×64 → AetherCanvasManager twin-output)
 import { ThumbFrameWriter } from './TheiaThumbBuffer'
+// 🔮 WAVE 8228 — Euclid Oracle · E2: Uniform Bridge (reader wire + smoother)
+import { TelemetryWireReader } from './telemetry/TheiaTelemetryRing'
+import { TelemetrySmoother } from './telemetry/TelemetrySmoother'
 
 // ─────────────────────────────────────────────────────────────────────────
 // 🛡️ WAVE 7569: OILPAN GUARD — Safety limits to prevent OOM from getImageData
@@ -99,9 +104,66 @@ uniform float u_brightness;
 uniform float u_contrast;
 uniform float u_blackout;
 
+// 🔮 WAVE 8228 — EUCLID ORACLE · E2: Uniform Bridge (§3.4/§3.5)
+// u_tel[60] = payload del anillo (índice = slot − 4), una sola subida
+// uniform1fv. u_flags/u_enums llegan empaquetados; los derivados llegan
+// ya calculados por el TelemetrySmoother del worker.
+uniform float u_tel[60];
+uniform int   u_flags;
+uniform ivec4 u_enums;              // x=schema y=predictionType z=huntState w=energyZone
+uniform float u_time;               // segundos monotónicos de render
+uniform float u_dt;                 // delta del frame (s)
+uniform vec3  u_resolution;         // (w, h, pixelRatio)
+uniform float u_beatTime;           // beats acumulados continuos
+uniform float u_kickPulse;          // exp(−t/τ) desde flanco KICK_EDGE
+uniform float u_snarePulse;         // idem flanco SNARE
+uniform float u_predictiveETA;      // ETA fluido (s), extrapolado
+uniform float u_approach;           // rampa oráculo 0→1 antes del drop
+uniform float u_impact;             // pulso en el instante del evento
+
+// Macros nombre→slot (índice = slot − 4). La numeración NUNCA se escribe a
+// mano fuera del schema — estas se derivan de TELEMETRY_SCHEMA (§3.5).
+#define u_bpm              u_tel[1]
+#define u_beatPhase        u_tel[2]
+#define u_energy           u_tel[5]
+#define u_bass             u_tel[7]
+#define u_treble           u_tel[11]
+#define u_chromaHue        u_tel[20]
+#define u_kickEnergy       u_tel[22]
+#define u_seleneConfidence u_tel[26]
+#define u_predictionProb   u_tel[27]
+#define u_morphFactor      u_tel[34]
+
+// GLSL ES 1.00 no tiene operadores de bits: test por división/módulo
+// (u_flags ≤ 2^13 → exacto en float).
+float telFlag(int bit) {
+  return step(0.5, mod(floor(float(u_flags) / exp2(float(bit))), 2.0));
+}
+#define PREDICTING telFlag(7)
+#define BREAKDOWN  telFlag(8)
+#define APOCALYPSE telFlag(9)
+
 void main() {
-  // Procedural standby — slow RGB plasma driven by the master clock phase.
-  vec3 plasma = 0.5 + 0.5 * cos(u_phase + v_uv.xyx * 4.0 + vec3(0.0, 2.094, 4.188));
+  // Procedural standby — plasma anclado al master clock, ahora consciente
+  // del oráculo: la tonalidad tinta la paleta, la energía/bombos pulsan,
+  // y u_approach tensa el espacio antes del drop (torsión pre-evento).
+  vec2 uv = v_uv;
+  // Compresión pre-drop: el espacio se contrae hacia el centro.
+  uv = (uv - 0.5) / (1.0 - 0.18 * u_approach) + 0.5;
+  // Glitch APOCALYPSE: desplazamiento por aspereza espectral.
+  if (APOCALYPSE > 0.5) {
+    uv.x += (fract(sin(floor(uv.y * 80.0) + floor(u_time * 30.0)) * 43758.5453)
+             - 0.5) * u_tel[16] * 0.08;
+  }
+  float hue = u_chromaHue;
+  float speed = 1.0 + u_approach * 1.5;
+  vec3 plasma = 0.5 + 0.5 * cos(
+    u_phase * speed + u_beatTime * 0.5
+    + uv.xyx * (3.0 + u_morphFactor * 6.0)
+    + vec3(hue * 6.2831, hue * 6.2831 + 2.094, hue * 6.2831 + 4.188));
+  plasma *= 0.45 + u_energy * 0.8 + u_kickPulse * 0.55 + u_snarePulse * 0.30;
+  // Destello radial en el impacto del oráculo.
+  plasma += u_impact * 0.5 * exp(-3.5 * distance(uv, vec2(0.5)));
   vec3 current = mix(plasma, texture2D(u_videoTex, v_uv).rgb, step(0.5, u_hasVideo));
   vec3 prev = texture2D(u_prevTex, v_uv).rgb;
   vec3 col = mix(current, prev, clamp((1.0 - u_blend) * u_hasPrev, 0.0, 1.0));
@@ -163,6 +225,8 @@ interface WorkerState {
   // 🌊 WAVE 8207 — UI preview mirror (optional, attaches anytime)
   previewCanvas: OffscreenCanvas | null
   previewCtx: OffscreenCanvasRenderingContext2D | null
+  /** 🌊 WAVE 8218 — última petición de resize (aplicada al attach). */
+  pendingPreviewDims: { width: number; height: number } | null
   // Phase 2: 64x64 downscaler
   thumbCanvas: OffscreenCanvas | null
   thumbCtx: OffscreenCanvasRenderingContext2D | null
@@ -172,8 +236,6 @@ interface WorkerState {
   videoPort: MessagePort | null
   /** Writers cuyo buffer está EN MANO (disponibles para el próximo tick). */
   videoPool: VideoFrameWriter[]
-  /** Lookup buffer→writer para devoluciones ack sin re-alloc de vistas. */
-  videoWritersByBuffer: Map<ArrayBuffer, VideoFrameWriter>
   /** Secuencia monotónica de frames publicados (espeja meta[META_SEQ]). */
   videoFrameSeq: number
   /** Ticks sin buffer disponible (consumidor lento → drop). Diagnóstico. */
@@ -186,6 +248,33 @@ interface WorkerState {
   /** True si hay snapshot válida (al menos un frame se ha capturado). */
   prevSnapshotValid: boolean
   assetStateReportHandle: number | null
+  // 🔮 WAVE 8228 — EUCLID ORACLE · E2 (Uniform Bridge & Smoother)
+  /** Reader gen-guarded sobre el espejo local del wire buffer (mismo SAB
+   *  que `frameContextSAB` — los slots 4..63 transportan el payload Euclid). */
+  telReader: TelemetryWireReader | null
+  /** Smoother + derivados — `out` se sube entero vía uniform1fv. */
+  smoother: TelemetrySmoother
+  /** Render clock propio (§3.1): rAF del DedicatedWorkerGlobalScope. */
+  rafHandle: number | null
+  /** true mientras el rAF esté disparando (watchdog: decay a los 250ms). */
+  rafActive: boolean
+  /** performance.now() del último frame rAF (watchdog del fallback). */
+  lastRafAt: number
+  /** performance.now() del último render — fuente del dt real. */
+  lastRenderPerfMs: number
+  /** Locations del bridge Euclid cacheadas en link (una vez por programa). */
+  euTel: WebGLUniformLocation | null
+  euFlags: WebGLUniformLocation | null
+  euEnums: WebGLUniformLocation | null
+  euTime: WebGLUniformLocation | null
+  euDt: WebGLUniformLocation | null
+  euResolution: WebGLUniformLocation | null
+  euBeatTime: WebGLUniformLocation | null
+  euKickPulse: WebGLUniformLocation | null
+  euSnarePulse: WebGLUniformLocation | null
+  euPredictiveETA: WebGLUniformLocation | null
+  euApproach: WebGLUniformLocation | null
+  euImpact: WebGLUniformLocation | null
 }
 
 const state: WorkerState = {
@@ -236,12 +325,12 @@ const state: WorkerState = {
   glContextLost: false,
   previewCanvas: null,
   previewCtx: null,
+  pendingPreviewDims: null,
   thumbCanvas: null,
   thumbCtx: null,
   // � WAVE 8215 / 🎬 WAVE 4867
   videoPort: null,
   videoPool: [],
-  videoWritersByBuffer: new Map(),
   videoFrameSeq: 0,
   framesNoBuffer: 0,
   thumbWriter: null,
@@ -249,6 +338,25 @@ const state: WorkerState = {
   crossfade: new CrossfadeUnit(),
   prevSnapshotValid: false,
   assetStateReportHandle: null,
+  // 🔮 WAVE 8228 — EUCLID · E2
+  telReader: null,
+  smoother: new TelemetrySmoother(),
+  rafHandle: null,
+  rafActive: false,
+  lastRafAt: 0,
+  lastRenderPerfMs: 0,
+  euTel: null,
+  euFlags: null,
+  euEnums: null,
+  euTime: null,
+  euDt: null,
+  euResolution: null,
+  euBeatTime: null,
+  euKickPulse: null,
+  euSnarePulse: null,
+  euPredictiveETA: null,
+  euApproach: null,
+  euImpact: null,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -273,8 +381,17 @@ function pollFrameContext(): void {
   const reader = state.reader
   if (!reader) return
   const snap = reader.readIfChanged()
-  if (snap === null) return // nothing new this tick
-  onFrameContextTick(snap)
+  if (snap !== null) {
+    onFrameContextTick(snap)
+    return
+  }
+  // 🌊 WAVE 8223 — RENDER INDEPENDENCE: el render NO es esclavo del master
+  // tick. Si `readIfChanged` devuelve null (motor Selene parado → tickId/gen
+  // congelados, pump sirviendo snapshots stale) el frame se dibuja igual:
+  // el plasma sigue animado (reloj local como fase), los `set-uniform`
+  // nuevos se aplican en este tick y un `video-port` hot-plug empieza a
+  // publicar de inmediato — sin esperar a que Titan despierte.
+  driveRender(Date.now())
 }
 
 function onFrameContextTick(snap: FrameContextSnapshot): void {
@@ -291,8 +408,67 @@ function onFrameContextTick(snap: FrameContextSnapshot): void {
   state.lastGeneration = snap.generation
   state.ticksObserved++
 
-  // Phase 2: On each tick, render the latest valid frame to OffscreenCanvas
-  renderCurrentFrame(snap.timestamp)
+  // 🔮 WAVE 8228 · E2 — el poll ya no dibuja directamente: conduce el
+  // render al rAF si está vivo, o al fallback si el host no lo soporta.
+  driveRender(snap.timestamp)
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 🔮 WAVE 8228 · E2 — RENDER CLOCK (§3.1)
+//
+// requestAnimationFrame en el DedicatedWorker corre a la frecuencia del
+// display (60/90/144 Hz), desacoplado del master tick (44 Hz) — el
+// telemetry clock queda en el poll; el render clock vive aquí. Si el host
+// no soporta rAF en workers o el callback se congela (watchdog 250ms), el
+// poll retoma el render a ~44 Hz — misma semántica que WAVE 8223.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Watchdog: si el rAF no dispara en esta ventana, el poll retoma render. */
+const RAF_STALE_MS = 250
+
+function startRenderLoop(): void {
+  if (state.rafHandle !== null) return
+  const g = self as unknown as {
+    requestAnimationFrame?: (cb: (time: number) => void) => number
+    cancelAnimationFrame?: (handle: number) => void
+  }
+  if (typeof g.requestAnimationFrame !== 'function') return
+  const loop = (): void => {
+    state.rafHandle = null
+    state.rafActive = true
+    state.lastRafAt = performance.now()
+    renderCurrentFrame(Date.now())
+    state.rafHandle = g.requestAnimationFrame!(loop)
+  }
+  state.rafHandle = g.requestAnimationFrame(loop)
+}
+
+function stopRenderLoop(): void {
+  if (state.rafHandle !== null) {
+    const g = self as unknown as {
+      cancelAnimationFrame?: (handle: number) => void
+    }
+    if (typeof g.cancelAnimationFrame === 'function') {
+      g.cancelAnimationFrame(state.rafHandle)
+    }
+    state.rafHandle = null
+  }
+  state.rafActive = false
+}
+
+/**
+ * Conduce un render: si el rAF del worker está vivo, él es el reloj de
+ * render y esta llamada no dibuja (evita doble-draw con el poll); si no,
+ * renderiza en el tick del poll (fallback WAVE 8223) y reintenta armar el
+ * rAF por si el host lo habilita tarde.
+ */
+function driveRender(timestampMs: number): void {
+  if (state.rafActive && performance.now() - state.lastRafAt < RAF_STALE_MS) {
+    return
+  }
+  state.rafActive = false
+  startRenderLoop()
+  renderCurrentFrame(timestampMs)
 }
 
 function startPollLoop(): void {
@@ -411,6 +587,21 @@ function buildGLResources(): boolean {
   state.glUniformBrightness = gl.getUniformLocation(prog, 'u_brightness')
   state.glUniformContrast = gl.getUniformLocation(prog, 'u_contrast')
   state.glUniformBlackout = gl.getUniformLocation(prog, 'u_blackout')
+  // 🔮 WAVE 8228 · E2 — cachear locations del Euclid Uniform Bridge en el
+  // link (una vez por programa; rebuild tras context-restore). Los uniforms
+  // que el compilador optimice fuera devuelven null → uploads no-op seguros.
+  state.euTel = gl.getUniformLocation(prog, 'u_tel')
+  state.euFlags = gl.getUniformLocation(prog, 'u_flags')
+  state.euEnums = gl.getUniformLocation(prog, 'u_enums')
+  state.euTime = gl.getUniformLocation(prog, 'u_time')
+  state.euDt = gl.getUniformLocation(prog, 'u_dt')
+  state.euResolution = gl.getUniformLocation(prog, 'u_resolution')
+  state.euBeatTime = gl.getUniformLocation(prog, 'u_beatTime')
+  state.euKickPulse = gl.getUniformLocation(prog, 'u_kickPulse')
+  state.euSnarePulse = gl.getUniformLocation(prog, 'u_snarePulse')
+  state.euPredictiveETA = gl.getUniformLocation(prog, 'u_predictiveETA')
+  state.euApproach = gl.getUniformLocation(prog, 'u_approach')
+  state.euImpact = gl.getUniformLocation(prog, 'u_impact')
 
   // VideoFrame upload target + crossfade snapshot texture + 1×1 black dummy.
   state.videoTex = makeTexture(gl)
@@ -510,6 +701,30 @@ function attachPreviewCanvas(canvas: OffscreenCanvas): void {
   if (!state.previewCtx) {
     sendError('preview canvas 2d context unavailable', false)
   }
+  // 🌊 WAVE 8218 — un resize pedido antes del attach queda pendiente y se
+  // aplica ahora (el DOM no puede alcanzar el canvas transferido).
+  if (state.pendingPreviewDims) {
+    resizePreviewCanvas(state.pendingPreviewDims.width, state.pendingPreviewDims.height)
+  }
+}
+
+/**
+ * 🌊 WAVE 8218 — resize del espejo de preview. `transferControlToOffscreen`
+ * congela el backing del canvas DOM al tamaño medido en el mount; los
+ * resizes posteriores del layout no lo alcanzan, así que la UI reenvía los
+ * rects del ResizeObserver vía `theia:resize-preview`. Cambiar width/height
+ * re-aloja el bitmap del OffscreenCanvas (contenido limpiado — el próximo
+ * tick lo repinta). NUNCA toca `glCanvas` (salida 1920×1080 intacta).
+ */
+const MAX_PREVIEW_DIM = 4096
+function resizePreviewCanvas(width: number, height: number): void {
+  const w = Math.min(Math.max(1, Math.floor(width)), MAX_PREVIEW_DIM)
+  const h = Math.min(Math.max(1, Math.floor(height)), MAX_PREVIEW_DIM)
+  state.pendingPreviewDims = { width: w, height: h }
+  const canvas = state.previewCanvas
+  if (!canvas || (canvas.width === w && canvas.height === h)) return
+  canvas.width = w
+  canvas.height = h
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -548,10 +763,8 @@ function detachVideoLink(): void {
     try { state.videoPort.close() } catch { /* noop */ }
     state.videoPort = null
   }
-  // Los buffers en vuelo sobre el canal muerto nunca volverán por ack:
-  // purgar sus writers del mapa (los que siguen en pool se conservan).
-  state.videoWritersByBuffer.clear()
-  for (const w of state.videoPool) state.videoWritersByBuffer.set(w.transferable, w)
+  // Los buffers en vuelo sobre el canal muerto nunca volverán por ack —
+  // pérdida acotada por diseño (el pool conserva solo los writers en mano).
 }
 
 /**
@@ -560,19 +773,25 @@ function detachVideoLink(): void {
  */
 function topUpVideoPool(): void {
   while (state.videoPool.length < VIDEO_POOL_SIZE) {
-    const writer = new VideoFrameWriter(createVideoFrameBuffer())
-    state.videoPool.push(writer)
-    state.videoWritersByBuffer.set(writer.transferable, writer)
+    state.videoPool.push(new VideoFrameWriter(createVideoFrameBuffer()))
   }
 }
 
-/** ackFrame entrante: el buffer transferido de vuelta re-entra al pool. */
+/**
+ * 🩹 WAVE 8218 — ackFrame entrante: reclamación SIN identidad de objeto.
+ *
+ * La auditoría 8217-AUDIT probó que `postMessage` transfer NO preserva la
+ * identidad JS del ArrayBuffer: cada cruce materializa un wrapper NUEVO en
+ * el realm destino (el origen queda detached). Un Map<buffer,writer> jamás
+ * acierta → starvation tras 2 frames. Fix: aceptar CUALQUIER buffer de
+ * tamaño válido (un buffer solo puede volver una vez — el emisor lo perdió
+ * en el transfer) y re-envolverlo en un `VideoFrameWriter` FRESCO — solo
+ * aloja dos vistas (~100B); el payload de 8.3MB es el buffer retornado,
+ * nunca una asignación nueva. Zero-alloc preservado.
+ */
 function returnVideoBuffer(buffer: ArrayBuffer): void {
-  const writer = state.videoWritersByBuffer.get(buffer)
-  if (writer) {
-    state.videoPool.push(writer)
-  }
-  // Buffer desconocido (canal viejo / ajeno) → no reclamar: lo recoge el GC.
+  if (buffer.byteLength < VIDEO_FRAME_BUFFER_BYTES) return
+  state.videoPool.push(new VideoFrameWriter(buffer))
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -605,6 +824,27 @@ function renderCurrentFrame(timestampMs: number): void {
     }
     return
   }
+
+  // 🔮 WAVE 8228 · E2 — UNIFORM BRIDGE (§3.2/§3.3): leer el espejo wire y
+  // avanzar el smoother al reloj de render REAL (rAF 60-144Hz o poll ~44Hz
+  // de fallback). `dt` es el delta real del frame → las curvas de decaimiento
+  // son idénticas a cualquier frecuencia (k' = 1−(1−k)^(dt·60)).
+  const perfNow = performance.now()
+  const dtMs =
+    state.lastRenderPerfMs > 0
+      ? Math.min(perfNow - state.lastRenderPerfMs, 100) // clamp anti-stall
+      : 16.7
+  state.lastRenderPerfMs = perfNow
+  const tel = state.telReader
+  const telFresh = tel !== null && tel.read()
+  state.smoother.step(
+    tel !== null ? tel.scratch : null,
+    tel !== null ? tel.flags : 0,
+    tel !== null ? tel.enums : 0,
+    telFresh,
+    dtMs,
+    perfNow,
+  )
 
   // Crossfade step (only meaningful if a crossfade is in progress) —
   // we step it BEFORE drawing so we know the alphas for THIS tick.
@@ -659,6 +899,32 @@ function renderCurrentFrame(timestampMs: number): void {
   gl.uniform1f(state.glUniformBrightness, state.uniforms.get('u_brightness') ?? 1.0)
   gl.uniform1f(state.glUniformContrast, state.uniforms.get('u_contrast') ?? 1.0)
   gl.uniform1f(state.glUniformBlackout, state.uniforms.get('u_blackout') ?? 0.0)
+
+  // 🔮 WAVE 8228 · E2 — Euclid Uniform Bridge (§3.4/§3.5): el array
+  // suavizado sube ENTERO en una llamada (60 floats); flags/enums van
+  // empaquetados; los derivados del oráculo como escalares. Locations
+  // cacheadas en link → null-safe.
+  const sm = state.smoother
+  if (state.euTel) gl.uniform1fv(state.euTel, sm.out)
+  if (state.euFlags) gl.uniform1i(state.euFlags, sm.flags)
+  if (state.euEnums) {
+    gl.uniform4i(
+      state.euEnums,
+      sm.schemaVersion,
+      sm.predictionType,
+      sm.huntState,
+      sm.energyZone,
+    )
+  }
+  if (state.euTime) gl.uniform1f(state.euTime, perfNow * 0.001)
+  if (state.euDt) gl.uniform1f(state.euDt, dtMs * 0.001)
+  if (state.euResolution) gl.uniform3f(state.euResolution, w, h, 1)
+  if (state.euBeatTime) gl.uniform1f(state.euBeatTime, sm.beatTime)
+  if (state.euKickPulse) gl.uniform1f(state.euKickPulse, sm.kickPulse)
+  if (state.euSnarePulse) gl.uniform1f(state.euSnarePulse, sm.snarePulse)
+  if (state.euPredictiveETA) gl.uniform1f(state.euPredictiveETA, sm.predictiveEtaSec)
+  if (state.euApproach) gl.uniform1f(state.euApproach, sm.approach)
+  if (state.euImpact) gl.uniform1f(state.euImpact, sm.impact)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, state.glVbo)
   gl.enableVertexAttribArray(state.glAttribPos)
@@ -975,6 +1241,12 @@ function handleInit(payload: ThetaInitPayload): void {
   }
   state.reader = new FrameContextReader(payload.frameContextSAB)
   state.reader.resync() // discard whatever tick was published before we attached
+  // 🔮 WAVE 8228 · E2 — el mismo SAB es el wire mirror (256B: FC header +
+  // payload Euclid). Reader gen-guarded + smoother fresco para el bridge.
+  state.telReader = new TelemetryWireReader(payload.frameContextSAB)
+  state.telReader.resync()
+  state.smoother = new TelemetrySmoother()
+  state.lastRenderPerfMs = 0
   state.pollIntervalMs = payload.pollIntervalMs > 0 ? payload.pollIntervalMs : 22
   state.startTime = Date.now()
   state.isRunning = true
@@ -987,7 +1259,11 @@ function handleInit(payload: ThetaInitPayload): void {
   }
   // 64x64 thumbnail canvas for downscaling
   state.thumbCanvas = new OffscreenCanvas(64, 64)
-  state.thumbCtx = state.thumbCanvas.getContext('2d')
+  // 🌊 WAVE 8225 — willReadFrequently: el thumb se lee con getImageData
+  // cada tick (44Hz). Sin el flag, Chromium mantiene el backing en GPU y
+  // cada lectura es un readback con pipeline stall (+warning en consola).
+  // El flag mueve el backing a RAM — la lectura es una copia barata.
+  state.thumbCtx = state.thumbCanvas.getContext('2d', { willReadFrequently: true })
 
   // 🎬 WAVE 4867 — Phase 6: Attach ThumbFrameWriter if SAB provided.
   // (El video pipeline ya NO se adjunta aquí: llega por `theia:video-port`
@@ -1003,6 +1279,7 @@ function handleInit(payload: ThetaInitPayload): void {
   }
 
   startPollLoop()
+  startRenderLoop() // 🔮 E2 — render clock propio a la frecuencia del display
   startStateReports()
 
   send('theia:ready', { nodeId: 'theta' })
@@ -1010,19 +1287,23 @@ function handleInit(payload: ThetaInitPayload): void {
 
 function handleShutdown(): void {
   state.isRunning = false
+  stopRenderLoop()
   stopPollLoop()
   stopStateReports()
   teardownVideoStream()
   state.reader = null
+  state.telReader = null
+  state.smoother = new TelemetrySmoother()
+  state.lastRenderPerfMs = 0
   state.previewCanvas = null
   state.previewCtx = null
+  state.pendingPreviewDims = null
   state.thumbCanvas = null
   state.thumbCtx = null
   // � WAVE 8215 — Glass Bridge cleanup: cerrar el link de video. Los
   // buffers del pool mueren con el worker (el GC del renderer los reclama).
   detachVideoLink()
   state.videoPool.length = 0
-  state.videoWritersByBuffer.clear()
   // 🎬 WAVE 4867 — Phase 6 cleanup
   if (state.thumbWriter) state.thumbWriter.clear()
   state.thumbWriter = null
@@ -1085,6 +1366,16 @@ self.addEventListener('message', (ev: MessageEvent<ThetaMessage>) => {
           attachPreviewCanvas(p.canvas)
         } else {
           sendError('attach-canvas payload missing canvas', false)
+        }
+        break
+      }
+      // 🌊 WAVE 8218 — resize dinámico del espejo de preview (el DOM ya no
+      // puede tocar el canvas transferido — el ResizeObserver de la UI
+      // reenvía los rects vivos por aquí).
+      case 'theia:resize-preview': {
+        const p = msg.payload as ThetaResizePreviewPayload
+        if (p && typeof p.width === 'number' && typeof p.height === 'number') {
+          resizePreviewCanvas(p.width, p.height)
         }
         break
       }

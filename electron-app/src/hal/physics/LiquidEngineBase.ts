@@ -49,6 +49,8 @@ export interface ProcessedFrame {
   isKickEdge: boolean
   acidMode: boolean
   noiseMode: boolean
+  /** 🔮 WAVE 8227: harshness ∧ flatness (umbrales de perfil) — Apocalypse Mode universal */
+  isApocalypse: boolean
   harshness: number
   flatness: number
   spectralCentroid: number  // Hz — brillo tonal (0 si no disponible)
@@ -2233,6 +2235,7 @@ export abstract class LiquidEngineBase {
       isKickEdge,
       acidMode,
       noiseMode,
+      isApocalypse,
       harshness,
       flatness,
       spectralCentroid: input.spectralCentroid ?? 0,
@@ -2332,6 +2335,7 @@ export abstract class LiquidEngineBase {
       isKickEdge: false,
       acidMode: false,
       noiseMode: false,
+      isApocalypse: false,
       harshness: 0,
       flatness: 0,
       spectralCentroid: 0,

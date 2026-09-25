@@ -49,7 +49,7 @@ import { StrategyArbiter, StrategyArbiterInput, StrategyArbiterOutput, ColorStra
 
 // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
 import { SeleneLux } from '../core/reactivity'
-import type { LiquidEngineBase } from '../hal/physics/LiquidEngineBase'
+import type { LiquidEngineBase, ProcessedFrame } from '../hal/physics/LiquidEngineBase'
 import type { SeleneLuxOutput } from '../core/reactivity'
 import { getModifiersFromKey } from './physics/ElementalModifiers'
 
@@ -81,12 +81,13 @@ import {
 } from './color/ColorProcessors'
 
 // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa
-import { 
-  SeleneTitanConscious, 
+import {
+  SeleneTitanConscious,
   type TitanStabilizedState,
   type ConsciousnessOutput,
   type ConsciousnessColorDecision,
   type ConsciousnessPhysicsModifier,
+  type HuntPhase,
   // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
   getHuntStats,
   getDreamStats,
@@ -179,6 +180,24 @@ export interface EngineAudioMetrics {
 /**
  * Configuración del motor
  */
+/**
+ * 🔮 WAVE 8227 — Out-param pre-asignado para `fillEuclidSelene`.
+ * Valores SEMÁNTICOS de Selene/Cassandra (strings de enum incluidos);
+ * el empaquetado a los códigos Euclid lo hace el caller (TickEngine).
+ */
+export interface EuclidSeleneFrame {
+  confidence: number
+  huntState: HuntPhase
+  energyZone: 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak'
+  predictionType: string | null
+  predictionProbability: number
+  predictedEventAtMs: number
+  emotionalTension: number
+  spectralBuildupScore: number
+  beautyScore: number
+  energyZScore: number
+}
+
 export interface TitanEngineConfig {
   /** FPS objetivo del loop */
   targetFps: number
@@ -1508,6 +1527,44 @@ export class TitanEngine extends EventEmitter {
 
   public getActiveLiquidEngine(): LiquidEngineBase {
     return this.nervousSystem.getLastActiveLiquidEngine()
+  }
+
+  // ─── 🔮 WAVE 8227 — EUCLID ORACLE · E1: TELEMETRÍA ESCALAR ZERO-ALLOC ───
+  // Cierra T1/T2/T5 del blueprint: lectura escalar directa en el hot-path
+  // del TickEngine sin instanciar objetos por tick.
+
+  /**
+   * Último ProcessedFrame de Omniliquid (referencia al frame almacenado —
+   * NO es copia). Contiene morphFactor, recoveryFactor, isKick/Edge,
+   * isBreakdown, acidMode, isApocalypse y las zonas floor/ambient/air.
+   */
+  public getLastProcessedFrame(): ProcessedFrame | null {
+    return this.nervousSystem.getLastActiveLiquidEngine()?.lastFrame ?? null
+  }
+
+  /** Brecha T1 — morphFactor escalar puro (profundidad armónica 0-1). */
+  public getLastMorphFactor(): number {
+    return this.getLastProcessedFrame()?.morphFactor ?? 0
+  }
+
+  /**
+   * Brechas T2+T5 — vuelca los escalares de Selene/Cassandra sobre un
+   * out-param pre-asignado del caller. Zero-alloc: lee los getters
+   * escalares de SeleneTitanConscious, nunca getConsciousnessTelemetry().
+   */
+  public fillEuclidSelene(out: EuclidSeleneFrame): void {
+    const selene = this.selene
+    out.confidence = selene.getLastConfidence()
+    const pred = selene.getActivePrediction()
+    out.predictionType = pred?.type ?? null
+    out.predictionProbability = pred?.probability ?? 0
+    out.predictedEventAtMs = selene.getPredictedEventAtMs()
+    out.emotionalTension = selene.getEmotionalTension()
+    out.spectralBuildupScore = selene.getSpectralBuildupScore()
+    out.beautyScore = selene.getBeautyScore()
+    out.huntState = selene.getHuntPhase()
+    out.energyZone = selene.getEnergyZone()
+    out.energyZScore = selene.getEnergyZScore()
   }
 
   /**

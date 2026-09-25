@@ -44,6 +44,8 @@ import type { IAudioMatrix } from '../core/audio/OmniInputTypes';
 
 // 🎬 WAVE 4860: THEIA FrameContext — reloj maestro compartido con ThetaWorker (renderer).
 import { createFrameContextSAB, FrameContextWriter } from '../theia/FrameContextRing';
+// 🔮 WAVE 8227 — Euclid Oracle · E1: anillo de telemetría 256B (Selene+GodEar+Omniliquid).
+import { createTelemetryRing, TelemetryWriter } from '../theia/telemetry/TheiaTelemetryRing';
 
 // ============================================
 // CIRCUIT BREAKER (Adapted from Swarm)
@@ -128,6 +130,13 @@ export class TrinityOrchestrator extends EventEmitter {
   private readonly frameContextSAB: SharedArrayBuffer = createFrameContextSAB();
   private readonly frameContextWriter: FrameContextWriter = new FrameContextWriter(this.frameContextSAB);
 
+  // 🔮 WAVE 8227 — EUCLID TelemetryRing (256B seqlock, blueprint §2).
+  // Propietario: TrinityOrchestrator, junto al FrameContextRing — mismo patrón
+  // eager, mismo ciclo de vida. El SAB NUNCA cruza al renderer: el pump copia
+  // su payload al wire buffer transferible (amendment 8215).
+  private readonly telemetryRing: SharedArrayBuffer = createTelemetryRing();
+  private readonly telemetryWriter: TelemetryWriter = new TelemetryWriter(this.telemetryRing);
+
   // WAVE 3401: Expose AudioMatrix for external provider registration (OSCNexus, USB, etc.)
   getAudioMatrix(): IAudioMatrix | null {
     return this.audioMatrix;
@@ -143,6 +152,18 @@ export class TrinityOrchestrator extends EventEmitter {
   // a 44Hz (~23ms). El ThetaWorker leerá el SAB en su propio loop sin IPC en el hot-path.
   advanceFrameContext(tickId: number, timestampMs: number): void {
     this.frameContextWriter.advance(tickId, timestampMs);
+  }
+
+  // 🔮 WAVE 8227 — Expone el anillo Euclid al TheiaTelemetryPump (snapshot
+  // seqlock-verificado por link). Mismo SAB durante toda la vida del proceso.
+  getTelemetryRing(): SharedArrayBuffer {
+    return this.telemetryRing;
+  }
+
+  // 🔮 WAVE 8227 — Expone el writer seqlock para que TickEngine publique a
+  // 44Hz tras el commit de DMX (blueprint §2.4 — nunca retrasa un byte DMX).
+  getTelemetryWriter(): TelemetryWriter {
+    return this.telemetryWriter;
   }
   
   private static getWorkerDir(): string {

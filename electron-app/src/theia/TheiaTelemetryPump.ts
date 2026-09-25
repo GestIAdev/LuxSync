@@ -26,10 +26,16 @@
  * Un solo setInterval sirve a todos los links: la escritura del snapshot es
  * una copia de ≤256B por link por tick.
  *
- * Hoy el payload son los 16 bytes del FrameContextRing (tickId/ts/gen) —
- * los primeros 4 Int32 del buffer. El resto de los 256B está reservado para
- * el `TheiaTelemetryRing` del blueprint Euclid (WAVE 8208): cuando llegue,
- * este mismo pump lo transportará sin cambiar el contrato.
+ * Wire layout (blueprint amendment 8215 + 🔮 WAVE 8227 · E1):
+ *   slots 0..3  → FrameContextRing verbatim (tickId, tsLo, tsHi, gen) —
+ *                 el reloj maestro viaja en la cabecera del mismo buffer.
+ *   slots 4..63 → payload Float32 del `TheiaTelemetryRing` Euclid (256B,
+ *                 schema v1: Selene/Cassandra · GodEar V3 · Omniliquid).
+ *   slot  56    → FLAGS Euclid como bits Int32 (WIRE_FLAGS).
+ *   slot  57    → ENUMS Euclid como bits Int32 (WIRE_ENUMS).
+ * La copia del payload usa `snapshotTelemetryPayload` — seqlock-verificada;
+ * si los 3 intentos colisionan con una escritura del TickEngine el link
+ * omite el tick (contenido rasgado descartado, buffer devuelto al pool).
  *
  * La consistencia intra-buffer usa el patrón seqlock-lite ya documentado en
  * FrameContextRing: el consumidor compara `generation` para descartar reads
@@ -37,6 +43,7 @@
  */
 
 import type { MessagePortMain } from 'electron'
+import { snapshotTelemetryPayload } from './telemetry/TheiaTelemetryRing'
 
 /** Bytes por buffer de telemetría (Euclid ring size). */
 export const TELEMETRY_BUFFER_BYTES = 256
@@ -47,13 +54,23 @@ const TELEMETRY_POOL_SIZE = 3
 /** Cadencia de publicación (ms) — espejo del TickEngine 44Hz. */
 const TELEMETRY_INTERVAL_MS = 22
 
-/** Bytes útiles hoy: el FrameContextRing (4×Int32). El resto va a cero. */
+/** Bytes útiles de la cabecera: el FrameContextRing (4×Int32). */
 const FRAME_CONTEXT_BYTES = 16
 
 /** Mensaje pump→renderer sobre el port de telemetría. */
 export const THEIA_TELEMETRY_MSG = 'theia:telemetry'
 
-export type TelemetrySnapshotFn = () => SharedArrayBuffer | null
+/**
+ * Fuentes del wire buffer: el FrameContextRing (reloj, 16B en cabecera) y
+ * el TheiaTelemetryRing Euclid (payload 240B + FLAGS/ENUMS en 56/57).
+ * Ambos null-tolerant: sin fuente el slot va a cero.
+ */
+export interface TelemetrySources {
+  fc: SharedArrayBuffer | null
+  tel: SharedArrayBuffer | null
+}
+
+export type TelemetrySourcesFn = () => TelemetrySources
 
 /**
  * Estado de un consumidor: su port y su pool privado de transferibles.
@@ -71,11 +88,11 @@ interface TelemetryLink {
 export class TheiaTelemetryPump {
   private interval: ReturnType<typeof setInterval> | null = null
   private readonly links = new Map<MessagePortMain, TelemetryLink>()
-  private readonly getSnapshot: TelemetrySnapshotFn
+  private readonly getSources: TelemetrySourcesFn
   private seq = 0
 
-  constructor(getSnapshot: TelemetrySnapshotFn) {
-    this.getSnapshot = getSnapshot
+  constructor(getSources: TelemetrySourcesFn) {
+    this.getSources = getSources
   }
 
   /**
@@ -141,7 +158,7 @@ export class TheiaTelemetryPump {
 
   private tick(): void {
     if (this.links.size === 0) return
-    const src = this.getSnapshot()
+    const sources = this.getSources()
     this.seq = (this.seq + 1) | 0
 
     for (const link of this.links.values()) {
@@ -152,14 +169,22 @@ export class TheiaTelemetryPump {
         continue
       }
 
-      // Snapshot FrameContextRing (16B) al frente del buffer. Escritura en el
-      // proceso emisor — la copia de 16B es trivial y garantiza consistencia:
-      // el buffer no se reutiliza hasta que el ack lo devuelve al pool.
+      // Cabecera: FrameContextRing (16B) verbatim — el reloj maestro viaja
+      // en la cabecera del wire buffer (amendment 8215).
       const dst = new Int32Array(buffer)
       dst.fill(0)
-      if (src) {
-        const srcView = new Int32Array(src, 0, FRAME_CONTEXT_BYTES / 4)
+      if (sources.fc) {
+        const srcView = new Int32Array(sources.fc, 0, FRAME_CONTEXT_BYTES / 4)
         dst.subarray(0, FRAME_CONTEXT_BYTES / 4).set(srcView)
+      }
+
+      // Payload: anillo Euclid (240B) + FLAGS/ENUMS en slots 56/57 — copia
+      // seqlock-verificada. Si colisiona con una escritura del TickEngine en
+      // los 3 intentos, el link omite el tick (nunca se envía data rasgada).
+      if (sources.tel && !snapshotTelemetryPayload(sources.tel, buffer)) {
+        link.pool.push(buffer)
+        link.dropped++
+        continue
       }
 
       try {

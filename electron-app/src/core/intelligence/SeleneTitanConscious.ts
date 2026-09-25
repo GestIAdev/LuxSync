@@ -48,6 +48,7 @@ import {
   type ConsciousnessOutput,
   type SeleneInternalState,
   type SeleneMusicalPattern,
+  type HuntPhase,
   createEmptyOutput,
   BEAUTY_HISTORY_SIZE,
   CONSONANCE_HISTORY_SIZE,
@@ -376,6 +377,8 @@ export class SeleneTitanConscious extends EventEmitter {
   // 🔬 WAVE 7522: Throttle map for DNA simulation log (was 60fps spam)
   private _dnaLogThrottle = new Map<string, number>()
   private lastEnergyZone: 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak' = 'ambient'
+  /** 🔮 WAVE 8227 (T5): último spectralBuildupScore calculado — antes moría tras predict(). */
+  private _lastSpectralBuildupScore = 0
 
   // 🩸 WAVE 2102: Evitar spam logs
   private lastGatekeeperLogs: Record<string, number> = {}
@@ -1320,6 +1323,9 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🔮 WAVE 1190: PROJECT CASSANDRA - Integrar spectral buildup score
     const spectralBuildupScore = this.calculateSpectralBuildupScore(state)
     const prediction = predictCombined(pattern, state.smoothedEnergy, spectralBuildupScore)
+    // 🔮 WAVE 8227 (T5): persistir para telemetría escalar Euclid — el score
+    //    era interno a este frame y moría tras el predict.
+    this._lastSpectralBuildupScore = spectralBuildupScore
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🎲 WAVE 667-669: FUZZY DECISION SYSTEM
@@ -2322,6 +2328,54 @@ export class SeleneTitanConscious extends EventEmitter {
    */
   getEnergyZone(): 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak' {
     return this.lastEnergyZone
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 8227 — EUCLID ORACLE · E1: ACCESSORS ESCALARES ZERO-ALLOC
+  // Cierra las brechas T2/T5 del blueprint: telemetría escalar directa sin
+  // instanciar getConsciousnessTelemetry() (que fabrica un objeto ~30 campos
+  // por llamada — GC churn a 44Hz).
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** Confianza del último output de consciencia [0,1]. */
+  getLastConfidence(): number {
+    return this.lastOutput.confidence ?? 0
+  }
+
+  /** Predicción viva de Cassandra (referencia al estado — NO copia). */
+  getActivePrediction(): MusicalPrediction | null {
+    return this.state.activePrediction
+  }
+
+  /** Probabilidad de la predicción activa [0,1] (0 si none). */
+  getPredictionProbability(): number {
+    return this.state.activePrediction?.probability ?? 0
+  }
+
+  /** Timestamp absoluto del evento predicho (pred.timestamp + estimatedTimeMs). */
+  getPredictedEventAtMs(): number {
+    const p = this.state.activePrediction
+    return p ? p.timestamp + p.estimatedTimeMs : 0
+  }
+
+  /** Tensión emocional del último patrón sensado [0,1] (FLUID 3). */
+  getEmotionalTension(): number {
+    return this.state.lastPattern?.emotionalTension ?? 0
+  }
+
+  /** Último spectralBuildupScore de Cassandra [0,1] (T5). */
+  getSpectralBuildupScore(): number {
+    return this._lastSpectralBuildupScore
+  }
+
+  /** Beauty score del último output [0,1]. */
+  getBeautyScore(): number {
+    return this.lastOutput.debugInfo?.beautyScore ?? 0.5
+  }
+
+  /** Fase del Hunt FSM. */
+  getHuntPhase(): HuntPhase {
+    return this.state.huntPhase
   }
   
   // ═══════════════════════════════════════════════════════════════════════

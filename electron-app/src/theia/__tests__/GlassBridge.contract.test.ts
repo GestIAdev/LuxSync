@@ -26,6 +26,16 @@ import {
 } from '../TheiaTelemetryRing'
 import { TheiaTelemetryPump } from '../TheiaTelemetryPump'
 import { FrameContextReader, FrameContextWriter, createFrameContextSAB } from '../FrameContextRing'
+import {
+  createTelemetryRing as createEuclidRing,
+  packEnums,
+  SCHEMA_VERSION,
+  TELEMETRY_SLOT,
+  TEL_FLAG,
+  TelemetryWriter,
+  WIRE_ENUMS_SLOT,
+  WIRE_FLAGS_SLOT,
+} from '../telemetry/TheiaTelemetryRing'
 
 // ── Fake MessagePortMain ─────────────────────────────────────────────────
 
@@ -89,32 +99,34 @@ describe('🌊 WAVE 8215 — Modo A: video transferable ping-pong', () => {
     expect(snap!.view.byteLength).toBe(64 * 32 * 4)
   })
 
-  it('CERTIFICACIÓN ZERO-ALLOC: el ack devuelve el MISMO ArrayBuffer — jamás uno nuevo', () => {
+  it('CERTIFICACIÓN ZERO-ALLOC: el ack re-envuelve el buffer retornado — jamás un ArrayBuffer nuevo', () => {
     const pool: VideoFrameWriter[] = [
       new VideoFrameWriter(createVideoFrameBuffer()),
       new VideoFrameWriter(createVideoFrameBuffer()),
     ]
-    const byBuffer = new Map<ArrayBuffer, VideoFrameWriter>(
-      pool.map((w) => [w.transferable, w]),
-    )
 
-    // tick 1: pop → "transfer" → ack devuelve el mismo buffer → re-entra
+    // 🩹 WAVE 8218 — el transfer NO preserva identidad JS: en runtime el
+    // buffer que vuelve por ack es un wrapper NUEVO sobre el mismo backing.
+    // Por eso returnVideoBuffer acepta cualquier buffer válido y lo
+    // re-envuelve — nunca consulta un Map<buffer,writer>.
     const w1 = pool.pop()!
-    const identity = w1.transferable
-    // (el consumidor dibuja y devuelve)
-    const ack = { ack: true, seq: 1, buffer: identity }
+    const sent = w1.transferable
+    const ack = { ack: true, seq: 1, buffer: sent }
     expect(isAckMessage(ack)).toBe(true)
-    const returned = byBuffer.get(ack.buffer)!
-    pool.push(returned)
 
-    // tick 2: el buffer re-utilizado ES el mismo objeto — cero alloc
+    // Simula returnVideoBuffer: size check + re-wrap. La MEMORIA recircula
+    // (el buffer retornado), no se instancia un ArrayBuffer de 8.3MB.
+    expect(ack.buffer.byteLength).toBeGreaterThanOrEqual(VIDEO_FRAME_BUFFER_BYTES)
+    pool.push(new VideoFrameWriter(ack.buffer))
+
+    // tick 2: el writer recuperado apunta al backing devuelto — zero-alloc.
     const w2 = pool.pop()!
-    expect(w2.transferable).toBe(identity)
+    expect(w2.transferable).toBe(sent)
 
     // Doble buffer certificado: queda exactamente UN transferible libre,
     // y al sacarlo (ambos en vuelo, consumidor lento) el pool queda vacío.
     const other = pool.pop()!
-    expect(other.transferable).not.toBe(identity)
+    expect(other.transferable).not.toBe(sent)
     // Pool agotado → el productor debe esperar el ack, nunca instanciar.
     const w3 = pool.pop()
     expect(w3).toBeUndefined()
@@ -186,7 +198,7 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
   it('publica a N links con pools independientes; el ack devuelve el buffer al pool', () => {
     const src = createFrameContextSAB()
     new FrameContextWriter(src).advance(1, Date.now())
-    const pump = new TheiaTelemetryPump(() => src)
+    const pump = new TheiaTelemetryPump(() => ({ fc: src, tel: null }))
 
     const mainWin = makeFakePort()
     const outputWin = makeFakePort()
@@ -219,7 +231,7 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
   it('close de un link lo retira sin afectar a los demás', () => {
     const src = createFrameContextSAB()
     new FrameContextWriter(src).advance(1, Date.now())
-    const pump = new TheiaTelemetryPump(() => src)
+    const pump = new TheiaTelemetryPump(() => ({ fc: src, tel: null }))
 
     const a = makeFakePort()
     const b = makeFakePort()
@@ -237,7 +249,7 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
   it('pool starvation → drop contabilizado, jamás nueva asignación', () => {
     const src = createFrameContextSAB()
     new FrameContextWriter(src).advance(1, Date.now())
-    const pump = new TheiaTelemetryPump(() => src)
+    const pump = new TheiaTelemetryPump(() => ({ fc: src, tel: null }))
     const port = makeFakePort()
     pump.attach(port as never)
 
@@ -245,5 +257,65 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
     for (let i = 0; i < 6; i++) tick()
     expect(port.posted).toHaveLength(3)
     expect(pump.droppedTicks).toBeGreaterThanOrEqual(3)
+  })
+
+  // 🔮 WAVE 8227 · E1 — wire buffer 256B = FrameContext (16B cabecera) +
+  // payload Euclid (slots 4..55) + FLAGS/ENUMS como bits Int32 en 56/57.
+  it('compone FrameContext (16B) + payload Euclid + FLAGS/ENUMS en slots 56/57', () => {
+    const fc = createFrameContextSAB()
+    new FrameContextWriter(fc).advance(0xbeef, Date.now())
+
+    const tel = createEuclidRing()
+    const writer = new TelemetryWriter(tel)
+    const flags = (1 << TEL_FLAG.AUDIO_LIVE) | (1 << TEL_FLAG.KICK)
+    const enums = packEnums({
+      schemaVersion: SCHEMA_VERSION,
+      predictionType: 1,
+      huntState: 2,
+      energyZone: 3,
+    })
+    writer.publish(42, flags, enums, (p) => {
+      p[TELEMETRY_SLOT.BPM] = 128.5
+      p[TELEMETRY_SLOT.MORPH_FACTOR] = 0.42
+      p[TELEMETRY_SLOT.CHROMA_0] = 0.99
+    })
+
+    const pump = new TheiaTelemetryPump(() => ({ fc, tel }))
+    const port = makeFakePort()
+    pump.attach(port as never)
+    tick()
+
+    expect(port.posted).toHaveLength(1)
+    const msg = port.posted[0].data as { buffer: ArrayBuffer }
+    const wi32 = new Int32Array(msg.buffer)
+    const wf32 = new Float32Array(msg.buffer)
+
+    // Cabecera: FrameContext verbatim — tickId en slot 0.
+    expect(wi32[0]).toBe(0xbeef)
+    // Payload Euclid en slots 4..55 (copia seqlock-verificada).
+    expect(wf32[TELEMETRY_SLOT.BPM]).toBeCloseTo(128.5, 3)
+    expect(wf32[TELEMETRY_SLOT.MORPH_FACTOR]).toBeCloseTo(0.42, 3)
+    expect(wf32[TELEMETRY_SLOT.CHROMA_0]).toBeCloseTo(0.99, 3)
+    // FLAGS/ENUMS viajan como bits Int32 en los slots reservados del wire.
+    expect(wi32[WIRE_FLAGS_SLOT]).toBe(flags)
+    expect(wi32[WIRE_ENUMS_SLOT]).toBe(enums)
+  })
+
+  it('fuente tel ausente → payload a cero, sin excepción', () => {
+    const fc = createFrameContextSAB()
+    new FrameContextWriter(fc).advance(7, Date.now())
+    const pump = new TheiaTelemetryPump(() => ({ fc, tel: null }))
+    const port = makeFakePort()
+    pump.attach(port as never)
+    tick()
+
+    expect(port.posted).toHaveLength(1)
+    const msg = port.posted[0].data as { buffer: ArrayBuffer }
+    const wi32 = new Int32Array(msg.buffer)
+    expect(wi32[0]).toBe(7)
+    // Payload a cero — motor Euclid parado.
+    const wf32 = new Float32Array(msg.buffer)
+    expect(wf32[TELEMETRY_SLOT.BPM]).toBe(0)
+    expect(wi32[WIRE_FLAGS_SLOT]).toBe(0)
   })
 })

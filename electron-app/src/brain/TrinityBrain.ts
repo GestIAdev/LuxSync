@@ -274,6 +274,9 @@ export class TrinityBrain extends EventEmitter {
       rhythmic: (analysis as ExtendedAudioAnalysis).rhythmic,
       // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
       agcGainFactor: analysis.agcGainFactor,
+      // 🎹 WAVE 8227 · E1: chromagrama 12 bins (C→B, 0-1) — alimenta
+      // CHROMA[0..11] del anillo Euclid (tonalidad para shaders).
+      chroma: analysis.chroma,
     })
 
     // Log cada ~30 frames (1 segundo)

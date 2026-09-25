@@ -65,6 +65,11 @@ export {
   type TheiaTelemetryAck,
 } from './TheiaTelemetryRing'
 
+// 🔮 WAVE 8226 — Euclid Oracle · Fase E0: telemetry ring core (seqlock 256B).
+// Namespaced: `createTelemetryRing`/`TELEMETRY_RING_BYTES` ya pertenecen al
+// contrato de transporte Glass Bridge de arriba.
+export * as EuclidTelemetry from './telemetry/TheiaTelemetryRing'
+
 export {
   AssetStateMachine,
   type AssetStateId,

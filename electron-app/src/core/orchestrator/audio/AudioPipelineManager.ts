@@ -58,6 +58,8 @@ export interface AudioDataSnapshot {
   rhythmic?: GodEarRhythmicPercussion
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number
+  // 🎹 WAVE 8227 · E1: chromagrama 12 bins (C→B, 0-1) — anillo Euclid CHROMA[]
+  chroma?: number[]
 }
 
 export interface BeatState {
@@ -302,6 +304,8 @@ export class AudioPipelineManager {
       rhythmic?: GodEarRhythmicPercussion;
       // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate
       agcGainFactor?: number;
+      // 🎹 WAVE 8227 · E1: chromagrama 12 bins
+      chroma?: number[];
     }) => {
       const matrixStatus = this.ctx.trinity?.getAudioMatrix()?.getStatus()
       const activeSource = matrixStatus?.activeSource ?? null
@@ -368,6 +372,8 @@ export class AudioPipelineManager {
         if (levels.rhythmic != null) _d.rhythmic = levels.rhythmic
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
         if (levels.agcGainFactor != null) _d.agcGainFactor = levels.agcGainFactor
+        // 🎹 WAVE 8227 · E1: chromagrama 12 bins
+        if (levels.chroma != null) _d.chroma = levels.chroma
 
         const wasActive = this.hasRealAudio
         this.hasRealAudio = true
@@ -414,6 +420,8 @@ export class AudioPipelineManager {
         if (levels.rhythmic != null) _d.rhythmic = levels.rhythmic
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
         if (levels.agcGainFactor != null) _d.agcGainFactor = levels.agcGainFactor
+        // 🎹 WAVE 8227 · E1: chromagrama 12 bins
+        if (levels.chroma != null) _d.chroma = levels.chroma
       }
     })
   }

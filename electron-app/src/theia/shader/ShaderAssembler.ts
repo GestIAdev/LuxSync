@@ -634,10 +634,15 @@ export function hasMainImage(source: string): boolean {
 
 /** Hash FNV-1a 32-bit — clave de caché estable por contenido del shader. */
 export function hashSource(source: string): string {
+  return hashSourceU32(source).toString(16)
+}
+
+/** Variante numérica (u32) del FNV-1a — la usa el Genome Expander (§4.3/§4.5). */
+export function hashSourceU32(source: string): number {
   let h = 0x811c9dc5
   for (let i = 0; i < source.length; i++) {
     h ^= source.charCodeAt(i)
     h = Math.imul(h, 0x01000193)
   }
-  return (h >>> 0).toString(16)
+  return h >>> 0
 }

@@ -93,11 +93,39 @@ export {
   FLASH_BUDGET,
   FLASH_BUDGET_RATE,
   parseEuclidMeta,
+  resolveGeneValues,
+  geneSignature,
+  buildGeneDefines,
+  glslFloatLiteral,
+  hashSourceU32,
   type AssembledShader,
   type RemappedLog,
   type EuclidMeta,
   type EuclidParam,
+  type EuclidGene,
 } from './shader/ShaderAssembler'
+
+// 🧬 WAVE 8234 — Infinite Genome · Fase G2: Expander + Pool de variantes
+export {
+  expandGenome,
+  retroprojectDna,
+  geneUniform,
+  pcg32,
+  coreDna,
+  expressGene,
+  tOfGeneValue,
+  genomeIdU32,
+  RETROJECTION_KAPPA,
+  type GenomeDNA,
+  type ExpandedPhenotype,
+} from './genome/GenomeExpander'
+export {
+  spawnGenomeVariant,
+  buildVariantAtom,
+  atomIdForGenome,
+  resetGenomePool,
+  type SpawnResult,
+} from './genome/GenomePool'
 
 // 🔮 WAVE 8230 — Euclid Oracle · Fase E4: átomo generativo builtin
 export {

@@ -38,6 +38,9 @@ import {
   type ISeleneTheiaInput,
 } from './SeleneTheiaAdapter'
 import { getTheiaRegistry } from './TheiaRegistry'
+// 🧬 WAVE 8235 · G3 — el GenomeEvolver (§4.6) recibe barCount+approach
+// del TickEngine y muta el átomo activo vía theta.evolveGenome().
+import { getGenomeEvolver } from '../../theia/genome/GenomeEvolver'
 
 // ─── BUS INTERNO (renderer-only) ──────────────────────────────────────────────
 
@@ -145,6 +148,11 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
     opts.shaderSourceResolver ?? defaultShaderResolver,
   )
 
+  // 1c) 🧬 WAVE 8235 · G3 — GenomeEvolver: observa u_barCount/u_approach
+  // desde el TickEngine y muta el átomo generativo en frontera de frase.
+  const evolver = getGenomeEvolver()
+  evolver.attach(orchestrator)
+
   // 2) Listener: Selene cognitive output → adapter → bus.
   const onCognitive = (input: ISeleneTheiaInput): void => {
     let intent: CueJumpIntent | null
@@ -181,6 +189,7 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
     unsubscribeBus()
     orchestrator.setClipUrlResolver(null)
     orchestrator.setShaderSourceResolver(null)
+    getGenomeEvolver().detach()
   }
 }
 

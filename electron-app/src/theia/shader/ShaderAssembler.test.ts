@@ -25,6 +25,9 @@ import {
   parseStepsHint,
   remapShaderLog,
   resolveGeneValues,
+  layoutExprGenes,
+  exprGeneValues,
+  structGenesDiffer,
   BLIT_FRAG_SRC,
   FLASH_STATS_FRAG_SRC,
   DEFAULT_MAX_STEPS,
@@ -32,6 +35,7 @@ import {
   FLASH_BUDGET,
   FLASH_BUDGET_RATE,
   EUCLID_GLSL_VERSION,
+  EUCLID_GENE_SLOTS,
 } from './ShaderAssembler'
 import { TELEMETRY_SCHEMA, SLOT_PAYLOAD_BASE } from '../telemetry/TheiaTelemetryRing'
 
@@ -736,5 +740,96 @@ describe('G1 — alias de relojes integrales en el preámbulo', () => {
     const bcSlot = TELEMETRY_SCHEMA.find((d) => d.name === 'BAR_COUNT')!
     expect(pre).toContain(`u_tel[${etSlot.slot - SLOT_PAYLOAD_BASE}]`)
     expect(pre).toContain(`u_tel[${bcSlot.slot - SLOT_PAYLOAD_BASE}]`)
+  })
+})
+
+// ───────────── 🧬 WAVE 8235 · G3 — Uniform Genes & Crossover ─────────────
+
+describe('G3 — genes `expr` → u_gene[8] (§4.2 v2)', () => {
+  const BODY3 = `// @euclid gene G_SYM  struct int   3   9    5    a:+0.3
+// @euclid gene G_WARP expr   float 0.4 2.2  1.25 curve=exp
+// @euclid gene G_ZOOM expr   float 0.05 0.5  0.25 a:+0.6
+#ifndef G_SYM
+#define G_SYM 5.0
+#endif
+void mainImage(out vec4 c, in vec2 f) { c = vec4(G_SYM * G_WARP * G_ZOOM); }`
+
+  it('el preámbulo declara siempre `uniform float u_gene[8]`', () => {
+    expect(buildPreamble()).toContain('uniform float u_gene[8];')
+  })
+
+  it('layoutExprGenes: solo `expr`, orden de declaración, cap 8', () => {
+    const meta = parseEuclidMeta(BODY3)
+    expect(layoutExprGenes(meta)).toEqual(['G_WARP', 'G_ZOOM'])
+    // G_SYM es `struct` → nunca entra al array.
+    expect(layoutExprGenes(meta)).not.toContain('G_SYM')
+  })
+
+  it('buildGeneDefines: `expr` → u_gene[k] (texto constante), `struct` → literal', () => {
+    const meta = parseEuclidMeta(BODY3)
+    const exprGenes = layoutExprGenes(meta)
+    const block = buildGeneDefines(
+      { G_SYM: 7, G_WARP: 2.0, G_ZOOM: 0.4 },
+      exprGenes,
+    )
+    expect(block).toContain('#define G_SYM 7.0')
+    expect(block).toContain('#define G_WARP u_gene[0]')
+    expect(block).toContain('#define G_ZOOM u_gene[1]')
+    // El literal del expr NO aparece — el valor vive en el uniform.
+    expect(block).not.toContain('#define G_WARP 2.0')
+    expect(block).not.toContain('#define G_ZOOM 0.4')
+  })
+
+  it('programKey NO cambia al mutar un gen `expr` (§4.6 — sin recompilar)', () => {
+    const meta = parseEuclidMeta(BODY3)
+    const exprGenes = layoutExprGenes(meta)
+    const a = assembleFragmentShader(
+      BODY3,
+      DEFAULT_MAX_STEPS,
+      { G_SYM: 5, G_WARP: 1.25, G_ZOOM: 0.25 },
+      exprGenes,
+    )
+    const b = assembleFragmentShader(
+      BODY3,
+      DEFAULT_MAX_STEPS,
+      { G_SYM: 5, G_WARP: 2.1, G_ZOOM: 0.49 },
+      exprGenes,
+    )
+    // Misma programKey — mismo binario, distinto u_gene (fast-path).
+    expect(hashSource(a.fragSource)).toBe(hashSource(b.fragSource))
+    // …pero un `struct` distinto SÍ produce otro programa (LRU).
+    const c = assembleFragmentShader(
+      BODY3,
+      DEFAULT_MAX_STEPS,
+      { G_SYM: 7, G_WARP: 1.25, G_ZOOM: 0.25 },
+      exprGenes,
+    )
+    expect(hashSource(c.fragSource)).not.toBe(hashSource(a.fragSource))
+  })
+
+  it('exprGeneValues: orden = layout, valores resueltos, huecos a 0', () => {
+    const meta = parseEuclidMeta(BODY3)
+    const exprGenes = layoutExprGenes(meta)
+    const arr = exprGeneValues(exprGenes, { G_WARP: 2.0, G_ZOOM: 0.5 })
+    expect(arr.length).toBe(EUCLID_GENE_SLOTS)
+    expect(arr[0]).toBeCloseTo(2.0)
+    expect(arr[1]).toBeCloseTo(0.5)
+    expect(arr[2]).toBe(0) // hueco libre
+    // out reutilizable — zero-alloc.
+    const reuse = new Float32Array(8)
+    expect(exprGeneValues(exprGenes, { G_WARP: 1 }, reuse)).toBe(reuse)
+    expect(reuse[0]).toBe(1)
+    // Gen no resuelto → 0 (el host siempre empuja el fenotipo completo).
+    const sparse = exprGeneValues(exprGenes, {})
+    expect(sparse[0]).toBe(0)
+  })
+
+  it('structGenesDiffer: detecta cambio struct, ignora expr', () => {
+    const meta = parseEuclidMeta(BODY3)
+    const a = { G_SYM: 5, G_WARP: 1.0 }
+    const b = { G_SYM: 5, G_WARP: 2.2 } // solo expr cambia
+    const c = { G_SYM: 8, G_WARP: 1.0 } // struct cambia
+    expect(structGenesDiffer(meta, a, b)).toBe(false)
+    expect(structGenesDiffer(meta, a, c)).toBe(true)
   })
 })

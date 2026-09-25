@@ -146,6 +146,11 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     'uniform float u_flashMaxDelta;',
     'uniform float u_flashBudget;',
     '',
+    '// 🧬 Genoma `expr` (Infinite Genome §4.2 v2 — WAVE 8235 · G3):',
+    '// genes `expr` → `#define G_X u_gene[k]` — el host los empuja por',
+    '// frame sin recompilar (los `struct` siguen siendo literales).',
+    `uniform float u_gene[${EUCLID_GENE_SLOTS}];`,
+    '',
     '// Aliases Shadertoy — compat estructural con el ecosistema (§4.1)',
     '#define iTime       u_time',
     '#define iResolution u_resolution',
@@ -309,22 +314,90 @@ export function glslFloatLiteral(v: number): string {
   return s.includes('.') ? s : `${s}.0`
 }
 
+/** Slots del array `u_gene` — máximo de genes `expr` por core (§4.2 v2). */
+export const EUCLID_GENE_SLOTS = 8
+
 /**
- * 🧬 WAVE 8233 · G1 — bloque `#define G_*` inyectado tras el preámbulo
- * (Infinite Genome §4.2). Orden de claves estable → hash estable.
+ * 🧬 WAVE 8235 · G3 — orden de los genes `expr` declarados por el core
+ * (posición = índice en `u_gene`). Determinista: orden de declaración en
+ * la fuente, acotado a `EUCLID_GENE_SLOTS`. El resto de genes `expr` cae
+ * al fast-path de `struct` (literal en el fuente).
  */
-export function buildGeneDefines(genes?: Record<string, number>): string {
-  if (!genes) return ''
-  const keys = Object.keys(genes)
-    .filter((k) => GENE_NAME_RE.test(k))
-    .sort()
-  if (keys.length === 0) return ''
+export function layoutExprGenes(meta: EuclidMeta): string[] {
+  const out: string[] = []
+  for (const g of meta.genes) {
+    if (g.cls !== 'expr' || !GENE_NAME_RE.test(g.name)) continue
+    if (out.length >= EUCLID_GENE_SLOTS) break
+    out.push(g.name)
+  }
+  return out
+}
+
+/**
+ * Valores efectivos de los genes `expr` en el orden de `layoutExprGenes`
+ * — lo que el host sube a `u_gene` por `uniform1fv`. `out` reutilizable.
+ */
+export function exprGeneValues(
+  exprGenes: readonly string[],
+  genes: Record<string, number> | undefined,
+  out: Float32Array = new Float32Array(EUCLID_GENE_SLOTS),
+): Float32Array {
+  out.fill(0)
+  for (let i = 0; i < exprGenes.length && i < out.length; i++) {
+    const v = genes?.[exprGenes[i]]
+    if (v !== undefined && Number.isFinite(v)) out[i] = v
+  }
+  return out
+}
+
+/**
+ * ¿Cambia algún gen `struct` entre dos fenotipos del mismo core? (§4.6 —
+ * si no, la mutación solo toca `u_gene` y el activo se aplica sin
+ * recompilar ni crossfade).
+ */
+export function structGenesDiffer(
+  meta: EuclidMeta,
+  a: Record<string, number>,
+  b: Record<string, number>,
+): boolean {
+  for (const g of meta.genes) {
+    if (g.cls !== 'struct' || !GENE_NAME_RE.test(g.name)) continue
+    const va = a[g.name] ?? g.defaultValue
+    const vb = b[g.name] ?? g.defaultValue
+    if (va !== vb) return true
+  }
+  return false
+}
+
+/**
+ * 🧬 WAVE 8233 · G1 + WAVE 8235 · G3 — bloque `#define G_*` tras el
+ * preámbulo (Infinite Genome §4.2):
+ *   · `struct` → literal float inyectado — forma parte del programKey.
+ *   · `expr`   → `#define G_X u_gene[k]` — texto CONSTANTE: el valor no
+ *     toca el hash del programa y el host lo empuja por `uniform1fv`.
+ * Orden de claves estable → hash estable.
+ */
+export function buildGeneDefines(
+  genes?: Record<string, number>,
+  exprGenes?: readonly string[],
+): string {
+  if (!genes && (!exprGenes || exprGenes.length === 0)) return ''
+  const exprSet = new Set(exprGenes ?? [])
   const lines = [
     '',
     '// ── GENOMA inyectado · @euclid gene → #define (Infinite Genome §4.2) ──',
   ]
-  for (const k of keys) lines.push(`#define ${k} ${glslFloatLiteral(genes[k])}`)
-  return lines.join('\n')
+  // expr genes: el #define es siempre el mismo texto → hash inmutable.
+  ;(exprGenes ?? []).forEach((name, i) => {
+    if (GENE_NAME_RE.test(name)) lines.push(`#define ${name} u_gene[${i}]`)
+  })
+  if (genes) {
+    const keys = Object.keys(genes)
+      .filter((k) => GENE_NAME_RE.test(k) && !exprSet.has(k))
+      .sort()
+    for (const k of keys) lines.push(`#define ${k} ${glslFloatLiteral(genes[k])}`)
+  }
+  return lines.length > 2 ? lines.join('\n') : ''
 }
 
 /**
@@ -344,13 +417,16 @@ export function assembleFragmentShader(
   artistBody: string,
   maxSteps = DEFAULT_MAX_STEPS,
   genes?: Record<string, number>,
+  exprGenes?: readonly string[],
 ): AssembledShader {
   const preamble = buildPreamble(maxSteps)
   // 🧬 WAVE 8233 · G1 — el genoma se inyecta ENTRE preámbulo y cuerpo:
   // forma parte del fragSource compilado (hashSource lo incluye → cada
   // variante es un programa distinto en la LRU) y cuenta como líneas
   // generadas para el remap de errores.
-  const geneBlock = buildGeneDefines(genes)
+  // 🧬 WAVE 8235 · G3 — los `expr` emiten `#define G_X u_gene[k]`
+  // (texto constante): mutarlos NO cambia el programKey.
+  const geneBlock = buildGeneDefines(genes, exprGenes)
   const pre = geneBlock ? `${preamble}\n${geneBlock}` : preamble
   const epilogue = buildEpilogue()
   return {

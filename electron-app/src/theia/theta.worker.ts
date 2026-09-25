@@ -56,6 +56,7 @@ import { CrossfadeUnit, type CrossfadeCurve, type CrossfadeStep } from './Crossf
 // 🔮 WAVE 8229 — Euclid Oracle · E3: Shader Contract & Governor (§4.x)
 import {
   assembleFragmentShader,
+  exprGeneValues,
   parseStepsHint,
   hasMainImage,
   hashSource,
@@ -318,6 +319,10 @@ interface WorkerState {
   genActiveId: string
   /** Activación diferida a la finalización de una compilación paralela. */
   genPendingActivate: { shaderId: string; programKey: string; crossfadeMs: number } | null
+  /** 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo → `u_gene[8]`
+   *  por frame. El programa compartido entre fenotipos expr-only lee
+   *  distintos valores sin recompilar (fast-path §4.6). */
+  genGeneValues: Float32Array
   /** FBO escalado del governor (renderScale × resolución canvas). */
   genFbo: WebGLFramebuffer | null
   genFboTex: WebGLTexture | null
@@ -462,6 +467,7 @@ const state: WorkerState = {
   genActive: null,
   genActiveId: 'builtin',
   genPendingActivate: null,
+  genGeneValues: new Float32Array(8),
   genFbo: null,
   genFboTex: null,
   genFboW: 0,
@@ -524,6 +530,8 @@ interface GenUniformLocs {
   flashGuard: WebGLUniformLocation | null
   flashMaxDelta: WebGLUniformLocation | null
   flashBudget: WebGLUniformLocation | null
+  /** 🧬 WAVE 8235 · G3 — `u_gene[8]` (genes `expr`, fast-path §4.2 v2). */
+  gene: WebGLUniformLocation | null
 }
 
 interface GenProgram {
@@ -549,6 +557,14 @@ interface GenSourceSpec {
   source: string
   steps: number
   genes?: Record<string, number>
+  /**
+   * 🧬 WAVE 8235 · G3 — genes `expr` en el orden de `u_gene[8]`
+   * (`layoutExprGenes`). Su `#define` es `u_gene[k]` → mutarlos no
+   * cambia el programKey.
+   */
+  exprGenes?: readonly string[]
+  /** Valores `expr` efectivos precomputados (8 slots) — cero-alloc en activate. */
+  exprValues?: Float32Array
   programKey: string
 }
 
@@ -915,7 +931,7 @@ function buildGLResources(): boolean {
     // re-activar el shader que estaba en pantalla.
     if (state.genSources.size > 0) {
       for (const [id, s] of state.genSources) {
-        loadShaderSource(id, s.source, s.steps, s.genes)
+        loadShaderSource(id, s.source, s.steps, s.genes, s.exprGenes)
       }
       const activeId = state.genActiveId
       const activeSpec = state.genSources.get(activeId)
@@ -1103,7 +1119,7 @@ const GEN_STD_UNIFORMS = new Set([
   'u_beatTime', 'u_kickPulse', 'u_snarePulse', 'u_predictiveETA',
   'u_approach', 'u_impact', 'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
-  'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget',
+  'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_gene',
 ])
 
 function emitShaderStatus(payload: ThetaShaderStatusPayload): void {
@@ -1151,6 +1167,8 @@ function cacheGenLocs(prog: WebGLProgram): GenUniformLocs {
     flashGuard: gl.getUniformLocation(prog, 'u_flashGuard'),
     flashMaxDelta: gl.getUniformLocation(prog, 'u_flashMaxDelta'),
     flashBudget: gl.getUniformLocation(prog, 'u_flashBudget'),
+    // u_gene es array — 'u_gene[0]' da la location base del slot 0.
+    gene: gl.getUniformLocation(prog, 'u_gene[0]'),
   }
 }
 
@@ -1187,6 +1205,7 @@ function loadShaderSource(
   source: string,
   steps: number,
   genes?: Record<string, number>,
+  exprGenes?: readonly string[],
 ): void {
   const gl = state.gl as WebGL2RenderingContext | null
   if (!gl || !state.glIsWebGL2) {
@@ -1200,26 +1219,26 @@ function loadShaderSource(
   }
   // 🧬 WAVE 8233 · G1 — el genoma va DENTRO del fragSource → el programKey
   // (hash FNV del fuente ensamblado) incluye los G_* inyectados (§4.2).
-  const asm = assembleFragmentShader(source, steps, genes)
+  // 🧬 WAVE 8235 · G3 — los `expr` emiten `#define G_X u_gene[k]` (texto
+  // constante): mutar su valor NO cambia el programKey (§4.2 v2).
+  const asm = assembleFragmentShader(source, steps, genes, exprGenes)
   const programKey = hashSource(asm.fragSource)
 
-  const prevSpec = state.genSources.get(shaderId)
-  if (prevSpec?.programKey === programKey) {
-    // Re-carga idempotente (misma fuente + mismo fenotipo): nada que hacer.
-    // Si el programa fue evictado de la LRU sí hace falta recompilar.
-    if (state.genPrograms.has(programKey) || state.genPending.has(programKey)) {
-      emitShaderStatus({
-        shaderId,
-        ok: true,
-        pending: state.genPending.has(programKey) || undefined,
-      })
-      return
-    }
-  }
-  state.genSources.set(shaderId, { source, steps, genes, programKey })
+  // 🧬 WAVE 8235 · G3 — el spec se actualiza SIEMPRE antes del dedupe:
+  // una recarga expr-only conserva programKey pero trae exprValues nuevos
+  // que deben quedar registrados para el próximo activate (u_gene).
+  state.genSources.set(shaderId, {
+    source,
+    steps,
+    genes,
+    exprGenes,
+    exprValues: exprGenes?.length ? exprGeneValues(exprGenes, genes) : undefined,
+    programKey,
+  })
 
-  // Variante ya compilada por otro átomo (o reactivación tras evicción):
-  // se reusa — el shader activo nunca se interrumpe.
+  // Re-carga idempotente / variante ya compilada por otro átomo (misma
+  // programKey) / reactivación tras evicción → se reusa — el shader
+  // activo nunca se interrumpe.
   if (state.genPrograms.has(programKey) || state.genPending.has(programKey)) {
     emitShaderStatus({
       shaderId,
@@ -1341,7 +1360,8 @@ function handleLoadShader(p: ThetaLoadShaderPayload): void {
     return
   }
   const genes = p.meta?.genes
-  loadShaderSource(p.shaderId, p.source, steps, genes)
+  const exprGenes = p.meta?.exprGenes
+  loadShaderSource(p.shaderId, p.source, steps, genes, exprGenes)
   // 🔮 WAVE 8231 · E5 — Modo B: la ventana HDMI compila su copia nativa.
   // 🧬 WAVE 8233 · G1 — con el mismo fenotipo (genes) que el worker.
   state.videoPort?.postMessage({
@@ -1350,6 +1370,7 @@ function handleLoadShader(p: ThetaLoadShaderPayload): void {
     source: p.source,
     steps,
     genes,
+    exprGenes,
   })
 }
 
@@ -1400,9 +1421,23 @@ function handleActivateShader(p: ThetaActivateShaderPayload): void {
 
 /** Conmuta el programa activo: snapshot prev-frame + rampa crossfade. */
 function activateGenProgram(ent: GenProgram, id: string, fadeMs: number): void {
+  // 🧬 WAVE 8235 · G3 — fast-path §4.6: si la variante entrante comparte
+  // programKey con la activa, SOLO cambiaron genes `expr` → se fijan por
+  // `u_gene` sin recompilar, sin snapshot y sin crossfade.
+  if (ent === state.genActive) {
+    state.genActiveId = id
+    ent.lastUsed = state.renderSeq
+    const spec = state.genSources.get(id)
+    if (spec?.exprValues) state.genGeneValues.set(spec.exprValues)
+    else state.genGeneValues.fill(0)
+    return
+  }
   captureGenPrevFrame() // el shader saliente queda como u_prevFrame
   state.genActive = ent
   state.genActiveId = id
+  const spec = state.genSources.get(id)
+  if (spec?.exprValues) state.genGeneValues.set(spec.exprValues)
+  else state.genGeneValues.fill(0)
   ent.lastUsed = state.renderSeq
   if (fadeMs > 0) {
     state.crossfade.start({ totalTicks: Math.max(2, Math.round(fadeMs / 16.7)) })
@@ -1546,6 +1581,8 @@ function renderGenerativeFrame(
   gl.uniform1f(L.predictiveETA, sm.predictiveEtaSec)
   gl.uniform1f(L.approach, sm.approach)
   gl.uniform1f(L.impact, sm.impact)
+  // 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo (§4.2 v2).
+  if (L.gene) gl.uniform1fv(L.gene, state.genGeneValues)
   gl.uniform1f(L.brightness, state.uniforms.get('u_brightness') ?? 1.0)
   gl.uniform1f(L.contrast, state.uniforms.get('u_contrast') ?? 1.0)
   gl.uniform1f(L.blackout, state.uniforms.get('u_blackout') ?? 0.0)
@@ -1713,6 +1750,7 @@ function attachVideoPort(port: MessagePort): void {
       source: s.source,
       steps: s.steps,
       genes: s.genes,
+      exprGenes: s.exprGenes,
     })
   }
   for (const [name, value] of state.uniforms) {

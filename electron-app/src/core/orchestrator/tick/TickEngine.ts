@@ -55,6 +55,7 @@ import {
   stepIntegralClocks,
   type IntegralClockState,
 } from '../../../theia/telemetry/TheiaTelemetryRing'
+import { getGenomeEvolver } from '../../../theia/genome/GenomeEvolver'
 
 export interface TickContext {
   brain: TrinityBrain | null
@@ -2316,6 +2317,31 @@ export class TickEngine {
       : 0
     const msPerBeat = context.bpm > 0 ? 60000 / context.bpm : 0
     const etaBeats = msPerBeat > 0 ? Math.min(16, etaMs / msPerBeat) : 0
+
+    // 🧬 WAVE 8235 · G3 — oportunidad de mutación en frontera de frase
+    // (Infinite Genome §4.6): el evolver decide con el `u_barCount`
+    // absoluto y el `u_approach` INSTANTÁNEO del oráculo (misma fórmula
+    // del smoother sin el EMA — conservador: adelanta el veto ante un
+    // buildup naciente). Jamás muta en clímax (zona peak / apocalypse).
+    const evolver = getGenomeEvolver()
+    if (evolver.isAttached()) {
+      const predicting =
+        sel.predictionType !== null && sel.predictionType !== 'none'
+      const approachNow = predicting
+        ? (1 - Math.min(1, Math.max(0, etaBeats / 8))) *
+          sel.predictionProbability *
+          sel.confidence
+        : 0
+      const dropActive =
+        sel.energyZone === 'peak' ||
+        (flags & (1 << TEL_FLAG.APOCALYPSE)) !== 0
+      evolver.notify(
+        this._euclidClocks.barCount,
+        approachNow,
+        dropActive,
+        msPerBeat > 0 ? msPerBeat * 4 : 0,
+      )
+    }
 
     // Stash por referencia — el fill pre-bound lee de aquí, cero capturas.
     this._euclidNow = now

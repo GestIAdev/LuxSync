@@ -11,9 +11,14 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  CROSS_MUT_BASE,
+  CROSS_MUT_CHAOS,
+  CROSS_MUT_DISP,
+  crossoverGenome,
   expandGenome,
   expressGene,
   geneUniform,
+  genomeChildSeed,
   genomeIdU32,
   pcg32,
   retroprojectDna,
@@ -246,5 +251,104 @@ describe('G2 — retroprojectDna (§4.4)', () => {
       meta.genes.map((g) => [g.name, tOfGeneValue(g, g.defaultValue)]),
     )
     expect(retroprojectDna(meta, ts, NEUTRAL)).toEqual(NEUTRAL)
+  })
+})
+
+// ───────────────────── G3 — reproducción §4.6 ─────────────────────
+
+describe('G3 — genomeChildSeed (§4.6-1)', () => {
+  it('determinista y decorrelacionado entre frases', () => {
+    expect(genomeChildSeed(7, 3)).toBe(genomeChildSeed(7, 3))
+    expect(genomeChildSeed(7, 3)).not.toBe(genomeChildSeed(7, 4))
+    expect(genomeChildSeed(7, 3)).not.toBe(genomeChildSeed(8, 3))
+    // Siempre u32.
+    expect(genomeChildSeed(7, 3)).toBeGreaterThanOrEqual(0)
+    expect(genomeChildSeed(7, 3)).toBeLessThan(0x100000000)
+  })
+})
+
+describe('G3 — crossoverGenome (§4.6)', () => {
+  const A = { G_A: 3, G_B: 0.2, G_C: 1.5 }
+  const B = { G_A: 8, G_B: 0.9, G_C: 5.0 }
+
+  it('determinista: mismos padres + semilla → mismo hijo', () => {
+    const h1 = crossoverGenome(meta, CORE_SRC, A, B, 42)
+    const h2 = crossoverGenome(meta, CORE_SRC, A, B, 42)
+    expect(h1.genes).toEqual(h2.genes)
+    expect(h1.genomeId).toBe(h2.genomeId)
+    expect(h1.dna).toEqual(h2.dna)
+  })
+
+  it('valores del hijo siempre dentro de rango legal (min..max, int redondo)', () => {
+    for (let s = 1; s <= 300; s++) {
+      const h = crossoverGenome(meta, CORE_SRC, A, B, s)
+      expect(Number.isInteger(h.genes.G_A)).toBe(true)
+      expect(h.genes.G_A).toBeGreaterThanOrEqual(1)
+      expect(h.genes.G_A).toBeLessThanOrEqual(10)
+      expect(h.genes.G_B).toBeGreaterThanOrEqual(0)
+      expect(h.genes.G_B).toBeLessThanOrEqual(1)
+      expect(h.genes.G_C).toBeGreaterThanOrEqual(0.5)
+      expect(h.genes.G_C).toBeLessThanOrEqual(8)
+    }
+  })
+
+  it('sin mutación cada gen hereda de A o de B (herencia homóloga)', () => {
+    // chaos_hijo pequeño → p_m ≈ 0.05: con suficientes semillas, al menos
+    // un hijo no muta ningún gen → todos ∈ {A,B} exactamente.
+    const lowChaos = parseEuclidMeta(`// @euclid genome chaos=0.0
+// @euclid gene G_B expr float 0.0 1.0 0.5
+void mainImage(out vec4 c, in vec2 f) { c = vec4(0.0); }`)
+    const a1 = { G_B: 0.1 }
+    const b1 = { G_B: 0.8 }
+    let pure = 0
+    for (let s = 1; s <= 400; s++) {
+      const h = crossoverGenome(lowChaos, CORE_SRC, a1, b1, s)
+      if (h.genes.G_B === 0.1 || h.genes.G_B === 0.8) pure++
+    }
+    // p_m(0)≈0.05 → ≥90% de hijos heredan sin mutar.
+    expect(pure).toBeGreaterThan(360)
+  })
+
+  it('la mutación se desplaza ≤ ±0.15·rango del padre heredado', () => {
+    const range = 9 // G_A: 1..10
+    for (let s = 1; s <= 300; s++) {
+      const h = crossoverGenome(meta, CORE_SRC, A, B, s)
+      const v = h.genes.G_A
+      // v está a ≤0.15·rango + 0.5 (redondeo int) de A o de B (o riel).
+      const nearA = Math.abs(v - A.G_A) <= CROSS_MUT_DISP * range + 0.5
+      const nearB = Math.abs(v - B.G_A) <= CROSS_MUT_DISP * range + 0.5
+      const rail = v === 1 || v === 10
+      expect(nearA || nearB || rail).toBe(true)
+    }
+  })
+
+  it('p_m crece con chaos_hijo: cores caóticos mutan más', () => {
+    const mk = (chaos: number) =>
+      parseEuclidMeta(`// @euclid genome chaos=${chaos}
+// @euclid gene G_B expr float 0.0 1.0 0.5 c:+1.0
+void mainImage(out vec4 c, in vec2 f) { c = vec4(0.0); }`)
+    const a1 = { G_B: 0.2 }
+    const b1 = { G_B: 0.7 }
+    const mutated = (m: typeof meta) => {
+      let n = 0
+      for (let s = 1; s <= 400; s++) {
+        const h = crossoverGenome(m, CORE_SRC, a1, b1, s)
+        if (h.genes.G_B !== 0.2 && h.genes.G_B !== 0.7) n++
+      }
+      return n
+    }
+    // G_B c:+1 empuja chaos_hijo > 0.5 → p_m alto; chaos=0 → p_m ≈ 0.05.
+    expect(mutated(mk(0.9))).toBeGreaterThan(mutated(mk(0.0)))
+  })
+
+  it('el hijo sale empadronado con ADN retroproyectado propio (§4.4)', () => {
+    const h = crossoverGenome(meta, CORE_SRC, A, B, 7)
+    for (const k of ['aggression', 'chaos', 'organicity'] as const) {
+      expect(h.dna[k]).toBeGreaterThanOrEqual(0)
+      expect(h.dna[k]).toBeLessThanOrEqual(1)
+    }
+    // El genomeId es el del fenotipo expresado — no el de los padres.
+    const pa = expandGenome(meta, CORE_SRC, 5)
+    expect(h.genomeId).not.toBe(pa.genomeId)
   })
 })

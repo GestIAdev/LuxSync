@@ -299,7 +299,16 @@ export interface ThetaLoadShaderPayload {
    * inyecta como `#define` tras el preámbulo y forma parte del programKey
    * (una variante genética = otro programa cacheado en la LRU).
    */
-  meta?: { steps?: number; genes?: Record<string, number> }
+  meta?: {
+    steps?: number
+    genes?: Record<string, number>
+    /**
+     * 🧬 WAVE 8235 · G3 — genes `expr` en el orden de `u_gene[8]`
+     * (`layoutExprGenes`): el worker los declara como `#define G_X
+     * u_gene[k]` y el host los empuja por `uniform1fv` sin recompilar.
+     */
+    exprGenes?: readonly string[]
+  }
 }
 
 /**

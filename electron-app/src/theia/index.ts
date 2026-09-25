@@ -98,6 +98,10 @@ export {
   buildGeneDefines,
   glslFloatLiteral,
   hashSourceU32,
+  layoutExprGenes,
+  exprGeneValues,
+  structGenesDiffer,
+  EUCLID_GENE_SLOTS,
   type AssembledShader,
   type RemappedLog,
   type EuclidMeta,
@@ -121,11 +125,28 @@ export {
 } from './genome/GenomeExpander'
 export {
   spawnGenomeVariant,
+  spawnCrossoverVariant,
   buildVariantAtom,
   atomIdForGenome,
   resetGenomePool,
   type SpawnResult,
 } from './genome/GenomePool'
+
+// 🧬 WAVE 8235 — Infinite Genome · Fase G3: crossover + mutación §4.6
+export {
+  crossoverGenome,
+  genomeChildSeed,
+  CROSS_MUT_BASE,
+  CROSS_MUT_CHAOS,
+  CROSS_MUT_DISP,
+} from './genome/GenomeExpander'
+export {
+  GenomeEvolver,
+  getGenomeEvolver,
+  GENOME_PHRASE_BARS,
+  GENOME_APPROACH_GATE,
+  GENOME_MUTATE_BARS,
+} from './genome/GenomeEvolver'
 
 // 🔮 WAVE 8230 — Euclid Oracle · Fase E4: átomo generativo builtin
 export {

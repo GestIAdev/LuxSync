@@ -266,3 +266,86 @@ export function genomeIdU32(
   }
   return h >>> 0
 }
+
+// ───────────────────── Reproducción (§4.6 — WAVE 8235 · G3) ─────────────────────
+
+/** Probabilidad de mutación base (p_m = BASE + CHAOS·chaos_hijo). */
+export const CROSS_MUT_BASE = 0.05
+/** Ganancia de chaos en la probabilidad de mutación. */
+export const CROSS_MUT_CHAOS = 0.25
+/** Amplitud del desplazamiento mutante, en fracción del rango del gen. */
+export const CROSS_MUT_DISP = 0.15
+
+/**
+ * §4.6 — semilla hija `PCG(seed_actual ⊕ contador_de_frases)`. El mixer
+ * de golden-ratio evita correlación entre frases consecutivas.
+ */
+export function genomeChildSeed(seed: number, phraseCount: number): number {
+  return pcg32(
+    (seed >>> 0) ^ (Math.imul(phraseCount >>> 0, 0x9e3779b9) >>> 0),
+  )
+}
+
+/**
+ * §4.6 — crossover entre dos individuos del MISMO core (genes homólogos):
+ *
+ *   1. Herencia: cada gen del hijo viene del padre A o del B con p = ½
+ *      (lane `4k` del RNG por-gen).
+ *   2. chaos_hijo: se retroproyecta el fenotipo recién heredado para
+ *      conocer el temperamento del hijo antes de mutarlo.
+ *   3. Mutación espontánea con p_m = 0.05 + 0.25·chaos_hijo (lane `4k+1`):
+ *      desplazamiento gaussiano barato `Δv = (u1 + u2 − 1)·0.15·rango`
+ *      (lanes `4k+2`, `4k+3`), clamp al rango y redondeo `int`.
+ *   4. Retroproyección final (§4.4) + genomeId §4.5.
+ *
+ * Determinista: la misma (A, B, seed) produce siempre el mismo hijo.
+ */
+export function crossoverGenome(
+  meta: EuclidMeta,
+  coreSource: string,
+  genesA: Record<string, number>,
+  genesB: Record<string, number>,
+  seed: number,
+): ExpandedPhenotype {
+  const coreHash = hashSourceU32(coreSource)
+  const s32 = seed >>> 0
+  const genes: Record<string, number> = {}
+  const ts: Record<string, number> = {}
+  const decl = meta.genes.filter((g) => /^G_[A-Za-z0-9_]+$/.test(g.name))
+
+  // Pase 1 — herencia homóloga: cada gen viene de A o de B (p = ½).
+  decl.forEach((g, k) => {
+    const fromA = geneUniform(s32, coreHash, k * 4) < 0.5
+    const v = (fromA ? genesA : genesB)[g.name] ?? g.defaultValue
+    genes[g.name] = v
+    ts[g.name] = tOfGeneValue(g, v)
+  })
+
+  // chaos_hijo = ADN retroproyectado del hijo ANTES de mutar (§4.6).
+  const chaosChild = retroprojectDna(meta, ts).chaos
+  const pMut = CROSS_MUT_BASE + CROSS_MUT_CHAOS * chaosChild
+
+  // Pase 2 — mutación espontánea (gaussiana aproximada, barata).
+  decl.forEach((g, k) => {
+    if (geneUniform(s32, coreHash, k * 4 + 1) >= pMut) return
+    const range = g.max - g.min
+    if (!(range > 0)) return
+    const u1 = geneUniform(s32, coreHash, k * 4 + 2)
+    const u2 = geneUniform(s32, coreHash, k * 4 + 3)
+    const t = tOfGeneValue(
+      g,
+      genes[g.name] + (u1 + u2 - 1) * CROSS_MUT_DISP * range,
+    )
+    genes[g.name] = expressGene(g, t) // clamp + redondeo int
+    ts[g.name] = t
+  })
+
+  const dna = retroprojectDna(meta, ts)
+  const genomeHash = genomeIdU32(coreHash, meta.genes, ts)
+  return {
+    genes,
+    genomeId: genomeHash.toString(16).padStart(8, '0'),
+    genomeHash,
+    dna,
+  }
+}

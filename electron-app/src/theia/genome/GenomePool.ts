@@ -24,6 +24,7 @@ import { getTheiaRegistry, type TheiaRegistry } from '../../core/theia/TheiaRegi
 import { useTheiaPackStore } from '../../stores/useTheiaPackStore'
 import { parseEuclidMeta, type EuclidMeta } from '../shader/ShaderAssembler'
 import {
+  crossoverGenome,
   expandGenome,
   type ExpandedPhenotype,
 } from './GenomeExpander'
@@ -142,6 +143,94 @@ export function spawnGenomeVariant(
 /** Lookup inverso §4.5 — ¿qué átomo expresa este fenotipo? */
 export function atomIdForGenome(genomeId: string): string | undefined {
   return _genomeIndex.get(genomeId)
+}
+
+/**
+ * 🧬 WAVE 8235 · G3 — crossover §4.6: hijo de dos individuos del MISMO
+ * core (genes homólogos). Los padres pueden ser el core (`core`), una
+ * variante (`core#seed`) o cualquier fenotipo registrado — su fenotipo
+ * efectivo vive en `atom.source.genes` (G1).
+ *
+ * @returns null si los padres no son del mismo core o el hijo ya existe.
+ */
+export function spawnCrossoverVariant(
+  coreAtomId: string,
+  parentAId: string,
+  parentBId: string,
+  seed: number,
+  registry: TheiaRegistry = getTheiaRegistry(),
+): SpawnResult | null {
+  const core = registry.getAtom(coreAtomId)
+  const glsl = core?.source?.glsl
+  if (!core || core.source?.kind !== 'shader' || !glsl) return null
+
+  const resolveGenes = (atomId: string): Record<string, number> | null => {
+    const atom = registry.getAtom(atomId)
+    if (!atom || atom.source?.kind !== 'shader') return null
+    if (atom.source.genes) return atom.source.genes
+    if (atomId === core.id) return null // core = canónico → defaults
+    return null
+  }
+  // El fenotipo del core canónico son los defaults declarados.
+  let meta = _metaCache.get(coreAtomId)
+  if (!meta) {
+    meta = parseEuclidMeta(glsl)
+    _metaCache.set(coreAtomId, meta)
+  }
+  if (meta.genes.length === 0) return null
+
+  const atomA = registry.getAtom(parentAId)
+  const atomB = registry.getAtom(parentBId)
+  if (!atomA || !atomB) return null
+  // Homología §4.6: solo entre individuos del mismo core.
+  if (
+    (atomA.id !== core.id && !atomA.id.startsWith(`${core.id}#`)) ||
+    (atomB.id !== core.id && !atomB.id.startsWith(`${core.id}#`))
+  ) {
+    return null
+  }
+  const defaults: Record<string, number> = {}
+  for (const g of meta.genes) defaults[g.name] = g.defaultValue
+  const genesA =
+    resolveGenes(parentAId) ?? (parentAId === core.id ? defaults : null)
+  const genesB =
+    resolveGenes(parentBId) ?? (parentBId === core.id ? defaults : null)
+  if (!genesA || !genesB) return null
+
+  const s32 = seed >>> 0
+  const phenotype = crossoverGenome(meta, glsl, genesA, genesB, s32)
+
+  const known = _genomeIndex.get(phenotype.genomeId)
+  if (known !== undefined && registry.getAtom(known)) {
+    return { atomId: known, genomeId: phenotype.genomeId, created: false, phenotype }
+  }
+
+  const variant = buildVariantAtom(core, s32, phenotype)
+  if (!registry.register(variant)) return null
+  _genomeIndex.set(phenotype.genomeId, variant.id)
+
+  const store = useTheiaPackStore.getState()
+  const pack = store.packs.get(core.packId)
+  if (pack && !pack.atoms.some((a) => a.id === variant.id)) {
+    const next: ITheiaPack = {
+      ...pack,
+      atoms: [...pack.atoms, variant],
+      manifest: pack.manifest
+        ? {
+            ...pack.manifest,
+            atomOrder: [...(pack.manifest.atomOrder ?? []), variant.id],
+          }
+        : pack.manifest,
+    }
+    store.upsertPack(next)
+  }
+
+  return {
+    atomId: variant.id,
+    genomeId: phenotype.genomeId,
+    created: true,
+    phenotype,
+  }
 }
 
 /** Test hook — vacía índices de dedupe y caché de metas. */

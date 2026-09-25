@@ -20,6 +20,7 @@
 
 import {
   assembleFragmentShader,
+  exprGeneValues,
   remapShaderLog,
   hasMainImage,
   hashSource,
@@ -44,6 +45,7 @@ const GEN_STD_UNIFORMS = new Set([
   'u_approach', 'u_impact', 'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_flashBudgetRate',
+  'u_gene',
 ])
 
 export interface GenRuntimeStatus {
@@ -80,6 +82,8 @@ interface GenLocs {
   flashGuard: WebGLUniformLocation | null
   flashMaxDelta: WebGLUniformLocation | null
   flashBudget: WebGLUniformLocation | null
+  /** 🧬 WAVE 8235 · G3 — `u_gene[8]` (genes `expr`, fast-path §4.2 v2). */
+  gene: WebGLUniformLocation | null
 }
 
 interface GenEntry {
@@ -106,6 +110,9 @@ interface GenPending {
 /** 🧬 WAVE 8233 · G1 — especificación por shaderId: fenotipo+programKey. */
 interface GenSourceSpec {
   genes?: Record<string, number>
+  /** 🧬 WAVE 8235 · G3 — orden `u_gene[8]` + valores `expr` efectivos. */
+  exprGenes?: readonly string[]
+  exprValues?: Float32Array
   programKey: string
 }
 
@@ -134,6 +141,8 @@ export class GenRuntime {
   private active: GenEntry | null = null
   private activeId = BUILTIN_SHADER_ID
   private seq = 0
+  /** 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo → `u_gene[8]`. */
+  private readonly geneValues = new Float32Array(8)
 
   // Recursos GL compartidos
   private vbo: WebGLBuffer | null = null
@@ -254,6 +263,7 @@ export class GenRuntime {
       flashGuard: gl.getUniformLocation(prog, 'u_flashGuard'),
       flashMaxDelta: gl.getUniformLocation(prog, 'u_flashMaxDelta'),
       flashBudget: gl.getUniformLocation(prog, 'u_flashBudget'),
+      gene: gl.getUniformLocation(prog, 'u_gene[0]'),
     }
   }
 
@@ -268,6 +278,7 @@ export class GenRuntime {
     source: string,
     steps?: number,
     genes?: Record<string, number>,
+    exprGenes?: readonly string[],
   ): void {
     const gl = this.gl
     const maxSteps = steps ?? parseStepsHint(source) ?? DEFAULT_MAX_STEPS
@@ -279,9 +290,16 @@ export class GenRuntime {
       })
       return
     }
-    const asm = assembleFragmentShader(source, maxSteps, genes)
+    const asm = assembleFragmentShader(source, maxSteps, genes, exprGenes)
     const programKey = hashSource(asm.fragSource)
-    this.sources.set(shaderId, { genes, programKey })
+    this.sources.set(shaderId, {
+      genes,
+      exprGenes,
+      exprValues: exprGenes?.length
+        ? exprGeneValues(exprGenes, genes)
+        : undefined,
+      programKey,
+    })
     if (this.programs.has(programKey) || this.pending.has(programKey)) {
       // Re-carga idempotente o variante ya cacheada por otro átomo.
       this.onStatus({
@@ -424,9 +442,20 @@ export class GenRuntime {
       this.onStatus({ shaderId: id, ok: false, log: 'shader not loaded' })
       return
     }
+    // 🧬 WAVE 8235 · G3 — fast-path §4.6: misma programKey → solo `expr`
+    // cambió → swap de u_gene sin crossfade ni recompile.
+    if (ent === this.active) {
+      this.activeId = id
+      ent.lastUsed = this.seq
+      if (spec?.exprValues) this.geneValues.set(spec.exprValues)
+      else this.geneValues.fill(0)
+      return
+    }
     this.capturePrev()
     this.active = ent
     this.activeId = id
+    if (spec?.exprValues) this.geneValues.set(spec.exprValues)
+    else this.geneValues.fill(0)
     ent.lastUsed = this.seq
     if (fadeMs > 0) {
       this.fadeT0 = performance.now()
@@ -667,6 +696,8 @@ export class GenRuntime {
     gl.uniform1f(L.predictiveETA, sm.predictiveEtaSec)
     gl.uniform1f(L.approach, sm.approach)
     gl.uniform1f(L.impact, sm.impact)
+    // 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo (§4.2 v2).
+    if (L.gene) gl.uniform1fv(L.gene, this.geneValues)
     gl.uniform1f(L.brightness, uniforms.get('u_brightness') ?? 1.0)
     gl.uniform1f(L.contrast, uniforms.get('u_contrast') ?? 1.0)
     gl.uniform1f(L.blackout, uniforms.get('u_blackout') ?? 0.0)

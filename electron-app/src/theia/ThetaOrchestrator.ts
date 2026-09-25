@@ -59,8 +59,13 @@ import {
   parseEuclidMeta,
   resolveGeneValues,
   geneSignature,
+  layoutExprGenes,
+  structGenesDiffer,
   type EuclidMeta,
 } from './shader/ShaderAssembler'
+// 🧬 WAVE 8235 — INFINITE GENOME · G3: mutación en frontera de frase (§4.6)
+import { spawnGenomeVariant } from './genome/GenomePool'
+import { genomeChildSeed } from './genome/GenomeExpander'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
@@ -229,7 +234,14 @@ export class ThetaOrchestrator {
   // pierde toda su caché GL y necesita el replay completo.
   private desiredShaders = new Map<
     string,
-    { source: string; meta?: { steps?: number; genes?: Record<string, number> } }
+    {
+      source: string
+      meta?: {
+        steps?: number
+        genes?: Record<string, number>
+        exprGenes?: readonly string[]
+      }
+    }
   >()
   private desiredActiveShader = 'builtin'
   private shaderStatusListeners = new Set<(p: ThetaShaderStatusPayload) => void>()
@@ -927,7 +939,14 @@ export class ThetaOrchestrator {
     // `resolveGeneValues` es idempotente → overrides ya resueltos pasan
     // tal cual. El worker lo inyecta como #define → programKey propio.
     const genes = resolveGeneValues(parsed, meta?.genes)
-    const wireMeta = { ...meta, ...(genes ? { genes } : {}) }
+    // 🧬 WAVE 8235 · G3 — orden `u_gene[8]` de los genes `expr` (fast-path:
+    // mutarlos no recompila — el worker los sube por `uniform1fv`).
+    const exprGenes = layoutExprGenes(parsed)
+    const wireMeta = {
+      ...meta,
+      ...(genes ? { genes } : {}),
+      ...(exprGenes.length ? { exprGenes } : {}),
+    }
     this.desiredShaders.set(shaderId, { source, meta: wireMeta })
     if (!this.worker) return
     try {
@@ -953,6 +972,44 @@ export class ThetaOrchestrator {
         makeThetaMessage('theia:activate-shader', { shaderId, crossfadeMs }),
       )
     } catch { /* worker may be dead */ }
+  }
+
+  /**
+   * 🧬 WAVE 8235 · G3 — mutación en frontera de frase (Infinite Genome
+   * §4.6). El `GenomeEvolver` la llama tras verificar las compuertas
+   * (`approach < 0.2`, sin drop activo):
+   *
+   *   1. `childSeed = PCG(seed_actual ⊕ contador_de_frases)` (§4.6-1).
+   *   2. `spawnGenomeVariant` expande + empadrona (dedupe por genomeId).
+   *   3. Solo `expr` cambió → `activateShader(..., 0)` y el worker fija
+   *      `u_gene` sin recompilar ni crossfade (fast-path por programKey).
+   *   4. Cambió algún `struct` → crossfade de 2 compases (`barMs·2`).
+   */
+  evolveGenome(phraseIndex: number, barMs = 0): void {
+    const id = this.desiredActiveShader
+    if (id === 'builtin') return
+    const meta = this.shaderMeta.get(id)
+    if (!meta || meta.genes.length === 0) return
+    const hashIdx = id.lastIndexOf('#')
+    const coreId = hashIdx >= 0 ? id.slice(0, hashIdx) : id
+    const curSeed =
+      hashIdx >= 0 ? (parseInt(id.slice(hashIdx + 1), 10) >>> 0) : 0
+    const childSeed = genomeChildSeed(curSeed, phraseIndex)
+    const spawned = spawnGenomeVariant(coreId, childSeed)
+    if (!spawned || spawned.atomId === id) return
+    const shaderSrc = this._shaderSourceResolver?.(spawned.atomId) ?? null
+    if (!shaderSrc) return
+    const childGenes = spawned.phenotype.genes
+    const parentGenes = this.desiredShaders.get(id)?.meta?.genes
+    const exprOnly =
+      !!parentGenes && !structGenesDiffer(meta, parentGenes, childGenes)
+    this.loadShader(spawned.atomId, shaderSrc.source, shaderSrc.meta)
+    const fadeMs = exprOnly
+      ? 0
+      : barMs > 0
+        ? Math.min(6000, Math.max(400, barMs * 2))
+        : 0
+    this.activateShader(spawned.atomId, fadeMs)
   }
 
   /** Suscripción a `theia:shader-status`. Devuelve unsubscribe. */

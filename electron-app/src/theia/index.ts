@@ -101,6 +101,10 @@ export {
   layoutExprGenes,
   exprGeneValues,
   structGenesDiffer,
+  // 🧬 WAVE 8237 · G5/G6 — Materia Viva + canales estándar (§3.1/§9).
+  hasMainState,
+  assembleSimFragmentShader,
+  buildSimEpilogue,
   EUCLID_GENE_SLOTS,
   type AssembledShader,
   type RemappedLog,
@@ -108,6 +112,9 @@ export {
   type EuclidParam,
   type EuclidGene,
 } from './shader/ShaderAssembler'
+
+// 🧬 WAVE 8237 · G5 — ping-pong RGBA16F (estado float persistente).
+export { FloatStatePool, floatStateSupported } from './shader/FloatStatePool'
 
 // 🧬 WAVE 8234 — Infinite Genome · Fase G2: Expander + Pool de variantes
 export {

@@ -146,6 +146,15 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     'uniform float u_flashMaxDelta;',
     'uniform float u_flashBudget;',
     '',
+    '// 🧬 WAVE 8237 · G5 — estado persistente float (Materia Viva §9):',
+    '// ping-pong RGBA16F (EXT_color_buffer_float). El buffer es LINEAL y',
+    '// CRUDO — jamás pasa por el epílogo (sin masters, sin sRGB, sin',
+    '// limitador): sustrato real para autómatas (Gray-Scott, Physarum).',
+    '// `u_state` = texel del frame anterior del autómata; `u_stateInit`',
+    '// = 1.0 solo el primer frame tras alloc/reset → el shader siembra.',
+    'uniform sampler2D u_state;',
+    'uniform float     u_stateInit;',
+    '',
     '// 🧬 Genoma `expr` (Infinite Genome §4.2 v2 — WAVE 8235 · G3):',
     '// genes `expr` → `#define G_X u_gene[k]` — el host los empuja por',
     '// frame sin recompilar (los `struct` siguen siendo literales).',
@@ -178,6 +187,29 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     lines.push(`#define ${name.padEnd(18)} telFlag(${bit})`)
   }
   lines.push('')
+
+  // 🧬 WAVE 8237 · G6 — biblioteca estándar de canales (§3.1, Ley de
+  // Uniformidad por construcción): los 5 canales derivados que consumen
+  // las matemáticas de las familias, calculados IDÉNTICOS en todos los
+  // cores. Una evaluación por píxel, O(1), sin estado.
+  lines.push('// ── Canales estándar §3.1 (G6 — euChannels) ──')
+  lines.push('//   tc     — tensión·contracción: curva perceptual u_approach² (§3.4)')
+  lines.push('//   td     — tensión·disolución: breakdown inminente (u_enums.y==3)')
+  lines.push('//   glitch — ruptura digital con compuerta APOCALYPSE (§3.5)')
+  lines.push('//   live   — factor de vida: audio vivo vs. latido libre')
+  lines.push('//   groove — swing solo con pulso fiable (PLL_LOCKED)')
+  lines.push(
+    'void euChannels(out float tc, out float td, out float glitch,',
+    '                out float live, out float groove) {',
+    '  bool breakNx = (u_enums.y == 3);',
+    '  tc     = breakNx ? 0.0 : u_approach * u_approach;',
+    '  td     = breakNx ? u_approach : 0.0;',
+    '  glitch = APOCALYPSE ? u_harshness : 0.0;',
+    '  live   = AUDIO_LIVE ? 1.0 : 0.3;',
+    '  groove = PLL_LOCKED ? u_beatConfidence : 0.25;',
+    '}',
+    '',
+  )
 
   lines.push('// ── Librería Euclid (§4.1 — cero coste si no se usa) ──')
   lines.push(
@@ -431,6 +463,56 @@ export function assembleFragmentShader(
   const epilogue = buildEpilogue()
   return {
     fragSource: `${pre}\n${artistBody}\n${epilogue}\n`,
+    preambleLines: pre.split('\n').length,
+    bodyLines: artistBody.split('\n').length,
+  }
+}
+
+// ─────────────────── 🧬 WAVE 8237 · G5 — Materia Viva ───────────────────
+
+/**
+ * ¿El shader declara un paso de simulación? (§9·G5) El artista escribe
+ * `void mainState(out vec4 s, in vec2 fragCoord)` — el host la ejecuta
+ * cada frame en el buffer RGBA16F ping-pong (`u_state` = frame previo,
+ * `u_stateInit` = 1 en el primer frame tras reset para sembrar) ANTES de
+ * `mainImage`, que puede muestrear `u_state` ya actualizado.
+ */
+export function hasMainState(source: string): boolean {
+  return /void\s+mainState\s*\(\s*out\s+vec4/.test(source)
+}
+
+/**
+ * Epílogo del pase de simulación — la ÚNICA salida es el estado crudo:
+ * ni masters, ni crossfade, ni limitador ni sRGB (el buffer RGBA16F se
+ * conserva lineal e íntegro, §9·G5).
+ */
+export function buildSimEpilogue(): string {
+  return [
+    '',
+    '// ── EPÍLOGO DE SIMULACIÓN (G5 — estado crudo, sin masters) ──',
+    'void main() {',
+    '  mainState(fragColor, gl_FragCoord.xy);',
+    '}',
+  ].join('\n')
+}
+
+/**
+ * Ensambla el programa de SIMULACIÓN de un shader con `mainState`
+ * (mismo preámbulo + genes — el autómata respira con la misma
+ * telemetría — pero epílogo crudo: `mainState` escribe fragColor tal
+ * cual al RGBA16F ping-pong).
+ */
+export function assembleSimFragmentShader(
+  artistBody: string,
+  maxSteps = DEFAULT_MAX_STEPS,
+  genes?: Record<string, number>,
+  exprGenes?: readonly string[],
+): AssembledShader {
+  const preamble = buildPreamble(maxSteps)
+  const geneBlock = buildGeneDefines(genes, exprGenes)
+  const pre = geneBlock ? `${preamble}\n${geneBlock}` : preamble
+  return {
+    fragSource: `${pre}\n${artistBody}\n${buildSimEpilogue()}\n`,
     preambleLines: pre.split('\n').length,
     bodyLines: artistBody.split('\n').length,
   }

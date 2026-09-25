@@ -20,9 +20,11 @@
 
 import {
   assembleFragmentShader,
+  assembleSimFragmentShader,
   exprGeneValues,
   remapShaderLog,
   hasMainImage,
+  hasMainState,
   hashSource,
   parseStepsHint,
   GEN_VERTEX_SRC,
@@ -34,6 +36,8 @@ import {
   FLASH_BUDGET,
   FLASH_BUDGET_RATE,
 } from './ShaderAssembler'
+// 🧬 WAVE 8237 · G5 — Materia Viva: ping-pong RGBA16F por programa.
+import { FloatStatePool } from './FloatStatePool'
 import type { TelemetrySmoother } from '../telemetry/TelemetrySmoother'
 
 export const BUILTIN_SHADER_ID = 'builtin'
@@ -45,7 +49,7 @@ const GEN_STD_UNIFORMS = new Set([
   'u_approach', 'u_impact', 'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_flashBudgetRate',
-  'u_gene',
+  'u_gene', 'u_state', 'u_stateInit',
 ])
 
 export interface GenRuntimeStatus {
@@ -84,6 +88,28 @@ interface GenLocs {
   flashBudget: WebGLUniformLocation | null
   /** 🧬 WAVE 8235 · G3 — `u_gene[8]` (genes `expr`, fast-path §4.2 v2). */
   gene: WebGLUniformLocation | null
+  /** 🧬 WAVE 8237 · G5 — estado RGBA16F del autómata + flag de siembra. */
+  state: WebGLUniformLocation | null
+  stateInit: WebGLUniformLocation | null
+}
+
+/** Subconjunto de uniforms que consume el pase de simulación (G5). */
+interface SimLocs {
+  tel: WebGLUniformLocation | null
+  flags: WebGLUniformLocation | null
+  enums: WebGLUniformLocation | null
+  time: WebGLUniformLocation | null
+  dt: WebGLUniformLocation | null
+  resolution: WebGLUniformLocation | null
+  beatTime: WebGLUniformLocation | null
+  kickPulse: WebGLUniformLocation | null
+  snarePulse: WebGLUniformLocation | null
+  predictiveETA: WebGLUniformLocation | null
+  approach: WebGLUniformLocation | null
+  impact: WebGLUniformLocation | null
+  gene: WebGLUniformLocation | null
+  state: WebGLUniformLocation | null
+  stateInit: WebGLUniformLocation | null
 }
 
 interface GenEntry {
@@ -92,6 +118,13 @@ interface GenEntry {
   paramLocs: Map<string, WebGLUniformLocation | null>
   posLoc: number
   lastUsed: number
+  /** 🧬 WAVE 8237 · G5 — programa de simulación (mainState) si existe. */
+  simProgram: WebGLProgram | null
+  simLocs: SimLocs | null
+  simPosLoc: number
+  simParamLocs: Map<string, WebGLUniformLocation | null>
+  /** Ping-pong RGBA16F propio del programa — null si no hay mainState. */
+  statePool: FloatStatePool | null
 }
 
 interface GenPending {
@@ -109,6 +142,8 @@ interface GenPending {
 
 /** 🧬 WAVE 8233 · G1 — especificación por shaderId: fenotipo+programKey. */
 interface GenSourceSpec {
+  /** 🧬 WAVE 8237 · G5 — fuente cruda (para el pase de simulación). */
+  source: string
   genes?: Record<string, number>
   /** 🧬 WAVE 8235 · G3 — orden `u_gene[8]` + valores `expr` efectivos. */
   exprGenes?: readonly string[]
@@ -264,7 +299,81 @@ export class GenRuntime {
       flashMaxDelta: gl.getUniformLocation(prog, 'u_flashMaxDelta'),
       flashBudget: gl.getUniformLocation(prog, 'u_flashBudget'),
       gene: gl.getUniformLocation(prog, 'u_gene[0]'),
+      state: gl.getUniformLocation(prog, 'u_state'),
+      stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
     }
+  }
+
+  /** Locations del pase de simulación (G5 — subconjunto sin epílogo). */
+  private cacheSimLocs(prog: WebGLProgram): SimLocs {
+    const gl = this.gl
+    return {
+      tel: gl.getUniformLocation(prog, 'u_tel'),
+      flags: gl.getUniformLocation(prog, 'u_flags'),
+      enums: gl.getUniformLocation(prog, 'u_enums'),
+      time: gl.getUniformLocation(prog, 'u_time'),
+      dt: gl.getUniformLocation(prog, 'u_dt'),
+      resolution: gl.getUniformLocation(prog, 'u_resolution'),
+      beatTime: gl.getUniformLocation(prog, 'u_beatTime'),
+      kickPulse: gl.getUniformLocation(prog, 'u_kickPulse'),
+      snarePulse: gl.getUniformLocation(prog, 'u_snarePulse'),
+      predictiveETA: gl.getUniformLocation(prog, 'u_predictiveETA'),
+      approach: gl.getUniformLocation(prog, 'u_approach'),
+      impact: gl.getUniformLocation(prog, 'u_impact'),
+      gene: gl.getUniformLocation(prog, 'u_gene[0]'),
+      state: gl.getUniformLocation(prog, 'u_state'),
+      stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
+    }
+  }
+
+  /**
+   * 🧬 WAVE 8237 · G5 — compila el pase de simulación (`mainState`):
+   * misma fuente de artista, epílogo crudo — el fragColor va directo al
+   * ping-pong RGBA16F. Sync (fuente pequeña, tras la barrera KHR del
+   * shader visual). null en error — no fatal.
+   */
+  private compileSimProgram(
+    shaderId: string,
+    spec: GenSourceSpec,
+    steps: number,
+  ): WebGLProgram | null {
+    const gl = this.gl
+    const asm = assembleSimFragmentShader(
+      spec.source, steps, spec.genes, spec.exprGenes,
+    )
+    const vs = this.compileShader(gl.VERTEX_SHADER, GEN_VERTEX_SRC)
+    const fs = this.compileShader(gl.FRAGMENT_SHADER, asm.fragSource)
+    if (!vs.ok || !fs.ok) {
+      gl.deleteShader(vs.shader)
+      gl.deleteShader(fs.shader)
+      this.onStatus({
+        shaderId,
+        ok: false,
+        log: `sim pass compile: ${fs.log || vs.log}`,
+      })
+      return null
+    }
+    const prog = gl.createProgram()!
+    gl.attachShader(prog, vs.shader)
+    gl.attachShader(prog, fs.shader)
+    gl.linkProgram(prog)
+    gl.deleteShader(vs.shader)
+    gl.deleteShader(fs.shader)
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      try { gl.deleteProgram(prog) } catch { /* noop */ }
+      return null
+    }
+    return prog
+  }
+
+  /** Libera programa visual + simulación + ping-pong de una entrada. */
+  private deleteEntry(ent: GenEntry): void {
+    const gl = this.gl
+    try {
+      gl.deleteProgram(ent.program)
+      if (ent.simProgram) gl.deleteProgram(ent.simProgram)
+      ent.statePool?.dispose()
+    } catch { /* noop */ }
   }
 
   /**
@@ -293,6 +402,7 @@ export class GenRuntime {
     const asm = assembleFragmentShader(source, maxSteps, genes, exprGenes)
     const programKey = hashSource(asm.fragSource)
     this.sources.set(shaderId, {
+      source,
       genes,
       exprGenes,
       exprValues: exprGenes?.length
@@ -364,6 +474,26 @@ export class GenRuntime {
         paramLocs: new Map(),
         posLoc: gl.getAttribLocation(p.program, 'a_pos'),
         lastUsed: this.seq,
+        simProgram: null,
+        simLocs: null,
+        simPosLoc: -1,
+        simParamLocs: new Map(),
+        statePool: null,
+      }
+      // 🧬 WAVE 8237 · G5 — Materia Viva: si el artista declara
+      // `mainState`, compila el pase de simulación (epílogo crudo → el
+      // fragColor va tal cual al ping-pong RGBA16F). No fatal si falla.
+      const spec = this.sources.get(p.shaderId)
+      if (spec && hasMainState(spec.source)) {
+        const sim = this.compileSimProgram(
+          p.shaderId, spec, p.steps,
+        )
+        if (sim) {
+          ent.simProgram = sim
+          ent.simLocs = this.cacheSimLocs(sim)
+          ent.simPosLoc = gl.getAttribLocation(sim, 'a_pos')
+          ent.statePool = new FloatStatePool(gl)
+        }
       }
       this.programs.set(p.programKey, ent)
       this.evict()
@@ -412,9 +542,7 @@ export class GenRuntime {
         }
       }
       if (oldestId === '') break
-      try {
-        this.gl.deleteProgram(this.programs.get(oldestId)!.program)
-      } catch { /* noop */ }
+      this.deleteEntry(this.programs.get(oldestId)!)
       this.programs.delete(oldestId)
     }
   }
@@ -665,6 +793,52 @@ export class GenRuntime {
       this.fadeT0 = -1
     }
 
+    // ── 🧬 WAVE 8237 · G5 — pase de SIMULACIÓN (Materia Viva) ────────
+    // Ping-pong RGBA16F propio del programa — lineal, sin epílogo.
+    let stateInitF = 0
+    const pool = ent.statePool
+    if (ent.simProgram && pool && pool.ensure(sw, sh)) {
+      stateInitF = pool.needsInit ? 1 : 0
+      const SL = ent.simLocs!
+      gl.bindFramebuffer(gl.FRAMEBUFFER, pool.writeFramebuffer)
+      gl.viewport(0, 0, sw, sh)
+      gl.useProgram(ent.simProgram)
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, pool.readTexture ?? this.dummyTex)
+      gl.uniform1fv(SL.tel, sm.out)
+      gl.uniform1i(SL.flags, sm.flags)
+      gl.uniform4i(
+        SL.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone,
+      )
+      gl.uniform1f(SL.time, nowMs * 0.001)
+      gl.uniform1f(SL.dt, dtMs * 0.001)
+      gl.uniform3f(SL.resolution, sw, sh, 1)
+      gl.uniform1f(SL.beatTime, sm.beatTime)
+      gl.uniform1f(SL.kickPulse, sm.kickPulse)
+      gl.uniform1f(SL.snarePulse, sm.snarePulse)
+      gl.uniform1f(SL.predictiveETA, sm.predictiveEtaSec)
+      gl.uniform1f(SL.approach, sm.approach)
+      gl.uniform1f(SL.impact, sm.impact)
+      if (SL.gene) gl.uniform1fv(SL.gene, this.geneValues)
+      gl.uniform1i(SL.state, 0)
+      gl.uniform1f(SL.stateInit, stateInitF)
+      for (const [name, value] of uniforms) {
+        if (GEN_STD_UNIFORMS.has(name)) continue
+        let loc = ent.simParamLocs.get(name)
+        if (loc === undefined) {
+          loc = gl.getUniformLocation(ent.simProgram, name)
+          ent.simParamLocs.set(name, loc)
+        }
+        if (loc) gl.uniform1f(loc, value)
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo)
+      gl.enableVertexAttribArray(ent.simPosLoc)
+      gl.vertexAttribPointer(ent.simPosLoc, 2, gl.FLOAT, false, 0, 0)
+      gl.drawArrays(gl.TRIANGLES, 0, 3)
+      pool.swap()
+      pool.needsInit = false
+    }
+
     // ── Escena del artista → FBO escalado ────────────────────────────
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
     gl.viewport(0, 0, sw, sh)
@@ -675,6 +849,12 @@ export class GenRuntime {
     gl.bindTexture(
       gl.TEXTURE_2D,
       (this.statsFlip ? this.statsTexA : this.statsTexB) ?? this.dummyTex,
+    )
+    // 🧬 G5 — u_state = estado float actualizado (o dummy si no hay sim).
+    gl.activeTexture(gl.TEXTURE2)
+    gl.bindTexture(
+      gl.TEXTURE_2D,
+      (pool && pool.ready ? pool.readTexture : this.dummyTex) ?? this.dummyTex,
     )
 
     const L = ent.locs
@@ -704,6 +884,8 @@ export class GenRuntime {
     gl.uniform1f(L.renderScale, scale)
     gl.uniform1i(L.prevFrame, 0)
     gl.uniform1i(L.flashState, 1)
+    gl.uniform1i(L.state, 2)
+    gl.uniform1f(L.stateInit, stateInitF)
     gl.uniform1f(L.hasPrev, this.prevValid ? 1 : 0)
     gl.uniform1f(L.blend, blend)
     gl.uniform1f(L.flashGuard, uniforms.get('u_flashGuard') ?? 1.0)
@@ -779,9 +961,7 @@ export class GenRuntime {
   dispose(): void {
     const gl = this.gl
     for (const ent of this.programs.values()) {
-      try {
-        gl.deleteProgram(ent.program)
-      } catch { /* noop */ }
+      this.deleteEntry(ent)
     }
     for (const p of this.pending.values()) {
       try {

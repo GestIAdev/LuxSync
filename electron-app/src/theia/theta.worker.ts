@@ -56,9 +56,11 @@ import { CrossfadeUnit, type CrossfadeCurve, type CrossfadeStep } from './Crossf
 // 🔮 WAVE 8229 — Euclid Oracle · E3: Shader Contract & Governor (§4.x)
 import {
   assembleFragmentShader,
+  assembleSimFragmentShader,
   exprGeneValues,
   parseStepsHint,
   hasMainImage,
+  hasMainState,
   hashSource,
   remapShaderLog,
   GEN_VERTEX_SRC,
@@ -71,6 +73,8 @@ import {
   FLASH_BUDGET_RATE,
 } from './shader/ShaderAssembler'
 import { RenderGovernor } from './shader/RenderGovernor'
+// 🧬 WAVE 8237 · G5 — Materia Viva: ping-pong RGBA16F por programa.
+import { FloatStatePool } from './shader/FloatStatePool'
 // � WAVE 8215 — Glass Bridge: transferable frame writers (ping-pong pool)
 import {
   createVideoFrameBuffer,
@@ -532,6 +536,28 @@ interface GenUniformLocs {
   flashBudget: WebGLUniformLocation | null
   /** 🧬 WAVE 8235 · G3 — `u_gene[8]` (genes `expr`, fast-path §4.2 v2). */
   gene: WebGLUniformLocation | null
+  /** 🧬 WAVE 8237 · G5 — estado RGBA16F del autómata + flag de siembra. */
+  state: WebGLUniformLocation | null
+  stateInit: WebGLUniformLocation | null
+}
+
+/** Subconjunto de uniforms que consume el pase de simulación (G5). */
+interface SimLocs {
+  tel: WebGLUniformLocation | null
+  flags: WebGLUniformLocation | null
+  enums: WebGLUniformLocation | null
+  time: WebGLUniformLocation | null
+  dt: WebGLUniformLocation | null
+  resolution: WebGLUniformLocation | null
+  beatTime: WebGLUniformLocation | null
+  kickPulse: WebGLUniformLocation | null
+  snarePulse: WebGLUniformLocation | null
+  predictiveETA: WebGLUniformLocation | null
+  approach: WebGLUniformLocation | null
+  impact: WebGLUniformLocation | null
+  gene: WebGLUniformLocation | null
+  state: WebGLUniformLocation | null
+  stateInit: WebGLUniformLocation | null
 }
 
 interface GenProgram {
@@ -545,6 +571,14 @@ interface GenProgram {
   lastUsed: number
   /** MAX_STEPS con que se ensambló (hint @euclid steps). */
   steps: number
+  /** 🧬 WAVE 8237 · G5 — programa de simulación (mainState) si existe. */
+  simProgram: WebGLProgram | null
+  simLocs: SimLocs | null
+  simPosLoc: number
+  /** Params de artista en el programa de sim — lazy per nombre. */
+  simParamLocs: Map<string, WebGLUniformLocation | null>
+  /** Ping-pong RGBA16F propio del programa — null si no hay mainState. */
+  statePool: FloatStatePool | null
 }
 
 /**
@@ -983,7 +1017,7 @@ function teardownGL(): void {
       if (state.glProgram) gl.deleteProgram(state.glProgram)
       // 🔮 WAVE 8229 · E3 — recursos del path generativo
       for (const ent of state.genPrograms.values()) {
-        gl.deleteProgram(ent.program)
+        gl_deleteGenEntry(gl as WebGL2RenderingContext, ent)
       }
       if (state.blitProgram) gl.deleteProgram(state.blitProgram)
       if (state.statsProgram) gl.deleteProgram(state.statsProgram)
@@ -1120,6 +1154,7 @@ const GEN_STD_UNIFORMS = new Set([
   'u_approach', 'u_impact', 'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_gene',
+  'u_state', 'u_stateInit',
 ])
 
 function emitShaderStatus(payload: ThetaShaderStatusPayload): void {
@@ -1169,7 +1204,40 @@ function cacheGenLocs(prog: WebGLProgram): GenUniformLocs {
     flashBudget: gl.getUniformLocation(prog, 'u_flashBudget'),
     // u_gene es array — 'u_gene[0]' da la location base del slot 0.
     gene: gl.getUniformLocation(prog, 'u_gene[0]'),
+    // 🧬 WAVE 8237 · G5 — estado RGBA16F (u_state/u_stateInit).
+    state: gl.getUniformLocation(prog, 'u_state'),
+    stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
   }
+}
+
+/** Locations del pase de simulación (G5 — subconjunto sin epílogo). */
+function cacheSimLocs(prog: WebGLProgram): SimLocs {
+  const gl = state.gl!
+  return {
+    tel: gl.getUniformLocation(prog, 'u_tel'),
+    flags: gl.getUniformLocation(prog, 'u_flags'),
+    enums: gl.getUniformLocation(prog, 'u_enums'),
+    time: gl.getUniformLocation(prog, 'u_time'),
+    dt: gl.getUniformLocation(prog, 'u_dt'),
+    resolution: gl.getUniformLocation(prog, 'u_resolution'),
+    beatTime: gl.getUniformLocation(prog, 'u_beatTime'),
+    kickPulse: gl.getUniformLocation(prog, 'u_kickPulse'),
+    snarePulse: gl.getUniformLocation(prog, 'u_snarePulse'),
+    predictiveETA: gl.getUniformLocation(prog, 'u_predictiveETA'),
+    approach: gl.getUniformLocation(prog, 'u_approach'),
+    impact: gl.getUniformLocation(prog, 'u_impact'),
+    gene: gl.getUniformLocation(prog, 'u_gene[0]'),
+    state: gl.getUniformLocation(prog, 'u_state'),
+    stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
+  }
+}
+
+/** Libera todos los recursos GL de una entrada (programa + sim + pool). */
+function gl_deleteGenEntry(gl: WebGL2RenderingContext, ent: GenProgram): void {
+  gl.deleteProgram(ent.program)
+  if (ent.simProgram) gl.deleteProgram(ent.simProgram)
+  ent.statePool?.dispose()
+  ent.statePool = null
 }
 
 /** Evicción LRU — el programa ACTIVO nunca sale (§4.4, máx 8). */
@@ -1188,7 +1256,7 @@ function evictGenCache(): void {
     const ent = state.genPrograms.get(oldestId)!
     if (state.gl) {
       try {
-        state.gl.deleteProgram(ent.program)
+        gl_deleteGenEntry(state.gl as WebGL2RenderingContext, ent)
       } catch { /* context may be lost */ }
     }
     state.genPrograms.delete(oldestId)
@@ -1310,6 +1378,31 @@ function finalizeGenCompile(p: PendingGenCompile): void {
       posLoc: gl.getAttribLocation(p.program, 'a_pos'),
       lastUsed: state.renderSeq,
       steps: p.steps,
+      simProgram: null,
+      simLocs: null,
+      simPosLoc: -1,
+      simParamLocs: new Map(),
+      statePool: null,
+    }
+    // 🧬 WAVE 8237 · G5 — Materia Viva: si el artista declara `mainState`,
+    // compila el pase de simulación (fuente pequeña — sync, fuera del
+    // critical path del KHR del shader visual). Si falla, el shader visual
+    // sigue vivo — el autómata simplemente no corre.
+    if (hasMainState(p.source)) {
+      const spec = state.genSources.get(p.shaderId)
+      const sim = compileSimProgram(
+        gl,
+        p.source,
+        p.steps,
+        spec?.genes,
+        spec?.exprGenes,
+      )
+      if (sim) {
+        ent.simProgram = sim.program
+        ent.simLocs = cacheSimLocs(sim.program)
+        ent.simPosLoc = gl.getAttribLocation(sim.program, 'a_pos')
+        ent.statePool = new FloatStatePool(gl)
+      }
     }
     state.genPrograms.set(p.programKey, ent)
     evictGenCache()
@@ -1332,6 +1425,42 @@ function finalizeGenCompile(p: PendingGenCompile): void {
       line: mapped.line ?? undefined,
     })
   }
+}
+
+/**
+ * 🧬 WAVE 8237 · G5 — compila el pase de simulación (`mainState`):
+ * misma fuente de artista, epílogo crudo (sin masters ni sRGB) — el
+ * fragColor va directo al ping-pong RGBA16F. Devuelve null en error
+ * (no fatal: el shader visual sigue operativo).
+ */
+function compileSimProgram(
+  gl: WebGL2RenderingContext,
+  source: string,
+  steps: number,
+  genes?: Record<string, number>,
+  exprGenes?: readonly string[],
+): { program: WebGLProgram } | null {
+  const asm = assembleSimFragmentShader(source, steps, genes, exprGenes)
+  const vs = compileShaderEx(gl, gl.VERTEX_SHADER, GEN_VERTEX_SRC)
+  const fs = compileShaderEx(gl, gl.FRAGMENT_SHADER, asm.fragSource)
+  if (!vs.ok || !fs.ok) {
+    gl.deleteShader(vs.shader)
+    gl.deleteShader(fs.shader)
+    sendError(`sim pass compile failed: ${fs.log || vs.log}`, false)
+    return null
+  }
+  const prog = gl.createProgram()!
+  gl.attachShader(prog, vs.shader)
+  gl.attachShader(prog, fs.shader)
+  gl.linkProgram(prog)
+  gl.deleteShader(vs.shader)
+  gl.deleteShader(fs.shader)
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    sendError(`sim pass link failed: ${gl.getProgramInfoLog(prog) ?? ''}`, false)
+    try { gl.deleteProgram(prog) } catch { /* noop */ }
+    return null
+  }
+  return { program: prog }
 }
 
 /** Sondeo por frame — §4.4: el render nunca se congela compilando. */
@@ -1556,6 +1685,52 @@ function renderGenerativeFrame(
   }
   const sm = state.smoother
 
+  // ── 🧬 WAVE 8237 · G5 — pase de SIMULACIÓN (Materia Viva) ──────────
+  // Si el shader declara `mainState`, el autómata itera un paso sobre su
+  // ping-pong RGBA16F propio (lineal, sin epílogo). La escena visual lee
+  // el estado YA actualizado como `u_state`.
+  let stateInitF = 0
+  const pool = ent.statePool
+  if (ent.simProgram && pool && pool.ensure(sw, sh)) {
+    stateInitF = pool.needsInit ? 1 : 0
+    const SL = ent.simLocs!
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pool.writeFramebuffer)
+    gl.viewport(0, 0, sw, sh)
+    gl.useProgram(ent.simProgram)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, pool.readTexture ?? state.dummyTex)
+    gl.uniform1fv(SL.tel, sm.out)
+    gl.uniform1i(SL.flags, sm.flags)
+    gl.uniform4i(SL.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone)
+    gl.uniform1f(SL.time, perfNow * 0.001)
+    gl.uniform1f(SL.dt, dtMs * 0.001)
+    gl.uniform3f(SL.resolution, sw, sh, 1)
+    gl.uniform1f(SL.beatTime, sm.beatTime)
+    gl.uniform1f(SL.kickPulse, sm.kickPulse)
+    gl.uniform1f(SL.snarePulse, sm.snarePulse)
+    gl.uniform1f(SL.predictiveETA, sm.predictiveEtaSec)
+    gl.uniform1f(SL.approach, sm.approach)
+    gl.uniform1f(SL.impact, sm.impact)
+    if (SL.gene) gl.uniform1fv(SL.gene, state.genGeneValues)
+    gl.uniform1i(SL.state, 0)
+    gl.uniform1f(SL.stateInit, stateInitF)
+    for (const [name, value] of state.uniforms) {
+      if (GEN_STD_UNIFORMS.has(name)) continue
+      let loc = ent.simParamLocs.get(name)
+      if (loc === undefined) {
+        loc = gl.getUniformLocation(ent.simProgram, name)
+        ent.simParamLocs.set(name, loc)
+      }
+      if (loc) gl.uniform1f(loc, value)
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, state.glVbo)
+    gl.enableVertexAttribArray(ent.simPosLoc)
+    gl.vertexAttribPointer(ent.simPosLoc, 2, gl.FLOAT, false, 0, 0)
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
+    pool.swap()
+    pool.needsInit = false
+  }
+
   // ── Escena del artista → FBO escalado ──────────────────────────────
   gl.bindFramebuffer(gl.FRAMEBUFFER, state.genFbo)
   gl.viewport(0, 0, sw, sh)
@@ -1566,6 +1741,13 @@ function renderGenerativeFrame(
   gl.bindTexture(
     gl.TEXTURE_2D,
     (state.statsFlip ? state.statsTexA : state.statsTexB) ?? state.dummyTex,
+  )
+  // 🧬 G5 — u_state = estado float actualizado (o dummy 1×1 si el shader
+  // no tiene simulación). Jamás pasa por el epílogo → sigue lineal.
+  gl.activeTexture(gl.TEXTURE2)
+  gl.bindTexture(
+    gl.TEXTURE_2D,
+    (pool && pool.ready ? pool.readTexture : state.dummyTex) ?? state.dummyTex,
   )
 
   const L = ent.locs
@@ -1589,6 +1771,8 @@ function renderGenerativeFrame(
   gl.uniform1f(L.renderScale, w > 0 ? sw / w : scale)
   gl.uniform1i(L.prevFrame, 0)
   gl.uniform1i(L.flashState, 1)
+  gl.uniform1i(L.state, 2)
+  gl.uniform1f(L.stateInit, stateInitF)
   gl.uniform1f(L.hasPrev, state.genPrevValid ? 1 : 0)
   // 🧬 WAVE 8232 · G0 (H1): `genPrevValid` queda true permanente (feedback
   // + limitador) — alphaSecondary=0 en reposo congelaba la salida sobre el

@@ -10,12 +10,17 @@
  *   u_morphFactor    → complejidad del fractal (Omniliquid)
  *   u_beatTime       → rotación global en rejilla de beats (PLL)
  *   u_kickPulse      → empuje de cámara + pulso emisivo (kick)
- *   u_approach       → torsión/compresión/FOV pre-drop (Cassandra)
+ *   tc (euChannels)  → torsión/compresión/FOV pre-drop (Cassandra, §3.4)
  *   u_impact         → expansión radial + destello en el drop
  *   u_chromaHue      → paleta desde la tonalidad (ChromaCoupler)
- *   u_harshness      → glitch de línea solo en APOCALYPSE
+ *   glitch (euCh.)   → glitch de línea solo en APOCALYPSE (§3.5)
  *   u_hihatEnergy    → destellos especulares granulares
  *   u_lqAmbient/subBass → niebla que respira
+ *
+ * 🧬 WAVE 8237 · G6 — los canales TENSIÓN/GLITCH se toman de
+ * `euChannels()` (preámbulo §3.1): la curva perceptual u_approach², la
+ * rama breakdown y la compuerta APOCALYPSE son IDÉNTICAS en todos los
+ * cores por construcción.
  *
  * El cuerpo es verbatim §5 del EUCLID_ORACLE_BLUEPRINT — el ensamblador
  * E3 le inyecta preámbulo + epílogo de seguridad.
@@ -48,18 +53,22 @@ export const ORACLE_KIFS_SOURCE = `// @euclid name    "Oracle KIFS — Hello Wor
 
 uniform float u_twist;
 
+// ─── Canales estándar (§3.1 — euChannels, G6) ─────────────────────────
+// Evaluados UNA vez por píxel en mainImage; helpers los leen vía globals.
+float g_tc, g_td, g_glitch, g_live, g_groove;
+
 // ─── SDF: fractal KIFS ──────────────────────────────────────────────────
 // morphFactor → profundidad armónica = profundidad geométrica.
 float mapFractal(vec3 p) {
     // ORACLE: la torsión crece a medida que Cassandra ve venir el drop.
-    // u_approach ya está ponderado por predictionProb × confidence:
+    // tc = u_approach² ya viene ponderado por predictionProb × confidence:
     // si Selene no está segura, la geometría no miente.
-    float twist = u_twist + u_approach * 2.5;
+    float twist = u_twist + g_tc * 2.5;
     p.xy *= rot2(p.z * twist * 0.15);
 
     // Compresión pre-drop: el espacio se contrae (muelle cargándose)...
     // ...y u_impact lo libera en el instante del evento.
-    float squeeze = 1.0 - 0.25 * u_approach + 0.45 * u_impact;
+    float squeeze = 1.0 - 0.25 * g_tc + 0.45 * u_impact;
     p /= squeeze;
 
     float scale  = mix(1.75, 2.35, u_morphFactor);           // pliegue más fino con armonía
@@ -100,30 +109,33 @@ float march(vec3 ro, vec3 rd, out int steps) {
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    // Canales estándar §3.1 — una evaluación por píxel (G6).
+    euChannels(g_tc, g_td, g_glitch, g_live, g_groove);
+
     vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
 
     // Glitch APOCALYPSE: desplazamiento de línea por aspereza espectral
-    if (telFlag(9)) {
+    if (g_glitch > 0.01) {
         uv.x += (hash21(vec2(floor(uv.y * 80.0), floor(u_time * 30.0))) - 0.5)
-                * u_harshness * 0.08;
+                * g_glitch * 0.08;
     }
 
     // ─── Cámara ────────────────────────────────────────────────────────
     // Órbita en rejilla de beats; kick empuja; el oráculo hace dolly-in
     // durante la anticipación (la cámara "se inclina hacia" el drop).
     float orbit = u_beatTime * 0.125;
-    float dist  = 5.0 - 1.6 * u_approach - 0.35 * u_kickPulse + 1.2 * u_impact;
+    float dist  = 5.0 - 1.6 * g_tc - 0.35 * u_kickPulse + 1.2 * u_impact;
     vec3 ro = vec3(sin(orbit) * dist, 0.6 * sin(u_time * 0.1), cos(orbit) * dist);
     vec3 ta = vec3(0.0);
     vec3 ww = normalize(ta - ro);
     vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
     vec3 vv = cross(uu, ww);
-    float fov = 1.6 + 0.4 * u_approach;               // túnel: el FOV se cierra antes del drop
+    float fov = 1.6 + 0.4 * g_tc;                     // túnel: el FOV se cierra antes del drop
     vec3 rd = normalize(uv.x * uu + uv.y * vv + fov * ww);
 
     // ─── Paleta desde la tonalidad ─────────────────────────────────────
     // Desaturación pre-drop: el color se retira mientras la tensión carga.
-    float sat = 1.0 - 0.6 * u_approach + 0.6 * u_impact;
+    float sat = 1.0 - 0.6 * g_tc + 0.6 * u_impact;
 
     int steps;
     float t = march(ro, rd, steps);

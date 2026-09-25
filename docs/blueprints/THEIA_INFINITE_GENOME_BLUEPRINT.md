@@ -513,13 +513,12 @@ float density(vec3 p, out float fil, out float ang) {
 }
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
-  // ── 1. CANALES (§3) ─────────────────────────────────────────────────
-  gLive  = AUDIO_LIVE ? 1.0 : 0.3;
+  // ── 1. CANALES (§3.1 — euChannels del preámbulo: Ley de Uniformidad G6)
+  float tc, td, glitch, live, groove;
+  euChannels(tc, td, glitch, live, groove);
+  gLive  = live;
   gBeats = u_beatTime + u_time * 0.05;        // Ley de Integración: reloj del host
   gCamZ  = gBeats * 1.1 + u_time * 0.35;
-  bool  breakNext = (u_enums.y == 3);         // Cassandra: breakdown inminente
-  float tc  = breakNext ? 0.0 : u_approach * u_approach;  // contracción (curva perceptual)
-  float td  = breakNext ? u_approach : 0.0;               // disolución
   float rel = u_impact;
 
   gRadius  = 2.3 + 0.5 * u_subBass * gLive - 1.1 * tc + 1.6 * rel + 0.8 * td;
@@ -528,7 +527,6 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   gHurst   = clamp(mix(0.42, 0.68, u_flatness) + 0.15 * u_harshness, 0.3, 0.8);
   gTwist   = 0.06 + 0.7 * tc;
   gDensity = max(0.6 + 0.8 * u_energy + 0.5 * u_densityBoost, 0.05) * (1.0 - 0.7 * td) * gLive;
-  float glitch = APOCALYPSE ? u_harshness : 0.0;
 
   // ── 2. GLITCH DIGITAL (régimen discreto, solo con APOCALYPSE) ───────
   vec2 fc = fragCoord;
@@ -663,15 +661,11 @@ uniform float u_swarm;
 #define SWARM_MAX 24
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
-  // ── 1. CANALES (§3) ─────────────────────────────────────────────────
-  float live    = AUDIO_LIVE ? 1.0 : 0.35;
+  // ── 1. CANALES (§3.1 — euChannels del preámbulo: Ley de Uniformidad G6)
+  float tc, td, glitch, live, groove;
+  euChannels(tc, td, glitch, live, groove);
   float beats   = u_beatTime + u_time * 0.04;
-  bool  breakNx = (u_enums.y == 3);
-  float tc      = breakNx ? 0.0 : u_approach;       // implosión pre-drop
-  float td      = breakNx ? u_approach : 0.0;       // disolución pre-breakdown
   float rel     = u_impact;
-  float glitch  = APOCALYPSE ? u_harshness : 0.0;
-  float groove  = PLL_LOCKED ? u_beatConfidence : 0.25;  // swing solo con pulso fiable
   float aspect  = u_resolution.x / u_resolution.y;
 
   vec2 fc = fragCoord;
@@ -685,14 +679,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 2. ESPACIO CONFORME: log-polar + zoom infinito (Droste) ─────────
   float r  = max(length(uv), 1e-4);
   float th = atan(uv.y, uv.x);
-  // Ley de la Derivada: sumar tc² a la FASE acelera el zoom mientras la
-  // tensión sube (velocidad extra = 2·tc·dtc/dt) — jamás un salto.
-  float zoom = beats * G_ZOOM + 0.8 * tc * tc + 0.6 * rel;
+  // Ley de la Derivada: sumar tc (= a²) a la FASE acelera el zoom mientras
+  // la tensión sube (velocidad extra = da²/dt) — jamás un salto.
+  float zoom = beats * G_ZOOM + 0.8 * tc + 0.6 * rel;
   float lz   = log(r) - zoom;
   float ring = floor(lz / G_PERIOD);                    // profundidad del anillo
   float lw   = mod(lz, G_PERIOD) - 0.5 * G_PERIOD;      // [-P/2, P/2)
   float dir  = mod(ring, 2.0) * 2.0 - 1.0;              // contrarrotación tribal
-  float spin = dir * (beats * TAU / 16.0 + 1.5 * tc * tc) + u_snarePulse * 0.15;
+  float spin = dir * (beats * TAU / 16.0 + 1.5 * tc) + u_snarePulse * 0.15;
   float seg  = TAU / G_FOLD;
   float ta   = abs(mod(th + spin, seg) - 0.5 * seg);    // grupo diédrico D_n
   if (glitch > 0.01) ta = mix(ta, floor(ta * 24.0) / 24.0, glitch);  // desgarro polar

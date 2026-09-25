@@ -15,12 +15,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   assembleFragmentShader,
+  assembleSimFragmentShader,
   buildEpilogue,
   buildGeneDefines,
   buildPreamble,
+  buildSimEpilogue,
   geneSignature,
   glslFloatLiteral,
   hasMainImage,
+  hasMainState,
   hashSource,
   parseStepsHint,
   remapShaderLog,
@@ -831,5 +834,102 @@ void mainImage(out vec4 c, in vec2 f) { c = vec4(G_SYM * G_WARP * G_ZOOM); }`
     const c = { G_SYM: 8, G_WARP: 1.0 } // struct cambia
     expect(structGenesDiffer(meta, a, b)).toBe(false)
     expect(structGenesDiffer(meta, a, c)).toBe(true)
+  })
+})
+
+// ─────────────────── 🧬 WAVE 8237 · G5/G6 — Materia Viva & euChannels ──
+
+describe('G5 — estado persistente float (§9·G5)', () => {
+  const SIM_BODY = `void mainState(out vec4 s, in vec2 fragCoord) {
+  vec2 px = fragCoord / u_resolution.xy;
+  vec4 prev = texture(u_state, px);
+  s = u_stateInit > 0.5 ? vec4(px, 0.0, 1.0) : prev * 0.999;
+}
+void mainImage(out vec4 c, in vec2 fragCoord) {
+  c = texture(u_state, fragCoord / u_resolution.xy);
+}`
+
+  it('el preámbulo declara u_state + u_stateInit (contrato G5)', () => {
+    const pre = buildPreamble()
+    expect(pre).toContain('uniform sampler2D u_state;')
+    expect(pre).toContain('uniform float     u_stateInit;')
+  })
+
+  it('hasMainState detecta el pase de simulación y rechaza mainImage-only', () => {
+    expect(hasMainState(SIM_BODY)).toBe(true)
+    expect(hasMainState('void mainState(out vec4 s,in vec2 f){}')).toBe(true)
+    expect(hasMainState(ARTIST_BODY)).toBe(false)
+    expect(hasMainState('float mainState(vec4 s) { return 0.0; }')).toBe(false)
+  })
+
+  it('assembleSimFragmentShader: epílogo crudo — sin masters ni sRGB', () => {
+    const sim = assembleSimFragmentShader(SIM_BODY)
+    const vis = assembleFragmentShader(SIM_BODY)
+    // La sim llama a mainState; el visual a mainImage.
+    expect(sim.fragSource).toContain('mainState(fragColor, gl_FragCoord.xy)')
+    expect(vis.fragSource).toContain('mainImage(col, gl_FragCoord.xy)')
+    // El epílogo de simulación NO mutila el estado: ni masters, ni
+    // crossfade, ni limitador, ni conversión sRGB (linealidad §9·G5).
+    const simEpilogue = sim.fragSource.slice(
+      sim.fragSource.indexOf('void main()'),
+    )
+    expect(simEpilogue).not.toContain('u_brightness')
+    expect(simEpilogue).not.toContain('u_blend')
+    expect(simEpilogue).not.toContain('u_flashGuard')
+    expect(simEpilogue).not.toContain('pow(')
+    // …pero comparte preámbulo completo (telemetría + u_state + u_gene).
+    expect(sim.fragSource).toContain('uniform float u_tel[60];')
+    expect(sim.fragSource).toContain('uniform sampler2D u_state;')
+    expect(sim.fragSource).toContain(`uniform float u_gene[${EUCLID_GENE_SLOTS}];`)
+    // Programas DISTINTOS: la sim nunca colisiona con el visual en la LRU.
+    expect(hashSource(sim.fragSource)).not.toBe(hashSource(vis.fragSource))
+  })
+
+  it('buildSimEpilogue es la única salida — escribe el estado tal cual', () => {
+    const ep = buildSimEpilogue()
+    expect(ep).toContain('void main() {')
+    expect(ep).toContain('mainState(fragColor, gl_FragCoord.xy);')
+    expect(ep).not.toContain('mainImage')
+  })
+
+  it('los genes se propagan al pase de simulación (mismo fenotipo)', () => {
+    const sim = assembleSimFragmentShader(
+      SIM_BODY,
+      DEFAULT_MAX_STEPS,
+      { G_SYM: 7, G_WARP: 2.0 },
+      ['G_WARP'],
+    )
+    expect(sim.fragSource).toContain('#define G_SYM')
+    expect(sim.fragSource).toContain('#define G_WARP u_gene[0]')
+  })
+})
+
+describe('G6 — euChannels: biblioteca estándar de canales (§3.1)', () => {
+  const pre = buildPreamble()
+
+  it('el preámbulo inyecta euChannels() con la firma canónica', () => {
+    expect(pre).toContain(
+      'void euChannels(out float tc, out float td, out float glitch,\n' +
+        '                out float live, out float groove) {',
+    )
+  })
+
+  it('los canales se derivan de las fuentes estándar (idénticos en todos los cores)', () => {
+    // tc/td: curva perceptual u_approach² + rama breakdown (u_enums.y == 3).
+    expect(pre).toContain('u_enums.y == 3')
+    expect(pre).toContain('u_approach * u_approach')
+    // glitch: compuerta APOCALYPSE × harshness.
+    expect(pre).toContain('APOCALYPSE ? u_harshness : 0.0')
+    // live/groove: AUDIO_LIVE / PLL_LOCKED × beatConfidence.
+    expect(pre).toContain('AUDIO_LIVE ? 1.0 : 0.3')
+    expect(pre).toContain('PLL_LOCKED ? u_beatConfidence : 0.25')
+  })
+
+  it('el shader de referencia Oracle KIFS consume euChannels (§6, G6)', () => {
+    expect(ORACLE_KIFS_SOURCE).toContain('euChannels(g_tc, g_td, g_glitch')
+    expect(ORACLE_KIFS_SOURCE).not.toContain('telFlag(9)') // glitch a mano → canal
+    const asm = assembleFragmentShader(ORACLE_KIFS_SOURCE)
+    expect(asm.fragSource).toContain('void euChannels(')
+    expect(asm.fragSource).toContain('euChannels(g_tc, g_td, g_glitch, g_live, g_groove)')
   })
 })

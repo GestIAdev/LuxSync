@@ -100,10 +100,14 @@ export interface AttachOptions {
   /**
    * 🔮 WAVE 8230 · E4 — Resolver `atomId → fuente GLSL` para átomos
    * `source.kind='shader'`. Por defecto lee `atom.source.glsl` del registry.
+   * 🧬 WAVE 8233 · G1 — propaga `atom.source.genes` (fenotipo variante).
    */
   shaderSourceResolver?: (
     atomId: string,
-  ) => { source: string; meta?: { steps?: number } } | null
+  ) => {
+    source: string
+    meta?: { steps?: number; genes?: Record<string, number> }
+  } | null
 }
 
 /**
@@ -129,7 +133,11 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
   const defaultShaderResolver = (atomId: string) => {
     const atom = getTheiaRegistry().getAtom(atomId)
     if (atom?.source?.kind === 'shader' && atom.source.glsl) {
-      return { source: atom.source.glsl }
+      // 🧬 G1 — el átomo variante porta su fenotipo (`core#seed` §4.5).
+      return {
+        source: atom.source.glsl,
+        meta: atom.source.genes ? { genes: { ...atom.source.genes } } : undefined,
+      }
     }
     return null
   }

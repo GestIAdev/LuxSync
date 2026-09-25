@@ -153,6 +153,12 @@ export interface ITheiaAtomSource {
   readonly kind: 'video' | 'shader'
   /** Cuerpo GLSL del artista (con cabeceras `@euclid`). Solo shader atoms. */
   readonly glsl?: string
+  /**
+   * 🧬 WAVE 8233 · G1 — fenotipo del átomo variante (`G_* → valor`) para
+   * `kind:'shader'` (Infinite Genome §4.5: átomos `core#seed`). Ausente =
+   * fenotipo canónico (defaults declarados en `@euclid gene`).
+   */
+  readonly genes?: Record<string, number>
 }
 
 // ─── PACK (carpeta-contenedor del filesystem) ───────────────────────────────

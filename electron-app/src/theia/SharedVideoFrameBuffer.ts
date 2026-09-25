@@ -213,6 +213,9 @@ export interface TheiaGenLoadMessage {
   shaderId: string
   source: string
   steps: number
+  /** 🧬 WAVE 8233 · G1 — genoma efectivo (`G_* → valor`) inyectado como
+   *  `#define` — la ventana compila la MISMA variante que el worker. */
+  genes?: Record<string, number>
 }
 
 /** Conmuta el shader activo en la ventana (`builtin` → vuelve a Modo A). */

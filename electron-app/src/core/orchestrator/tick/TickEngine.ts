@@ -51,6 +51,9 @@ import {
   SCHEMA_VERSION,
   TEL_FLAG,
   TELEMETRY_SLOT,
+  createIntegralClocks,
+  stepIntegralClocks,
+  type IntegralClockState,
 } from '../../../theia/telemetry/TheiaTelemetryRing'
 
 export interface TickContext {
@@ -268,6 +271,11 @@ export class TickEngine {
   private _euclidNow = 0
   private _euclidEtaMs = 0
   private _euclidEtaBeats = 0
+  // 🧬 WAVE 8233 · G1 — relojes integrales (Infinite Genome Ley 1/§4.6):
+  // u_energyTime = ∫energy·dt monótono; u_barCount = compases absolutos.
+  // El paso vive en `stepIntegralClocks` (puro, testeable) — aquí solo
+  // persiste el estado entre ticks.
+  private readonly _euclidClocks: IntegralClockState = createIntegralClocks()
   private _euclidM: EuclidMetricsInput = {
     beatPhase: 0, isBeat: false, beatCount: 0, bpm: 0, beatConfidence: 0,
     energy: 0, bass: 0, mid: 0, high: 0,
@@ -346,6 +354,9 @@ export class TickEngine {
         p[base + i] = chroma[i] ?? 0
       }
     }
+    // 🧬 WAVE 8233 · G1 — relojes integrales (slots 58/59, kind 'none').
+    p[S.ENERGY_TIME] = this._euclidClocks.energyTime
+    p[S.BAR_COUNT] = this._euclidClocks.barCount
   }
 
   get brain() { return this.ctx.brain }
@@ -2253,6 +2264,10 @@ export class TickEngine {
     beatState: BeatState,
     workerOnBeat: boolean,
   ): void {
+    // 🧬 WAVE 8233 · G1 — ∫energy·dt corre SIEMPRE (incluso sin writer:
+    // el integral debe seguir continuo para cuando el consumidor vuelva).
+    stepIntegralClocks(this._euclidClocks, now, m.energy, m.beatCount)
+
     const writer = this.trinity?.getTelemetryWriter()
     if (!writer) return
 

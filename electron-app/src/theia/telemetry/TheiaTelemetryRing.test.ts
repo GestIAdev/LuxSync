@@ -14,8 +14,10 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  createIntegralClocks,
   createTelemetryRing,
   packEnums,
+  stepIntegralClocks,
   SCHEMA_VERSION,
   SLOT_ENUMS,
   SLOT_FLAGS,
@@ -210,5 +212,77 @@ describe('🔮 WAVE 8226 — TheiaTelemetryRing: seqlock', () => {
     // Scratch aislado del anillo: mutar el ring no corrompe lo leído.
     writer.publish(3, 0, 0, (p) => { p[TELEMETRY_SLOT.BPM] = 150 })
     expect(s1![TELEMETRY_SLOT.BPM]).toBeCloseTo(140, 5)
+  })
+})
+
+// ───────────────────── 🧬 WAVE 8233 · G1 — Integral Time ─────────────────────
+
+describe('G1 — relojes integrales (u_energyTime / u_barCount)', () => {
+  it('schema: slots 58/59 con alias u_energyTime/u_barCount, kind none', () => {
+    const et = TELEMETRY_SCHEMA.find((d) => d.name === 'ENERGY_TIME')
+    const bc = TELEMETRY_SCHEMA.find((d) => d.name === 'BAR_COUNT')
+    expect(et?.slot).toBe(58)
+    expect(et?.uniform).toBe('u_energyTime')
+    expect(et?.kind).toBe('none')
+    expect(bc?.slot).toBe(59)
+    expect(bc?.uniform).toBe('u_barCount')
+    expect(bc?.kind).toBe('none')
+    expect(TELEMETRY_SLOT.ENERGY_TIME).toBe(58)
+    expect(TELEMETRY_SLOT.BAR_COUNT).toBe(59)
+  })
+
+  it('∫energy·dt: el primer tick no suma (dt=0) y luego integra exacto', () => {
+    const st = createIntegralClocks()
+    stepIntegralClocks(st, 1000, 0.8, 0) // primer tick — no hay dt previo
+    expect(st.energyTime).toBe(0)
+    stepIntegralClocks(st, 1050, 0.8, 0) // 50 ms × 0.8
+    expect(st.energyTime).toBeCloseTo(0.04, 6)
+    stepIntegralClocks(st, 1075, 0.4, 0) // 25 ms × 0.4
+    expect(st.energyTime).toBeCloseTo(0.05, 6)
+  })
+
+  it('monótono: reloj retrocediendo, energía negativa y stalls no lo rompen', () => {
+    const st = createIntegralClocks()
+    stepIntegralClocks(st, 1000, 0.5, 0)
+    stepIntegralClocks(st, 1100, 0.5, 0)
+    const t1 = st.energyTime
+    stepIntegralClocks(st, 500, 1.0, 0) // NTP jump atrás — dt clamp a 0
+    expect(st.energyTime).toBe(t1)
+    stepIntegralClocks(st, 2000, -3.0, 0) // energía negativa → max(0,e)
+    expect(st.energyTime).toBeGreaterThanOrEqual(t1)
+    stepIntegralClocks(st, 60000, 1.0, 0) // stall 58 s → dt clamp a 0.5 s
+    expect(st.energyTime).toBeCloseTo(t1 + 0.5, 6)
+  })
+
+  it('barCount: cruza en fronteras de compás y es monótono ante resets', () => {
+    const st = createIntegralClocks()
+    stepIntegralClocks(st, 1000, 0, 0)
+    expect(st.barCount).toBe(0)
+    stepIntegralClocks(st, 1100, 0, 3) // aún dentro del compás 0
+    expect(st.barCount).toBe(0)
+    stepIntegralClocks(st, 1200, 0, 4) // frontera → compás 1
+    expect(st.barCount).toBe(1)
+    stepIntegralClocks(st, 1300, 0, 11) // compás 2
+    expect(st.barCount).toBe(2)
+    // Tick retrasado: salta directo al valor absoluto (sin doble conteo).
+    stepIntegralClocks(st, 1400, 0, 40)
+    expect(st.barCount).toBe(10)
+    // Respawn del pacemaker (beatCount=0): el ratchet NO retrocede.
+    stepIntegralClocks(st, 1500, 0, 0)
+    expect(st.barCount).toBe(10)
+  })
+
+  it('round-trip: writer publica slots 58/59 y el reader los recibe verbatim', () => {
+    const sab = createTelemetryRing()
+    const writer = new TelemetryWriter(sab)
+    const reader = new TelemetryReader(sab)
+    writer.publish(7, 0, 0, (p) => {
+      p[TELEMETRY_SLOT.ENERGY_TIME] = 12.345
+      p[TELEMETRY_SLOT.BAR_COUNT] = 42
+    })
+    const snap = reader.read()
+    expect(snap).not.toBeNull()
+    expect(snap![TELEMETRY_SLOT.ENERGY_TIME]).toBeCloseTo(12.345, 5)
+    expect(snap![TELEMETRY_SLOT.BAR_COUNT]).toBe(42)
   })
 })

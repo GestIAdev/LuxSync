@@ -285,23 +285,77 @@ export function buildEpilogue(): string {
 // ─────────────────────────── Ensamblado ───────────────────────────
 
 export interface AssembledShader {
-  /** Fuente final compilable (preámbulo + cuerpo + epílogo). */
+  /** Fuente final compilable (preámbulo + genoma + cuerpo + epílogo). */
   fragSource: string
-  /** Líneas del preámbulo — resta para mapear errores al código artista. */
+  /** Líneas generadas ANTES del cuerpo (preámbulo + bloque G_* inyectado)
+   *  — resta para mapear errores al código artista. */
   preambleLines: number
   /** Líneas del cuerpo del artista. */
   bodyLines: number
 }
 
+/** Nombre de gen inyectable — contrato `G_*` del Infinite Genome §4.2. */
+const GENE_NAME_RE = /^G_[A-Za-z0-9_]+$/
+
+/**
+ * Literal float GLSL — los genes se inyectan SIEMPRE como float (§4.2:
+ * un `struct int` va redondeado pero como literal `7.0`). La notación
+ * exponencial de JS (`1e-7`) ya es un literal float GLSL válido.
+ */
+export function glslFloatLiteral(v: number): string {
+  if (!Number.isFinite(v)) return '0.0'
+  const s = `${v}`
+  if (/[eE]/.test(s)) return s
+  return s.includes('.') ? s : `${s}.0`
+}
+
+/**
+ * 🧬 WAVE 8233 · G1 — bloque `#define G_*` inyectado tras el preámbulo
+ * (Infinite Genome §4.2). Orden de claves estable → hash estable.
+ */
+export function buildGeneDefines(genes?: Record<string, number>): string {
+  if (!genes) return ''
+  const keys = Object.keys(genes)
+    .filter((k) => GENE_NAME_RE.test(k))
+    .sort()
+  if (keys.length === 0) return ''
+  const lines = [
+    '',
+    '// ── GENOMA inyectado · @euclid gene → #define (Infinite Genome §4.2) ──',
+  ]
+  for (const k of keys) lines.push(`#define ${k} ${glslFloatLiteral(genes[k])}`)
+  return lines.join('\n')
+}
+
+/**
+ * Firma canónica del fenotipo (`G_A=1.0;G_B=2.5`) — dedupe de variantes
+ * y parte del `programKey`: dos genomas idénticos → misma firma.
+ */
+export function geneSignature(genes?: Record<string, number>): string {
+  if (!genes) return ''
+  return Object.keys(genes)
+    .filter((k) => GENE_NAME_RE.test(k))
+    .sort()
+    .map((k) => `${k}=${glslFloatLiteral(genes[k])}`)
+    .join(';')
+}
+
 export function assembleFragmentShader(
   artistBody: string,
   maxSteps = DEFAULT_MAX_STEPS,
+  genes?: Record<string, number>,
 ): AssembledShader {
   const preamble = buildPreamble(maxSteps)
+  // 🧬 WAVE 8233 · G1 — el genoma se inyecta ENTRE preámbulo y cuerpo:
+  // forma parte del fragSource compilado (hashSource lo incluye → cada
+  // variante es un programa distinto en la LRU) y cuenta como líneas
+  // generadas para el remap de errores.
+  const geneBlock = buildGeneDefines(genes)
+  const pre = geneBlock ? `${preamble}\n${geneBlock}` : preamble
   const epilogue = buildEpilogue()
   return {
-    fragSource: `${preamble}\n${artistBody}\n${epilogue}\n`,
-    preambleLines: preamble.split('\n').length,
+    fragSource: `${pre}\n${artistBody}\n${epilogue}\n`,
+    preambleLines: pre.split('\n').length,
     bodyLines: artistBody.split('\n').length,
   }
 }
@@ -357,15 +411,48 @@ export interface EuclidParam {
   label: string
 }
 
+/**
+ * 🧬 WAVE 8233 · G1 — gen declarado vía `@euclid gene` (Infinite Genome
+ * §4.2): fenotipo físico del core. La cabecera declara el RANGO y el
+ * default; el Genome Expander (G2) elige el valor por semilla.
+ *
+ *   // @euclid gene G_SYM  struct int   3   9    5    a:+0.3 c:+0.2 o:-0.4
+ *   // @euclid gene G_WARP expr   float 0.4 2.2  1.25 a:+0.2 c:+0.8 o:+0.3 curve=exp
+ */
+export interface EuclidGene {
+  /** Identificador GLSL — contrato `G_*`. */
+  name: string
+  /** `struct` = cambio topológico (variante = otro programa) ·
+   *  `expr` = modulación continua (en G3 irá a `u_gene[]` sin recompilar). */
+  cls: 'struct' | 'expr'
+  type: 'int' | 'float'
+  min: number
+  max: number
+  defaultValue: number
+  /** Afinidades con el ADN {a: aggression, c: chaos, o: organicity} ∈ [-1,1]. */
+  affinities: { a?: number; c?: number; o?: number }
+  /** Curva de expresión del Expander (§4.3) — `exp` para escalas/frecuencias. */
+  curve: 'lin' | 'exp'
+  label?: string
+}
+
 /** Metadatos de cabecera `@euclid` parseados (§4.2 — estilo ISF). */
 export interface EuclidMeta {
   name?: string
   author?: string
+  /** Composición de familias `ether | crystal | swarm | conformal` — el
+   *  Espacio va primero (`swarm+conformal`). Forward-compatible con ids
+   *  desconocidos (parser laxo — la validación es del Expander). */
+  family?: string[]
+  /** Semilla del fenotipo: uint32 o `auto` (0 = fenotipo canónico). */
+  seed?: number | 'auto'
   /** ADN del átomo: `aggression=0.6 chaos=0.7 organicity=0.3`. */
   genome: Record<string, number>
   /** Rango de zona energética `gentle..peak`. */
   zone?: { from: string; to: string }
   params: EuclidParam[]
+  /** Genes estructurales/expresivos declarados (Infinite Genome §4.2). */
+  genes: EuclidGene[]
   /** Hint de raymarching para el governor (§4.5). */
   steps?: number
 }
@@ -379,12 +466,15 @@ export interface EuclidMeta {
  *   // @euclid zone    gentle..peak
  *   // @euclid param   u_twist float 0.0 2.0 0.6 "Twist"
  *   // @euclid steps   96
+ *   // @euclid family  swarm+conformal
+ *   // @euclid seed    auto
+ *   // @euclid gene    G_FOLD struct int 5 12 8 a:+0.4 c:+0.3
  *
  * Robusto: ignora líneas `@euclid` malformadas (nunca lanza), acepta
- * espacios variables y `param` sin label.
+ * espacios variables y `param`/`gene` sin label.
  */
 export function parseEuclidMeta(source: string): EuclidMeta {
-  const meta: EuclidMeta = { genome: {}, params: [] }
+  const meta: EuclidMeta = { genome: {}, params: [], genes: [] }
   const re = /^\s*\/\/\s*@euclid\s+(\w+)\s+(.*)$/gm
   let m: RegExpExecArray | null
   while ((m = re.exec(source)) !== null) {
@@ -434,11 +524,96 @@ export function parseEuclidMeta(source: string): EuclidMeta {
         if (Number.isFinite(n) && n > 0) meta.steps = n
         break
       }
+      // ── 🧬 WAVE 8233 · G1 — gramática Infinite Genome (§4.2) ──
+      case 'family': {
+        const fams = rest
+          .split('+')
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => /^\w+$/.test(s))
+        if (fams.length > 0) meta.family = fams
+        break
+      }
+      case 'seed': {
+        if (/^auto\b/i.test(rest)) {
+          meta.seed = 'auto'
+        } else {
+          const sn = /^(\d+)/.exec(rest)
+          if (sn) {
+            const v = parseInt(sn[1], 10)
+            if (v >= 0 && v <= 0xffffffff) meta.seed = v // uint32
+          }
+        }
+        break
+      }
+      case 'gene': {
+        // gene <IDENT> <struct|expr> <int|float> <min> <max> <default>
+        //       [a:±n c:±n o:±n]… [curve=lin|exp] ["label"]
+        const gm =
+          /^(\w+)\s+(struct|expr)\s+(int|float)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*(.*)$/.exec(
+            rest,
+          )
+        if (gm) {
+          const tail = gm[7] ?? ''
+          const affinities: { a?: number; c?: number; o?: number } = {}
+          const affRe = /\b([aco])\s*:\s*([+-]?\d+(?:\.\d+)?)/g
+          let am: RegExpExecArray | null
+          while ((am = affRe.exec(tail)) !== null) {
+            const v = parseFloat(am[2])
+            if (Number.isFinite(v)) {
+              affinities[am[1] as 'a' | 'c' | 'o'] = Math.min(1, Math.max(-1, v))
+            }
+          }
+          const curveM = /\bcurve\s*=\s*(lin|exp)\b/.exec(tail)
+          const labelM = /"([^"]*)"/.exec(tail)
+          meta.genes.push({
+            name: gm[1],
+            cls: gm[2] as 'struct' | 'expr',
+            type: gm[3] as 'int' | 'float',
+            min: parseFloat(gm[4]),
+            max: parseFloat(gm[5]),
+            defaultValue: parseFloat(gm[6]),
+            affinities,
+            curve: (curveM?.[1] as 'lin' | 'exp' | undefined) ?? 'lin',
+            label: labelM?.[1],
+          })
+        }
+        break
+      }
       default:
         break // claves desconocidas — forward-compatible
     }
   }
   return meta
+}
+
+/**
+ * 🧬 WAVE 8233 · G1 — fenotipo efectivo de un core: defaults declarados
+ * ∪ overrides del Genome Expander (§4.3). Genes `int` van redondeados;
+ * valores fuera de rango se claman. `undefined` si el core no declara
+ * genes y no hay overrides — el cuerpo compila por sus `#ifndef`.
+ */
+export function resolveGeneValues(
+  meta: EuclidMeta,
+  overrides?: Record<string, number>,
+): Record<string, number> | undefined {
+  const out: Record<string, number> = {}
+  for (const g of meta.genes) {
+    if (!GENE_NAME_RE.test(g.name)) continue
+    let v = overrides?.[g.name] ?? g.defaultValue
+    if (!Number.isFinite(v)) v = g.defaultValue
+    v = Math.min(g.max, Math.max(g.min, v))
+    if (g.type === 'int') v = Math.round(v)
+    out[g.name] = v
+  }
+  if (overrides) {
+    // Overrides de genes no declarados — forward-compat (#ifdef G_*).
+    for (const [k, v] of Object.entries(overrides)) {
+      if (GENE_NAME_RE.test(k) && Number.isFinite(v) && !(k in out)) {
+        out[k] = v
+      }
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 /**

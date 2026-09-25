@@ -293,8 +293,13 @@ export interface ThetaLoadShaderPayload {
   shaderId: string
   /** Cuerpo del artista — debe definir `mainImage(out vec4, in vec2)`. */
   source: string
-  /** Meta opcional — p.ej. `{ steps: 96 }` desde `@euclid steps`. */
-  meta?: { steps?: number }
+  /**
+   * Meta opcional — `{ steps: 96 }` desde `@euclid steps`.
+   * 🧬 WAVE 8233 · G1: `genes` = fenotipo efectivo (`G_* → valor`) — se
+   * inyecta como `#define` tras el preámbulo y forma parte del programKey
+   * (una variante genética = otro programa cacheado en la LRU).
+   */
+  meta?: { steps?: number; genes?: Record<string, number> }
 }
 
 /**

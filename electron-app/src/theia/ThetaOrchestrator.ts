@@ -55,7 +55,12 @@ import {
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
 import { createThumbSAB } from './TheiaThumbBuffer'
 // 🔮 WAVE 8230 — EUCLID · E4: parser @euclid (meta → sliders UI)
-import { parseEuclidMeta, type EuclidMeta } from './shader/ShaderAssembler'
+import {
+  parseEuclidMeta,
+  resolveGeneValues,
+  geneSignature,
+  type EuclidMeta,
+} from './shader/ShaderAssembler'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
@@ -222,7 +227,10 @@ export class ThetaOrchestrator {
   // 🔮 WAVE 8229 — EUCLID · E3: shader contract (§4.3). Las fuentes de
   // artista se persisten aquí — un worker nuevo (spawn/respawn Phoenix)
   // pierde toda su caché GL y necesita el replay completo.
-  private desiredShaders = new Map<string, { source: string; meta?: { steps?: number } }>()
+  private desiredShaders = new Map<
+    string,
+    { source: string; meta?: { steps?: number; genes?: Record<string, number> } }
+  >()
   private desiredActiveShader = 'builtin'
   private shaderStatusListeners = new Set<(p: ThetaShaderStatusPayload) => void>()
   private perfReportListeners = new Set<(p: ThetaPerfReportPayload) => void>()
@@ -233,7 +241,12 @@ export class ThetaOrchestrator {
   private shaderMeta = new Map<string, EuclidMeta>()
   private shaderMetaListeners = new Set<(shaderId: string, meta: EuclidMeta) => void>()
   private _shaderSourceResolver:
-    | ((atomId: string) => { source: string; meta?: { steps?: number } } | null)
+    | ((
+        atomId: string,
+      ) => {
+        source: string
+        meta?: { steps?: number; genes?: Record<string, number> }
+      } | null)
     | null = null
 
   constructor(config: Partial<ThetaOrchestratorConfig> = {}) {
@@ -571,10 +584,21 @@ export class ThetaOrchestrator {
     // videoElement: compila (si hiciera falta) y activa con crossfade.
     const shaderSrc = this._shaderSourceResolver?.(intent.atomId) ?? null
     if (shaderSrc) {
-      // Dedup: re-trigger del mismo átomo no recompila si la fuente no
-      // cambió (la caché LRU del worker ya la conserva).
+      // Dedup: re-trigger del mismo átomo no recompila si la fuente Y el
+      // fenotipo no cambiaron (la caché LRU del worker ya la conserva).
+      // 🧬 G1 — la firma compara el genoma RESUELTO (defaults ∪ overrides).
       const prev = this.desiredShaders.get(intent.atomId)
-      if (!prev || prev.source !== shaderSrc.source) {
+      const nextSig = geneSignature(
+        resolveGeneValues(
+          parseEuclidMeta(shaderSrc.source),
+          shaderSrc.meta?.genes,
+        ),
+      )
+      if (
+        !prev ||
+        prev.source !== shaderSrc.source ||
+        geneSignature(prev.meta?.genes) !== nextSig
+      ) {
         this.loadShader(intent.atomId, shaderSrc.source, shaderSrc.meta)
       }
       this.activateShader(intent.atomId, intent.crossfadeMs)
@@ -884,8 +908,11 @@ export class ThetaOrchestrator {
    * La fuente queda persistida para replay post-respawn. Resultado vía
    * `onShaderStatus` (o `lastShaderStatus`).
    */
-  loadShader(shaderId: string, source: string, meta?: { steps?: number }): void {
-    this.desiredShaders.set(shaderId, { source, meta })
+  loadShader(
+    shaderId: string,
+    source: string,
+    meta?: { steps?: number; genes?: Record<string, number> },
+  ): void {
     // 🔮 WAVE 8230 · E4 — parsear meta @euclid una vez (params → sliders).
     const parsed = parseEuclidMeta(source)
     if (meta?.steps !== undefined) parsed.steps = meta.steps
@@ -895,10 +922,21 @@ export class ThetaOrchestrator {
         l(shaderId, parsed)
       } catch { /* listener errors must not break load */ }
     }
+    // 🧬 WAVE 8233 · G1 — fenotipo efectivo: defaults `@euclid gene` ∪
+    // overrides del átomo variante (`source.genes` / futuro Expander).
+    // `resolveGeneValues` es idempotente → overrides ya resueltos pasan
+    // tal cual. El worker lo inyecta como #define → programKey propio.
+    const genes = resolveGeneValues(parsed, meta?.genes)
+    const wireMeta = { ...meta, ...(genes ? { genes } : {}) }
+    this.desiredShaders.set(shaderId, { source, meta: wireMeta })
     if (!this.worker) return
     try {
       this.worker.postMessage(
-        makeThetaMessage('theia:load-shader', { shaderId, source, meta }),
+        makeThetaMessage('theia:load-shader', {
+          shaderId,
+          source,
+          meta: wireMeta,
+        }),
       )
     } catch { /* worker may be dead — replay on ready covers it */ }
   }
@@ -975,7 +1013,12 @@ export class ThetaOrchestrator {
    */
   setShaderSourceResolver(
     resolver:
-      | ((atomId: string) => { source: string; meta?: { steps?: number } } | null)
+      | ((
+          atomId: string,
+        ) => {
+          source: string
+          meta?: { steps?: number; genes?: Record<string, number> }
+        } | null)
       | null,
   ): void {
     this._shaderSourceResolver = resolver

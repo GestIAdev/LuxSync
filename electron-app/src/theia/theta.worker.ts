@@ -58,6 +58,7 @@ import {
   assembleFragmentShader,
   parseStepsHint,
   hasMainImage,
+  hashSource,
   remapShaderLog,
   GEN_VERTEX_SRC,
   BLIT_VERTEX_SRC,
@@ -305,17 +306,18 @@ interface WorkerState {
   // 🔮 WAVE 8229 — EUCLID ORACLE · E3 (Shader Contract & Governor)
   /** El contexto GL es WebGL2 — requisito del camino generativo (§4.1). */
   glIsWebGL2: boolean
-  /** Caché LRU de programas compilados (máx 8 — §4.4). */
+  /** Caché LRU de programas compilados (máx 8 — §4.4). Clave = programKey
+   *  (hash fuente+genes) — variantes del mismo átomo coexisten. */
   genPrograms: Map<string, GenProgram>
   /** Fuentes de artista por shaderId — rebuild tras context-loss (§4.5). */
-  genSources: Map<string, { source: string; steps: number }>
-  /** Compilaciones en vuelo (KHR_parallel_shader_compile). */
+  genSources: Map<string, GenSourceSpec>
+  /** Compilaciones en vuelo (KHR_parallel_shader_compile). Clave = programKey. */
   genPending: Map<string, PendingGenCompile>
   /** Programa generativo activo — null = plasma interno (Modo A legacy). */
   genActive: GenProgram | null
   genActiveId: string
   /** Activación diferida a la finalización de una compilación paralela. */
-  genPendingActivate: { shaderId: string; crossfadeMs: number } | null
+  genPendingActivate: { shaderId: string; programKey: string; crossfadeMs: number } | null
   /** FBO escalado del governor (renderScale × resolución canvas). */
   genFbo: WebGLFramebuffer | null
   genFboTex: WebGLTexture | null
@@ -537,9 +539,24 @@ interface GenProgram {
   steps: number
 }
 
+/**
+ * 🧬 WAVE 8233 · G1 — especificación de variante por shaderId (átomo).
+ * `programKey` = hash FNV-1a del fragSource ENSAMBLADO — el bloque
+ * `#define G_*` inyectado forma parte del hash: cada fenotipo es un
+ * programa distinto que la LRU retiene (§4.2/§4.5 Infinite Genome).
+ */
+interface GenSourceSpec {
+  source: string
+  steps: number
+  genes?: Record<string, number>
+  programKey: string
+}
+
 /** Compilación en vuelo (KHR_parallel_shader_compile — §4.4). */
 interface PendingGenCompile {
   shaderId: string
+  /** Clave de caché del programa (fuente+genes) — NO el atomId. */
+  programKey: string
   source: string
   steps: number
   program: WebGLProgram
@@ -898,15 +915,20 @@ function buildGLResources(): boolean {
     // re-activar el shader que estaba en pantalla.
     if (state.genSources.size > 0) {
       for (const [id, s] of state.genSources) {
-        loadShaderSource(id, s.source, s.steps)
+        loadShaderSource(id, s.source, s.steps, s.genes)
       }
       const activeId = state.genActiveId
-      if (activeId !== BUILTIN_SHADER_ID && !state.khrCompile) {
+      const activeSpec = state.genSources.get(activeId)
+      if (activeId !== BUILTIN_SHADER_ID && activeSpec && !state.khrCompile) {
         // Sin KHR ext la compilación fue síncrona → activación inmediata.
-        const ent = state.genPrograms.get(activeId)
+        const ent = state.genPrograms.get(activeSpec.programKey)
         if (ent) activateGenProgram(ent, activeId, 0)
-      } else {
-        state.genPendingActivate = { shaderId: activeId, crossfadeMs: 0 }
+      } else if (activeSpec) {
+        state.genPendingActivate = {
+          shaderId: activeId,
+          programKey: activeSpec.programKey,
+          crossfadeMs: 0,
+        }
       }
       state.genActive = null
     }
@@ -1160,7 +1182,12 @@ function evictGenCache(): void {
  * queda en `genPending` (sondeado por frame — el programa anterior sigue
  * renderizando); sin la extensión se finaliza aquí (§4.4).
  */
-function loadShaderSource(shaderId: string, source: string, steps: number): void {
+function loadShaderSource(
+  shaderId: string,
+  source: string,
+  steps: number,
+  genes?: Record<string, number>,
+): void {
   const gl = state.gl as WebGL2RenderingContext | null
   if (!gl || !state.glIsWebGL2) {
     emitShaderStatus({
@@ -1171,31 +1198,37 @@ function loadShaderSource(shaderId: string, source: string, steps: number): void
     })
     return
   }
-  // Reemplazo del mismo shaderId: libera el programa previo.
-  const old = state.genPrograms.get(shaderId)
-  if (old) {
-    try {
-      gl.deleteProgram(old.program)
-    } catch { /* noop */ }
-    state.genPrograms.delete(shaderId)
-    if (state.genActive === old) {
-      state.genActive = null
-      state.genActiveId = BUILTIN_SHADER_ID
+  // 🧬 WAVE 8233 · G1 — el genoma va DENTRO del fragSource → el programKey
+  // (hash FNV del fuente ensamblado) incluye los G_* inyectados (§4.2).
+  const asm = assembleFragmentShader(source, steps, genes)
+  const programKey = hashSource(asm.fragSource)
+
+  const prevSpec = state.genSources.get(shaderId)
+  if (prevSpec?.programKey === programKey) {
+    // Re-carga idempotente (misma fuente + mismo fenotipo): nada que hacer.
+    // Si el programa fue evictado de la LRU sí hace falta recompilar.
+    if (state.genPrograms.has(programKey) || state.genPending.has(programKey)) {
+      emitShaderStatus({
+        shaderId,
+        ok: true,
+        pending: state.genPending.has(programKey) || undefined,
+      })
+      return
     }
   }
-  const stalePending = state.genPending.get(shaderId)
-  if (stalePending) {
-    // Reemplazo de una compilación en vuelo: liberar sus objetos GL o la
-    // entrada huérfana fugaría programa+shaders hasta el próximo respawn.
-    try {
-      gl.deleteProgram(stalePending.program)
-      gl.deleteShader(stalePending.vs)
-      gl.deleteShader(stalePending.fs)
-    } catch { /* noop */ }
-    state.genPending.delete(shaderId)
+  state.genSources.set(shaderId, { source, steps, genes, programKey })
+
+  // Variante ya compilada por otro átomo (o reactivación tras evicción):
+  // se reusa — el shader activo nunca se interrumpe.
+  if (state.genPrograms.has(programKey) || state.genPending.has(programKey)) {
+    emitShaderStatus({
+      shaderId,
+      ok: true,
+      pending: state.genPending.has(programKey) || undefined,
+    })
+    return
   }
 
-  const asm = assembleFragmentShader(source, steps)
   const t0 = performance.now()
   const vs = compileShaderEx(gl, gl.VERTEX_SHADER, GEN_VERTEX_SRC)
   const fs = compileShaderEx(gl, gl.FRAGMENT_SHADER, asm.fragSource)
@@ -1222,6 +1255,7 @@ function loadShaderSource(shaderId: string, source: string, steps: number): void
   gl.linkProgram(prog)
   const pending: PendingGenCompile = {
     shaderId,
+    programKey,
     source,
     steps,
     program: prog,
@@ -1232,7 +1266,7 @@ function loadShaderSource(shaderId: string, source: string, steps: number): void
     t0,
   }
   if (state.khrCompile) {
-    state.genPending.set(shaderId, pending)
+    state.genPending.set(programKey, pending)
     emitShaderStatus({ shaderId, ok: true, pending: true })
   } else {
     finalizeGenCompile(pending)
@@ -1258,13 +1292,13 @@ function finalizeGenCompile(p: PendingGenCompile): void {
       lastUsed: state.renderSeq,
       steps: p.steps,
     }
-    state.genPrograms.set(p.shaderId, ent)
+    state.genPrograms.set(p.programKey, ent)
     evictGenCache()
     emitShaderStatus({ shaderId: p.shaderId, ok: true, compileMs })
     const pa = state.genPendingActivate
-    if (pa && pa.shaderId === p.shaderId) {
+    if (pa && pa.programKey === p.programKey) {
       state.genPendingActivate = null
-      activateGenProgram(ent, p.shaderId, pa.crossfadeMs)
+      activateGenProgram(ent, pa.shaderId, pa.crossfadeMs)
     }
   } else {
     const raw = fsLog.length > 0 ? fsLog : progLog || 'link failed'
@@ -1306,14 +1340,16 @@ function handleLoadShader(p: ThetaLoadShaderPayload): void {
     })
     return
   }
-  state.genSources.set(p.shaderId, { source: p.source, steps })
-  loadShaderSource(p.shaderId, p.source, steps)
+  const genes = p.meta?.genes
+  loadShaderSource(p.shaderId, p.source, steps, genes)
   // 🔮 WAVE 8231 · E5 — Modo B: la ventana HDMI compila su copia nativa.
+  // 🧬 WAVE 8233 · G1 — con el mismo fenotipo (genes) que el worker.
   state.videoPort?.postMessage({
     type: THEIA_GEN_LOAD_MSG,
     shaderId: p.shaderId,
     source: p.source,
     steps,
+    genes,
   })
 }
 
@@ -1342,11 +1378,18 @@ function handleActivateShader(p: ThetaActivateShaderPayload): void {
     state.genActiveId = BUILTIN_SHADER_ID
     return
   }
-  const ent = state.genPrograms.get(p.shaderId)
+  // 🧬 WAVE 8233 · G1 — shaderId es el átomo; la caché va por programKey
+  // (fuente+genes). Sin spec cargada → el shader nunca llegó al worker.
+  const spec = state.genSources.get(p.shaderId)
+  const ent = spec ? state.genPrograms.get(spec.programKey) : undefined
   if (!ent) {
-    if (state.genPending.has(p.shaderId)) {
+    if (spec && state.genPending.has(spec.programKey)) {
       // Aún compilando en paralelo → activar al finalizar (§4.4).
-      state.genPendingActivate = { shaderId: p.shaderId, crossfadeMs: fadeMs }
+      state.genPendingActivate = {
+        shaderId: p.shaderId,
+        programKey: spec.programKey,
+        crossfadeMs: fadeMs,
+      }
       return
     }
     emitShaderStatus({ shaderId: p.shaderId, ok: false, log: 'shader not loaded' })
@@ -1669,6 +1712,7 @@ function attachVideoPort(port: MessagePort): void {
       shaderId,
       source: s.source,
       steps: s.steps,
+      genes: s.genes,
     })
   }
   for (const [name, value] of state.uniforms) {

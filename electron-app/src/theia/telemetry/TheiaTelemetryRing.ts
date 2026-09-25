@@ -171,9 +171,14 @@ export const TELEMETRY_SCHEMA: readonly TelemetrySlotDescriptor[] = [
   // local de main quedan a 0 — el header Int32 es su casa real.
   { slot: 56, name: 'WIRE_FLAGS',        uniform: '',                   kind: 'none' },
   { slot: 57, name: 'WIRE_ENUMS',        uniform: '',                   kind: 'none' },
+  // 🧬 WAVE 8233 · G1 — RELOJES INTEGRALES (Infinite Genome §Ley-1/§4.6):
+  // ENERGY_TIME = ∫energy·dt acumulado en el host (monótono — el shader no
+  // multiplica un reloj por señales cambiantes). BAR_COUNT = compases
+  // absolutos → fronteras de frase para mutación del genoma. kind 'none':
+  // ambos son crudos — suavizar un integral/discreto los corrompería.
+  { slot: 58, name: 'ENERGY_TIME',       uniform: 'u_energyTime',      kind: 'none' },
+  { slot: 59, name: 'BAR_COUNT',         uniform: 'u_barCount',        kind: 'none' },
   // RESERVA — stereo width/balance, futuros motores
-  { slot: 58, name: 'RESERVED_58',       uniform: '',                   kind: 'none' },
-  { slot: 59, name: 'RESERVED_59',       uniform: '',                   kind: 'none' },
   { slot: 60, name: 'RESERVED_60',       uniform: '',                   kind: 'none' },
   { slot: 61, name: 'RESERVED_61',       uniform: '',                   kind: 'none' },
   { slot: 62, name: 'RESERVED_62',       uniform: '',                   kind: 'none' },
@@ -186,6 +191,50 @@ export const TELEMETRY_SLOT: Readonly<Record<string, number>> = (() => {
   for (const d of TELEMETRY_SCHEMA) m[d.name] = d.slot
   return Object.freeze(m)
 })()
+
+// ───────────── 🧬 WAVE 8233 · G1 — Relojes integrales ─────────────
+
+/**
+ * Estado de los relojes integrales del host (Infinite Genome Ley 1/§4.6).
+ * `u_energyTime` = ∫energy·dt — el shader suma una FASE continua en lugar
+ * de multiplicar un reloj por señales cambiantes (Ley 1). `u_barCount` =
+ * compases absolutos — frontera de frase para la mutación del genoma.
+ */
+export interface IntegralClockState {
+  /** ∫max(0,energy)·dt — segundos de energía acumulados, monótono. */
+  energyTime: number
+  /** Compases absolutos transcurridos (floor(beatCount/4), ratchet). */
+  barCount: number
+  /** Marca temporal del tick previo (ms) — base del dt real. */
+  prevNowMs: number
+}
+
+export function createIntegralClocks(): IntegralClockState {
+  return { energyTime: 0, barCount: 0, prevNowMs: 0 }
+}
+
+/**
+ * Avanza los relojes integrales un tick del motor.
+ *  · `energyTime += max(0,energy) · dt` — dt real del reloj del tick,
+ *    clamp [0, 0.5 s]: un stall/NTP jamás produce un salto del integral.
+ *  · `barCount` = ratchet monótono de floor(beatCount/4): cruza en cada
+ *    frontera de compás y nunca retrocede aunque el pacemaker reinicie.
+ * Zero-alloc: muta `st` in-place.
+ */
+export function stepIntegralClocks(
+  st: IntegralClockState,
+  nowMs: number,
+  energy: number,
+  beatCount: number,
+): void {
+  const dtSec = st.prevNowMs > 0
+    ? Math.min(0.5, Math.max(0, (nowMs - st.prevNowMs) * 0.001))
+    : 0
+  st.prevNowMs = nowMs
+  st.energyTime += Math.max(0, energy) * dtSec
+  const barNow = Math.floor(Math.max(0, beatCount) / 4)
+  if (barNow > st.barCount) st.barCount = barNow
+}
 
 // ─────────────────────────── Construcción ───────────────────────────
 

@@ -270,7 +270,9 @@ const TheiaOutputView: React.FC = () => {
         // 🔮 WAVE 8231 · E5 — control generativo Modo B por el mismo port.
         if (isGenControlMessage(data)) {
           if (data.type === THEIA_GEN_LOAD_MSG) {
-            ensureGenRuntime()?.load(data.shaderId, data.source, data.steps)
+            // 🧬 WAVE 8233 · G1 — la ventana compila la MISMA variante
+            // (mismo fenotipo → mismo programKey) que el worker.
+            ensureGenRuntime()?.load(data.shaderId, data.source, data.steps, data.genes)
           } else if (data.type === THEIA_GEN_ACTIVATE_MSG) {
             if (data.shaderId === BUILTIN_SHADER_ID) {
               exitGenMode()

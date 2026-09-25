@@ -16,11 +16,15 @@ import { describe, expect, it } from 'vitest'
 import {
   assembleFragmentShader,
   buildEpilogue,
+  buildGeneDefines,
   buildPreamble,
+  geneSignature,
+  glslFloatLiteral,
   hasMainImage,
   hashSource,
   parseStepsHint,
   remapShaderLog,
+  resolveGeneValues,
   BLIT_FRAG_SRC,
   FLASH_STATS_FRAG_SRC,
   DEFAULT_MAX_STEPS,
@@ -536,5 +540,201 @@ describe('G0 — noise3() del preámbulo es value noise continuo (H2)', () => {
   it('en nodos de retícula el valor es exactamente el hash (determinista)', () => {
     expect(noise3(3, -2, 7)).toBeCloseTo(hash31(3, -2, 7) * 2 - 1, 10)
     expect(noise3(0, 0, 0)).toBeCloseTo(hash31(0, 0, 0) * 2 - 1, 10)
+  })
+})
+
+// ───────────────── 🧬 WAVE 8233 · G1 — Gene Parser & Integral Time ─────────────────
+
+describe('G1 — parser @euclid family / seed / gene (Infinite Genome §4.2)', () => {
+  const GEN_SRC = `// @euclid name    Tribu Mental
+// @euclid family  swarm+conformal
+// @euclid seed    123456789
+// @euclid genome  aggression=0.75 chaos=0.55
+// @euclid gene    G_SYM    struct int   3    9     5    a:+0.3 c:+0.2 o:-0.4
+// @euclid gene    G_WARP   expr   float 0.4  2.2   1.25 a:+0.2 c:+0.8 o:+0.3 curve=exp "Warp"
+// @euclid gene    G_ZOOM   expr   float 0.05 0.5   0.25 a:+0.6
+// @euclid steps   96
+void mainImage(out vec4 c, in vec2 f) { c = vec4(0.0); }`
+
+  it('family: simple y compuesta (swarm+conformal → array)', () => {
+    const meta = parseEuclidMeta(GEN_SRC)
+    expect(meta.family).toEqual(['swarm', 'conformal'])
+    const single = parseEuclidMeta(
+      '// @euclid family ether\n' + 'void mainImage(out vec4 c, in vec2 f){c=vec4(0);}',
+    )
+    expect(single.family).toEqual(['ether'])
+  })
+
+  it('seed: uint32 explícito, auto y canónico 0', () => {
+    expect(parseEuclidMeta(GEN_SRC).seed).toBe(123456789)
+    expect(
+      parseEuclidMeta('// @euclid seed auto\nvoid mainImage(out vec4 c,in vec2 f){c=vec4(0);}').seed,
+    ).toBe('auto')
+    expect(
+      parseEuclidMeta('// @euclid seed 0\nvoid mainImage(out vec4 c,in vec2 f){c=vec4(0);}').seed,
+    ).toBe(0)
+    expect(
+      parseEuclidMeta('// @euclid seed 4294967295\nvoid mainImage(out vec4 c,in vec2 f){c=vec4(0);}').seed,
+    ).toBe(4294967295)
+  })
+
+  it('seed: rechaza malformados y fuera de uint32 sin lanzar', () => {
+    const mk = (s: string) =>
+      parseEuclidMeta(`// @euclid seed ${s}\nvoid mainImage(out vec4 c,in vec2 f){c=vec4(0);}`)
+    expect(mk('banana').seed).toBeUndefined()
+    expect(mk('-1').seed).toBeUndefined()
+    expect(mk('4294967296').seed).toBeUndefined()
+    expect(mk('').seed).toBeUndefined()
+  })
+
+  it('gene: sintaxis completa — clase, tipo, rango, default, afinidades, curve, label', () => {
+    const meta = parseEuclidMeta(GEN_SRC)
+    expect(meta.genes).toHaveLength(3)
+    const g0 = meta.genes[0]
+    expect(g0.name).toBe('G_SYM')
+    expect(g0.cls).toBe('struct')
+    expect(g0.type).toBe('int')
+    expect(g0.min).toBe(3)
+    expect(g0.max).toBe(9)
+    expect(g0.defaultValue).toBe(5)
+    expect(g0.affinities).toEqual({ a: 0.3, c: 0.2, o: -0.4 })
+    expect(g0.curve).toBe('lin')
+    const g1 = meta.genes[1]
+    expect(g1.cls).toBe('expr')
+    expect(g1.type).toBe('float')
+    expect(g1.curve).toBe('exp')
+    expect(g1.label).toBe('Warp')
+    const g2 = meta.genes[2]
+    expect(g2.affinities.o).toBeUndefined()
+    expect(g2.label).toBeUndefined()
+  })
+
+  it('genes malformados se ignoran sin colgar el hilo y sin corromper el resto', () => {
+    const meta = parseEuclidMeta(`// @euclid name   X
+// @euclid gene   G_BROKEN struct int          // sin números
+// @euclid gene                               // vacío
+// @euclid gene   G_OK struct int 1 4 2
+// @euclid gene   9BADBAD struct int 1 2 1     // nombre no-G_*: pasa al meta, se filtra al inyectar
+// @euclid family ether
+// @euclid param  u_x float 0 1 0.5
+void mainImage(out vec4 c, in vec2 f) { c = vec4(0.0); }`)
+    expect(meta.name).toBe('X')
+    expect(meta.family).toEqual(['ether'])
+    expect(meta.params).toHaveLength(1)
+    expect(meta.genes.map((g) => g.name)).toEqual(['G_OK', '9BADBAD'])
+    const resolved = resolveGeneValues(meta)
+    expect(resolved).toEqual({ G_OK: 2 }) // el no-G_* no se inyecta
+  })
+})
+
+describe('G1 — inyección de genes en el ensamblador', () => {
+  const BODY = `// @euclid gene G_SYM struct int 3 9 5
+#ifndef G_SYM
+#define G_SYM 5.0
+#endif
+void mainImage(out vec4 c, in vec2 f) { c = vec4(G_SYM * 0.1); }`
+
+  it('glslFloatLiteral: fuerza siempre literal float GLSL', () => {
+    expect(glslFloatLiteral(5)).toBe('5.0')
+    expect(glslFloatLiteral(0)).toBe('0.0')
+    expect(glslFloatLiteral(1.25)).toBe('1.25')
+    expect(glslFloatLiteral(-0.5)).toBe('-0.5')
+    expect(glslFloatLiteral(1e-7)).toBe('1e-7')
+    expect(glslFloatLiteral(Number.NaN)).toBe('0.0')
+    expect(glslFloatLiteral(Infinity)).toBe('0.0')
+  })
+
+  it('resolveGeneValues: defaults ∪ overrides, clamp de rango y redondeo int', () => {
+    const meta = parseEuclidMeta(BODY)
+    // Sin overrides → defaults declarados.
+    expect(resolveGeneValues(meta)).toEqual({ G_SYM: 5 })
+    // Override dentro de rango.
+    expect(resolveGeneValues(meta, { G_SYM: 7 })).toEqual({ G_SYM: 7 })
+    // Clamp a min/max.
+    expect(resolveGeneValues(meta, { G_SYM: 99 })).toEqual({ G_SYM: 9 })
+    expect(resolveGeneValues(meta, { G_SYM: -3 })).toEqual({ G_SYM: 3 })
+    // int redondea.
+    expect(resolveGeneValues(meta, { G_SYM: 6.6 })).toEqual({ G_SYM: 7 })
+    // Overrides no declarados G_* pasan (forward-compat #ifdef).
+    expect(resolveGeneValues(meta, { G_SYM: 5, G_EXTRA: 0.5 })).toEqual({
+      G_SYM: 5,
+      G_EXTRA: 0.5,
+    })
+    // Core sin genes y sin overrides → undefined (compila por #ifndef).
+    expect(resolveGeneValues(parseEuclidMeta(ARTIST_BODY))).toBeUndefined()
+    // Idempotente: un fenotipo ya resuelto como overrides da lo mismo.
+    const once = resolveGeneValues(meta, { G_SYM: 7 })
+    expect(resolveGeneValues(meta, once)).toEqual(once)
+  })
+
+  it('buildGeneDefines: orden estable, float y sanitiza nombres', () => {
+    const block = buildGeneDefines({ G_WARP: 1.25, G_SYM: 5 })
+    const lines = block.split('\n')
+    // Orden alfabético (independiente del insertion order del objeto).
+    expect(lines.indexOf('#define G_SYM 5.0')).toBeLessThan(
+      lines.indexOf('#define G_WARP 1.25'),
+    )
+    // Nombres que no son G_* nunca llegan al shader.
+    const dirty = buildGeneDefines({ 'evil; uniform': 1, G_OK: 2 } as never)
+    expect(dirty).not.toContain('evil')
+    expect(dirty).toContain('#define G_OK 2.0')
+    expect(buildGeneDefines(undefined)).toBe('')
+    expect(buildGeneDefines({})).toBe('')
+  })
+
+  it('geneSignature: determinista y sensible a valores', () => {
+    const a = geneSignature({ G_WARP: 1.25, G_SYM: 5 })
+    const b = geneSignature({ G_SYM: 5, G_WARP: 1.25 }) // orden distinto
+    expect(a).toBe(b)
+    expect(a).toBe('G_SYM=5.0;G_WARP=1.25')
+    expect(geneSignature({ G_SYM: 6 })).not.toBe(geneSignature({ G_SYM: 5 }))
+    expect(geneSignature(undefined)).toBe('')
+  })
+
+  it('assemble inyecta #define entre preámbulo y cuerpo, y cuenta en preambleLines', () => {
+    const asm = assembleFragmentShader(BODY, DEFAULT_MAX_STEPS, { G_SYM: 7 })
+    const defIdx = asm.fragSource.indexOf('#define G_SYM 7.0')
+    const bodyIdx = asm.fragSource.indexOf('void mainImage')
+    expect(defIdx).toBeGreaterThan(0)
+    expect(defIdx).toBeLessThan(bodyIdx)
+    // El #ifndef del cuerpo queda DOMINADO por el define inyectado:
+    // el fallback del artista no compite (G_SYM ya existe).
+    expect(asm.fragSource.indexOf('#ifndef G_SYM')).toBeGreaterThan(defIdx)
+    // preambleLines = preámbulo + bloque gen → errores remapean al artista.
+    const preLines = buildPreamble(DEFAULT_MAX_STEPS).split('\n').length
+    expect(asm.preambleLines).toBeGreaterThan(preLines)
+    const lines = asm.fragSource.split('\n')
+    expect(lines[asm.preambleLines]).toContain('// @euclid gene') // 1ª línea del cuerpo
+    // Sin genes: bloque vacío, preambleLines = preámbulo puro.
+    const noGenes = assembleFragmentShader(BODY, DEFAULT_MAX_STEPS)
+    expect(noGenes.fragSource).not.toContain('GENOMA inyectado')
+    expect(noGenes.preambleLines).toBe(preLines)
+  })
+
+  it('el hash del programa cambia con los genes (programKey = fuente ensamblada)', () => {
+    const v5 = assembleFragmentShader(BODY, DEFAULT_MAX_STEPS, { G_SYM: 5 })
+    const v7 = assembleFragmentShader(BODY, DEFAULT_MAX_STEPS, { G_SYM: 7 })
+    const v7b = assembleFragmentShader(BODY, DEFAULT_MAX_STEPS, { G_SYM: 7 })
+    expect(hashSource(v5.fragSource)).not.toBe(hashSource(v7.fragSource))
+    expect(hashSource(v7.fragSource)).toBe(hashSource(v7b.fragSource))
+    // Un gen struct distinto = fenotipo distinto = otro programa LRU.
+    const expr = assembleFragmentShader(BODY, DEFAULT_MAX_STEPS, {
+      G_SYM: 7,
+      G_EXTRA: 0.5,
+    })
+    expect(hashSource(expr.fragSource)).not.toBe(hashSource(v7.fragSource))
+  })
+})
+
+describe('G1 — alias de relojes integrales en el preámbulo', () => {
+  it('u_energyTime y u_barCount salen del schema como macros u_tel[]', () => {
+    const pre = buildPreamble()
+    expect(pre).toContain('#define u_energyTime')
+    expect(pre).toContain('#define u_barCount')
+    // Índice = slot − SLOT_PAYLOAD_BASE (58→54, 59→55), nunca a mano.
+    const etSlot = TELEMETRY_SCHEMA.find((d) => d.name === 'ENERGY_TIME')!
+    const bcSlot = TELEMETRY_SCHEMA.find((d) => d.name === 'BAR_COUNT')!
+    expect(pre).toContain(`u_tel[${etSlot.slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(`u_tel[${bcSlot.slot - SLOT_PAYLOAD_BASE}]`)
   })
 })

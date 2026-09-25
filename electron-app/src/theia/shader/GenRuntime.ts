@@ -22,6 +22,7 @@ import {
   assembleFragmentShader,
   remapShaderLog,
   hasMainImage,
+  hashSource,
   parseStepsHint,
   GEN_VERTEX_SRC,
   BLIT_VERTEX_SRC,
@@ -91,6 +92,8 @@ interface GenEntry {
 
 interface GenPending {
   shaderId: string
+  /** 🧬 WAVE 8233 · G1 — clave de caché (hash fuente+genes), NO el atomId. */
+  programKey: string
   steps: number
   program: WebGLProgram
   vs: WebGLShader
@@ -98,6 +101,12 @@ interface GenPending {
   preambleLines: number
   bodyLines: number
   t0: number
+}
+
+/** 🧬 WAVE 8233 · G1 — especificación por shaderId: fenotipo+programKey. */
+interface GenSourceSpec {
+  genes?: Record<string, number>
+  programKey: string
 }
 
 const GEN_CACHE_MAX = 8
@@ -116,9 +125,12 @@ export class GenRuntime {
   private readonly canvas: HTMLCanvasElement | OffscreenCanvas
   private readonly khrCompile: { COMPLETION_STATUS_KHR: number } | null
 
+  /** Caché LRU por programKey (hash fuente+genes) — variantes coexisten. */
   private readonly programs = new Map<string, GenEntry>()
   private readonly pending = new Map<string, GenPending>()
-  private pendingActivate: { id: string; fadeMs: number } | null = null
+  /** shaderId → fenotipo+programKey (para resolver `activate`). */
+  private readonly sources = new Map<string, GenSourceSpec>()
+  private pendingActivate: { id: string; programKey: string; fadeMs: number } | null = null
   private active: GenEntry | null = null
   private activeId = BUILTIN_SHADER_ID
   private seq = 0
@@ -245,8 +257,18 @@ export class GenRuntime {
     }
   }
 
-  /** Compila un shader de artista. Con KHR_parallel → sondeo por frame. */
-  load(shaderId: string, source: string, steps?: number): void {
+  /**
+   * Compila un shader de artista. Con KHR_parallel → sondeo por frame.
+   * 🧬 WAVE 8233 · G1 — `genes` va dentro del fragSource → la caché
+   * distingue fenotipos (variantes del mismo átomo = programas LRU
+   * independientes; la variante anterior NO se destruye).
+   */
+  load(
+    shaderId: string,
+    source: string,
+    steps?: number,
+    genes?: Record<string, number>,
+  ): void {
     const gl = this.gl
     const maxSteps = steps ?? parseStepsHint(source) ?? DEFAULT_MAX_STEPS
     if (!hasMainImage(source)) {
@@ -257,25 +279,18 @@ export class GenRuntime {
       })
       return
     }
-    // Reemplazo de programa previo / pendiente — libera objetos GL.
-    const old = this.programs.get(shaderId)
-    if (old) {
-      gl.deleteProgram(old.program)
-      this.programs.delete(shaderId)
-      if (this.active === old) {
-        this.active = null
-        this.activeId = BUILTIN_SHADER_ID
-      }
+    const asm = assembleFragmentShader(source, maxSteps, genes)
+    const programKey = hashSource(asm.fragSource)
+    this.sources.set(shaderId, { genes, programKey })
+    if (this.programs.has(programKey) || this.pending.has(programKey)) {
+      // Re-carga idempotente o variante ya cacheada por otro átomo.
+      this.onStatus({
+        shaderId,
+        ok: true,
+        pending: this.pending.has(programKey) || undefined,
+      })
+      return
     }
-    const stale = this.pending.get(shaderId)
-    if (stale) {
-      gl.deleteProgram(stale.program)
-      gl.deleteShader(stale.vs)
-      gl.deleteShader(stale.fs)
-      this.pending.delete(shaderId)
-    }
-
-    const asm = assembleFragmentShader(source, maxSteps)
     const t0 = performance.now()
     const vs = this.compileShader(gl.VERTEX_SHADER, GEN_VERTEX_SRC)
     const fs = this.compileShader(gl.FRAGMENT_SHADER, asm.fragSource)
@@ -299,6 +314,7 @@ export class GenRuntime {
     gl.linkProgram(prog)
     const p: GenPending = {
       shaderId,
+      programKey,
       steps: maxSteps,
       program: prog,
       vs: vs.shader,
@@ -308,7 +324,7 @@ export class GenRuntime {
       t0,
     }
     if (this.khrCompile) {
-      this.pending.set(shaderId, p)
+      this.pending.set(programKey, p)
       this.onStatus({ shaderId, ok: true, pending: true })
     } else {
       this.finalize(p)
@@ -331,10 +347,10 @@ export class GenRuntime {
         posLoc: gl.getAttribLocation(p.program, 'a_pos'),
         lastUsed: this.seq,
       }
-      this.programs.set(p.shaderId, ent)
+      this.programs.set(p.programKey, ent)
       this.evict()
       this.onStatus({ shaderId: p.shaderId, ok: true, compileMs })
-      if (this.pendingActivate?.id === p.shaderId) {
+      if (this.pendingActivate?.programKey === p.programKey) {
         const pa = this.pendingActivate
         this.pendingActivate = null
         this.activate(pa.id, pa.fadeMs)
@@ -396,10 +412,13 @@ export class GenRuntime {
       this.deactivate()
       return
     }
-    const ent = this.programs.get(id)
+    // 🧬 WAVE 8233 · G1 — la caché va por programKey; shaderId se resuelve
+    // vía su spec (fenotipo cargado).
+    const spec = this.sources.get(id)
+    const ent = spec ? this.programs.get(spec.programKey) : undefined
     if (!ent) {
-      if (this.pending.has(id)) {
-        this.pendingActivate = { id, fadeMs }
+      if (spec && this.pending.has(spec.programKey)) {
+        this.pendingActivate = { id, programKey: spec.programKey, fadeMs }
         return
       }
       this.onStatus({ shaderId: id, ok: false, log: 'shader not loaded' })

@@ -380,12 +380,11 @@ declare global {
       import: () => Promise<{ ok: boolean; data?: unknown; error?: string }>
     }
 
-    // � WAVE 4860 + 4864: THEIA ENGINE — SAB one-shot bridge + Output Window
+    // 🌊 WAVE 4860/4864/8215: THEIA ENGINE — Glass Bridge + Output Window.
+    // Los canales de datos (video/telemetría) NO van por window.lux: son
+    // MessagePorts transferibles entregados por el relay del preload —
+    // ver `src/theia/glassBridge.ts` (`requestTheiaPort`).
     theia: {
-      /** Returns the SharedArrayBuffer of the FrameContextRing from the main process. Called once. */
-      getFrameContextSAB: () => Promise<SharedArrayBuffer | null>
-      /** WAVE 4864 — Returns the SAB of the video frame buffer (full-res RGBA). Lazy-created in main. */
-      getVideoFrameBufferSAB: () => Promise<SharedArrayBuffer | null>
       /** WAVE 4864 — Opens the secondary projector BrowserWindow. */
       openOutput: () => Promise<{ ok: boolean; error?: string }>
       /** WAVE 4864 — Closes the projector window. */

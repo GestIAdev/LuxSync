@@ -819,6 +819,17 @@ export class TitanOrchestrator {
     detachSeleneTheiaBridge(): void { this.theiaBridgeManager.detachSeleneTheiaBridge() }
 
   /**
+   * 🌊 WAVE 8215 — Exposes the master FrameContext SAB (written by Trinity's
+   * FrameContextWriter @44Hz in TickEngine) for the `TheiaTelemetryPump`
+   * snapshots. The SAB NEVER crosses to the renderer — the pump copies its
+   * first 16B into a transferable 256B buffer per tick (ping-pong). Returns
+   * null while Trinity hasn't spawned yet.
+   */
+  getFrameContextSAB(): SharedArrayBuffer | null {
+    return this.trinity?.getFrameContextSAB() ?? null
+  }
+
+  /**
    * Initialize all TITAN modules
    */
     async init(): Promise<void> { await this.lifecycleManager.init() }

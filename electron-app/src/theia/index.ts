@@ -29,17 +29,41 @@ export {
 
 export { ThetaOrchestrator, getThetaOrchestrator, ENABLE_THETA_ORCHESTRATOR, type ThetaOrchestratorConfig } from './ThetaOrchestrator'
 
-// 🎬 WAVE 4864 — Phase 3 (Output Window) + Phase 4 (FSM + Crossfade)
+// 🎬 WAVE 4864 / 🌊 WAVE 8215 — transferable frame buffers (Glass Bridge)
 export {
-  createSharedVideoFrameBuffer,
-  VideoFrameReader,
+  createVideoFrameBuffer,
+  readVideoFrame,
   VideoFrameWriter,
+  THEIA_VIDEO_FRAME_MSG,
+  isVideoFrameMessage,
+  isAckMessage,
   VIDEO_MAX_WIDTH,
   VIDEO_MAX_HEIGHT,
-  VIDEO_SAB_BYTE_LENGTH,
-  type VideoFramePublishInfo,
+  VIDEO_FRAME_BUFFER_BYTES,
+  VIDEO_META_BYTES,
   type VideoFrameSnapshot,
+  type TheiaVideoFrameMessage,
+  type TheiaAckMessage,
 } from './SharedVideoFrameBuffer'
+
+// 🌊 WAVE 8215 — Glass Bridge page-world relay + telemetry ring (Modo B)
+export {
+  onTheiaGlassMessage,
+  requestTheiaPort,
+  type TheiaGlassMessage,
+  type TheiaGlassPortKind,
+} from './glassBridge'
+
+export {
+  ackTelemetryFrame,
+  createTelemetryRing,
+  isTelemetryMessage,
+  mirrorTelemetryIntoRing,
+  THEIA_TELEMETRY_MSG,
+  TELEMETRY_RING_BYTES,
+  type TheiaTelemetryMessage,
+  type TheiaTelemetryAck,
+} from './TheiaTelemetryRing'
 
 export {
   AssetStateMachine,

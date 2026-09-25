@@ -455,6 +455,84 @@ const api = {
 // ============================================================================
 // 🌙 LUX API - Selene Lux Core Bridge (WAVE 2)
 // ============================================================================
+// ============================================================================
+// 🌊 WAVE 8215 — THEIA GLASS RELAY (isolated-world side)
+//
+// THE OPUS PIVOT: SharedArrayBuffer está VETADO en la frontera Main↔Renderer
+// ("An object could not be cloned"). Toda la mensajería Theia usa MessagePorts
+// con buffers `ArrayBuffer` en ping-pong `ack`.
+//
+// 🩹 WAVE 8216: asimetría del transporte — `MessagePortMain` rechaza
+// ArrayBuffers en su array `transfer` ("Port at index 0 is not a valid
+// port"), así que main→renderer (telemetría 256B) sale por structured-clone
+// y el ack de vuelta SÍ transfiere (DOM MessagePort). El video 8.3MB va
+// renderer↔renderer (worker↔output window) — transfer estricto ambos sentidos.
+//
+// `contextBridge` NO puede transportar `MessagePort`: los ports que llegan
+// del main (`webContents.postMessage` + MessageChannelMain) aterrizan en
+// `event.ports` del world aislado y cruzan al page world como transferibles
+// en `window.postMessage(msg, '*', [port])` — espejo de
+// `src/theia/glassBridge.ts` (lado página).
+//
+// Modelo pull + buffer:
+//   página ──{ __luxTheiaReq: 'video-port'|'telemetry-port' }──▶ preload
+//     · marca el kind como "wanted" → entrega automática de re-links
+//     · si hay un port buffered (main lo pusheó antes del pull) → flush
+//     · si no lo hay → ipc a main pidiendo un channel NUEVO:
+//         'video-port'      → 'theia:request-video-port' (re-broker, solo
+//                             si la output window está abierta)
+//         'telemetry-port'  → 'theia:request-telemetry'  (pump.attach)
+//
+//   preload ──{ __luxTheia: kind, role } + [port]──▶ página
+//   preload ──{ __luxTheia: 'video-unlink' }───────▶ página (lifecycle notify)
+//
+// ZERO-ALLOC: este relay solo mueve punteros de port — ningún ArrayBuffer
+// de payload (8.3MB video / 256B telemetría) toca este camino; ping-pongean
+// renderer↔renderer con transfer estricto (video) o main→renderer por clone
+// + ack-transfer en el retorno (telemetría — WAVE 8216) sobre el port
+// entregado.
+// ============================================================================
+const THEIA_GLASS_MSG_KEY = '__luxTheia';
+const THEIA_GLASS_REQ_KEY = '__luxTheiaReq';
+/** Ports entregados por main antes de que la página hiciera pull. */
+const _theiaPending = new Map();
+/** Kinds que la página ya pidió — re-links se auto-entregan. */
+const _theiaWanted = new Set();
+function _theiaDeliver(kind, port, role) {
+    if (!port)
+        return;
+    if (!_theiaWanted.has(kind)) {
+        _theiaPending.set(kind, { port, role });
+        return;
+    }
+    window.postMessage({ [THEIA_GLASS_MSG_KEY]: kind, role }, '*', [port]);
+}
+ipcRenderer.on('theia:video-port', (event, meta) => {
+    _theiaDeliver('video-port', event.ports?.[0], meta?.role);
+});
+ipcRenderer.on('theia:telemetry-port', (event) => {
+    _theiaDeliver('telemetry-port', event.ports?.[0]);
+});
+ipcRenderer.on('theia:video-unlink', () => {
+    window.postMessage({ [THEIA_GLASS_MSG_KEY]: 'video-unlink' }, '*');
+});
+window.addEventListener('message', (ev) => {
+    if (ev.source !== window)
+        return;
+    const kind = ev.data?.[THEIA_GLASS_REQ_KEY];
+    if (kind !== 'video-port' && kind !== 'telemetry-port')
+        return;
+    _theiaWanted.add(kind);
+    const pending = _theiaPending.get(kind);
+    if (pending) {
+        // Port vivo buffered — entrega inmediata; no pedimos channel nuevo.
+        _theiaPending.delete(kind);
+        window.postMessage({ [THEIA_GLASS_MSG_KEY]: kind, role: pending.role }, '*', [pending.port]);
+        return;
+    }
+    // Sin port buffered → pedir a main un channel FRESCO (re-broker idempotente).
+    ipcRenderer.send(kind === 'video-port' ? 'theia:request-video-port' : 'theia:request-telemetry');
+});
 const luxApi = {
     // === 🔒 WAVE 2490: LICENSE TIER ===
     /** Get the current license tier ('DJ_FOUNDER' | 'FULL_SUITE') */
@@ -676,33 +754,14 @@ const luxApi = {
     // 🎭 WAVE 700.5.4: MOOD CONTROL
     // ============================================
     // ============================================
-    // 🎬 WAVE 4860: THEIA ENGINE — SAB one-shot bridge
+    // 🎬 WAVE 4860: THEIA ENGINE — Glass Bridge (WAVE 8215)
+    //
+    // Ya no hay getters de SharedArrayBuffer: los canales Theia son
+    // `MessagePort` transferibles entregados por el relay de arriba. La página
+    // hace pull vía `window.postMessage({__luxTheiaReq: kind})` — ver
+    // `src/theia/glassBridge.ts` (`requestTheiaPort`/`onTheiaGlassMessage`).
     // ============================================
     theia: {
-        /**
-         * Obtiene el SharedArrayBuffer del FrameContextRing del main process.
-         * Se llama UNA SOLA VEZ al arrancar ThetaOrchestrator. El SAB viaja
-         * por IPC (structured clone comparte por referencia) sin copia de datos.
-         */
-        getFrameContextSAB: async () => {
-            try {
-                return await ipcRenderer.invoke('theia:get-frame-context');
-            }
-            catch (err) {
-                console.warn('[preload] theia:get-frame-context failed:', err);
-                return null;
-            }
-        },
-        /** 🎬 WAVE 4864 — SAB del video pipeline full-resolution (best effort). */
-        getVideoFrameBufferSAB: async () => {
-            try {
-                return await ipcRenderer.invoke('theia:get-video-sab');
-            }
-            catch (err) {
-                console.warn('[preload] theia:get-video-sab failed:', err);
-                return null;
-            }
-        },
         /** 🎬 WAVE 4864 — Abre la ventana secundaria del proyector. */
         openOutput: () => ipcRenderer.invoke('theia:open-output'),
         /** 🎬 WAVE 4864 — Cierra la ventana del proyector. */

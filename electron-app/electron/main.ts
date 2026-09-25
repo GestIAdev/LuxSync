@@ -1589,6 +1589,9 @@ app.whenReady().then(async () => {
     devUrl: 'http://localhost:5173',
     prodIndexPath: path.join(__dirname, '../dist/index.html'),
     preloadPath: path.join(__dirname, 'preload.js'),
+    // 🌊 WAVE 8215 — el broker del video link necesita el extremo productor
+    // (la ventana principal, donde vive theta.worker).
+    getMainWindow: () => mainWindow,
   })
 
   // ═══════════════════════════════════════════════════════════════════════════

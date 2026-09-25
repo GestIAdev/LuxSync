@@ -17,9 +17,16 @@ export type ThetaMessageType =
   // Phase 2: Video stream (orchestrator → worker)
   | 'theia:load-stream'
   | 'theia:unload-stream'
+  // 🎬 WAVE 8207 — Live canvas attach (post-start preview mirror)
+  | 'theia:attach-canvas'
+  // 🌊 WAVE 8215 — Glass Bridge: transferable video port + link lifecycle
+  | 'theia:video-port'
+  | 'theia:video-unlink'
   // WAVE 4864 — Phase 4: Asset state machine (orchestrator → worker)
   | 'theia:force-state'
-  // 🎬 WAVE 4921 — Atomic cognitive seek (Selene → orchestrator → worker)
+  // � WAVE 8211 — Master uniforms bridge (orchestrator → worker)
+  | 'theia:set-uniform'
+  // �🎬 WAVE 4921 — Atomic cognitive seek (Selene → orchestrator → worker)
   | 'theia:seek'
   // Lifecycle (worker → orchestrator)
   | 'theia:ready'
@@ -34,20 +41,26 @@ export type ThetaMessageType =
   | 'theia:seek-ack'
 
 export interface ThetaInitPayload {
-  /** Reloj maestro compartido — escrito por TrinityOrchestrator @ 44Hz. */
+  /**
+   * Reloj maestro compartido — 🌊 WAVE 8215: es un SAB LOCAL del renderer
+   * (el ring de telemetría de 256B creado por `ThetaOrchestrator`). Sus
+   * primeros 16B replican el layout FrameContextRing (tickId/ts/gen) y los
+   * alimenta el `telemetry-port` del Glass Bridge por ping-pong — ya NO se
+   * comparte memoria con el main process (vetado). SAB renderer↔worker
+   * intra-proceso: legal.
+   */
   frameContextSAB: SharedArrayBuffer
   /** Periodo del poll que THETA hará sobre el SAB (ms). 22ms ≈ 44Hz. */
   pollIntervalMs: number
-  /** OffscreenCanvas reservado para Phase 2 (decodificador de vídeo).
-   *  En Phase 1 se acepta y se ignora — solo se valida que llegue intacto. */
+  /** 🌊 WAVE 8207 — UI preview canvas: the worker renders into its OWN
+   *  internal WebGL canvas; this one receives a 2D mirror blit per tick for
+   *  the TheiaEngineView viewport. Optional — the SAB pipeline works
+   *  without it. */
   offscreenCanvas?: OffscreenCanvas
-  /** WAVE 4864 — Phase 3: SAB compartido con la TheiaOutputWindow para blit
-   *  full-resolution. Si está ausente el worker no escribirá el frame buffer
-   *  HDMI (modo legacy: solo OffscreenCanvas en la UI principal). */
-  videoFrameSAB?: SharedArrayBuffer
   /** WAVE 4867 — Phase 6: SAB de 64×64 RGBA8 para el twin-output LED/DMX.
    *  El worker escribe el downscale aquí; TheiaVideoRenderer lo lee en el
-   *  hot-path de TitanOrchestrator y lo inyecta en AetherCanvasManager. */
+   *  hot-path de TitanOrchestrator y lo inyecta en AetherCanvasManager.
+   *  (SAB renderer↔worker — mismo proceso, legal bajo el veto de WAVE 8215.) */
   thumbPixelSAB?: SharedArrayBuffer
 }
 
@@ -95,6 +108,26 @@ export interface ThetaLoadStreamPayload {
   height: number
 }
 
+/**
+ * 🎬 WAVE 8207 — Transfers a UI OffscreenCanvas AFTER the worker started.
+ * The worker mirrors its internal WebGL framebuffer into it via a 2D blit,
+ * so the TheiaEngineView viewport works regardless of attach ordering.
+ */
+export interface ThetaAttachCanvasPayload {
+  canvas: OffscreenCanvas
+}
+
+/**
+ * 🌊 WAVE 8215 — Transfers the video MessagePort INTO the worker.
+ * The port is entangled (via MessageChannelMain, brokered in main by
+ * TheiaWindowManager) with the TheiaOutputView's port: the worker posts
+ * transferable frame ArrayBuffers on it and receives `ack` returns.
+ * Ownership ping-pong — zero-copy end to end.
+ */
+export interface ThetaVideoPortPayload {
+  port: MessagePort
+}
+
 export interface ThetaVideoStatusPayload {
   /** Current pipeline state. */
   state: 'idle' | 'streaming' | 'ended' | 'error'
@@ -124,6 +157,24 @@ export interface ThetaForceStatePayload {
   totalTicks?: number
   /** Marca este intent como manual del operador — puede romper drop-lock. */
   manual?: boolean
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 🌊 WAVE 8211 — Master uniforms (UI masters → shader)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Scalar uniform write. The worker stores these in a map consumed by the
+ * fragment pipeline each frame. v1 standard names:
+ *   u_brightness · u_contrast · u_blackout · u_speed
+ * Arbitrary names are allowed — the generative shader contract (Euclid)
+ * will consume them as `@euclid param` overrides.
+ */
+export interface ThetaSetUniformPayload {
+  /** GLSL uniform name (e.g. 'u_brightness'). */
+  name: string
+  /** Scalar value. Float; flags travel as 0/1. */
+  value: number
 }
 
 export interface ThetaAssetStatePayload {

@@ -1,34 +1,41 @@
 /**
- * 🎬 WAVE 4864 — THEIA WINDOW MANAGER (Main Process · Phase 3)
+ * 🎬 WAVE 4864 / 🌊 WAVE 8215 — THEIA WINDOW MANAGER (Main Process)
  *
  * Spawnea y gestiona la ventana secundaria del proyector Theia (HDMI / LED
  * wall). Es **frameless**, **fullscreen**, **fondo #000000** y tiene un único
- * propósito: leer el `SharedVideoFrameBuffer` y blittearlo en su `<canvas>`
- * vía `requestAnimationFrame`.
+ * propósito: recibir los frame-buffers transferibles del ThetaWorker y
+ * blittearlos en su `<canvas>` vía `requestAnimationFrame`.
  *
- * Comparte el SAB con el ThetaOrchestrator del renderer principal (que a su
- * vez lo entrega al ThetaWorker). El SAB es **propiedad del main process**:
- *   - Se crea lazy en la primera petición (`getVideoFrameSAB`).
- *   - Sobrevive a aperturas/cierres repetidos de la ventana secundaria.
- *   - Si el main muere, todos los renderers que lo tenían se quedan con un
- *     SAB huérfano (sin escritor) — el output ve frame fijo, no rompe.
+ * 🌊 WAVE 8215 — THE OPUS GLASS-BRIDGE PIVOT: ya NO hay SharedArrayBuffer
+ * cross-proceso. Este manager hace de BROKER de un `MessageChannelMain`
+ * directo entre los dos renderers:
+ *   - portA → main window  (ThetaWorker escribe frames, recibe acks)
+ *   - portB → output window (TheiaOutputView lee frames, devuelve buffers)
+ * Una vez entregados los extremos, el ping-pong de `ArrayBuffer` corre por
+ * Mojo renderer↔renderer — el main process queda FUERA del hot path.
  *
  * Targeting de display: si hay >= 2 monitores conectados, abre en el segundo;
  * si solo hay uno, abre en el primario (modo dev/preview).
  *
  * IPC handlers:
- *   theia:open-output      → abre ventana
- *   theia:close-output     → cierra ventana
- *   theia:get-video-sab    → devuelve SharedArrayBuffer (lazy create)
- *   theia:is-output-open   → boolean
+ *   theia:open-output        → abre ventana
+ *   theia:close-output       → cierra ventana
+ *   theia:is-output-open     → boolean
+ *   theia:video-port         → push del port pair (postMessage + transfer)
+ *   theia:video-unlink       → notify al cerrar (main window top-up su pool)
+ *   theia:request-video-port → pull-driven re-broker: cualquier renderer que
+ *                              pida el video link obtiene un channel NUEVO
+ *                              (worker respawn, window reload, late mount).
+ *                              NO-OP si la output window no está abierta.
+ *
+ * ZERO-ALLOC: este manager NO toca payloads — solo crea `MessageChannelMain`
+ * pairs y mueve sus extremos como transferibles. Ningún ArrayBuffer ni
+ * SharedArrayBuffer cruza por aquí: el ping-pong de buffers es 100%
+ * renderer↔renderer vía Mojo una vez entregados los extremos.
  */
 
-import { BrowserWindow, ipcMain, screen, type Display } from 'electron'
+import { BrowserWindow, ipcMain, MessageChannelMain, screen, type Display } from 'electron'
 import path from 'path'
-import {
-  createSharedVideoFrameBuffer,
-  VIDEO_SAB_BYTE_LENGTH,
-} from '../src/theia/SharedVideoFrameBuffer'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Config
@@ -42,6 +49,10 @@ interface TheiaWindowManagerOptions {
   prodIndexPath: string
   /** Path absoluto al preload.js. */
   preloadPath: string
+  /** 🌊 WAVE 8215 — accessor a la ventana principal (extremo productor del
+   *  video link). Se inyecta desde main.ts porque el manager no conoce el
+   *  orden de creación de ventanas. */
+  getMainWindow: () => BrowserWindow | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -52,7 +63,6 @@ export class TheiaWindowManager {
   private static _instance: TheiaWindowManager | null = null
 
   private outputWindow: BrowserWindow | null = null
-  private videoSAB: SharedArrayBuffer | null = null
   private opts: TheiaWindowManagerOptions
 
   private constructor(opts: TheiaWindowManagerOptions) {
@@ -71,19 +81,36 @@ export class TheiaWindowManager {
     return TheiaWindowManager._instance
   }
 
-  // ─── SAB ────────────────────────────────────────────────────────────────
+  // ─── Glass Bridge (WAVE 8215) ───────────────────────────────────────────
 
   /**
-   * Devuelve (creando si hace falta) el SharedArrayBuffer del video pipeline.
-   * El SAB se crea una sola vez y sobrevive a aperturas múltiples de la ventana.
+   * Crea el `MessageChannelMain` worker↔output y entrega cada extremo a su
+   * renderer. El main process sale del hot path: a partir de aquí los
+   * `ArrayBuffer` de 8.3MB ping-ponguean por Mojo con ownership transfer.
+   * El consumidor devuelve cada buffer vía `ack` — zero-alloc certificado.
    */
-  getVideoFrameSAB(): SharedArrayBuffer {
-    if (!this.videoSAB) {
-      this.videoSAB = createSharedVideoFrameBuffer()
-      // eslint-disable-next-line no-console
-      console.log(`[TheiaWindowManager] 🎬 created video SAB (${(VIDEO_SAB_BYTE_LENGTH / (1024 * 1024)).toFixed(1)} MB)`)
+  private linkVideoPort(): void {
+    if (!this.outputWindow || this.outputWindow.isDestroyed()) return
+    const mainWin = this.opts.getMainWindow()
+    if (!mainWin || mainWin.isDestroyed()) {
+      console.warn('[TheiaWindowManager] linkVideoPort: main window unavailable')
+      return
     }
-    return this.videoSAB
+    const { port1, port2 } = new MessageChannelMain()
+    mainWin.webContents.postMessage('theia:video-port', { role: 'producer' }, [port1])
+    this.outputWindow.webContents.postMessage('theia:video-port', { role: 'consumer' }, [port2])
+    // eslint-disable-next-line no-console
+
+    console.log('[TheiaWindowManager] � video Glass-Bridge linked (worker ↔ output)')
+  }
+
+  private unlinkVideoPort(): void {
+    const mainWin = this.opts.getMainWindow()
+    if (mainWin && !mainWin.isDestroyed()) {
+      // El worker marca los buffers en vuelo como perdidos y re-llena el pool
+      // (bounded re-alloc por lifecycle event — nunca por frame).
+      mainWin.webContents.send('theia:video-unlink')
+    }
   }
 
   // ─── Window lifecycle ───────────────────────────────────────────────────
@@ -165,6 +192,14 @@ export class TheiaWindowManager {
         this.outputWindow = null
       })
 
+      // 🌊 WAVE 8215 — el Glass Bridge se enlaza cuando el preload de la
+      // ventana de salida ya está vivo (did-finish-load). Los ports llegan al
+      // mundo aislado del preload y quedan BUFFERED hasta que la página haga
+      // pull (`__luxTheiaReq`) — entrega idempotente en ambos extremos.
+      this.outputWindow.webContents.once('did-finish-load', () => {
+        this.linkVideoPort()
+      })
+
       // Cargar la URL con flag ?theia-output=1 — main.tsx detecta y monta TheiaOutputView
       if (this.opts.isDev) {
         void this.outputWindow.loadURL(`${this.opts.devUrl}?theia-output=1`)
@@ -190,6 +225,10 @@ export class TheiaWindowManager {
 
   closeOutput(): void {
     if (this.outputWindow && !this.outputWindow.isDestroyed()) {
+      // 🌊 WAVE 8215 — notify ANTES de destruir: el worker marca los buffers
+      // en vuelo como perdidos (nunca volverán por ack) y rellena su pool
+      // solo en el próximo attach — bounded re-alloc por lifecycle event.
+      this.unlinkVideoPort()
       try {
         this.outputWindow.destroy()
       } catch {
@@ -216,10 +255,15 @@ export class TheiaWindowManager {
       return { ok: true }
     })
     ipcMain.handle('theia:is-output-open', () => this.isOutputOpen())
-    ipcMain.handle('theia:get-video-sab', (): SharedArrayBuffer | null => {
-      // invoke()+structured clone no es fiable para SAB en todos los entornos
-      // de Electron (especialmente file:// empaquetado). Evitamos throw global.
-      return null
+    // 🌊 WAVE 8215 — pull-driven re-broker. El preload de un renderer pide
+    // un video link FRESCO (página que llega tarde, worker respawn tras
+    // Phoenix, reload de ventana). Responder es re-entregar un channel nuevo
+    // a AMBOS extremos — los consumers reemplazan su port y el producer
+    // top-up su pool de transferibles en el attach (nunca por frame).
+    // NO-OP si no hay output window: el push de `did-finish-load` cubrirá
+    // el enlace cuando ésta abra.
+    ipcMain.on('theia:request-video-port', () => {
+      this.linkVideoPort()
     })
   }
 
@@ -227,8 +271,6 @@ export class TheiaWindowManager {
 
   shutdown(): void {
     this.closeOutput()
-    // El SAB se libera cuando todos los handlers GC-en sus referencias.
-    this.videoSAB = null
   }
 }
 

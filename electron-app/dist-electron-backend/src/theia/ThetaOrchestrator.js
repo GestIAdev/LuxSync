@@ -8,16 +8,23 @@
  *
  * Responsabilidades Phase 1:
  *  - Spawn del Web Worker.
- *  - Negociar el SharedArrayBuffer del FrameContext con el main process
- *    (one-shot vía IPC `theia:get-frame-context`).
- *  - Transferir el SAB y un OffscreenCanvas al worker en el INIT.
+ *  - 🌊 WAVE 8215 — GLASS BRIDGE: hacer pull de los MessagePorts al preload
+ *    (`requestTheiaPort`) y consumir la telemetría por ping-pong: cada
+ *    buffer 256B (clone main→renderer — WAVE 8216) se espeja al ring LOCAL
+ *    (SharedArrayBuffer renderer-side — intra-proceso, legal bajo el veto)
+ *    y su copia se devuelve al pump por `ack` con transfer. El reloj
+ *    maestro ya NO cruza la frontera como SAB.
+ *  - Entregar el `video-port` (role producer) al worker por transferencia.
+ *  - Transferir el ring SAB y un OffscreenCanvas al worker en el INIT.
  *  - Heartbeat + circuit breaker + Phoenix (resurrection) idénticos en
  *    contrato al patrón de Trinity, adaptados a APIs de Web Worker.
  *
  * NO renderiza vídeo. NO decodifica. Eso llega en Phase 2/F3.
  */
 import { makeThetaMessage, } from './protocol';
-import { createFrameContextSAB } from './FrameContextRing';
+// 🌊 WAVE 8215 — Glass Bridge page-world side + telemetry ring mirror
+import { onTheiaGlassMessage, requestTheiaPort, } from './glassBridge';
+import { ackTelemetryFrame, createTelemetryRing, isTelemetryMessage, mirrorTelemetryIntoRing, } from './TheiaTelemetryRing';
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
 import { createThumbSAB } from './TheiaThumbBuffer';
 // ─────────────────────────────────────────────────────────────────────────
@@ -41,13 +48,16 @@ const DEFAULT_CONFIG = {
 };
 // WAVE 4933.1 - THETA KILLSWITCH
 // Emergency global shutdown: disables worker spawn, heartbeat, and phoenix loop.
-export const ENABLE_THETA_ORCHESTRATOR = false;
+// 🌊 WAVE 8207 — QUARANTINE LIFTED: re-enabled. The pipeline is now WebGL-based
+// (gl.readPixels → SAB zero-copy), which removes the getImageData OOM path that
+// motivated the original killswitch. Keep this flag as the emergency brake.
+export const ENABLE_THETA_ORCHESTRATOR = true;
 function getBridge() {
     // Acceso defensivo — el preload puede no haber expuesto el namespace en
     // configuraciones legacy.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const lux = globalThis.lux ?? globalThis.window?.lux;
-    if (!lux || !lux.theia || typeof lux.theia.getFrameContextSAB !== 'function') {
+    if (!lux || !lux.theia || typeof lux.theia !== 'object') {
         return null;
     }
     return lux.theia;
@@ -67,10 +77,22 @@ export class ThetaOrchestrator {
             lastFailure: 0,
             successesInHalfOpen: 0,
         };
-        this.frameContextSAB = null;
+        /**
+         * 🌊 WAVE 8215 — Telemetry ring LOCAL (256B, SharedArrayBuffer
+         * renderer-side). Lo alimenta el `telemetry-port` del Glass Bridge por
+         * ping-pong — ya NO se pide un SAB al main process (vetado). Sus primeros
+         * 16B replican el layout FrameContextRing (tickId/ts/gen), que es lo que
+         * lee el worker; el resto queda reservado para el Euclid ring (WAVE 8208).
+         * Se pasa al worker en INIT como `frameContextSAB` — intra-proceso, legal.
+         */
+        this.telemetryRing = createTelemetryRing();
+        /** Port del canal de telemetría (main pump ↔ esta página). Vive AQUÍ —
+         *  no en el worker — para sobrevivir respawns Phoenix. */
+        this.telemetryPort = null;
+        /** Port de video buffered si llega antes del spawn del worker. */
+        this.pendingVideoPort = null;
+        this.unsubGlass = null;
         this.offscreenCanvas = null;
-        // 🎬 WAVE 4864 — Phase 3: SAB shared with TheiaOutputWindow
-        this.videoFrameSAB = null;
         // 🎬 WAVE 4867 — Phase 6: thumb SAB (64×64 RGBA8) — allocado aquí y compartido con
         // TitanOrchestrator a través de `getThumbPixelSAB()` para TheiaVideoRenderer.
         this.thumbPixelSAB = createThumbSAB();
@@ -95,6 +117,9 @@ export class ThetaOrchestrator {
         this.lastHeartbeatAt = 0;
         this.lastHeartbeatLatencyMs = 0;
         this.lastStateReport = null;
+        // 🌊 WAVE 8211 — Master uniforms desired by the UI. Persisted here so a
+        // Phoenix respawn replays them on 'theia:ready' (the worker is stateless).
+        this.desiredUniforms = new Map();
         this._clipUrlResolver = null;
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
@@ -104,9 +129,17 @@ export class ThetaOrchestrator {
      * (estructura nativa de transferControlToOffscreen → postMessage).
      */
     attachOffscreenCanvas(canvas) {
-        if (this.isRunning) {
-            // eslint-disable-next-line no-console
-            console.warn('[THETA] attachOffscreenCanvas() called after start — canvas ignored');
+        if (this.isRunning && this.worker) {
+            // 🌊 WAVE 8207 — live transfer: the worker mirrors its internal GL
+            // framebuffer into any canvas that arrives post-start, so the
+            // TheiaEngineView viewport works regardless of attach ordering.
+            try {
+                this.worker.postMessage(makeThetaMessage('theia:attach-canvas', { canvas }), [canvas]);
+            }
+            catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[THETA] attach-canvas transfer failed:', err);
+            }
             return;
         }
         this.offscreenCanvas = canvas;
@@ -121,42 +154,20 @@ export class ThetaOrchestrator {
             this.stopHeartbeat();
             return;
         }
-        // 1) Pedir el SAB al main process — UNA SOLA VEZ.
-        const bridge = getBridge();
-        if (!bridge) {
-            throw new Error('[THETA] preload bridge not found (window.lux.theia.getFrameContextSAB missing)');
-        }
-        let sab = null;
-        try {
-            sab = await bridge.getFrameContextSAB();
-        }
-        catch (err) {
-            // En algunos entornos Electron, invoke() no clona SAB correctamente.
-            // No tumbamos el motor: arrancamos con un SAB local y seguimos.
+        // 🌊 WAVE 8215 — GLASS BRIDGE: armamos el relay ANTES del spawn para
+        // que los ports entregados por el broker se reenvíen al worker apenas
+        // éste exista. El pull marca los kinds como "wanted" en el preload:
+        // ports buffered → entrega inmediata; si no → main re-brokerea un
+        // channel nuevo y auto-entrega al llegar.
+        if (!getBridge()) {
+            // El namespace window.lux.theia falta (preload roto/legacy): sin él
+            // tampoco hay relay Glass ni control de la output window. No es
+            // fatal para el worker (arranca con ring local), pero no habrá
+            // telemetría ni proyector — avisar y continuar.
             // eslint-disable-next-line no-console
-            console.warn('[THETA] getFrameContextSAB IPC failed, using local fallback SAB:', err);
+            console.warn('[THETA] window.lux.theia missing — Glass Bridge relay may be unavailable');
         }
-        if (!sab || !(sab instanceof SharedArrayBuffer)) {
-            sab = createFrameContextSAB();
-            // eslint-disable-next-line no-console
-            console.warn('[THETA] using local FrameContext SAB fallback (IPC bridge unavailable)');
-        }
-        this.frameContextSAB = sab;
-        // 🎬 WAVE 4864 — Phase 3: also fetch the video frame SAB. Optional —
-        // if the bridge method is missing or returns null, the worker will run
-        // in legacy mode (no projector window blit).
-        if (typeof bridge.getVideoFrameBufferSAB === 'function') {
-            try {
-                const vSab = await bridge.getVideoFrameBufferSAB();
-                if (vSab instanceof SharedArrayBuffer) {
-                    this.videoFrameSAB = vSab;
-                }
-            }
-            catch (err) {
-                // eslint-disable-next-line no-console
-                console.warn('[THETA] getVideoFrameBufferSAB failed (continuing without projector SAB):', err);
-            }
-        }
+        this.armGlassBridge();
         this.isRunning = true;
         this.resurrections = 0;
         await this.spawnWorker();
@@ -166,6 +177,20 @@ export class ThetaOrchestrator {
         this.isRunning = false;
         this.stopHeartbeat();
         this.teardownVideo();
+        // 🌊 WAVE 8215 — cerrar los extremos Glass: el pump (main) retira el
+        // link al ver 'close' y el worker libera su link en terminate().
+        this.unsubGlass?.();
+        this.unsubGlass = null;
+        try {
+            this.telemetryPort?.close();
+        }
+        catch { /* noop */ }
+        this.telemetryPort = null;
+        try {
+            this.pendingVideoPort?.close();
+        }
+        catch { /* noop */ }
+        this.pendingVideoPort = null;
         if (this.worker) {
             try {
                 this.worker.postMessage(makeThetaMessage('theia:shutdown', {}));
@@ -196,7 +221,98 @@ export class ThetaOrchestrator {
         };
     }
     // ──────────────────────────────────────────────────────────────────
-    // 🎬 WAVE 4864 — Phase 4: AssetStateMachine API (force-state)
+    // � WAVE 8215 — GLASS BRIDGE (transferable ports + ping-pong)
+    // ──────────────────────────────────────────────────────────────────
+    /**
+     * Suscribe el relay del preload y hace pull de ambos kinds. Idempotente.
+     * Los ports que llegan se consumen así:
+     *   telemetry-port → esta página (espeja el ring, ack, sobrevive Phoenix)
+     *   video-port     → transferido al theta.worker (role 'producer')
+     *   video-unlink   → notify al worker (output window murió)
+     */
+    armGlassBridge() {
+        if (!this.unsubGlass) {
+            this.unsubGlass = onTheiaGlassMessage((msg) => this.handleGlassMessage(msg));
+        }
+        requestTheiaPort('telemetry-port');
+        requestTheiaPort('video-port');
+    }
+    handleGlassMessage(msg) {
+        if (msg.kind === 'telemetry-port' && msg.port) {
+            this.attachTelemetryPort(msg.port);
+            return;
+        }
+        if (msg.kind === 'video-port') {
+            if (msg.port && msg.role === 'producer') {
+                this.deliverVideoPort(msg.port);
+            }
+            else {
+                // Defensive: este renderer es siempre el producer; un port sin rol
+                // no se usa — cerrarlo evita links huérfanos en el broker.
+                try {
+                    msg.port?.close();
+                }
+                catch { /* noop */ }
+            }
+            return;
+        }
+        if (msg.kind === 'video-unlink') {
+            try {
+                this.worker?.postMessage(makeThetaMessage('theia:video-unlink', {}));
+            }
+            catch { /* worker may be dead */ }
+        }
+    }
+    /**
+     * Consume el port de telemetría en la PÁGINA (no en el worker): el ring
+     * SAB local sobrevive respawns y también lo leen futuros consumers del
+     * renderer. Cada buffer de 256B (clone serializado — WAVE 8216: el
+     * MessagePortMain del pump no transfiere) se espeja al ring y se devuelve
+     * por `ack` CON transfer en el mismo handler — ZERO-ALLOC: aquí jamás se
+     * instancia un ArrayBuffer; el ack repone el pool fijo del pump.
+     */
+    attachTelemetryPort(port) {
+        try {
+            this.telemetryPort?.close();
+        }
+        catch { /* noop */ }
+        this.telemetryPort = port;
+        port.onmessage = (ev) => {
+            const data = ev.data;
+            if (!isTelemetryMessage(data))
+                return;
+            mirrorTelemetryIntoRing(this.telemetryRing, data.buffer);
+            ackTelemetryFrame(port, data);
+        };
+        port.start();
+    }
+    /**
+     * Entrega el extremo productor del video link al worker por transferencia
+     * (`theia:video-port`). Si el worker aún no existe (arranque), queda
+     * buffered hasta el spawn — los mensajes a un Worker se encolan antes del
+     * handler, pero transferir tras spawn evita ports atrapados en un worker
+     * muerto (Phoenix → re-pull → channel nuevo del broker).
+     */
+    deliverVideoPort(port) {
+        if (this.worker) {
+            try {
+                const payload = { port };
+                this.worker.postMessage(makeThetaMessage('theia:video-port', payload), [port]);
+                return;
+            }
+            catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[THETA] video-port transfer to worker failed:', err);
+            }
+        }
+        try {
+            this.pendingVideoPort?.close();
+        }
+        catch { /* noop */ }
+        this.pendingVideoPort = port;
+    }
+    // ──────────────────────────────────────────────────────────────────
+    // �🎬 WAVE 4864 — Phase 4: AssetStateMachine API (force-state)
     // ──────────────────────────────────────────────────────────────────
     /**
      * Solicita una transición de la Asset State Machine en el worker. El worker
@@ -505,6 +621,20 @@ export class ThetaOrchestrator {
         }
     }
     /**
+     * 🌊 WAVE 8211 — Scalar uniform bridge to the worker's shader pipeline.
+     * The value is persisted in `desiredUniforms` so worker respawns replay it
+     * on 'theia:ready'. Safe to call before start() — it queues silently.
+     */
+    setUniform(name, value) {
+        this.desiredUniforms.set(name, value);
+        if (!this.worker)
+            return;
+        try {
+            this.worker.postMessage(makeThetaMessage('theia:set-uniform', { name, value }));
+        }
+        catch { /* worker may be dead — the replay on ready covers it */ }
+    }
+    /**
      * Unload the current video, stopping the stream and cleaning up resources.
      */
     unloadVideo() {
@@ -559,14 +689,24 @@ export class ThetaOrchestrator {
             // eslint-disable-next-line no-console
             console.log('[THETA] Circuit HALF-OPEN — testing respawn');
         }
-        if (!this.frameContextSAB) {
-            throw new Error('[THETA] cannot spawn worker — frameContextSAB is null');
-        }
+        // El ring local siempre existe (readonly, init en campo) — es un SAB
+        // renderer-side, no requiere IPC ni negociación con el main process.
         // Vite resolves this URL at build time and emits a separate worker chunk.
-        const worker = new Worker(new URL('./theta.worker.ts', import.meta.url), {
-            type: 'module',
-            name: 'theta',
-        });
+        // 🌊 WAVE 8207: the worker type must match the serving mode —
+        //   dev  → Vite serves the file as ESM (imports intact) → 'module'
+        //   prod → emitted chunk is IIFE (worker.format='iife', WAVE-7790) and
+        //          file:// opaque origins reject module workers → 'classic'
+        // Two static call sites: Vite cannot parse a ternary in worker options,
+        // and the dead branch is DCE'd by the build-time env replacement.
+        const worker = import.meta.env.DEV
+            ? new Worker(new URL('./theta.worker.ts', import.meta.url), {
+                type: 'module',
+                name: 'theta',
+            })
+            : new Worker(new URL('./theta.worker.ts', import.meta.url), {
+                type: 'classic',
+                name: 'theta',
+            });
         worker.addEventListener('message', (ev) => {
             this.handleWorkerMessage(ev.data);
         });
@@ -591,18 +731,24 @@ export class ThetaOrchestrator {
             transfer.push(canvas);
         }
         worker.postMessage(makeThetaMessage('theia:init', {
-            frameContextSAB: this.frameContextSAB,
+            // 🌊 WAVE 8215 — ring local de 256B alimentado por el telemetry
+            // port (ping-pong con el pump de main). Sus primeros 16B replican
+            // el FrameContextRing que el worker pollea — ya no hay SAB remoto.
+            frameContextSAB: this.telemetryRing,
             pollIntervalMs: this.config.workerPollIntervalMs,
             offscreenCanvas: canvas ?? undefined,
-            // 🎬 WAVE 4864 — Phase 3: pass the projector SAB. The SAB is shared
-            // by reference (structured-clone share); no transfer slot needed.
-            videoFrameSAB: this.videoFrameSAB ?? undefined,
             // 🎬 WAVE 4867 — Phase 6: pass the thumb SAB (always present).
             thumbPixelSAB: this.thumbPixelSAB,
         }), transfer);
         // Tras transferir el canvas perdemos su control en este lado.
         if (canvas)
             this.offscreenCanvas = null;
+        // 🌊 WAVE 8215 — flush del video port si el broker lo entregó antes
+        // del spawn (página tardía / respawn): transferencia inmediata.
+        if (this.pendingVideoPort) {
+            this.deliverVideoPort(this.pendingVideoPort);
+            this.pendingVideoPort = null;
+        }
     }
     handleWorkerMessage(msg) {
         if (!msg || typeof msg.type !== 'string')
@@ -614,6 +760,15 @@ export class ThetaOrchestrator {
                 this.circuit.failures = 0;
                 // eslint-disable-next-line no-console
                 console.log('[THETA] worker READY');
+                // 🌊 WAVE 8211 — replay persisted uniforms (fresh worker is stateless)
+                if (this.desiredUniforms.size > 0) {
+                    for (const [name, value] of this.desiredUniforms) {
+                        try {
+                            this.worker?.postMessage(makeThetaMessage('theia:set-uniform', { name, value }));
+                        }
+                        catch { /* replay is best-effort */ }
+                    }
+                }
                 break;
             case 'theia:heartbeat-ack': {
                 const ack = msg.payload;
@@ -740,6 +895,12 @@ export class ThetaOrchestrator {
             return;
         try {
             await this.spawnWorker();
+            // 🌊 WAVE 8215 — el video port murió con el worker terminado (era
+            // propiedad suya): re-pull → el broker entrega un channel FRESCO a
+            // ambos extremos y el nuevo worker recibe el extremo productor.
+            // El telemetry port NO se re-pulle: vive en esta página y el ring
+            // SAB ya pasó al worker nuevo en el INIT.
+            requestTheiaPort('video-port');
         }
         catch (err) {
             // eslint-disable-next-line no-console
@@ -752,12 +913,8 @@ export class ThetaOrchestrator {
 // ─────────────────────────────────────────────────────────────────────────
 let _instance = null;
 export function getThetaOrchestrator() {
-    // 🛡️ WAVE 7569: ZOMBIE QUARANTINE — The singleton is safe to instantiate
-    // because start(), spawnWorker(), and loadVideo() all check
-    // ENABLE_THETA_ORCHESTRATOR (currently false) and bail early. The singleton
-    // itself does NOT spawn a worker, create SABs, or allocate canvases — those
-    // only happen inside start(). Callers using getVideoElement() or
-    // setClipUrlResolver() get a dormant object that does nothing.
+    // 🌊 WAVE 8207: single instance shared by TrinityProvider (power lifecycle)
+    // and the Theia UI — one worker = one producer on the video/thumb SABs.
     if (!_instance)
         _instance = new ThetaOrchestrator();
     return _instance;

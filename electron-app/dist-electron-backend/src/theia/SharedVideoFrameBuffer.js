@@ -70,6 +70,7 @@ export function createSharedVideoFrameBuffer() {
 export class VideoFrameWriter {
     constructor(sab) {
         this._producerSeq = 0;
+        this._pendingSlot = -1;
         if (sab.byteLength < VIDEO_SAB_BYTE_LENGTH) {
             throw new Error(`[VideoFrameWriter] SAB too small: ${sab.byteLength} < ${VIDEO_SAB_BYTE_LENGTH}`);
         }
@@ -78,6 +79,41 @@ export class VideoFrameWriter {
             new Uint8Array(sab, VIDEO_META_BYTES, VIDEO_SLOT_BYTES),
             new Uint8Array(sab, VIDEO_META_BYTES + VIDEO_SLOT_BYTES, VIDEO_SLOT_BYTES),
         ];
+    }
+    /**
+     * 🎬 WAVE 8207 — Zero-copy GPU path: returns a view into the INACTIVE slot
+     * so the caller can `gl.readPixels(...)` straight into shared memory.
+     * The caller MUST follow with `commit()` once the pixels are written.
+     * Returns null if the requested area exceeds the slot.
+     */
+    beginWrite(width, height) {
+        if (width <= 0 || height <= 0)
+            return null;
+        if (width > VIDEO_MAX_WIDTH || height > VIDEO_MAX_HEIGHT)
+            return null;
+        const currentActive = Atomics.load(this.meta, META_ACTIVE_SLOT);
+        this._pendingSlot = currentActive === 0 ? 1 : 0;
+        return this.slots[this._pendingSlot].subarray(0, width * height * 4);
+    }
+    /**
+     * Publishes the slot filled by `beginWrite()` — atomic meta flip.
+     * NOTE: the GL readPixels path writes rows BOTTOM-UP (GL origin); the
+     * consumer (TheiaOutputView) flips at blit time on the GPU, zero CPU cost.
+     */
+    commit(width, height, tickId) {
+        if (this._pendingSlot < 0)
+            return;
+        Atomics.store(this.meta, META_WIDTH, width | 0);
+        Atomics.store(this.meta, META_HEIGHT, height | 0);
+        Atomics.store(this.meta, META_FRAME_TICK_ID, tickId | 0);
+        this._producerSeq = (this._producerSeq + 1) | 0;
+        Atomics.store(this.meta, META_PRODUCER_SEQ, this._producerSeq);
+        Atomics.store(this.meta, META_ACTIVE_SLOT, this._pendingSlot);
+        this._pendingSlot = -1;
+        const flags = Atomics.load(this.meta, META_FLAGS);
+        if ((flags & FLAG_PRESENT) === 0) {
+            Atomics.store(this.meta, META_FLAGS, flags | FLAG_PRESENT);
+        }
     }
     /**
      * Publica un frame de forma atómica. Escribe en el slot inactivo y luego
@@ -95,9 +131,9 @@ export class VideoFrameWriter {
         const expectedBytes = width * height * 4;
         if (rgba.length < expectedBytes)
             return false;
-        const currentActive = Atomics.load(this.meta, META_ACTIVE_SLOT);
-        const writeSlot = currentActive === 0 ? 1 : 0;
-        const dst = this.slots[writeSlot];
+        const dst = this.beginWrite(width, height);
+        if (!dst)
+            return false;
         // Copia los bytes del frame al slot inactivo.
         if (rgba.length === expectedBytes) {
             dst.set(rgba);
@@ -107,19 +143,7 @@ export class VideoFrameWriter {
             // pequeño); copiamos solo el subrango válido.
             dst.set(rgba.subarray(0, expectedBytes));
         }
-        // Publica meta — orden importa: dimensiones primero, luego activeSlot.
-        Atomics.store(this.meta, META_WIDTH, width | 0);
-        Atomics.store(this.meta, META_HEIGHT, height | 0);
-        Atomics.store(this.meta, META_FRAME_TICK_ID, tickId | 0);
-        this._producerSeq = (this._producerSeq + 1) | 0;
-        Atomics.store(this.meta, META_PRODUCER_SEQ, this._producerSeq);
-        // Barrera lógica: el flip atómico publica el slot escrito.
-        Atomics.store(this.meta, META_ACTIVE_SLOT, writeSlot);
-        // Marca presence flag (one-way latch).
-        const flags = Atomics.load(this.meta, META_FLAGS);
-        if ((flags & FLAG_PRESENT) === 0) {
-            Atomics.store(this.meta, META_FLAGS, flags | FLAG_PRESENT);
-        }
+        this.commit(width, height, tickId);
         return true;
     }
     /** Limpia el flag de "presente" — el output mostrará negro hasta nuevo frame. */

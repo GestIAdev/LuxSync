@@ -8,7 +8,7 @@
  *
  * @module IPCHandlers
  */
-import { ipcMain } from 'electron';
+import { ipcMain, MessageChannelMain } from 'electron';
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
 // ðŸ“¡ WAVE 2048: Art-Net Network Discovery
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
@@ -18,6 +18,8 @@ import { getTrinity } from '../../workers/TrinityOrchestrator';
 import { liquidEngine41, liquidEngine71 } from '../../hal/physics';
 import { TickEngine } from './tick/TickEngine';
 import { NodeGraphBuilder } from '../forge/NodeGraphBuilder';
+// 🌊 WAVE 8215 — Glass Bridge telemetry pump (transferable ping-pong)
+import { TheiaTelemetryPump } from '../../theia/TheiaTelemetryPump';
 // âš’ï¸ WAVE 2030.18: Singleton runtime for .lfx execution
 let hephaestusRuntime = null;
 /**
@@ -58,7 +60,7 @@ export function setupIPCHandlers(deps) {
     setupDMXHandlers(deps);
     setupArtNetHandlers(deps);
     setupAudioMatrixHandlers(deps);
-    setupTheiaHandlers();
+    setupTheiaHandlers(deps);
     setupCalibrationHandlers();
     setupLiquidTelemetryHandlers(deps);
 }
@@ -111,12 +113,27 @@ function setupCalibrationHandlers() {
 // =============================================================================
 // 🎬 WAVE 4860: THEIA ENGINE — SAB one-shot IPC bridge
 // =============================================================================
-function setupTheiaHandlers() {
-    ipcMain.handle('theia:get-frame-context', () => {
-        // En builds Electron empaquetadas (file://), structured clone de IPC puede
-        // rechazar SharedArrayBuffer con "An object could not be cloned". Para no
-        // romper arranque de Theia devolvemos null y el renderer usa fallback local.
-        return null;
+function setupTheiaHandlers(deps) {
+    // 🌊 WAVE 8215 — THE OPUS GLASS-BRIDGE PIVOT. SharedArrayBuffer is vetoed
+    // across the Main↔Renderer boundary ("An object could not be cloned").
+    // Telemetry now flows as transferable ArrayBuffers in ping-pong (the
+    // `glass:` contract): each consumer gets its own link with a fixed pool
+    // of 256B buffers, posted by ownership transfer at 44Hz and returned via
+    // `ack` — zero-copy, zero-alloc, no shared memory over IPC. Consumers:
+    // the main window (ThetaOrchestrator ring mirror → theta.worker clock)
+    // and the TheiaOutputView (Modo B, future shader ring). A re-request
+    // (window reload / late mount) attaches a fresh link per sender.
+    const pump = new TheiaTelemetryPump(() => deps.titanOrchestrator?.getFrameContextSAB() ?? null);
+    ipcMain.on('theia:request-telemetry', (event) => {
+        // Re-request (window reload) → fresh port pair, pump re-attaches.
+        try {
+            const { port1, port2 } = new MessageChannelMain();
+            event.sender.postMessage('theia:telemetry-port', null, [port2]);
+            pump.attach(port1);
+        }
+        catch (err) {
+            console.error('[IPC] theia:request-telemetry failed:', err);
+        }
     });
 }
 // =============================================================================

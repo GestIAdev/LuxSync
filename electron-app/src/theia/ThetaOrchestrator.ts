@@ -54,6 +54,8 @@ import {
 } from './TheiaTelemetryRing'
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
 import { createThumbSAB } from './TheiaThumbBuffer'
+// 🔮 WAVE 8230 — EUCLID · E4: parser @euclid (meta → sliders UI)
+import { parseEuclidMeta, type EuclidMeta } from './shader/ShaderAssembler'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
@@ -226,6 +228,13 @@ export class ThetaOrchestrator {
   private perfReportListeners = new Set<(p: ThetaPerfReportPayload) => void>()
   private lastShaderStatus: ThetaShaderStatusPayload | null = null
   private lastPerfReport: ThetaPerfReportPayload | null = null
+  // 🔮 WAVE 8230 — EUCLID · E4: meta `@euclid` parseado por shaderId
+  // (params → sliders automáticos) + resolver shader-atom → GLSL.
+  private shaderMeta = new Map<string, EuclidMeta>()
+  private shaderMetaListeners = new Set<(shaderId: string, meta: EuclidMeta) => void>()
+  private _shaderSourceResolver:
+    | ((atomId: string) => { source: string; meta?: { steps?: number } } | null)
+    | null = null
 
   constructor(config: Partial<ThetaOrchestratorConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
@@ -547,8 +556,34 @@ export class ThetaOrchestrator {
         crossfadeMs: intent.crossfadeMs,
         reason: 'blackout',
       })
+      // 🔮 E4 — un blackout también desactiva el shader generativo (vuelta
+      // al path builtin, que es donde el operador espera la salida).
+      if (this.desiredActiveShader !== 'builtin') {
+        this.activateShader('builtin', intent.crossfadeMs)
+      }
       try {
         if (this.videoElement) this.videoElement.pause()
+      } catch { /* noop */ }
+      return
+    }
+
+    // ── Caso 1b (🔮 E4): átomo generativo kind:'shader' — no toca el
+    // videoElement: compila (si hiciera falta) y activa con crossfade.
+    const shaderSrc = this._shaderSourceResolver?.(intent.atomId) ?? null
+    if (shaderSrc) {
+      // Dedup: re-trigger del mismo átomo no recompila si la fuente no
+      // cambió (la caché LRU del worker ya la conserva).
+      const prev = this.desiredShaders.get(intent.atomId)
+      if (!prev || prev.source !== shaderSrc.source) {
+        this.loadShader(intent.atomId, shaderSrc.source, shaderSrc.meta)
+      }
+      this.activateShader(intent.atomId, intent.crossfadeMs)
+      this.currentAtomId = intent.atomId
+      this.currentAtomUrl = null
+      try {
+        if (this.videoElement && !this.videoElement.paused) {
+          this.videoElement.pause()
+        }
       } catch { /* noop */ }
       return
     }
@@ -566,6 +601,11 @@ export class ThetaOrchestrator {
         await this.loadVideo(url)
         this.currentAtomId = intent.atomId
         this.currentAtomUrl = url
+        // 🔮 E4 — el nuevo átomo es de vídeo: si un shader generativo
+        // estaba en pantalla, vuelve al path builtin con el crossfade.
+        if (this.desiredActiveShader !== 'builtin') {
+          this.activateShader('builtin', intent.crossfadeMs)
+        }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error(`[THETA 🎬] play-atom load failed for '${intent.atomId}':`, err)
@@ -846,6 +886,15 @@ export class ThetaOrchestrator {
    */
   loadShader(shaderId: string, source: string, meta?: { steps?: number }): void {
     this.desiredShaders.set(shaderId, { source, meta })
+    // 🔮 WAVE 8230 · E4 — parsear meta @euclid una vez (params → sliders).
+    const parsed = parseEuclidMeta(source)
+    if (meta?.steps !== undefined) parsed.steps = meta.steps
+    this.shaderMeta.set(shaderId, parsed)
+    for (const l of this.shaderMetaListeners) {
+      try {
+        l(shaderId, parsed)
+      } catch { /* listener errors must not break load */ }
+    }
     if (!this.worker) return
     try {
       this.worker.postMessage(
@@ -894,6 +943,42 @@ export class ThetaOrchestrator {
 
   getLastPerfReport(): ThetaPerfReportPayload | null {
     return this.lastPerfReport
+  }
+
+  // 🔮 WAVE 8230 — EUCLID · E4: meta @euclid → UI de parámetros (§4.2)
+  // ───────────────────────────────────────────────────────────────────────
+
+  /** Suscripción a meta parseado en cada `loadShader`. Devuelve unsubscribe. */
+  onShaderMeta(
+    listener: (shaderId: string, meta: EuclidMeta) => void,
+  ): () => void {
+    this.shaderMetaListeners.add(listener)
+    return () => {
+      this.shaderMetaListeners.delete(listener)
+    }
+  }
+
+  /** Meta `@euclid` ya parseado (params, genome, zone, steps) de un shader. */
+  getShaderMeta(shaderId: string): EuclidMeta | null {
+    return this.shaderMeta.get(shaderId) ?? null
+  }
+
+  /** Shader deseado actualmente activo ('builtin' = plasma interno). */
+  getActiveShaderId(): string {
+    return this.desiredActiveShader
+  }
+
+  /**
+   * Resolver `atomId → {source GLSL}` para átomos `source.kind='shader'`
+   * (Hybrid Deck, §4.2/§6). Se consulta ANTES del resolver de vídeo en
+   * `playAtom` — Selene no distingue el medio.
+   */
+  setShaderSourceResolver(
+    resolver:
+      | ((atomId: string) => { source: string; meta?: { steps?: number } } | null)
+      | null,
+  ): void {
+    this._shaderSourceResolver = resolver
   }
 
   /**

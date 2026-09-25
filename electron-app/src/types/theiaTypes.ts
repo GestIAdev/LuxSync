@@ -133,6 +133,26 @@ export interface ITheiaAtom {
   readonly isDivineCandidate?: boolean
   /** True si es candidato a HEAVY strikes. */
   readonly isHeavyCandidate?: boolean
+
+  /**
+   * 🔮 WAVE 8230 — EUCLID · E4 / Hybrid Deck: origen del átomo. Ausente =
+   * `'video'` implícito (átomo `.theia` + `.mp4` clásico).
+   * `kind: 'shader'` = átomo generativo Euclid — el medio cambia pero el
+   * ADN (genoma/zona/secciones) es idéntico: Selene/Cassandra no distinguen.
+   */
+  readonly source?: ITheiaAtomSource
+}
+
+/**
+ * Origen físico de un átomo (propuesta Hybrid Deck de WAVE 8210):
+ *   - `video`  → `filePath` apunta al .mp4 (pipeline Modo A, 8207).
+ *   - `shader` → `glsl` lleva el cuerpo `mainImage()` del shader Euclid
+ *     (luego `.glsl` compilado por el ShaderAssembler §4.1).
+ */
+export interface ITheiaAtomSource {
+  readonly kind: 'video' | 'shader'
+  /** Cuerpo GLSL del artista (con cabeceras `@euclid`). Solo shader atoms. */
+  readonly glsl?: string
 }
 
 // ─── PACK (carpeta-contenedor del filesystem) ───────────────────────────────

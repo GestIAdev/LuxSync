@@ -326,6 +326,103 @@ export function remapShaderLog(
 
 // ─────────────────────────── @euclid hints & hash ───────────────────────────
 
+/** Parámetro de artista declarado vía `@euclid param` (§4.2) — la UI
+ *  genera un slider por cada uno con `data-midi-bind="theia.shader.<id>.<p>"`. */
+export interface EuclidParam {
+  /** Nombre del uniform GLSL (p.ej. `u_twist`). */
+  name: string
+  type: 'float' | 'int'
+  min: number
+  max: number
+  defaultValue: number
+  /** Label legible (entrecomillado en la cabecera). */
+  label: string
+}
+
+/** Metadatos de cabecera `@euclid` parseados (§4.2 — estilo ISF). */
+export interface EuclidMeta {
+  name?: string
+  author?: string
+  /** ADN del átomo: `aggression=0.6 chaos=0.7 organicity=0.3`. */
+  genome: Record<string, number>
+  /** Rango de zona energética `gentle..peak`. */
+  zone?: { from: string; to: string }
+  params: EuclidParam[]
+  /** Hint de raymarching para el governor (§4.5). */
+  steps?: number
+}
+
+/**
+ * Parser `@euclid` completo (§4.2). Lee las cabeceras comentadas:
+ *
+ *   // @euclid name    "Oracle KIFS"
+ *   // @euclid author  "LuxSync"
+ *   // @euclid genome  aggression=0.6 chaos=0.7 organicity=0.3
+ *   // @euclid zone    gentle..peak
+ *   // @euclid param   u_twist float 0.0 2.0 0.6 "Twist"
+ *   // @euclid steps   96
+ *
+ * Robusto: ignora líneas `@euclid` malformadas (nunca lanza), acepta
+ * espacios variables y `param` sin label.
+ */
+export function parseEuclidMeta(source: string): EuclidMeta {
+  const meta: EuclidMeta = { genome: {}, params: [] }
+  const re = /^\s*\/\/\s*@euclid\s+(\w+)\s+(.*)$/gm
+  let m: RegExpExecArray | null
+  while ((m = re.exec(source)) !== null) {
+    const key = m[1].toLowerCase()
+    const rest = m[2].trim()
+    switch (key) {
+      case 'name':
+      case 'author': {
+        const q = /^"([^"]*)"/.exec(rest)
+        meta[key] = q ? q[1] : rest || undefined
+        break
+      }
+      case 'genome': {
+        const kv = /(\w+)\s*=\s*(-?\d+(?:\.\d+)?)/g
+        let g: RegExpExecArray | null
+        while ((g = kv.exec(rest)) !== null) {
+          const v = parseFloat(g[2])
+          if (Number.isFinite(v)) meta.genome[g[1]] = v
+        }
+        break
+      }
+      case 'zone': {
+        const z = /^(\w+)\s*\.\.\s*(\w+)/.exec(rest)
+        if (z) meta.zone = { from: z[1], to: z[2] }
+        break
+      }
+      case 'param': {
+        // `param <uniform> <type> <min> <max> <default> ["label"]`
+        const pm =
+          /^(\w+)\s+(float|int)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*(?:"([^"]*)")?/.exec(
+            rest,
+          )
+        if (pm) {
+          meta.params.push({
+            name: pm[1],
+            type: pm[2] as 'float' | 'int',
+            min: parseFloat(pm[3]),
+            max: parseFloat(pm[4]),
+            defaultValue: parseFloat(pm[5]),
+            label: pm[6] ?? pm[1],
+          })
+        }
+        break
+      }
+      case 'steps': {
+        const n = parseInt(rest, 10)
+        if (Number.isFinite(n) && n > 0) meta.steps = n
+        break
+      }
+      default:
+        break // claves desconocidas — forward-compatible
+    }
+  }
+  return meta
+}
+
 /**
  * Hint `@euclid steps N` embebido en comentarios del shader (§4.2). E3 solo
  * extrae `steps` (techo de raymarching); el parser completo llega en E4.

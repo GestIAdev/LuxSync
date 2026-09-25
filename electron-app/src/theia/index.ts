@@ -92,9 +92,21 @@ export {
   DEFAULT_FLASH_MAX_DELTA,
   FLASH_BUDGET,
   FLASH_BUDGET_RATE,
+  parseEuclidMeta,
   type AssembledShader,
   type RemappedLog,
+  type EuclidMeta,
+  type EuclidParam,
 } from './shader/ShaderAssembler'
+
+// 🔮 WAVE 8230 — Euclid Oracle · Fase E4: átomo generativo builtin
+export {
+  ORACLE_KIFS_SOURCE,
+  ORACLE_KIFS_ATOM_ID,
+  EUCLID_PACK_ID,
+  buildOracleKifsAtom,
+} from './shader/atoms/oracleKifs'
+export { ensureEuclidShaderAtoms } from './shader/atoms'
 export {
   RenderGovernor,
   GOVERNOR_DEFAULTS,

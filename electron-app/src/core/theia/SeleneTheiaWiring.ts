@@ -97,6 +97,13 @@ export interface AttachOptions {
    * Permite override para tests o pipelines de assets remotos.
    */
   clipUrlResolver?: (atomId: string) => string | null
+  /**
+   * 🔮 WAVE 8230 · E4 — Resolver `atomId → fuente GLSL` para átomos
+   * `source.kind='shader'`. Por defecto lee `atom.source.glsl` del registry.
+   */
+  shaderSourceResolver?: (
+    atomId: string,
+  ) => { source: string; meta?: { steps?: number } } | null
 }
 
 /**
@@ -116,6 +123,19 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
     return atom?.filePath ?? null
   }
   orchestrator.setClipUrlResolver(opts.clipUrlResolver ?? defaultResolver)
+
+  // 1b) 🔮 WAVE 8230 · E4 — resolver atomId → fuente GLSL para átomos
+  // `source.kind='shader'` (Hybrid Deck). Consultado antes del de vídeo.
+  const defaultShaderResolver = (atomId: string) => {
+    const atom = getTheiaRegistry().getAtom(atomId)
+    if (atom?.source?.kind === 'shader' && atom.source.glsl) {
+      return { source: atom.source.glsl }
+    }
+    return null
+  }
+  orchestrator.setShaderSourceResolver(
+    opts.shaderSourceResolver ?? defaultShaderResolver,
+  )
 
   // 2) Listener: Selene cognitive output → adapter → bus.
   const onCognitive = (input: ISeleneTheiaInput): void => {
@@ -152,6 +172,7 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
     }
     unsubscribeBus()
     orchestrator.setClipUrlResolver(null)
+    orchestrator.setShaderSourceResolver(null)
   }
 }
 

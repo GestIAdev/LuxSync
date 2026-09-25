@@ -267,6 +267,7 @@ export class TheiaRegistry {
       compatibleVibes: Object.freeze([...atom.compatibleVibes]),
       isDivineCandidate: atom.isDivineCandidate,
       isHeavyCandidate: atom.isHeavyCandidate,
+      source: atom.source ? Object.freeze({ ...atom.source }) : undefined,
     })
   }
 

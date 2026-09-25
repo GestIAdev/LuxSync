@@ -33,6 +33,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './TheiaEngineView.css'
 import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
+// 🔮 WAVE 8230 — EUCLID · E4: átomos generativos + meta @euclid → sliders
+import { ensureEuclidShaderAtoms } from '../../../theia/shader/atoms'
+import type { EuclidMeta } from '../../../theia'
 import { useControlStore } from '../../../stores/controlStore'
 import { useTheiaEditorStore, type EditorMode } from '../../../stores/useTheiaEditorStore'
 import { useTheiaPackStore } from '../../../stores/useTheiaPackStore'
@@ -142,6 +145,12 @@ const TheiaEngineView: React.FC = () => {
     // En 'live', el efecto de aiEnabled es la fuente de verdad para attach.
   }, [editorMode])
 
+  // ─── 🔮 WAVE 8230 · E4 — átomos generativos Euclid (kind:'shader') ────
+  // Idempotente: registra el pack euclid-oracle en el LiveDeck + registry.
+  useEffect(() => {
+    ensureEuclidShaderAtoms()
+  }, [])
+
   // ─── 🌊 WAVE 8211.5: Workshop freeze — pin the store to 'live'. ───────
   // Defensive: any stray setEditorMode('workshop') (HMR state, future
   // callers) is reverted so no workshop surface can mount.
@@ -166,20 +175,26 @@ const TheiaEngineView: React.FC = () => {
   // ─── Handlers ─────────────────────────────────────────────────────────
   const handlePower = useCallback(() => {
     const theta = getThetaOrchestrator()
-    setEnginePower((prev) => {
-      const next = !prev
-      if (next) {
-        theta.start().catch((err: unknown) => {
-          console.error('[Theia UI] start() failed:', err)
-        })
-      } else {
-        theta.stop().catch((err: unknown) => {
-          console.error('[Theia UI] stop() failed:', err)
-        })
-      }
-      return next
-    })
-  }, [])
+    // 🌊 WAVE 8220 — UPDATER CLEANSING: los updaters de useState corren en
+    // fase de render (y React StrictMode los invoca dos veces) — deben ser
+    // puros. start()/stop() ejecutan spawn/terminate/postMessage de forma
+    // síncrona en su prefijo; un throw ahí (worker agotado, DataCloneError
+    // en un transfer) detonaba DENTRO del render y derribaba el árbol Fiber
+    // (crash en flushSyncWorkAcrossRoots_impl). Patrón imperativo: el
+    // side-effect queda fuera del updater y cualquier fallo aterriza en el
+    // .catch(), nunca en la fase síncrona de React.
+    const next = !enginePower
+    setEnginePower(next)
+    if (next) {
+      theta.start().catch((err: unknown) => {
+        console.error('[Theia UI] start() failed:', err)
+      })
+    } else {
+      theta.stop().catch((err: unknown) => {
+        console.error('[Theia UI] stop() failed:', err)
+      })
+    }
+  }, [enginePower])
 
   // 🎬 WAVE 4864 — Phase 4: Force Drop / Force Ambient now drive the
   // ThetaOrchestrator's AssetStateMachine through `forceState()`. The worker
@@ -222,12 +237,12 @@ const TheiaEngineView: React.FC = () => {
   }, [])
 
   const handleBlackout = useCallback(() => {
-    setBlackout((prev) => {
-      const next = !prev
-      getThetaOrchestrator().setUniform('u_blackout', next ? 1 : 0)
-      return next
-    })
-  }, [])
+    // 🌊 WAVE 8220 — mismo saneamiento que handlePower: el setUniform es un
+    // postMessage síncrono — no pertenece a la fase de render del updater.
+    const next = !blackout
+    setBlackout(next)
+    getThetaOrchestrator().setUniform('u_blackout', next ? 1 : 0)
+  }, [blackout])
 
   const handleSpeedChange = useCallback((value: number) => {
     setSpeed(value)
@@ -609,7 +624,28 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) =
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const hasTransferredCanvasRef = useRef(false)
 
+  // 🌊 WAVE 8223 — PREVIEW RESURRECTION: `transferControlToOffscreen` liga
+  // un <canvas> DOM a un worker PARA SIEMPRE — tras un respawn (Phoenix o
+  // restart manual) el offscreen pertenece al worker muerto y el viewport
+  // queda negro de forma permanente. `workerEpoch` bump en cada spawn +
+  // `key={workerEpoch}` en el <canvas> fuerzan un remount: elemento nuevo →
+  // transfer fresco → `attachOffscreenCanvas` lo entrega al worker vivo
+  // (path `theia:attach-canvas` si ya corre, o vía INIT en el próximo spawn).
+  const [workerEpoch, setWorkerEpoch] = useState(0)
   useEffect(() => {
+    return getThetaOrchestrator().onWorkerEpoch(() => {
+      setWorkerEpoch((e) => e + 1)
+    })
+  }, [])
+
+  // 🌊 WAVE 8225 — ref del wrap movido arriba: el rAF de transfer lo usa
+  // como fuente de medida primaria (ver abajo). El RO lo sigue observando
+  // para los resizes vivos del layout.
+  const canvasWrapRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    // Reset por epoch: el guard de una vida anterior bloquearía el re-transfer.
+    hasTransferredCanvasRef.current = false
     const canvas = canvasRef.current
     if (!canvas || hasTransferredCanvasRef.current) return
     if (typeof canvas.transferControlToOffscreen !== 'function') {
@@ -622,13 +658,27 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) =
       const host = canvasRef.current
       if (!host || hasTransferredCanvasRef.current) return
 
-      const rect = host.getBoundingClientRect()
+      // 🌊 WAVE 8225 — medir el WRAP, no el canvas: un <canvas> recién
+      // remontado cuyo CSS aún no aplicó reporta su tamaño intrínseco
+      // (300×150) o 0×0 si el contenedor estaba colapsado — horneando la
+      // basura en el offscreen para siempre. El wrap (inset:0, padre
+      // estable) siempre refleja la verdad del layout.
+      const rect = canvasWrapRef.current?.getBoundingClientRect()
+        ?? host.getBoundingClientRect()
       const dpr = Math.max(1, window.devicePixelRatio || 1)
       host.width = Math.max(1, Math.floor(rect.width * dpr))
       host.height = Math.max(1, Math.floor(rect.height * dpr))
 
       const offscreen = host.transferControlToOffscreen()
-      getThetaOrchestrator().attachOffscreenCanvas(offscreen)
+      const theta = getThetaOrchestrator()
+      theta.attachOffscreenCanvas(offscreen)
+      // 🌊 WAVE 8225 — dims explícitas post-attach: el ResizeObserver vigila
+      // el WRAP (padre — no remonta, no refires) y la medición del rAF puede
+      // capturar basura (0×0 colapsado / 300×150 intrínseco). Este envío
+      // garantiza que el worker conozca el tamaño real desde el frame 0;
+      // si el worker aún no existe, el orchestrator lo retiene y lo replaya
+      // en 'theia:ready'.
+      theta.resizePreviewCanvas(host.width, host.height)
       hasTransferredCanvasRef.current = true
       console.log('[Theia UI] 🎬 viewport canvas attached to Theta worker')
     })
@@ -636,6 +686,34 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) =
     return () => {
       window.cancelAnimationFrame(rafId)
     }
+  }, [workerEpoch])
+
+  // 🌊 WAVE 8218 — VIEWPORT SCALE FIX: `transferControlToOffscreen` congela
+  // el backing del canvas a la medición del mount (si el CSS aún no había
+  // aplicado, queda clavado al fallback intrínseco 300×150 para siempre).
+  // El DOM no puede re-dimensionar un canvas ya transferido, así que este
+  // ResizeObserver reenvía los rects vivos del wrap al worker vía
+  // `theia:resize-preview` — el espejo re-aloja su bitmap y el plasma/video
+  // escala con la ventana en tiempo real. El GL de salida (1920×1080) y el
+  // canal del proyector quedan intactos.
+  useEffect(() => {
+    const wrap = canvasWrapRef.current
+    if (!wrap || typeof ResizeObserver !== 'function') return
+    let lastW = 0
+    let lastH = 0
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      if (!rect) return
+      const dpr = Math.max(1, window.devicePixelRatio || 1)
+      const w = Math.max(1, Math.floor(rect.width * dpr))
+      const h = Math.max(1, Math.floor(rect.height * dpr))
+      if (w === lastW && h === lastH) return
+      lastW = w
+      lastH = h
+      getThetaOrchestrator().resizePreviewCanvas(w, h)
+    })
+    ro.observe(wrap)
+    return () => ro.disconnect()
   }, [])
 
   return (
@@ -658,7 +736,7 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) =
       </div>
 
       {/* ── Canvas area ── */}
-      <div className="theia-vp__canvas-wrap">
+      <div ref={canvasWrapRef} className="theia-vp__canvas-wrap">
         {/* Background grid */}
         <div className="theia-vp__grid" />
 
@@ -679,7 +757,10 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) =
         )}
 
         {/* ── PERFORM MODE: canvas renderizado por el worker vía OffscreenCanvas ── */}
+        {/* 🌊 WAVE 8223 — key={workerEpoch}: un <canvas> solo puede     */}
+        {/* transferirse una vez; cada respawn remonta un elemento nuevo   */}
         <canvas
+          key={workerEpoch}
           ref={canvasRef}
           className="theia-vp__surface"
           style={{ visibility: isAuthorMode ? 'hidden' : 'visible' }}
@@ -868,6 +949,10 @@ const Inspector: React.FC<InspectorProps> = ({
             </div>
           </div>
 
+          {/* ── SECTION 3.5: Shader params — sliders automáticos desde
+              los `@euclid param` del shader activo (Euclid §4.2) ── */}
+          <ShaderParamsPanel />
+
           {/* ── SECTION 4: BindingID hint footer ── */}
           <div className="theia-insp__footer">
             <span className="theia-insp__footer-icon">🎹</span>
@@ -879,6 +964,99 @@ const Inspector: React.FC<InspectorProps> = ({
         </div>
       )}
     </aside>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔮 WAVE 8230 · E4 — SUB-COMPONENT: ShaderParamsPanel
+//
+// Los `@euclid param` del shader activo generan sliders automáticos
+// (propuesta Hybrid Deck §4.2): data-midi-bind="theia.shader.<id>.<param>"
+// para MIDI Learn nativo; cada cambio llega al worker vía set-uniform.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ShaderParamsPanel: React.FC = () => {
+  const [activeId, setActiveId] = useState(() =>
+    getThetaOrchestrator().getActiveShaderId(),
+  )
+  const [meta, setMeta] = useState<EuclidMeta | null>(null)
+  const [values, setValues] = useState<Record<string, number>>({})
+
+  // Sigue el shader activo (perf-report ~1 Hz lleva activeShader) y la
+  // llegada de meta parseado de cualquier loadShader.
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    const offPerf = theta.onPerfReport((p) => {
+      if (p.activeShader !== undefined) setActiveId(p.activeShader)
+    })
+    const offMeta = theta.onShaderMeta(() => {
+      setMeta(theta.getShaderMeta(theta.getActiveShaderId()))
+    })
+    setMeta(theta.getShaderMeta(theta.getActiveShaderId()))
+    return () => {
+      offPerf()
+      offMeta()
+    }
+  }, [])
+
+  // Valores por shader-id: la LRU del worker retiene el programa y sus
+  // uniforms — al volver a un shader se restauran los valores del usuario,
+  // no los defaults.
+  const savedRef = useRef<Map<string, Record<string, number>>>(new Map())
+  const pushedRef = useRef<Set<string>>(new Set())
+
+  // Relee meta + seed al cambiar de shader. Primera activación de un id:
+  // push de los defaults declarados (los uniforms GLSL arrancan en 0).
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    const m = theta.getShaderMeta(activeId)
+    setMeta(m)
+    const saved = savedRef.current.get(activeId)
+    const seed: Record<string, number> = {}
+    for (const p of m?.params ?? []) seed[p.name] = saved?.[p.name] ?? p.defaultValue
+    setValues(seed)
+    if (m && m.params.length > 0 && !pushedRef.current.has(activeId)) {
+      pushedRef.current.add(activeId)
+      for (const p of m.params) theta.setUniform(p.name, p.defaultValue)
+    }
+  }, [activeId])
+
+  if (activeId === 'builtin' || !meta || meta.params.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="theia-insp__block">
+      <div className="theia-insp__block-header">
+        <span className="theia-insp__block-icon">◇</span>
+        <span className="theia-insp__block-title">
+          SHADER PARAMS{meta.name ? ` · ${meta.name.toUpperCase()}` : ''}
+        </span>
+      </div>
+      <div className="theia-shader-params">
+        {meta.params.map((p) => (
+          <MasterSlider
+            key={p.name}
+            label={p.label.toUpperCase()}
+            bindId={`theia.shader.${activeId}.${p.name}`}
+            value={values[p.name] ?? p.defaultValue}
+            min={p.min}
+            max={p.max}
+            color="#a855f7"
+            format={(v) => (p.type === 'int' ? `${Math.round(v)}` : v.toFixed(2))}
+            onChange={(v) => {
+              const val = p.type === 'int' ? Math.round(v) : v
+              setValues((prev) => {
+                const next = { ...prev, [p.name]: val }
+                savedRef.current.set(activeId, next)
+                return next
+              })
+              getThetaOrchestrator().setUniform(p.name, val)
+            }}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
 

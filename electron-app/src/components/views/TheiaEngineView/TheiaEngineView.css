@@ -1285,6 +1285,23 @@
   color: var(--theia-cyan);
 }
 
+/* 🔮 WAVE 8230 · E4 — shader params: sliders automáticos @euclid param */
+.theia-shader-params {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.theia-shader-params .theia-master {
+  width: 100%;
+  align-items: stretch;
+  padding: 2px 2px;
+}
+
+.theia-shader-params .theia-master input[type='range'] {
+  width: 100%;
+}
+
 .theia-insp__pulse {
   width: 6px;
   height: 6px;

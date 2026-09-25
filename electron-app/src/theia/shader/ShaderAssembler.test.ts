@@ -365,3 +365,80 @@ describe('E3 limitador fotosensible — certificación WCAG', () => {
     expect(DEFAULT_MAX_STEPS).toBe(96)
   })
 })
+
+// ─────────────────────────── @euclid meta (§4.2 · WAVE 8230 E4) ─────────
+
+import { parseEuclidMeta } from './ShaderAssembler'
+import { ORACLE_KIFS_SOURCE, buildOracleKifsAtom } from './atoms/oracleKifs'
+
+describe('E4 — parser @euclid (§4.2)', () => {
+  const meta = parseEuclidMeta(ORACLE_KIFS_SOURCE)
+
+  it('extrae name/author/genome/zone/param/steps del Oracle KIFS', () => {
+    expect(meta.name).toBe('Oracle KIFS — Hello World Generativo')
+    expect(meta.author).toBe('LuxSync')
+    expect(meta.genome.aggression).toBeCloseTo(0.55)
+    expect(meta.genome.chaos).toBeCloseTo(0.6)
+    expect(meta.genome.organicity).toBeCloseTo(0.45)
+    expect(meta.zone).toEqual({ from: 'gentle', to: 'peak' })
+    expect(meta.steps).toBe(96)
+  })
+
+  it('el param u_twist se parsea con tipo, rango, default y label', () => {
+    const p = meta.params.find((x) => x.name === 'u_twist')
+    expect(p).toBeDefined()
+    expect(p!.type).toBe('float')
+    expect(p!.min).toBe(0)
+    expect(p!.max).toBe(2)
+    expect(p!.defaultValue).toBeCloseTo(0.6)
+    expect(p!.label).toBe('Twist')
+  })
+
+  it('robusto: líneas malformadas nunca lanzan y no rompen lo demás', () => {
+    const src = `// @euclid name "X"
+// @euclid param broken
+// @euclid param u_ok float 0 1 0.5
+// @euclid steps nope
+// @euclid zone gentle..
+void mainImage(out vec4 c, in vec2 fragCoord) { c = vec4(0.0); }`
+    const m = parseEuclidMeta(src)
+    expect(m.name).toBe('X')
+    expect(m.params).toHaveLength(1)
+    expect(m.params[0].name).toBe('u_ok')
+    expect(m.params[0].label).toBe('u_ok') // sin label → nombre del uniform
+    expect(m.steps).toBeUndefined()
+    expect(m.zone).toBeUndefined()
+  })
+})
+
+describe('E4 — Oracle KIFS como átomo generativo', () => {
+  it('la fuente §5 ensambla completa (preámbulo + cuerpo + epílogo)', () => {
+    // El caller (worker) resuelve steps = meta.steps ?? parseStepsHint(src)
+    const steps = parseStepsHint(ORACLE_KIFS_SOURCE) ?? DEFAULT_MAX_STEPS
+    const a = assembleFragmentShader(ORACLE_KIFS_SOURCE, steps)
+    expect(a.fragSource).toContain(
+      'void mainImage(out vec4 fragColor, in vec2 fragCoord)',
+    )
+    expect(a.fragSource).toContain('mapFractal')
+    // u_twist la declara el artista — una sola vez en todo el programa
+    const decls = a.fragSource.match(/uniform\s+float\s+u_twist\s*;/g)
+    expect(decls).toHaveLength(1)
+    // MAX_STEPS viene del header @euclid steps 96
+    expect(steps).toBe(96)
+    expect(a.fragSource).toContain('#define MAX_STEPS 96')
+  })
+
+  it('buildOracleKifsAtom produce un ITheiaAtom kind=shader válido', () => {
+    const atom = buildOracleKifsAtom()
+    expect(atom.id).toBe('oracle_kifs')
+    expect(atom.packId).toBe('euclid-oracle')
+    expect(atom.source?.kind).toBe('shader')
+    expect(atom.source?.glsl).toBe(ORACLE_KIFS_SOURCE)
+    // ADN derivado del propio header @euclid (genoma + zona)
+    expect(atom.aggression).toBeCloseTo(0.55)
+    expect(atom.energyZone.min).toBe('gentle')
+    expect(atom.energyZone.max).toBe('peak')
+    expect(atom.validSections.length).toBeGreaterThan(0)
+    expect(atom.trim.endMs).toBeGreaterThan(atom.trim.startMs + 250)
+  })
+})

@@ -1510,7 +1510,10 @@ function renderGenerativeFrame(
   gl.uniform1i(L.prevFrame, 0)
   gl.uniform1i(L.flashState, 1)
   gl.uniform1f(L.hasPrev, state.genPrevValid ? 1 : 0)
-  gl.uniform1f(L.blend, xfStep.alphaSecondary)
+  // 🧬 WAVE 8232 · G0 (H1): `genPrevValid` queda true permanente (feedback
+  // + limitador) — alphaSecondary=0 en reposo congelaba la salida sobre el
+  // primer frame capturado. resolvedBlend devuelve 1 en idle.
+  gl.uniform1f(L.blend, state.crossfade.resolvedBlend(xfStep))
   gl.uniform1f(L.flashGuard, state.uniforms.get('u_flashGuard') ?? 1.0)
   gl.uniform1f(
     L.flashMaxDelta,

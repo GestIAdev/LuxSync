@@ -97,6 +97,23 @@ export class CrossfadeUnit {
   }
 
   /**
+   * 🧬 WAVE 8232 · G0 (H1) — factor a subir como `u_blend` en el epílogo
+   * generativo (`mix(prev, c, u_blend)`).
+   *
+   * `step()` devuelve `alphaSecondary = 0` tanto en idle como en
+   * pending-anchor, pero el shader generativo mantiene `u_prevFrame` válido
+   * de forma permanente (feedback + limitador) — subir 0 en reposo
+   * congelaría la salida sobre el frame cacheado. Resolución:
+   *   - running/finished → `alphaSecondary` (rampa 0→1 real)
+   *   - pending-anchor   → 0 (hold sobre el snapshot hasta el ancla)
+   *   - idle             → 1 (frame actual al 100%)
+   */
+  resolvedBlend(step: CrossfadeStep): number {
+    if (step.active) return step.alphaSecondary
+    return this._state === 'pending-anchor' ? 0 : 1
+  }
+
+  /**
    * Llamado una vez por tick. `releaseAnchor=true` dispara el arranque si
    * estaba en pending-anchor.
    *

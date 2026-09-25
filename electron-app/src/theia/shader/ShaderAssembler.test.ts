@@ -442,3 +442,99 @@ describe('E4 — Oracle KIFS como átomo generativo', () => {
     expect(atom.trim.endMs).toBeGreaterThan(atom.trim.startMs + 250)
   })
 })
+
+// ─────────────────── WAVE 8232 · G0 — motor de ruido (H2) ───────────────────
+
+describe('G0 — noise3() del preámbulo es value noise continuo (H2)', () => {
+  const pre = buildPreamble()
+
+  it('la implementación es trilineal de 8 esquinas sobre la retícula', () => {
+    expect(pre).toContain('float hash31(vec3 p)')
+    // 8 esquinas de celda hasheadas (n000…n111).
+    for (const c of ['n000', 'n100', 'n010', 'n110', 'n001', 'n101', 'n011', 'n111']) {
+      expect(pre).toContain(`float ${c} = hash31(`)
+    }
+    // Guardia de regresión: el patrón roto hasheaba coords continuas.
+    expect(pre).not.toContain('hash21(uv + vec2(37.0, 239.0))')
+  })
+
+  /**
+   * Espejo exacto del GLSL del preámbulo (hash31 + noise3). Si el shader
+   * cambia, este espejo debe reflejarlo — igual que el test del limitador.
+   */
+  const fract = (x: number) => x - Math.floor(x)
+  function hash31(px: number, py: number, pz: number): number {
+    let x = fract(px * 0.1031)
+    let y = fract(py * 0.103)
+    let z = fract(pz * 0.0973)
+    const d = x * (y + 33.33) + y * (z + 33.33) + z * (x + 33.33)
+    x += d; y += d; z += d
+    return fract((x + y) * z)
+  }
+  const mix = (a: number, b: number, t: number) => a + (b - a) * t
+  function noise3(px: number, py: number, pz: number): number {
+    const ix = Math.floor(px), iy = Math.floor(py), iz = Math.floor(pz)
+    let fx = px - ix, fy = py - iy, fz = pz - iz
+    fx = fx * fx * (3 - 2 * fx)
+    fy = fy * fy * (3 - 2 * fy)
+    fz = fz * fz * (3 - 2 * fz)
+    const n000 = hash31(ix, iy, iz)
+    const n100 = hash31(ix + 1, iy, iz)
+    const n010 = hash31(ix, iy + 1, iz)
+    const n110 = hash31(ix + 1, iy + 1, iz)
+    const n001 = hash31(ix, iy, iz + 1)
+    const n101 = hash31(ix + 1, iy, iz + 1)
+    const n011 = hash31(ix, iy + 1, iz + 1)
+    const n111 = hash31(ix + 1, iy + 1, iz + 1)
+    return (
+      mix(
+        mix(mix(n000, n100, fx), mix(n010, n110, fx), fy),
+        mix(mix(n001, n101, fx), mix(n011, n111, fx), fy),
+        fz,
+      ) * 2 - 1
+    )
+  }
+
+  it('produce valores CONTINUOS: un paso de 1e-3 no puede saltar (xy incluido)', () => {
+    // El bug H2: hash sobre coords continuas → ruido blanco en x,y —
+    // |Δ| era O(0.3) para pasos de 1e-3. Con trilineal el peor slope es
+    // ~3 por unidad → |Δ| ≤ ~0.005. Usamos 0.02 como cota holgada.
+    const e = 1e-3
+    const rng = (s: number) => fract(Math.sin(s * 127.1) * 43758.5453) * 8 - 4
+    for (let k = 0; k < 64; k++) {
+      const x = rng(k + 1), y = rng(k + 71), z = rng(k + 133)
+      for (const [dx, dy, dz] of [[e, 0, 0], [0, e, 0], [0, 0, e]] as const) {
+        expect(Math.abs(noise3(x + dx, y + dy, z + dz) - noise3(x, y, z))).toBeLessThan(0.02)
+      }
+    }
+  })
+
+  it('un barrido denso no tiene discontinuidades ni NaN', () => {
+    let prev = noise3(-4, 1.3, -2.7)
+    for (let i = 1; i <= 2000; i++) {
+      const v = noise3(-4 + i * 0.004, 1.3, -2.7)
+      expect(Number.isFinite(v)).toBe(true)
+      expect(Math.abs(v - prev)).toBeLessThan(0.05)
+      prev = v
+    }
+  })
+
+  it('rango acotado [-1,1] y con varianza real (no constante)', () => {
+    let min = Infinity, max = -Infinity, sum = 0, sum2 = 0, n = 0
+    for (let i = 0; i < 4000; i++) {
+      const v = noise3((i * 0.731) % 9 - 4.5, (i * 1.317) % 7 - 3.5, (i * 0.517) % 5 - 2.5)
+      min = Math.min(min, v); max = Math.max(max, v)
+      sum += v; sum2 += v * v; n++
+    }
+    expect(min).toBeGreaterThanOrEqual(-1 - 1e-6)
+    expect(max).toBeLessThanOrEqual(1 + 1e-6)
+    // Ruido real: usa el rango y tiene dispersión (no un valor plano).
+    expect(max - min).toBeGreaterThan(0.5)
+    expect(sum2 / n - (sum / n) ** 2).toBeGreaterThan(0.01)
+  })
+
+  it('en nodos de retícula el valor es exactamente el hash (determinista)', () => {
+    expect(noise3(3, -2, 7)).toBeCloseTo(hash31(3, -2, 7) * 2 - 1, 10)
+    expect(noise3(0, 0, 0)).toBeCloseTo(hash31(0, 0, 0) * 2 - 1, 10)
+  })
+})

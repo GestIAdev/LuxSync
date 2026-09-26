@@ -93,7 +93,10 @@ import {
 // 🎬 WAVE 4867: Phase 6 — Thumb SAB writer (64×64 → AetherCanvasManager twin-output)
 import { ThumbFrameWriter } from './TheiaThumbBuffer'
 // 🔮 WAVE 8228 — Euclid Oracle · E2: Uniform Bridge (reader wire + smoother)
-import { TelemetryWireReader } from './telemetry/TheiaTelemetryRing'
+import {
+  TEL_FLAG,
+  TelemetryWireReader,
+} from './telemetry/TheiaTelemetryRing'
 import { TelemetrySmoother } from './telemetry/TelemetrySmoother'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -337,6 +340,9 @@ interface WorkerState {
   genPrevW: number
   genPrevH: number
   genPrevValid: boolean
+  /** 🌊 WAVE 8250 — reloj gobernado (AUDIO_LIVE ? 1.0 : 0.5, exponencial). */
+  genShaderTimeSec: number
+  genTimeScale: number
   /** Programa passthrough FBO→canvas. */
   blitProgram: WebGLProgram | null
   blitTexLoc: WebGLUniformLocation | null
@@ -480,6 +486,8 @@ const state: WorkerState = {
   genPrevW: 0,
   genPrevH: 0,
   genPrevValid: false,
+  genShaderTimeSec: 0,
+  genTimeScale: 0.5,
   blitProgram: null,
   blitTexLoc: null,
   blitPos: -1,
@@ -1690,6 +1698,16 @@ function renderGenerativeFrame(
   }
   const sm = state.smoother
 
+  // 🌊 WAVE 8250 — gobernador de tiempo acumulativo (paridad con
+  // GenRuntime): `u_time` crece a la velocidad del audio — AUDIO_LIVE →
+  // 1.0, sordo → 0.5 — suavizado exponencial independiente del frame-rate
+  // (τ=160ms ≈ 10%/frame @60fps). `u_dt` sigue siendo el dt físico.
+  const audioLive = (sm.flags & (1 << TEL_FLAG.AUDIO_LIVE)) !== 0
+  state.genTimeScale +=
+    ((audioLive ? 1.0 : 0.5) - state.genTimeScale) * (1 - Math.exp(-dtMs / 160))
+  state.genShaderTimeSec += dtMs * 0.001 * state.genTimeScale
+  const shaderTimeSec = state.genShaderTimeSec
+
   // ── 🧬 WAVE 8237 · G5 — pase de SIMULACIÓN (Materia Viva) ──────────
   // Si el shader declara `mainState`, el autómata itera un paso sobre su
   // ping-pong RGBA16F propio (lineal, sin epílogo). La escena visual lee
@@ -1707,7 +1725,7 @@ function renderGenerativeFrame(
     gl.uniform1fv(SL.tel, sm.out)
     gl.uniform1i(SL.flags, sm.flags)
     gl.uniform4i(SL.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone)
-    gl.uniform1f(SL.time, perfNow * 0.001)
+    gl.uniform1f(SL.time, shaderTimeSec)
     gl.uniform1f(SL.dt, dtMs * 0.001)
     gl.uniform3f(SL.resolution, sw, sh, 1)
     gl.uniform1f(SL.beatTime, sm.beatTime)
@@ -1759,7 +1777,7 @@ function renderGenerativeFrame(
   gl.uniform1fv(L.tel, sm.out)
   gl.uniform1i(L.flags, sm.flags)
   gl.uniform4i(L.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone)
-  gl.uniform1f(L.time, perfNow * 0.001)
+  gl.uniform1f(L.time, shaderTimeSec)
   gl.uniform1f(L.dt, dtMs * 0.001)
   gl.uniform3f(L.resolution, sw, sh, 1)
   gl.uniform1f(L.beatTime, sm.beatTime)

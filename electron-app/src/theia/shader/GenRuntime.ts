@@ -38,6 +38,7 @@ import {
 } from './ShaderAssembler'
 // 🧬 WAVE 8237 · G5 — Materia Viva: ping-pong RGBA16F por programa.
 import { FloatStatePool } from './FloatStatePool'
+import { TEL_FLAG } from '../telemetry/TheiaTelemetryRing'
 import type { TelemetrySmoother } from '../telemetry/TelemetrySmoother'
 
 export const BUILTIN_SHADER_ID = 'builtin'
@@ -209,6 +210,16 @@ export class GenRuntime {
   // Crossfade temporal (reloj propio — renderer tiene rAF real).
   private fadeT0 = -1
   private fadeDur = 0
+
+  // 🌊 WAVE 8250 — gobernador de tiempo acumulativo (anti "Electric
+  // Sheep"): `u_time` crece a la velocidad del audio — AUDIO_LIVE → 1.0,
+  // sordo → 0.5 — con suavizado exponencial independiente del frame-rate
+  // (τ=160ms ≈ 10%/frame @60fps). Acumulativo y jamás reseteado por
+  // activate/deactivate → continuidad total, sin saltos al volver el audio.
+  // `u_dt` se mantiene físico: los autómatas (mainState) integran con dt
+  // real, no con el reloj gobernado.
+  private shaderTimeSec = 0
+  private timeScale = 0.5
 
   private constructor(
     gl: WebGL2RenderingContext,
@@ -783,6 +794,15 @@ export class GenRuntime {
     }
     this.seq++
 
+    // 🌊 WAVE 8250 — governor de tiempo: leer AUDIO_LIVE del smoother y
+    // acumular el reloj gobernado UNA vez por frame (compartido por el
+    // pase de sim y la escena visual).
+    const audioLive = (sm.flags & (1 << TEL_FLAG.AUDIO_LIVE)) !== 0
+    this.timeScale +=
+      ((audioLive ? 1.0 : 0.5) - this.timeScale) * (1 - Math.exp(-dtMs / 160))
+    this.shaderTimeSec += dtMs * 0.001 * this.timeScale
+    const shaderTimeSec = this.shaderTimeSec
+
     // Rampa de crossfade temporal (0→1 sobre fadeDur).
     const blend =
       this.fadeDur > 0 && this.fadeT0 >= 0
@@ -810,7 +830,7 @@ export class GenRuntime {
       gl.uniform4i(
         SL.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone,
       )
-      gl.uniform1f(SL.time, nowMs * 0.001)
+      gl.uniform1f(SL.time, shaderTimeSec)
       gl.uniform1f(SL.dt, dtMs * 0.001)
       gl.uniform3f(SL.resolution, sw, sh, 1)
       gl.uniform1f(SL.beatTime, sm.beatTime)
@@ -867,7 +887,7 @@ export class GenRuntime {
       sm.huntState,
       sm.energyZone,
     )
-    gl.uniform1f(L.time, nowMs * 0.001)
+    gl.uniform1f(L.time, shaderTimeSec)
     gl.uniform1f(L.dt, dtMs * 0.001)
     gl.uniform3f(L.resolution, sw, sh, 1)
     gl.uniform1f(L.beatTime, sm.beatTime)

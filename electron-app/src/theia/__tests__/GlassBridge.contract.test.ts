@@ -19,6 +19,7 @@ import {
 } from '../SharedVideoFrameBuffer'
 import {
   ackTelemetryFrame,
+  createLocalTelemetryRing,
   createTelemetryRing,
   isTelemetryMessage,
   mirrorTelemetryIntoRing,
@@ -32,6 +33,7 @@ import {
   SCHEMA_VERSION,
   TELEMETRY_SLOT,
   TEL_FLAG,
+  TelemetryWireReader,
   TelemetryWriter,
   WIRE_ENUMS_SLOT,
   WIRE_FLAGS_SLOT,
@@ -178,6 +180,39 @@ describe('🌊 WAVE 8215 — Modo B: telemetry ring mirror', () => {
     expect(port.posted).toHaveLength(1)
     expect(port.posted[0].data).toMatchObject({ ack: true, seq: 9 })
     expect(port.posted[0].transfer[0]).toBe(wire) // identidad, no clon
+  })
+})
+
+// ── WAVE 8250 — Modo B: ring local ArrayBuffer (sin crossOriginIsolated) ──
+
+describe('🌊 WAVE 8250 — Modo B local ring: ArrayBuffer sin SAB', () => {
+  it('createLocalTelemetryRing devuelve un ArrayBuffer plano de 256B', () => {
+    const ring = createLocalTelemetryRing()
+    expect(ring).toBeInstanceOf(ArrayBuffer)
+    // No compartido: seguro bajo file:// (sin COOP/COEP) — mismo hilo.
+    expect(ring).not.toBeInstanceOf(SharedArrayBuffer)
+    expect(ring.byteLength).toBe(TELEMETRY_RING_BYTES)
+  })
+
+  it('mirror + TelemetryWireReader sobre ArrayBuffer plano: frescura por generation', () => {
+    const ring = createLocalTelemetryRing()
+    const reader = new TelemetryWireReader(ring)
+    reader.resync()
+
+    const src = createFrameContextSAB()
+    new FrameContextWriter(src).advance(77, Date.now())
+    const wire = new ArrayBuffer(TELEMETRY_RING_BYTES)
+    const wireI32 = new Int32Array(wire)
+    wireI32.set(new Int32Array(src))
+    // AUDIO_LIVE en el wire — el bit que alimenta el governor de tiempo.
+    wireI32[WIRE_FLAGS_SLOT] = 1 << TEL_FLAG.AUDIO_LIVE
+
+    expect(reader.read()).toBe(false) // generation sin cambios aún
+    mirrorTelemetryIntoRing(ring, wire)
+    expect(reader.read()).toBe(true)
+    expect(reader.tickId).toBe(77)
+    expect(reader.timestampMs).toBeGreaterThan(0)
+    expect(reader.flags & (1 << TEL_FLAG.AUDIO_LIVE)).not.toBe(0)
   })
 })
 

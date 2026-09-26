@@ -58,13 +58,29 @@ export function createTelemetryRing(): SharedArrayBuffer {
 }
 
 /**
+ * 🌊 WAVE 8250 — ring LOCAL para consumidores de hilo único (Modo B).
+ * `Atomics.load/store` operan igual sobre una `Int32Array` respaldada por
+ * `ArrayBuffer` estándar (solo `wait`/`notify` exigen memoria compartida),
+ * así que la ventana de salida — donde el mirror corre en `port.onmessage`
+ * y el reader en `rAF`, ambos en el mismo hilo — no necesita
+ * `crossOriginIsolated` ni SAB: el ring vive aunque la página cargue por
+ * `file://`.
+ */
+export function createLocalTelemetryRing(): ArrayBuffer {
+  return new ArrayBuffer(TELEMETRY_RING_BYTES)
+}
+
+/**
  * Espeja un buffer de telemetría recibido dentro del ring local.
  * Copia verbatim 256B EXCEPTO `generation`, que se escribe al final con
  * `Atomics.store` para preservar la barrera lógica del seqlock-lite: un
  * reader que observe el gen nuevo garantiza que los slots anteriores ya son
  * coherentes (mismo contrato que `FrameContextWriter.advance`).
  */
-export function mirrorTelemetryIntoRing(ring: SharedArrayBuffer, buffer: ArrayBuffer): void {
+export function mirrorTelemetryIntoRing(
+  ring: SharedArrayBuffer | ArrayBuffer,
+  buffer: ArrayBuffer,
+): void {
   if (buffer.byteLength < TELEMETRY_RING_BYTES) return
   const dst = new Int32Array(ring, 0, TELEMETRY_RING_INT32_LENGTH)
   const src = new Int32Array(buffer, 0, TELEMETRY_RING_INT32_LENGTH)

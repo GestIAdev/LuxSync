@@ -44,7 +44,7 @@ import {
 } from '../../../theia/SharedVideoFrameBuffer'
 import {
   ackTelemetryFrame,
-  createTelemetryRing,
+  createLocalTelemetryRing,
   isTelemetryMessage,
   mirrorTelemetryIntoRing,
 } from '../../../theia/TheiaTelemetryRing'
@@ -78,16 +78,14 @@ const TheiaOutputView: React.FC = () => {
     let offscreenCtx: CanvasRenderingContext2D | null = null
     // Último frame válido — re-blit en resize sin esperar un frame nuevo.
     let lastSrc = { w: 0, h: 0 }
-    // 🌊 Modo B — ring local de telemetría (256B, intra-proceso). El
-    // SharedArrayBuffer local es legal: el veto WAVE 8215 aplica solo a
-    // la frontera Main↔Renderer, y el buffer transferible se devuelve por
-    // ack en el mismo handler (zero-alloc por tick).
-    let telemetryRing: SharedArrayBuffer | null = null
-    try {
-      telemetryRing = createTelemetryRing()
-    } catch {
-      telemetryRing = null // sin crossOriginIsolated — Modo B espera al fix
-    }
+    // 🌊 WAVE 8250 — ring local de telemetría como `ArrayBuffer` estándar.
+    // El mirror corre en `port.onmessage` y el reader en `rAF` — MISMO hilo
+    // de UI: no hay consumidor cross-thread, así que el SAB era superfluo y
+    // su constructor muere bajo `file://` (sin crossOriginIsolated). Con un
+    // buffer normal el ring vive en dev y en producción empaquetada.
+    const telemetryRing: ArrayBuffer = createLocalTelemetryRing()
+    // Vista Int32 fija para el watchdog (zero-alloc por barrido).
+    const telRingI32 = new Int32Array(telemetryRing)
 
     // ── 🔮 WAVE 8231 · E5 — MODO B: render nativo del shader ──────────
     // Su propio Uniform Bridge: wire reader sobre el ring local + smoother
@@ -98,7 +96,7 @@ const TheiaOutputView: React.FC = () => {
     let genMode = false
     let genRafHandle = 0
     const genUniforms = new Map<string, number>()
-    const telReader = telemetryRing ? new TelemetryWireReader(telemetryRing) : null
+    const telReader = new TelemetryWireReader(telemetryRing)
     const smoother = new TelemetrySmoother()
     const genGovernor = new RenderGovernor()
     let lastGenPerfMs = 0
@@ -122,11 +120,11 @@ const TheiaOutputView: React.FC = () => {
         const dtMs =
           lastGenPerfMs > 0 ? Math.min(nowMs - lastGenPerfMs, 100) : 16.7
         lastGenPerfMs = nowMs
-        const fresh = telReader ? telReader.read() : false
+        const fresh = telReader.read()
         smoother.step(
-          telReader ? telReader.scratch : null,
-          telReader ? telReader.flags : 0,
-          telReader ? telReader.enums : 0,
+          telReader.scratch,
+          telReader.flags,
+          telReader.enums,
           fresh,
           dtMs,
           nowMs,
@@ -305,13 +303,22 @@ const TheiaOutputView: React.FC = () => {
         if (cancelled) return
         const data = ev.data
         if (!isTelemetryMessage(data)) return
-        // Modo B — espejo del ring (future shader feed), luego ackFrame.
-        if (telemetryRing) {
-          mirrorTelemetryIntoRing(telemetryRing, data.buffer)
-        }
+        // Modo B — espejo al ring local (ArrayBuffer), luego ackFrame.
+        mirrorTelemetryIntoRing(telemetryRing, data.buffer)
         ackTelemetryFrame(port, data)
       }
+      // 🌊 WAVE 8250 — si el link muere, suelta la referencia: el watchdog
+      // vuelve a pedir 'telemetry-port' en el próximo barrido de 2s.
+      const release = () => {
+        if (telemetryPort === port) telemetryPort = null
+      }
+      port.onmessageerror = release
+      try {
+        port.addEventListener('close', release)
+      } catch { /* 'close' no soportado — la frescura del ring lo cubre */ }
       port.start()
+      // eslint-disable-next-line no-console
+      console.log('[OUTPUT] 📡 Telemetry Port Attached (Local Ring)! — pump↔ring @44Hz')
     }
 
     resizeCanvas()
@@ -344,12 +351,28 @@ const TheiaOutputView: React.FC = () => {
     requestTheiaPort('video-port')
     requestTheiaPort('telemetry-port')
 
+    // 🌊 WAVE 8250 — TELEMETRY WATCHDOG (mismo patrón que el
+    // ThetaOrchestrator de WAVE 8246): el pull inicial es single-shot y un
+    // IPC perdido dejaba a Modo B sordo para siempre. Link sano = port
+    // atado Y timestamp del FrameContext (slots 1-2 del ring) fresco <2s.
+    const telemetryWatchdog = window.setInterval(() => {
+      if (cancelled) return
+      const tsMs =
+        Atomics.load(telRingI32, 2) * 0x100000000 +
+        (Atomics.load(telRingI32, 1) >>> 0)
+      const stale = tsMs <= 0 || Date.now() - tsMs > 2000
+      if (telemetryPort === null || stale) {
+        requestTheiaPort('telemetry-port')
+      }
+    }, 2000)
+
     // eslint-disable-next-line no-console
     console.log('[TheiaOutput] 🌉 Glass Bridge consumer armed — waiting for ports')
 
     return () => {
       cancelled = true
       unsubGlass()
+      window.clearInterval(telemetryWatchdog)
       window.removeEventListener('resize', resizeCanvas)
       if (genRafHandle) cancelAnimationFrame(genRafHandle)
       genMode = false

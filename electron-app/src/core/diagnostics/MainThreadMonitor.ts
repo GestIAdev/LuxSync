@@ -212,7 +212,7 @@ export function installMainThreadMonitor(): void {
  * llegadas del telemetry port y lo registra. Llamar desde onmessage —
  * devuelve void, zero-alloc salvo en el evento de gap.
  */
-export function noteTelemetryArrival(lastAt: { v: number }): void {
+export function noteTelemetryArrival(lastAt: { v: number }, label?: string): void {
   const now = Date.now()
   const prev = lastAt.v
   lastAt.v = now
@@ -222,7 +222,7 @@ export function noteTelemetryArrival(lastAt: { v: number }): void {
       const api = (window as Window & { __luxPerf?: LuxPerfAPI }).__luxPerf
       if (api) pushRing(api.telGaps, GAP_RING_CAP, { t: now, d: gap })
       // eslint-disable-next-line no-console
-      console.warn(`[PERF ⚠️] telemetry port gap ${gap}ms @${fmtEpoch(now)}`)
+      console.warn(`[PERF ⚠️] telemetry port gap ${gap}ms @${fmtEpoch(now)}${label ? ` ${label}` : ''}`)
     }
   }
 }

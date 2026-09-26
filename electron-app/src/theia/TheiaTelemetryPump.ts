@@ -83,6 +83,8 @@ interface TelemetryLink {
   port: MessagePortMain
   pool: ArrayBuffer[]
   dropped: number
+  /** 🩺 WAVE 8253 — diagnóstico: acks recibidos de vuelta (starvation probe). */
+  acksSeen: number
 }
 
 export class TheiaTelemetryPump {
@@ -102,15 +104,22 @@ export class TheiaTelemetryPump {
    */
   attach(port: MessagePortMain): void {
     this.detach(port)
-    const link: TelemetryLink = { port, pool: [], dropped: 0 }
+    const link: TelemetryLink = { port, pool: [], dropped: 0, acksSeen: 0 }
     while (link.pool.length < TELEMETRY_POOL_SIZE) {
       link.pool.push(new ArrayBuffer(TELEMETRY_BUFFER_BYTES))
     }
     port.on('message', (event: { data?: { ack?: boolean; buffer?: ArrayBuffer } }) => {
       const data = event?.data
+      // 🩺 WAVE 8253 — contar TODO lo que llega, conforme o no: distingue
+      // "acks jamás enviados" (acksSeen=0) de "llegan pero fallan el shape
+      // check" (acksSeen>0, pool vacío → instanceof/type mismatch).
+      link.acksSeen++
       if (data?.ack && data.buffer instanceof ArrayBuffer) {
         // Ping-pong return — el buffer vuelve al pool para el siguiente tick.
         link.pool.push(data.buffer)
+      } else if (link.acksSeen === 1) {
+        // eslint-disable-next-line no-console
+        console.warn('[TheiaTelemetryPump] ⚠️ ack malformed — buffer type:', Object.prototype.toString.call(data?.buffer))
       }
     })
     // El renderer cerró su extremo (reload, ventana destruida, stop()) —
@@ -166,6 +175,13 @@ export class TheiaTelemetryPump {
       if (!buffer) {
         // Pool agotado: consumidor lento → drop (el próximo snapshot lo reemplaza).
         link.dropped++
+        // 🩺 WAVE 8253 — primera vez que el pool se seca + cada ~2s: la
+        // firma del bug (silencio ~6s por link) queda explícita en consola
+        // de main junto con cuántos acks llegaron antes de morir.
+        if (link.dropped === 1 || link.dropped % 88 === 0) {
+          // eslint-disable-next-line no-console
+          console.warn(`[TheiaTelemetryPump] ⚠️ pool starved — dropped=${link.dropped} acksSeen=${link.acksSeen} links=${this.links.size}`)
+        }
         continue
       }
 

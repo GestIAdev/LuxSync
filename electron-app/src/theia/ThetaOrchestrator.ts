@@ -207,6 +207,8 @@ export class ThetaOrchestrator {
   /** 🩺 WAVE 8253 — timestamp de la última llegada al port (sonda de stall:
    *  el pump emite ~23ms; un hueco aquí es el chock point del tick gap). */
   private readonly telemetryLastMsgAt = { v: 0 }
+  /** 🩺 WAVE 8253 — mensajes recibidos en el port actual (diagnóstico). */
+  private telemetryMsgCount = 0
   /** 🌊 WAVE 8246 — handle del watchdog de telemetría (re-pull ~2s). */
   private telemetryWatchdogHandle: number | null = null
   /** Port de video buffered si llega antes del spawn del worker. */
@@ -481,26 +483,41 @@ export class ThetaOrchestrator {
   private attachTelemetryPort(port: MessagePort): void {
     try { this.telemetryPort?.close() } catch { /* noop */ }
     this.telemetryPort = port
+    // 🩺 WAVE 8253 — contador por attach: si el link muere siempre tras N
+    // mensajes, N delata la causa (N=3 → pool del pump seco = acks no vuelven).
+    let msgCount = 0
     port.onmessage = (ev: MessageEvent) => {
       // 🩺 WAVE 8253 — sonda de gap de llegada: el pump emite @44Hz (~23ms);
       // un gap >400ms aquí es la evidencia DIRECTA del stall que congela el
       // ring (onmessage asfixiado por el hilo de página o pump sin pool).
-      noteTelemetryArrival(this.telemetryLastMsgAt)
+      noteTelemetryArrival(this.telemetryLastMsgAt, `msgs=${msgCount + 1}`)
+      msgCount++
+      this.telemetryMsgCount = msgCount
       const data = ev.data
       if (!isTelemetryMessage(data)) return
-      mirrorTelemetryIntoRing(this.telemetryRing, data.buffer)
-      ackTelemetryFrame(port, data)
+      try {
+        mirrorTelemetryIntoRing(this.telemetryRing, data.buffer)
+        ackTelemetryFrame(port, data)
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[THETA ⚠️] telemetry mirror/ack failed:', err)
+      }
     }
     // 🌊 WAVE 8246 — si el entangle muere (el pump cerró su extremo o el
     // mensaje no fue clonable), suelta la referencia: el watchdog vuelve a
     // pedir 'telemetry-port' en el próximo barrido. El pull single-shot
     // original dejaba un NO LINK permanente ante cualquier fallo (WAVE 8245).
-    const release = () => {
-      if (this.telemetryPort === port) this.telemetryPort = null
+    // 🩺 WAVE 8253 — release etiquetado: saber QUÉ evento corta el link.
+    const release = (why: string) => () => {
+      if (this.telemetryPort === port) {
+        // eslint-disable-next-line no-console
+        console.warn(`[THETA ⚠️] telemetry port released by '${why}' after ${msgCount} msgs`)
+        this.telemetryPort = null
+      }
     }
-    port.onmessageerror = release
+    port.onmessageerror = release('messageerror')
     try {
-      port.addEventListener('close', release)
+      port.addEventListener('close', release('close'))
     } catch { /* 'close' no soportado — el chequeo de frescura lo cubre */ }
     port.start()
     // eslint-disable-next-line no-console

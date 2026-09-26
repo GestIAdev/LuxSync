@@ -1104,6 +1104,17 @@ export class ThetaOrchestrator {
     return this.lastPerfReport
   }
 
+  /**
+   * 🎛️ WAVE 8240 · U2 — ring local (256B) espejado por el Glass Bridge.
+   * La UI lo lee con un `TelemetryWireReader` en un rAF: zero-alloc, sin
+   * React state. El pump ya publica por 'telemetry-port' y
+   * `mirrorTelemetryIntoRing` lo mantiene fresco — solo faltaba exponer
+   * el espejo al consumer React.
+   */
+  getTelemetryRing(): SharedArrayBuffer {
+    return this.telemetryRing
+  }
+
   // 🔮 WAVE 8230 — EUCLID · E4: meta @euclid → UI de parámetros (§4.2)
   // ───────────────────────────────────────────────────────────────────────
 

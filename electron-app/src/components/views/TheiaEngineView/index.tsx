@@ -4,22 +4,20 @@
  * Premium industrial-cyberpunk UI for the Theia video engine.
  *
  *   ┌─────────────────────────────────────────────────────────────────┐
- *   │                  HEADER TOOLBAR (60px)                          │
- *   │  [POWER] [BRIGHT][SPEED][CONTRAST][BLACKOUT]  [LOAD]  [OUTPUT]  │
+ *   │          HEADER (60px): logo + LOAD ASSETS / LOAD PACK          │
  *   ├──────────────────────────────────────────┬──────────────────────┤
  *   │                                          │   INSPECTOR          │
  *   │   MAIN VIEWPORT (worker canvas)          │   (retractable)      │
- *   │                                          │                      │
- *   ├──────────────────────────────────────────┤   ▸ Section Monitor  │
- *   │   TRANSPORT BAR (play/loop/seek)         │   ▸ Manual Overrides │
- *   ├──────────────────────────────────────────┤                      │
- *   │   DECK (LiveDeck — Universal Media Pool) │                      │
+ *   │                                          │   ▸ Live Telemetry   │
+ *   │   TRANSPORT BAR (play/loop/seek)         │   ▸ Masters          │
+ *   ├──────────────────────────────────────────┤   ▸ Ecosystem Ctrl   │
+ *   │   DECK (LiveDeck — Universal Media Pool) │   ▸ Shader Params    │
  *   └──────────────────────────────────────────┴──────────────────────┘
  *
  * MIDI BINDINGS (every control carries data-midi-bind for MidiLearn):
  *   theia.power · theia.brightness · theia.speed · theia.contrast · theia.blackout
  *   theia.transport.play · theia.transport.loop · theia.transport.seek
- *   theia.force-drop · theia.force-ambient
+ *   theia.darwin.favorite · theia.darwin.extinguish · theia.darwin.mutate
  *   theia.toggle-output · theia.load-assets · theia.load-pack
  *
  * 🌊 WAVE 8211 (H1+H2): mock clips, synthetic heartbeat, PATCH PREVIEW and
@@ -27,12 +25,16 @@
  * �️ WAVE 8239 · U1 — HYBRID DECK: el "Author Mode" queda DEMOLIDO
  * (WorkshopDeck/TheiaTrimmer/TheiaDNALab + useTheiaEditorStore eliminados).
  * Theia es 100% LIVE OPERATION: transporte reactivo + media pool universal.
+ * 🎛️ WAVE 8240 · U2 — TELEMETRY WIRING: masters consolidados en el
+ * Inspector, Manual Overrides sustituidos por Ecosystem Control (Darwin:
+ * favorite/extinguish/mutate) y el monitor vive del ring 256B vía
+ * `TelemetryWireReader` + rAF — zero React state en la ruta caliente.
  *
  * @module views/TheiaEngineView
- * @version WAVE 8239
+ * @version WAVE 8240
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import './TheiaEngineView.css'
 import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
 // 🔮 WAVE 8230 — EUCLID · E4: átomos generativos + meta @euclid → sliders
@@ -46,24 +48,32 @@ import {
 } from '../../../stores/useTheiaPackStore'
 import LiveDeck from '../../theia/LiveDeck'
 import TransportBar from '../../theia/TransportBar'
+import { LuxIcon } from '../../icons'
+// 🎛️ WAVE 8240 · U2 — lectura zero-alloc del ring 256B (Glass Bridge mirror)
+import {
+  TelemetryWireReader,
+  TELEMETRY_SLOT,
+  unpackEnums,
+  type TelemetryEnums,
+} from '../../../theia/telemetry/TheiaTelemetryRing'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES
+// TELEMETRY — 🎛️ WAVE 8240 · U2
 // ═══════════════════════════════════════════════════════════════════════════
 
-type SectionTag = 'silence' | 'verse' | 'buildup' | 'drop' | 'breakdown' | 'outro'
+/** energyZone (Selene) → label/color del monitor. Índice = bits 24..31 del ENUMS. */
+const ZONE_META = [
+  { label: 'CALM',    color: '#84cc16' },
+  { label: 'RISING',  color: '#fbbf24' },
+  { label: 'PEAK',    color: '#ef4444' },
+  { label: 'FALLING', color: '#a855f7' },
+] as const
 
-const SECTION_LABELS: Record<SectionTag, { label: string; color: string; emoji: string }> = {
-  silence: { label: 'SILENCE',   color: '#475569', emoji: '◦' },
-  verse:   { label: 'VERSE',     color: '#3b82f6', emoji: '◆' },
-  buildup: { label: 'BUILDUP',   color: '#a3e635', emoji: '▲' },
-  drop:    { label: 'DROP',      color: '#ef4444', emoji: '🔥' },
-  breakdown:{ label: 'BREAKDOWN',color: '#a855f7', emoji: '▼' },
-  outro:   { label: 'OUTRO',     color: '#94a3b8', emoji: '◇' },
-}
+/** Muestra de energía en el sparkline del Inspector (rolling window). */
+const SPARK_LEN = 60
 
-/** 🌊 WAVE 8211 (H1) — flat baseline shown while telemetry is offline. */
-const OFFLINE_SPARK: readonly number[] = Object.freeze(new Array(60).fill(0))
+/** La telemetría del pump caduca: >750 ms sin frame válido = link muerto. */
+const TELEMETRY_STALE_MS = 750
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -79,15 +89,11 @@ const TheiaEngineView: React.FC = () => {
 
   // ── Inspector ──────────────────────────────────────────────────────────
   const [inspectorOpen, setInspectorOpen] = useState(true)
+  const toggleInspector = useCallback(() => setInspectorOpen((o) => !o), [])
 
-  // ── Live telemetry — 🌊 WAVE 8211 (H1): synthetic heartbeat removed.
-  // These stay null/empty (displayed as '—' / 'NO SIGNAL') until the
-  // TheiaTelemetryRing feeds real Selene/GodEar/Omniliquid data. ──────────
-  const section: SectionTag | null = null
-  const sectionConfidence: number | null = null
-  const bpm: number | null = null
-  const energyValue: number | null = null
-  const sparkData = OFFLINE_SPARK
+  // 🎛️ WAVE 8240 · U2 — la telemetría vive en el Inspector/Viewport a través
+  // del ring 256B (TelemetryWireReader + rAF sobre refs). Cero React state
+  // en la ruta caliente — aquí no queda nada que alimentar.
 
   // ── Output window state ──────────────────────────────────────────────
   const [isOutputActive, setIsOutputActive] = useState(false)
@@ -149,16 +155,9 @@ const TheiaEngineView: React.FC = () => {
     }
   }, [enginePower])
 
-  // 🎬 WAVE 4864 — Phase 4: Force Drop / Force Ambient now drive the
-  // ThetaOrchestrator's AssetStateMachine through `forceState()`. The worker
-  // runs a 500ms crossfade between the previous frame and the new one.
-  const handleForceDrop = useCallback(() => {
-    getThetaOrchestrator().forceState('drop', { manual: true })
-  }, [])
-
-  const handleForceAmbient = useCallback(() => {
-    getThetaOrchestrator().forceState('ambient', { manual: true })
-  }, [])
+  // �️ WAVE 8240 · U2 — MANUAL OVERRIDES demolido: los forceState manuales
+  // quedan reemplazados por Ecosystem Control (Darwin). El bridge Selene→
+  // forceState() sigue vivo en SeleneTheiaBridge (path automático).
 
   // 🎬 WAVE 4864 — Phase 3: Open / Close projector window
   // 💡 WAVE 4870: Tracks isOutputActive for visual feedback on the button
@@ -290,67 +289,11 @@ const TheiaEngineView: React.FC = () => {
             <span className="theia-header__subtitle">VIDEO ENGINE</span>
           </div>
           <span className="theia-header__beta">BETA</span>
-          {/* 🎬 WAVE 4864 — Open the secondary projector window */}
-          <button
-            className={`theia-header__output-btn${isOutputActive ? ' theia-header__output-btn--active' : ''}`}
-            onClick={handleToggleOutput}
-            title="Open Theia output window (HDMI / LED wall)"
-            data-midi-bind="theia.toggle-output"
-          >
-            OUTPUT
-          </button>
         </div>
 
-        {/* ── Power button (huge, glowing) ── */}
-        <button
-          className={`theia-power ${enginePower ? 'is-on' : 'is-off'}`}
-          onClick={handlePower}
-          data-midi-bind="theia.power"
-          title="Theia Engine ON/OFF"
-        >
-          <span className="theia-power__ring" />
-          <span className="theia-power__core" />
-          <span className="theia-power__label">{enginePower ? 'LIVE' : 'OFFLINE'}</span>
-        </button>
-
-        {/* ── Master sliders ── */}
-        <div className="theia-masters">
-          <MasterSlider
-            label="BRIGHT"
-            bindId="theia.brightness"
-            value={brightness}
-            onChange={handleBrightnessChange}
-            color="#a3e635"
-          />
-          <MasterSlider
-            label="SPEED"
-            bindId="theia.speed"
-            value={speed}
-            onChange={handleSpeedChange}
-            min={0.25}
-            max={2}
-            color="#84cc16"
-            format={(v) => `${v.toFixed(2)}×`}
-          />
-          <MasterSlider
-            label="CONTRAST"
-            bindId="theia.contrast"
-            value={contrast}
-            onChange={handleContrastChange}
-            color="#d9f99d"
-          />
-        </div>
-
-        {/* ── BLACKOUT toggle ── */}
-        <button
-          className={`theia-blackout ${blackout ? 'is-active' : ''}`}
-          onClick={handleBlackout}
-          data-midi-bind="theia.blackout"
-          title="Force Blackout"
-        >
-          <span className="theia-blackout__icon">◉</span>
-          <span className="theia-blackout__label">BLACKOUT</span>
-        </button>
+        {/* 🎛️ WAVE 8240 · U2 — header limpio: logo + ingestión únicamente.
+            POWER/BLACKOUT/OUTPUT/masters viven ahora en el Inspector. */}
+        <div className="theia-header__spacer" />
 
         {/* ── File Picker ── */}
         <button
@@ -389,14 +332,6 @@ const TheiaEngineView: React.FC = () => {
           onChange={handleFileSelect}
         />
 
-        {/* ── Inspector toggle ── */}
-        <button
-          className={`theia-insp-btn ${inspectorOpen ? 'is-open' : ''}`}
-          onClick={() => setInspectorOpen((o) => !o)}
-          title={inspectorOpen ? 'Collapse Inspector' : 'Expand Inspector'}
-        >
-          {inspectorOpen ? '▶' : '◀'}
-        </button>
       </header>
 
       {/* ═══════════════════════════════════════════════════════════════════
@@ -408,7 +343,6 @@ const TheiaEngineView: React.FC = () => {
           <Viewport
             enginePower={enginePower}
             blackout={blackout}
-            section={section}
           />
 
           {/* 🎛️ WAVE 8239 · U1 — transport bar bajo el viewport */}
@@ -420,14 +354,19 @@ const TheiaEngineView: React.FC = () => {
         {/* ─── RIGHT COLUMN: inspector ─── */}
         <Inspector
           open={inspectorOpen}
-          section={section}
-          sectionConfidence={sectionConfidence}
-          bpm={bpm}
-          energyValue={energyValue}
-          sparkData={sparkData}
-          onForceDrop={handleForceDrop}
-          onForceAmbient={handleForceAmbient}
+          onToggle={toggleInspector}
           enginePower={enginePower}
+          onPower={handlePower}
+          blackout={blackout}
+          onBlackout={handleBlackout}
+          brightness={brightness}
+          onBrightness={handleBrightnessChange}
+          speed={speed}
+          onSpeed={handleSpeedChange}
+          contrast={contrast}
+          onContrast={handleContrastChange}
+          isOutputActive={isOutputActive}
+          onToggleOutput={handleToggleOutput}
         />
       </div>
     </div>
@@ -491,15 +430,34 @@ const MasterSlider: React.FC<MasterSliderProps> = ({
 interface ViewportProps {
   enginePower: boolean
   blackout: boolean
-  /** 🌊 WAVE 8211 (H1): real section feed is offline until the telemetry ring. */
-  section: SectionTag | null
 }
 
-const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) => {
-  const sectionMeta = section ? SECTION_LABELS[section] : null
-
+const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const hasTransferredCanvasRef = useRef(false)
+
+  // 🎛️ WAVE 8240 · U2 — la zona Selene se pinta por ref desde el ring 256B.
+  // Reader propio (scratch privado): zero-alloc, sin React state, rAF ~60fps.
+  const zoneRef = useRef<HTMLSpanElement | null>(null)
+  useEffect(() => {
+    const reader = new TelemetryWireReader(getThetaOrchestrator().getTelemetryRing())
+    const enums: TelemetryEnums = { schemaVersion: 0, predictionType: 0, huntState: 0, energyZone: 0 }
+    let raf = 0
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      reader.read()
+      const el = zoneRef.current
+      if (!el) return
+      const stale = reader.timestampMs <= 0 || Date.now() - reader.timestampMs > TELEMETRY_STALE_MS
+      const zone = stale ? null : (unpackEnums(reader.enums, enums), ZONE_META[enums.energyZone & 3])
+      const label = zone ? zone.label : '—'
+      const color = zone ? zone.color : '#475569'
+      if (el.textContent !== label) el.textContent = label
+      if (el.style.color !== color) el.style.color = color
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   // 🌊 WAVE 8223 — PREVIEW RESURRECTION: `transferControlToOffscreen` liga
   // un <canvas> DOM a un worker PARA SIEMPRE — tras un respawn (Phoenix o
@@ -603,11 +561,8 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) =
             {enginePower ? 'STREAMING' : 'STANDBY'}
           </span>
           <span className="theia-vp__divider" />
-          <span
-            className="theia-vp__section"
-            style={{ color: sectionMeta?.color ?? '#475569' }}
-          >
-            {sectionMeta ? `${sectionMeta.emoji} ${sectionMeta.label}` : '—'}
+          <span ref={zoneRef} className="theia-vp__section" style={{ color: '#475569' }}>
+            —
           </span>
         </div>
       </div>
@@ -660,40 +615,138 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout, section }) =
 
 interface InspectorProps {
   open: boolean
-  /** 🌊 WAVE 8211 (H1): all telemetry fields are nullable — '—' until the ring lands. */
-  section: SectionTag | null
-  sectionConfidence: number | null
-  bpm: number | null
-  energyValue: number | null
-  sparkData: readonly number[]
-  onForceDrop: () => void
-  onForceAmbient: () => void
+  onToggle: () => void
   enginePower: boolean
+  onPower: () => void
+  blackout: boolean
+  onBlackout: () => void
+  brightness: number
+  onBrightness: (v: number) => void
+  speed: number
+  onSpeed: (v: number) => void
+  contrast: number
+  onContrast: (v: number) => void
+  isOutputActive: boolean
+  onToggleOutput: () => void
 }
 
 const Inspector: React.FC<InspectorProps> = ({
-  open, section, sectionConfidence, bpm, energyValue, sparkData,
-  onForceDrop, onForceAmbient, enginePower,
+  open, onToggle, enginePower, onPower, blackout, onBlackout,
+  brightness, onBrightness, speed, onSpeed, contrast, onContrast,
+  isOutputActive, onToggleOutput,
 }) => {
-  const sectionMeta = section ? SECTION_LABELS[section] : null
+  // 🎛️ WAVE 8240 · U2 — telemetría zero-alloc: refs a nodos DOM + rAF que
+  // lee el ring 256B (TelemetryWireReader sobre el espejo local del pump).
+  // NADA de useState en esta ruta — React no se entera de los ~60fps.
+  const zoneBannerRef = useRef<HTMLDivElement | null>(null)
+  const zoneLabelRef = useRef<HTMLSpanElement | null>(null)
+  const zoneConfRef = useRef<HTMLSpanElement | null>(null)
+  const bpmRef = useRef<HTMLSpanElement | null>(null)
+  const energyRef = useRef<HTMLSpanElement | null>(null)
+  const fpsRef = useRef<HTMLSpanElement | null>(null)
+  const sparkPathRef = useRef<SVGPathElement | null>(null)
+  const sparkFillRef = useRef<SVGPathElement | null>(null)
+  const sparkDotRef = useRef<SVGCircleElement | null>(null)
 
-  // ── Sparkline path ──
-  const sparkPath = useMemo(() => {
-    const w = 100, h = 40
-    if (sparkData.length === 0) return ''
-    const pts = sparkData.map((v, i) => {
-      const x = (i / (sparkData.length - 1)) * w
-      const y = h - v * (h - 4) - 2
-      return `${x},${y}`
-    })
-    return `M${pts.join(' L')}`
-  }, [sparkData])
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    const reader = new TelemetryWireReader(theta.getTelemetryRing())
+    const enums: TelemetryEnums = {
+      schemaVersion: 0, predictionType: 0, huntState: 0, energyZone: 0,
+    }
+    const spark = new Float32Array(SPARK_LEN)
+    let sparkLen = 0
+    let raf = 0
+    let fpsTick = 0
+
+    const setText = (el: HTMLElement | null, text: string) => {
+      if (el && el.textContent !== text) el.textContent = text
+    }
+
+    const paintOffline = () => {
+      setText(zoneLabelRef.current, 'NO LINK')
+      if (zoneLabelRef.current) zoneLabelRef.current.style.color = '#94a3b8'
+      if (zoneBannerRef.current) {
+        zoneBannerRef.current.style.borderColor = '#47556966'
+        zoneBannerRef.current.style.background = '#47556915'
+      }
+      setText(zoneConfRef.current, 'TELEMETRY OFFLINE')
+      setText(bpmRef.current, '—')
+      setText(energyRef.current, '—')
+      setText(fpsRef.current, '—')
+      sparkDotRef.current?.setAttribute('opacity', '0')
+    }
+
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      const fresh = reader.read()
+      const s = reader.getScratch()
+      const stale = reader.timestampMs <= 0
+        || Date.now() - reader.timestampMs > TELEMETRY_STALE_MS
+      if (!s || stale) {
+        paintOffline()
+        return
+      }
+
+      unpackEnums(reader.enums, enums)
+      const zone = ZONE_META[enums.energyZone & 3] ?? ZONE_META[0]
+      setText(zoneLabelRef.current, zone.label)
+      if (zoneLabelRef.current) zoneLabelRef.current.style.color = zone.color
+      if (zoneBannerRef.current) {
+        zoneBannerRef.current.style.borderColor = `${zone.color}66`
+        zoneBannerRef.current.style.background = `${zone.color}15`
+      }
+      setText(
+        zoneConfRef.current,
+        `CONFIDENCE ${Math.round(s[TELEMETRY_SLOT.SEL_CONFIDENCE] * 100)}%`,
+      )
+
+      const bpm = s[TELEMETRY_SLOT.BPM]
+      const energy = Math.max(0, Math.min(1, s[TELEMETRY_SLOT.ENERGY]))
+      setText(bpmRef.current, bpm > 0 ? bpm.toFixed(1) : '—')
+      setText(energyRef.current, `${Math.round(energy * 100)}%`)
+
+      // FPS del perf-report del governor (~1 Hz — throttle a ~2 lecturas/seg).
+      if (++fpsTick >= 30) {
+        fpsTick = 0
+        const fps = theta.getLastPerfReport()?.fps
+        setText(fpsRef.current, fps !== undefined && fps > 0 ? fps.toFixed(1) : '—')
+      }
+
+      // Sparkline: solo empuja muestras cuando llegó un frame NUEVO (~44Hz).
+      if (fresh) {
+        if (sparkLen < SPARK_LEN) spark[sparkLen++] = energy
+        else { spark.copyWithin(0, 1); spark[SPARK_LEN - 1] = energy }
+        const n = sparkLen
+        const denom = n > 1 ? SPARK_LEN - 1 : 1
+        let d = `M${((0 / denom) * 100).toFixed(1)},${(40 - spark[0] * 36 - 2).toFixed(1)}`
+        for (let i = 1; i < n; i++) {
+          d += ` L${((i / denom) * 100).toFixed(1)},${(40 - spark[i] * 36 - 2).toFixed(1)}`
+        }
+        sparkPathRef.current?.setAttribute('d', d)
+        sparkFillRef.current?.setAttribute('d', `${d} L100,40 L0,40 Z`)
+        const dot = sparkDotRef.current
+        if (dot) {
+          dot.setAttribute('opacity', '1')
+          dot.setAttribute('cy', (40 - energy * 36 - 2).toFixed(1))
+          dot.setAttribute('fill', zone.color)
+        }
+      }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   return (
     <aside className={`theia-insp ${open ? 'is-open' : 'is-closed'}`}>
-      {/* ─── Collapsed sliver ─── */}
+      {/* ─── Collapsed sliver (click = abrir) ─── */}
       {!open && (
-        <div className="theia-insp__sliver">
+        <div
+          className="theia-insp__sliver"
+          onClick={onToggle}
+          role="button"
+          title="Expand Inspector"
+        >
           <span className="theia-insp__sliver-icon">▮</span>
           <span className="theia-insp__sliver-icon">◎</span>
           <span className="theia-insp__sliver-icon">◇</span>
@@ -703,41 +756,38 @@ const Inspector: React.FC<InspectorProps> = ({
       {/* ─── Open content ─── */}
       {open && (
         <div className="theia-insp__content">
-          {/* ── SECTION 1: Live Section Monitor (Oracle-style) ── */}
+          {/* ── SECTION 1: Live Telemetry — ring 256B via rAF refs ── */}
           <div className="theia-insp__block">
             <div className="theia-insp__block-header">
               <span className="theia-insp__block-icon">◉</span>
-              <span className="theia-insp__block-title">LIVE SECTION MONITOR</span>
+              <span className="theia-insp__block-title">LIVE TELEMETRY</span>
               <span className={`theia-insp__pulse ${enginePower ? 'is-on' : ''}`} />
+              <button
+                className="theia-insp__collapse"
+                onClick={onToggle}
+                title="Collapse Inspector"
+              >
+                ▶
+              </button>
             </div>
 
-            {/* Section banner — offline until the telemetry ring lands */}
+            {/* Zone banner — Selene energyZone del ring (ref-driven) */}
             <div
+              ref={zoneBannerRef}
               className="theia-insp__section"
-              style={{
-                borderColor: `${sectionMeta?.color ?? '#475569'}66`,
-                background: `${sectionMeta?.color ?? '#475569'}15`,
-              }}
+              style={{ borderColor: '#47556966', background: '#47556915' }}
             >
-              <span className="theia-insp__section-emoji">
-                {sectionMeta?.emoji ?? '◦'}
-              </span>
               <div className="theia-insp__section-body">
-                <span
-                  className="theia-insp__section-label"
-                  style={{ color: sectionMeta?.color ?? '#94a3b8' }}
-                >
-                  {sectionMeta?.label ?? 'NO SIGNAL'}
+                <span ref={zoneLabelRef} className="theia-insp__section-label">
+                  —
                 </span>
-                <span className="theia-insp__section-conf">
-                  {sectionConfidence !== null
-                    ? `CONFIDENCE ${Math.round(sectionConfidence * 100)}%`
-                    : 'TELEMETRY OFFLINE'}
+                <span ref={zoneConfRef} className="theia-insp__section-conf">
+                  TELEMETRY OFFLINE
                 </span>
               </div>
             </div>
 
-            {/* Sparkline */}
+            {/* Sparkline — energía rolling (paths mutados por el rAF) */}
             <div className="theia-insp__sparkline">
               <svg viewBox="0 0 100 40" preserveAspectRatio="none">
                 <defs>
@@ -752,66 +802,97 @@ const Inspector: React.FC<InspectorProps> = ({
                   </linearGradient>
                 </defs>
                 <line x1="0" y1="20" x2="100" y2="20" stroke="rgba(255,255,255,0.06)" strokeWidth="0.4" />
-                <path d={`${sparkPath} L100,40 L0,40 Z`} fill="url(#theia-spark-fill)" />
-                <path d={sparkPath} fill="none" stroke="url(#theia-spark-grad)" strokeWidth="1.2" />
-                {energyValue !== null && (
-                  <circle
-                    cx="100"
-                    cy={40 - energyValue * 36 - 2}
-                    r="2"
-                    fill={sectionMeta?.color ?? '#475569'}
-                  />
-                )}
+                <path ref={sparkFillRef} d="" fill="url(#theia-spark-fill)" />
+                <path ref={sparkPathRef} d="" fill="none" stroke="url(#theia-spark-grad)" strokeWidth="1.2" />
+                <circle ref={sparkDotRef} cx="100" cy="38" r="2" opacity="0" fill="#84cc16" />
               </svg>
             </div>
 
-            {/* BPM + Energy strip — offline until the telemetry ring lands */}
+            {/* BPM + Energy + FPS — ref-driven, sin React state */}
             <div className="theia-insp__metrics">
               <div className="theia-insp__metric">
                 <span className="theia-insp__metric-label">BPM</span>
-                <span className="theia-insp__metric-value">{bpm ?? '—'}</span>
+                <span ref={bpmRef} className="theia-insp__metric-value">—</span>
               </div>
               <div className="theia-insp__metric">
                 <span className="theia-insp__metric-label">ENERGY</span>
-                <span className="theia-insp__metric-value">
-                  {energyValue !== null ? `${Math.round(energyValue * 100)}%` : '—'}
-                </span>
+                <span ref={energyRef} className="theia-insp__metric-value">—</span>
               </div>
               <div className="theia-insp__metric">
                 <span className="theia-insp__metric-label">FPS</span>
-                <span className="theia-insp__metric-value">
-                  {enginePower ? '44.0' : '—'}
-                </span>
+                <span ref={fpsRef} className="theia-insp__metric-value">—</span>
               </div>
             </div>
           </div>
 
-          {/* ── SECTION 3: Manual Overrides ── */}
+          {/* ── SECTION 2: Masters — power/output/blackout + faders ── */}
           <div className="theia-insp__block">
             <div className="theia-insp__block-header">
-              <span className="theia-insp__block-icon">⏵</span>
-              <span className="theia-insp__block-title">MANUAL OVERRIDES</span>
+              <span className="theia-insp__block-icon">◈</span>
+              <span className="theia-insp__block-title">MASTERS</span>
             </div>
 
-            <div className="theia-insp__buttons">
+            <div className="theia-insp__sys">
               <button
-                className="theia-insp__btn theia-insp__btn--drop"
-                onClick={onForceDrop}
-                data-midi-bind="theia.force-drop"
+                className={`theia-power ${enginePower ? 'is-on' : 'is-off'}`}
+                onClick={onPower}
+                data-midi-bind="theia.power"
+                title="Theia Engine ON/OFF"
               >
-                <span className="theia-insp__btn-icon">🔥</span>
-                <span>FORCE DROP</span>
+                <span className="theia-power__ring" />
+                <span className="theia-power__core" />
+                <span className="theia-power__label">{enginePower ? 'LIVE' : 'OFF'}</span>
               </button>
               <button
-                className="theia-insp__btn theia-insp__btn--ambient"
-                onClick={onForceAmbient}
-                data-midi-bind="theia.force-ambient"
+                className={`theia-blackout ${blackout ? 'is-active' : ''}`}
+                onClick={onBlackout}
+                data-midi-bind="theia.blackout"
+                title="Force Blackout"
               >
-                <span className="theia-insp__btn-icon">▒</span>
-                <span>FORCE AMBIENT</span>
+                <span className="theia-blackout__icon">◉</span>
+                <span className="theia-blackout__label">BLACKOUT</span>
               </button>
             </div>
+
+            <button
+              className={`theia-header__output-btn${isOutputActive ? ' theia-header__output-btn--active' : ''}`}
+              onClick={onToggleOutput}
+              title="Open Theia output window (HDMI / LED wall)"
+              data-midi-bind="theia.toggle-output"
+            >
+              {isOutputActive ? 'OUTPUT ● ON' : 'OUTPUT'}
+            </button>
+
+            <div className="theia-insp__masters">
+              <MasterSlider
+                label="BRIGHT"
+                bindId="theia.brightness"
+                value={brightness}
+                onChange={onBrightness}
+                color="#a3e635"
+              />
+              <MasterSlider
+                label="SPEED"
+                bindId="theia.speed"
+                value={speed}
+                onChange={onSpeed}
+                min={0.25}
+                max={2}
+                color="#84cc16"
+                format={(v) => `${v.toFixed(2)}×`}
+              />
+              <MasterSlider
+                label="CONTRAST"
+                bindId="theia.contrast"
+                value={contrast}
+                onChange={onContrast}
+                color="#d9f99d"
+              />
+            </div>
           </div>
+
+          {/* ── SECTION 3: Ecosystem Control — botones Darwin ── */}
+          <EcosystemControl />
 
           {/* ── SECTION 3.5: Shader params — sliders automáticos desde
               los `@euclid param` del shader activo (Euclid §4.2) ── */}
@@ -828,6 +909,120 @@ const Inspector: React.FC<InspectorProps> = ({
         </div>
       )}
     </aside>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 WAVE 8240 · U2 — SUB-COMPONENT: EcosystemControl (Darwin)
+//
+// Controles de supervivencia biológica sobre el genoma activo:
+//   FAVORITE     → markFavorite(atomId)  — impulso positivo al fitness EMA
+//   EXTINGUISH   → markSkip(atomId)      — impulso negativo (skip/purga)
+//   FORCE MUTATE → evolveGenome(barCount, barMs) — mutación fuera de compás
+//
+// El id del genoma activo llega por perf-report (~1 Hz) — frecuencia baja,
+// useState permitido. La ruta caliente (BPM/energy/zone) vive en el bloque
+// de telemetría con refs.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const EcosystemControl: React.FC = () => {
+  const [activeId, setActiveId] = useState(() =>
+    getThetaOrchestrator().getActiveShaderId(),
+  )
+
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    return theta.onPerfReport((p) => {
+      if (p.activeShader !== undefined) setActiveId(p.activeShader)
+    })
+  }, [])
+
+  // 'builtin' = shader de vídeo (átomo kind:'video') — no hay genoma que
+  // premiar/castigar/mutar. Los controles quedan atenuados.
+  const isGenome = activeId !== 'builtin' && activeId.length > 0
+
+  const handleFavorite = useCallback(() => {
+    const id = getThetaOrchestrator().getActiveShaderId()
+    if (id !== 'builtin' && id.length > 0) getThetaOrchestrator().markFavorite(id)
+  }, [])
+
+  const handleExtinguish = useCallback(() => {
+    const id = getThetaOrchestrator().getActiveShaderId()
+    if (id !== 'builtin' && id.length > 0) getThetaOrchestrator().markSkip(id)
+  }, [])
+
+  // Mutación forzada fuera de compás: phraseIndex = barCount actual del ring
+  // (el operador dispara, no el reloj de frases). barMs = compás real si el
+  // BPM está vivo → crossfade de 2 compases para mutaciones `struct`.
+  const handleMutate = useCallback(() => {
+    const theta = getThetaOrchestrator()
+    const id = theta.getActiveShaderId()
+    if (id === 'builtin' || id.length === 0) return
+    const f32 = new Float32Array(theta.getTelemetryRing())
+    const barCount = Math.max(0, Math.floor(f32[TELEMETRY_SLOT.BAR_COUNT] || 0))
+    const bpm = f32[TELEMETRY_SLOT.BPM]
+    const barMs = bpm > 0 ? (60000 / bpm) * 4 : 0
+    theta.evolveGenome(barCount, barMs)
+  }, [])
+
+  return (
+    <div className="theia-insp__block">
+      <div className="theia-insp__block-header">
+        <span className="theia-insp__block-icon">
+          <LuxIcon name="dna" size={12} />
+        </span>
+        <span className="theia-insp__block-title">ECOSYSTEM CONTROL</span>
+      </div>
+
+      <div className="theia-insp__genome">
+        <span className="theia-insp__genome-label">ACTIVE GENOME</span>
+        <span
+          className={`theia-insp__genome-id${isGenome ? ' is-live' : ''}`}
+          title={isGenome ? activeId : 'No generative shader active'}
+        >
+          {isGenome ? activeId : '—'}
+        </span>
+      </div>
+
+      <div className="theia-insp__buttons theia-insp__buttons--darwin">
+        <button
+          className="theia-insp__btn theia-insp__btn--fav"
+          onClick={handleFavorite}
+          disabled={!isGenome}
+          data-midi-bind="theia.darwin.favorite"
+          title="Favorite — impulso positivo al fitness del genoma activo"
+        >
+          <span className="theia-insp__btn-icon">
+            <LuxIcon name="heart" size={14} />
+          </span>
+          <span>FAVORITE</span>
+        </button>
+        <button
+          className="theia-insp__btn theia-insp__btn--ext"
+          onClick={handleExtinguish}
+          disabled={!isGenome}
+          data-midi-bind="theia.darwin.extinguish"
+          title="Extinguish — skip/purga: impulso negativo al fitness"
+        >
+          <span className="theia-insp__btn-icon">
+            <LuxIcon name="trash" size={14} />
+          </span>
+          <span>EXTINGUISH</span>
+        </button>
+        <button
+          className="theia-insp__btn theia-insp__btn--mut"
+          onClick={handleMutate}
+          disabled={!isGenome}
+          data-midi-bind="theia.darwin.mutate"
+          title="Force Mutation — evolveGenome fuera de compás"
+        >
+          <span className="theia-insp__btn-icon">
+            <LuxIcon name="dna" size={14} />
+          </span>
+          <span>FORCE MUTATION</span>
+        </button>
+      </div>
+    </div>
   )
 }
 

@@ -39,6 +39,7 @@ import {
   XIcon,
   // Telemetry / state
   BoltIcon,
+  BPMHeartIcon,
   TargetIcon,
   AudioWaveIcon,
   NetworkIcon,
@@ -100,6 +101,8 @@ const ICON_MAP = {
   // Telemetry
   bolt:           BoltIcon,
   power:          BoltIcon,
+  heart:          BPMHeartIcon,     // 🧬 WAVE 8240 — Darwin 'favorite'
+  favorite:       BPMHeartIcon,
   wave:           AudioWaveIcon,
   audio:          AudioWaveIcon,
   network:        NetworkIcon,

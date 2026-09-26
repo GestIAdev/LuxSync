@@ -1503,3 +1503,139 @@
   border-color: rgba(163, 230, 53, 0.5);
   text-shadow: 0 0 6px rgba(163, 230, 53, 0.5);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎛️ WAVE 8240 · U2 — TELEMETRY WIRING & INSPECTOR CONSOLIDATION
+   Header limpio (spacer), Inspector absorbe masters/sys/Darwin,
+   monitor de telemetría ref-driven.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.theia-header__spacer { flex: 1; }
+
+.theia-insp__sliver { cursor: pointer; }
+.theia-insp__sliver:hover { background: rgba(163, 230, 53, 0.05); }
+
+.theia-insp__collapse {
+  margin-left: 4px;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  color: var(--theia-text-muted);
+  font-family: inherit;
+  font-size: 9px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.theia-insp__collapse:hover { color: var(--theia-primary); }
+
+/* ── Masters block: sys row + fader rows ── */
+.theia-insp__sys {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.theia-insp__sys .theia-power {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  justify-content: center;
+  letter-spacing: 2px;
+  font-size: 10px;
+}
+.theia-insp__sys .theia-blackout {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 8px;
+}
+
+/* OUTPUT reutiliza el look del header-btn pero a ancho completo */
+.theia-insp .theia-header__output-btn {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+/* Faders en fila label|input|value dentro del Inspector */
+.theia-insp__masters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.theia-insp__masters .theia-master {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+}
+.theia-insp__masters .theia-master__label {
+  width: 56px;
+  flex-shrink: 0;
+  text-align: left;
+}
+.theia-insp__masters .theia-master__input {
+  flex: 1;
+  width: auto;
+}
+.theia-insp__masters .theia-master__value {
+  width: 40px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* ── Ecosystem Control (Darwin) ── */
+.theia-insp__genome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--theia-line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.theia-insp__genome-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--theia-text-muted);
+}
+.theia-insp__genome-id {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--theia-text-dim);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.theia-insp__genome-id.is-live {
+  color: var(--theia-primary);
+  text-shadow: 0 0 6px rgba(163, 230, 53, 0.4);
+}
+
+.theia-insp__buttons--darwin { grid-template-columns: 1fr 1fr 1fr; }
+
+.theia-insp__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.theia-insp__btn--fav:hover:not(:disabled) {
+  border-color: #f472b6;
+  color: #f472b6;
+  box-shadow: 0 0 12px rgba(244, 114, 182, 0.3);
+}
+.theia-insp__btn--ext:hover:not(:disabled) {
+  border-color: var(--theia-red);
+  color: var(--theia-red);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+.theia-insp__btn--mut:hover:not(:disabled) {
+  border-color: var(--theia-primary);
+  color: var(--theia-primary);
+  box-shadow: 0 0 12px rgba(163, 230, 53, 0.3);
+}

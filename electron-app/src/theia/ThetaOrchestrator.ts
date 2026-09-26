@@ -75,6 +75,14 @@ import { genomeChildSeed } from './genome/GenomeExpander'
 // 🎛️ WAVE 8239 · U1 — transporte reactivo del medio oculto (Hybrid Deck)
 import { useTheiaTransportStore } from '../stores/useTheiaTransportStore'
 import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
+// 🩸 WAVE 8263 — PROD BUILD WORKER RESCUE: mismo remedio que Hyperion
+// (WAVE 7790). `new Worker(new URL(...))` emitía `assets/theta.worker-*.js`
+// como fichero aparte; en prod la ventana carga por `loadFile` (file://) y
+// Chromium bloquea el script del worker desde ese origen opaco → `error`
+// con message undefined → 3 fallos → Circuit OPEN. `?worker&inline` embebe
+// el IIFE (worker.format='iife') en el bundle y lo arranca desde una Blob
+// URL: sin fetch a file://, sin CORS, sin rutas de asar. Vale en dev y prod.
+import ThetaWorker from './theta.worker.ts?worker&inline'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
@@ -1391,30 +1399,32 @@ export class ThetaOrchestrator {
     // El ring local siempre existe (readonly, init en campo) — es un SAB
     // renderer-side, no requiere IPC ni negociación con el main process.
 
-    // Vite resolves this URL at build time and emits a separate worker chunk.
-    // 🌊 WAVE 8207: the worker type must match the serving mode —
-    //   dev  → Vite serves the file as ESM (imports intact) → 'module'
-    //   prod → emitted chunk is IIFE (worker.format='iife', WAVE-7790) and
-    //          file:// opaque origins reject module workers → 'classic'
-    // Two static call sites: Vite cannot parse a ternary in worker options,
-    // and the dead branch is DCE'd by the build-time env replacement.
-    const worker = import.meta.env.DEV
-      ? new Worker(new URL('./theta.worker.ts', import.meta.url), {
-          type: 'module',
-          name: 'theta',
-        })
-      : new Worker(new URL('./theta.worker.ts', import.meta.url), {
-          type: 'classic',
-          name: 'theta',
-        })
+    // 🩸 WAVE 8263 — constructor inline (Blob URL), ver import arriba. Un
+    // fallo SÍNCRONO (CSP, Blob no permitido…) se captura aquí en vez de
+    // morir como excepción sin contexto en el caller.
+    let worker: Worker
+    try {
+      worker = new ThetaWorker({ name: 'theta' })
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[THETA] worker construction failed:', err)
+      this.handleWorkerFailure(`construct: ${String((err as Error)?.message ?? err)}`)
+      return
+    }
 
     worker.addEventListener('message', (ev: MessageEvent<ThetaMessage>) => {
       this.handleWorkerMessage(ev.data)
     })
     worker.addEventListener('error', (ev: ErrorEvent) => {
+      // Un fallo de CARGA del script no trae message/filename (el navegador
+      // oculta el motivo) — se vuelca el evento entero para distinguirlo de
+      // una excepción de runtime dentro del worker.
+      const detail = ev.message
+        ? `${ev.message} @ ${ev.filename ?? '?'}:${ev.lineno ?? 0}:${ev.colno ?? 0}`
+        : 'script load failure (no message — blocked fetch/CSP/parse)'
       // eslint-disable-next-line no-console
-      console.error('[THETA] worker error:', ev.message)
-      this.handleWorkerFailure(ev.message ?? 'worker error')
+      console.error('[THETA] worker error:', detail, ev.error ?? ev)
+      this.handleWorkerFailure(detail)
     })
     // Web Workers do not emit 'exit' like Node workers, but message channel
     // closure surfaces as `messageerror` on transferred-object failures.

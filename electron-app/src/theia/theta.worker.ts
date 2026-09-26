@@ -21,9 +21,10 @@
  *    se usa como espejo 2D del framebuffer GL para el viewport in-app.
  *
  * NOTA — entorno: este archivo se carga vía
- *   `new Worker(new URL('./theta.worker.ts', import.meta.url), { type: 'classic' })`
- * desde el bundle del renderer (Vite emite el chunk como IIFE — compatible con
- * `file://` en builds empaquetadas).
+ *   `import ThetaWorker from './theta.worker.ts?worker&inline'`
+ * (WAVE 8263): Vite lo empaqueta como IIFE embebido en el bundle del renderer
+ * y lo arranca desde una Blob URL — el fichero aparte que emitía
+ * `new URL(...)` era bloqueado por Chromium bajo `file://` en producción.
  */
 
 import { FrameContextReader, type FrameContextSnapshot } from './FrameContextRing'

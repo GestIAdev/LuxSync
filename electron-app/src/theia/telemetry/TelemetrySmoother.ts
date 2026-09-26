@@ -297,13 +297,19 @@ export class TelemetrySmoother {
 
     // u_beatTime — beats acumulados continuos; re-ancla suave a BEAT_PHASE.
     // 🌊 WAVE 8259 — × masterSpeed: el fader SPEED escala el diferencial de
-    // tiempo musical (paridad con el gobernador de u_time). La corrección
-    // de fase NO se escala: conserva el anclaje al beat real.
+    // tiempo musical (paridad con el gobernador de u_time).
     this.beatTime += dtS * bps * this.masterSpeed
     const phaseTarget = out[TELEMETRY_SLOT.BEAT_PHASE - SLOT_PAYLOAD_BASE]
     let phaseErr = phaseTarget - (this.beatTime - Math.floor(this.beatTime))
     phaseErr -= Math.round(phaseErr)
-    const kcorr = 1 - Math.pow(1 - BEATTIME_CORRECT_K, dtF)
+    // 🌊 WAVE 8261 — Opción B (clean slow-mo): la autoridad del corrector se
+    // atenúa cúbica con masterSpeed. Lineal (×s) dejaba pelea residual: a
+    // 0.25× el corrector saturado (cap ≈0.019 beats/frame) casi empataba el
+    // drift (0.028) → yo-yo elástico en la frontera del wrap. Con s³ la
+    // fase fluye libre bajo ~0.65× y recupera anclaje pleno al volver a 1×.
+    const s = this.masterSpeed
+    const kcorr =
+      (1 - Math.pow(1 - BEATTIME_CORRECT_K, dtF)) * s * s * s
     this.beatTime += phaseErr * kcorr
   }
 }

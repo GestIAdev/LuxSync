@@ -34,7 +34,7 @@
  * @version WAVE 8240
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './TheiaEngineView.css'
 import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
 // 🔮 WAVE 8230 — EUCLID · E4: átomos generativos + meta @euclid → sliders
@@ -497,6 +497,20 @@ function makeTrailingThrottle(ms: number): (fn: () => void) => void {
   }
 }
 
+/** Versión con llaves: una instancia trailing-throttle por canal — drags
+ *  simultáneos (MIDI, multi-fader) no se pisan el pending entre sí. */
+function makeKeyedThrottle(ms: number): (key: string, fn: () => void) => void {
+  const map = new Map<string, (fn: () => void) => void>()
+  return (key, fn) => {
+    let t = map.get(key)
+    if (!t) {
+      t = makeTrailingThrottle(ms)
+      map.set(key, t)
+    }
+    t(fn)
+  }
+}
+
 const MastersCluster: React.FC = () => {
   const [brightness, setBrightness] = useState(0.85)
   const [speed, setSpeed] = useState(1.0)
@@ -505,17 +519,7 @@ const MastersCluster: React.FC = () => {
   const [contrast, setContrast] = useState(1.0)
 
   // Un throttle por canal — drags simultáneos (MIDI) no se pisan el pending.
-  const throttlesRef = useRef<Map<string, (fn: () => void) => void> | null>(null)
-  if (throttlesRef.current === null) throttlesRef.current = new Map()
-  const throttled = (key: string, fn: () => void) => {
-    const map = throttlesRef.current!
-    let t = map.get(key)
-    if (!t) {
-      t = makeTrailingThrottle(90)
-      map.set(key, t)
-    }
-    t(fn)
-  }
+  const throttled = useMemo(() => makeKeyedThrottle(90), [])
 
   // Push inicial de masters al worker (el replay del orchestrator cubre
   // respawns; esto sincroniza el shader con la UI desde el mount).
@@ -1240,6 +1244,9 @@ const GeneFadersPanel: React.FC = () => {
   // retiene el programa — al volver, el shader recibe los valores previos).
   const savedRef = useRef<Map<string, Record<string, number>>>(new Map())
   const pushedRef = useRef<Set<string>>(new Set())
+  // 🌊 WAVE 8261 — throttle trailing por gen: el drag repinta solo este
+  // panel y el postMessage al worker se estrangula a ~11 Hz por canal.
+  const throttled = useMemo(() => makeKeyedThrottle(90), [])
 
   useEffect(() => {
     const theta = getThetaOrchestrator()
@@ -1301,7 +1308,8 @@ const GeneFadersPanel: React.FC = () => {
                     return next
                   })
                   // Fast-path G3: override directo del slot del array.
-                  getThetaOrchestrator().setUniform(`u_gene[${k}]`, val)
+                  throttled(`u_gene[${k}]`, () =>
+                    getThetaOrchestrator().setUniform(`u_gene[${k}]`, val))
                 }}
               />
             )
@@ -1359,6 +1367,8 @@ const ShaderParamsPanel: React.FC = () => {
   // no los defaults.
   const savedRef = useRef<Map<string, Record<string, number>>>(new Map())
   const pushedRef = useRef<Set<string>>(new Set())
+  // 🌊 WAVE 8261 — mismo estrangulador que los masters/genes.
+  const throttled = useMemo(() => makeKeyedThrottle(90), [])
 
   // Relee meta + seed al cambiar de shader. Primera activación de un id:
   // push de los defaults declarados (los uniforms GLSL arrancan en 0).
@@ -1406,7 +1416,8 @@ const ShaderParamsPanel: React.FC = () => {
                 savedRef.current.set(activeId, next)
                 return next
               })
-              getThetaOrchestrator().setUniform(p.name, val)
+              throttled(p.name, () =>
+                getThetaOrchestrator().setUniform(p.name, val))
             }}
           />
         ))}

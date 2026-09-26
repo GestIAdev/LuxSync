@@ -640,6 +640,36 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout }) => {
   // para los resizes vivos del layout.
   const canvasWrapRef = useRef<HTMLDivElement | null>(null)
 
+  // 🖥️ WAVE 8262 — FULLSCREEN PREVIEW: doble-click en el lienzo (o el botón
+  // de la barra) entrega la sección entera al monitor vía Fullscreen API.
+  // La transición re-layout del wrap dispara el ResizeObserver de abajo →
+  // `theia:resize-preview` llega al worker con dims ×dpr → bitmap re-alojado
+  // nítido a 1080p/4K. `isFullscreen` solo alimenta el icono del botón.
+  const viewportRef = useRef<HTMLElement | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(document.fullscreenElement === viewportRef.current)
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+
+  const handleToggleFullscreen = useCallback(() => {
+    const el = viewportRef.current
+    if (!el) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch((err) => {
+        console.warn('[Theia UI] exitFullscreen failed:', err)
+      })
+    } else {
+      el.requestFullscreen().catch((err) => {
+        console.warn('[Theia UI] requestFullscreen failed:', err)
+      })
+    }
+  }, [])
+
   useEffect(() => {
     // Reset por epoch: el guard de una vida anterior bloquearía el re-transfer.
     hasTransferredCanvasRef.current = false
@@ -714,7 +744,10 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout }) => {
   }, [])
 
   return (
-    <section className={`theia-viewport ${blackout ? 'is-blackout' : ''}`}>
+    <section
+      ref={viewportRef}
+      className={`theia-viewport ${blackout ? 'is-blackout' : ''}`}
+    >
       {/* ── Live tag (mode toggle removed — RAW canvas only, WAVE 8211) ── */}
       <div className="theia-vp__bar">
         <div className="theia-vp__live-tag">
@@ -727,10 +760,27 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout }) => {
             —
           </span>
         </div>
+        {/* 🖥️ WAVE 8262 — fullscreen toggle (también: doble-click en el lienzo) */}
+        <button
+          type="button"
+          className={`theia-vp__fs-btn${isFullscreen ? ' is-active' : ''}`}
+          onClick={handleToggleFullscreen}
+          title={isFullscreen
+            ? 'Exit fullscreen (Esc / double-click)'
+            : 'Fullscreen preview — or double-click the canvas'}
+          aria-pressed={isFullscreen}
+          data-midi-bind="theia.fullscreen"
+        >
+          <LuxIcon name={isFullscreen ? 'fullscreen-exit' : 'fullscreen'} size={12} />
+        </button>
       </div>
 
-      {/* ── Canvas area ── */}
-      <div ref={canvasWrapRef} className="theia-vp__canvas-wrap">
+      {/* ── Canvas area — doble-click = fullscreen del monitor ── */}
+      <div
+        ref={canvasWrapRef}
+        className="theia-vp__canvas-wrap"
+        onDoubleClick={handleToggleFullscreen}
+      >
         {/* Background grid */}
         <div className="theia-vp__grid" />
 

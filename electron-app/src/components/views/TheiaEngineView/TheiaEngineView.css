@@ -512,6 +512,44 @@
   text-shadow: 0 0 6px currentColor;
 }
 
+/* 🖥️ WAVE 8262 — botón fullscreen (mismo lenguaje que el accordion del deck) */
+.theia-vp__fs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  flex-shrink: 0;
+  background: rgba(163, 230, 53, 0.06);
+  border: 1px solid rgba(163, 230, 53, 0.25);
+  border-radius: 4px;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.theia-vp__fs-btn:hover,
+.theia-vp__fs-btn.is-active {
+  color: var(--theia-primary);
+  border-color: rgba(163, 230, 53, 0.55);
+  background: rgba(163, 230, 53, 0.12);
+  box-shadow: 0 0 8px rgba(163, 230, 53, 0.2);
+}
+
+/* 🖥️ WAVE 8262 — la sección entera reclama el monitor: el wrap (flex:1)
+ * absorbe todo el alto sobrante y el RO envía el nuevo rect ×dpr al
+ * worker → bitmap nítido a la resolución nativa de la pantalla. */
+.theia-viewport:fullscreen {
+  padding: 10px;
+  background: #05070d;
+}
+
+.theia-viewport:fullscreen .theia-vp__canvas-wrap {
+  border-radius: 0;
+}
+
 /* ── Canvas wrap ── */
 .theia-vp__canvas-wrap {
   position: relative;
@@ -1204,11 +1242,43 @@
   max-height: min(360px, 40vh);
 }
 
+/* 🖥️ WAVE 8264 — la cabecera es un <button> accordion: click colapsa la
+ * grilla de átomos y devuelve el vertical al Viewport. */
 .theia-live-deck__expansion-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   margin-bottom: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.theia-live-deck__expansion-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--theia-text-dim);
+  transition: color 0.15s ease;
+}
+
+.theia-live-deck__expansion-head:hover .theia-live-deck__expansion-group {
+  color: var(--theia-primary);
+}
+
+/* Átomos plegados → la expansión se encoge a su cabecera */
+.theia-live-deck__expansion.is-atoms-collapsed {
+  max-height: none;
+}
+
+.theia-live-deck__expansion.is-atoms-collapsed .theia-live-deck__expansion-head {
+  margin-bottom: 0;
 }
 
 .theia-live-deck__expansion-label {

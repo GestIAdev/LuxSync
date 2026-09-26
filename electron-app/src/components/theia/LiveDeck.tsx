@@ -57,6 +57,10 @@ const LiveDeck: React.FC = () => {
   // 🌊 WAVE 8255 — accordion: la fila de Pack Slots puede plegarse para
   // ceder todo el vertical a la grilla de átomos.
   const [slotsCollapsed, setSlotsCollapsed] = useState(false)
+  // 🖥️ WAVE 8264 — accordion 2: la grilla de átomos también se pliega. Con
+  // 11+ tiles la expansión se comía el vertical del Viewport; un click en la
+  // cabecera del pack expandido la oculta y el deck se encoge a su título.
+  const [atomsCollapsed, setAtomsCollapsed] = useState(false)
 
   const packs = useMemo(() => Array.from(packsMap.values()), [packsMap])
   const expandedPack = expandedPackId ? packsMap.get(expandedPackId) ?? null : null
@@ -177,20 +181,33 @@ const LiveDeck: React.FC = () => {
       {/* ─── Expansión: grilla de Atom Tiles ─── */}
       {expandedPack && (
         <div
-          className="theia-live-deck__expansion"
+          className={`theia-live-deck__expansion${atomsCollapsed ? ' is-atoms-collapsed' : ''}`}
           data-pack-id={expandedPack.id}
           aria-label={`Atoms of pack ${expandedPack.id}`}
         >
-          <div className="theia-live-deck__expansion-head">
-            <span className="theia-live-deck__expansion-label">
-              {expandedPack.manifest?.displayName ?? expandedPack.id}
+          {/* 🖥️ WAVE 8264 — cabecera-clickable: colapsa la grilla de átomos
+              y devuelve el vertical al Viewport (mismo accordion que SLOTS) */}
+          <button
+            type="button"
+            className="theia-live-deck__expansion-head"
+            onClick={() => setAtomsCollapsed((c) => !c)}
+            aria-expanded={!atomsCollapsed}
+            title={atomsCollapsed
+              ? 'Expand atom grid'
+              : 'Collapse atom grid — more room for the viewport'}
+          >
+            <span className="theia-live-deck__expansion-group">
+              <LuxIcon name={atomsCollapsed ? 'chevron-down' : 'chevron-up'} size={11} />
+              <span className="theia-live-deck__expansion-label">
+                {expandedPack.manifest?.displayName ?? expandedPack.id}
+              </span>
             </span>
             <span className="theia-live-deck__expansion-count">
               {expandedPack.atoms.length} ATOM{expandedPack.atoms.length === 1 ? '' : 'S'}
             </span>
-          </div>
+          </button>
 
-          {expandedPack.atoms.length === 0 ? (
+          {!atomsCollapsed && (expandedPack.atoms.length === 0 ? (
             <div className="theia-live-deck__expansion-empty">
               <LuxIcon name="folder" size={18} />
               <span>Pack vacío — dropea media aquí o usa LOAD ASSETS.</span>
@@ -206,7 +223,7 @@ const LiveDeck: React.FC = () => {
                 />
               ))}
             </div>
-          )}
+          ))}
         </div>
       )}
     </section>

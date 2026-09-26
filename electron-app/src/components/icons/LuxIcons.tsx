@@ -2653,6 +2653,26 @@ export const ChevronDownIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/** ⛶ FULLSCREEN — 🌊 WAVE 8262: esquinas que se expanden al monitor */
+export const FullscreenIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** ⛶ FULLSCREEN EXIT — 🌊 WAVE 8262: esquinas que regresan al layout */
+export const FullscreenExitIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M9 4v4a1 1 0 0 1-1 1H4M20 8h-4a1 1 0 0 1-1-1V4M15 20v-4a1 1 0 0 1 1-1h4M4 16h4a1 1 0 0 1 1 1v4"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
 /** ⚠️ ALERT - Warning / Error indicator */
 export const AlertIcon: React.FC<IconProps> = ({
   size = 20, color = 'currentColor', className = ''
@@ -3039,6 +3059,9 @@ export default {
   Plus: PlusIcon,
   ChevronUp: ChevronUpIcon,
   ChevronDown: ChevronDownIcon,
+  // WAVE 8262: Theia preview fullscreen
+  Fullscreen: FullscreenIcon,
+  FullscreenExit: FullscreenExitIcon,
   Alert: AlertIcon,
   Reset: ResetIcon,
   // WAVE 7109: Energy Zone icons

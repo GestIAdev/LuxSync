@@ -40,6 +40,8 @@ import {
   XIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  FullscreenIcon,
+  FullscreenExitIcon,
   // Telemetry / state
   BoltIcon,
   BPMHeartIcon,
@@ -104,6 +106,10 @@ const ICON_MAP = {
   close:          XIcon,
   'chevron-up':   ChevronUpIcon,    // 🎛️ WAVE 8255 — deck accordion
   'chevron-down': ChevronDownIcon,
+  fullscreen:     FullscreenIcon,   // 🖥️ WAVE 8262 — preview a monitor
+  'fullscreen-exit': FullscreenExitIcon,
+  expand:         FullscreenIcon,
+  shrink:         FullscreenExitIcon,
 
   // Telemetry
   bolt:           BoltIcon,

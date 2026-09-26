@@ -651,12 +651,11 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
         console.log('[TrinityProvider] 🌊 Theta skipped — eco tier (isCanvasWorkerDisabled)')
         return
       }
-      const theta = getThetaOrchestrator()
-      thetaRef.current = theta
-
-      theta.start().catch((err: unknown) => {
-        console.error('[TrinityProvider] ThetaOrchestrator start failed:', err)
-      })
+      // 🖥️ WAVE 8268 — STRICT LIVE GATE: el worker de Theta (spawn + GL)
+      // NO arranca con el POWER de la app — solo con el botón LIVE de la
+      // vista Theia (handlePower → theta.start()). Aquí solo se captura la
+      // ref al singleton para que el OFFLINE pueda apagarlo si estuvo vivo.
+      thetaRef.current = getThetaOrchestrator()
     }
 
     if (powerState === 'OFFLINE' && thetaRef.current) {

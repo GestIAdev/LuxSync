@@ -145,6 +145,10 @@ interface GenPending {
 interface GenSourceSpec {
   /** 🧬 WAVE 8237 · G5 — fuente cruda (para el pase de simulación). */
   source: string
+  /** 🖥️ WAVE 8268 — steps efectivos: self-heal recompila con el mismo
+   *  programKey que la carga original (sin él, un `meta.steps` explícito
+   *  se perdería y la cura compilaría otra variante). */
+  steps: number
   genes?: Record<string, number>
   /** 🧬 WAVE 8235 · G3 — orden `u_gene[8]` + valores `expr` efectivos. */
   exprGenes?: readonly string[]
@@ -173,7 +177,11 @@ export class GenRuntime {
   private readonly pending = new Map<string, GenPending>()
   /** shaderId → fenotipo+programKey (para resolver `activate`). */
   private readonly sources = new Map<string, GenSourceSpec>()
-  private pendingActivate: { id: string; programKey: string; fadeMs: number } | null = null
+  /** 🖥️ WAVE 8268 — activaciones diferidas por programKey (multi-intent).
+   *  `seq` descarta intents superados: triggers rápidos de Selene no se
+   *  pisan entre sí y el último pedido es el que toma la pantalla. */
+  private readonly pendingActivates = new Map<string, { id: string; fadeMs: number; seq: number }>()
+  private activateSeq = 0
   private active: GenEntry | null = null
   private activeId = BUILTIN_SHADER_ID
   private seq = 0
@@ -264,7 +272,7 @@ export class GenRuntime {
   }
 
   get isActive(): boolean {
-    return this.active !== null || this.pendingActivate !== null
+    return this.active !== null || this.pendingActivates.size > 0
   }
 
   // ── Compilación ────────────────────────────────────────────────────────
@@ -414,6 +422,7 @@ export class GenRuntime {
     const programKey = hashSource(asm.fragSource)
     this.sources.set(shaderId, {
       source,
+      steps: maxSteps,
       genes,
       exprGenes,
       exprValues: exprGenes?.length
@@ -509,10 +518,14 @@ export class GenRuntime {
       this.programs.set(p.programKey, ent)
       this.evict()
       this.onStatus({ shaderId: p.shaderId, ok: true, compileMs })
-      if (this.pendingActivate?.programKey === p.programKey) {
-        const pa = this.pendingActivate
-        this.pendingActivate = null
-        this.activate(pa.id, pa.fadeMs)
+      // 🖥️ WAVE 8268 — la activación diferida solo dispara si sigue
+      // siendo el intent más reciente (seq guard, latest-wins).
+      const pa = this.pendingActivates.get(p.programKey)
+      if (pa) {
+        this.pendingActivates.delete(p.programKey)
+        if (pa.seq === this.activateSeq) {
+          this.activate(pa.id, pa.fadeMs)
+        }
       }
     } else {
       const raw = fsLog.length > 0 ? fsLog : progLog || 'link failed'
@@ -572,10 +585,21 @@ export class GenRuntime {
     // 🧬 WAVE 8233 · G1 — la caché va por programKey; shaderId se resuelve
     // vía su spec (fenotipo cargado).
     const spec = this.sources.get(id)
-    const ent = spec ? this.programs.get(spec.programKey) : undefined
+    let ent = spec ? this.programs.get(spec.programKey) : undefined
+    if (!ent && spec && !this.pending.has(spec.programKey)) {
+      // 🖥️ WAVE 8268 — SELF-HEALING LRU: programa evictado (8 slots <
+      // kit de 11+ átomos) pero la fuente sigue en `sources` → recargar
+      // al vuelo y diferir la activación en vez de fallar.
+      this.load(id, spec.source, spec.steps, spec.genes, spec.exprGenes)
+      ent = this.programs.get(spec.programKey) // síncrono sin KHR ext
+    }
     if (!ent) {
       if (spec && this.pending.has(spec.programKey)) {
-        this.pendingActivate = { id, programKey: spec.programKey, fadeMs }
+        this.pendingActivates.set(spec.programKey, {
+          id,
+          fadeMs,
+          seq: ++this.activateSeq,
+        })
         return
       }
       this.onStatus({ shaderId: id, ok: false, log: 'shader not loaded' })
@@ -588,8 +612,10 @@ export class GenRuntime {
       ent.lastUsed = this.seq
       if (spec?.exprValues) this.geneValues.set(spec.exprValues)
       else this.geneValues.fill(0)
+      this.activateSeq++
       return
     }
+    this.activateSeq++
     this.capturePrev()
     this.active = ent
     this.activeId = id
@@ -608,7 +634,9 @@ export class GenRuntime {
   deactivate(): void {
     this.active = null
     this.activeId = BUILTIN_SHADER_ID
-    this.pendingActivate = null
+    // 🖥️ WAVE 8268 — descarta toda activación diferida en vuelo.
+    this.pendingActivates.clear()
+    this.activateSeq++
     this.fadeT0 = -1
     this.fadeDur = 0
     // Limpia el canvas gen — bajo el overlay no debe quedar frame stale.
@@ -1000,6 +1028,7 @@ export class GenRuntime {
     }
     this.programs.clear()
     this.pending.clear()
+    this.pendingActivates.clear()
     for (const obj of [
       this.fbo,
       this.statsFboA,

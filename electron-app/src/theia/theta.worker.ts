@@ -47,6 +47,7 @@ import {
   type ThetaShaderStatusPayload,
   type ThetaLoadShaderPayload,
   type ThetaActivateShaderPayload,
+  type ThetaHydratePayload,
   type ThetaStateReportPayload,
   type ThetaVideoPortPayload,
   type ThetaVideoStatusPayload,
@@ -325,8 +326,13 @@ interface WorkerState {
   /** Programa generativo activo — null = plasma interno (Modo A legacy). */
   genActive: GenProgram | null
   genActiveId: string
-  /** Activación diferida a la finalización de una compilación paralela. */
-  genPendingActivate: { shaderId: string; programKey: string; crossfadeMs: number } | null
+  /** 🖥️ WAVE 8268 — activaciones diferidas por programKey (multi-intent:
+   *  varios programas pueden estar compilando a la vez). `seq` desecha
+   *  intents superados por uno más reciente — Selene puede encadenar
+   *  triggers sin que una compilación vieja robe la pantalla. */
+  genPendingActivates: Map<string, { shaderId: string; crossfadeMs: number; seq: number }>
+  /** Contador monotónico de intents de activación (latest-wins). */
+  genActivateSeq: number
   /** 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo → `u_gene[8]`
    *  por frame. El programa compartido entre fenotipos expr-only lee
    *  distintos valores sin recompilar (fast-path §4.6). */
@@ -483,7 +489,8 @@ const state: WorkerState = {
   genPending: new Map(),
   genActive: null,
   genActiveId: 'builtin',
-  genPendingActivate: null,
+  genPendingActivates: new Map(),
+  genActivateSeq: 0,
   genGeneValues: new Float32Array(8),
   genFbo: null,
   genFboTex: null,
@@ -994,11 +1001,12 @@ function buildGLResources(): boolean {
         const ent = state.genPrograms.get(activeSpec.programKey)
         if (ent) activateGenProgram(ent, activeId, 0)
       } else if (activeSpec) {
-        state.genPendingActivate = {
+        // 🖥️ WAVE 8268 — cola multi-intent + seq (post context-restore)
+        state.genPendingActivates.set(activeSpec.programKey, {
           shaderId: activeId,
-          programKey: activeSpec.programKey,
           crossfadeMs: 0,
-        }
+          seq: ++state.genActivateSeq,
+        })
       }
       state.genActive = null
     }
@@ -1433,10 +1441,14 @@ function finalizeGenCompile(p: PendingGenCompile): void {
     state.genPrograms.set(p.programKey, ent)
     evictGenCache()
     emitShaderStatus({ shaderId: p.shaderId, ok: true, compileMs })
-    const pa = state.genPendingActivate
-    if (pa && pa.programKey === p.programKey) {
-      state.genPendingActivate = null
-      activateGenProgram(ent, pa.shaderId, pa.crossfadeMs)
+    // 🖥️ WAVE 8268 — activación diferida solo si sigue siendo el intent
+    // más reciente (seq guard); uno superado se descarta en silencio.
+    const pa = state.genPendingActivates.get(p.programKey)
+    if (pa) {
+      state.genPendingActivates.delete(p.programKey)
+      if (pa.seq === state.genActivateSeq) {
+        activateGenProgram(ent, pa.shaderId, pa.crossfadeMs)
+      }
     }
   } else {
     const raw = fsLog.length > 0 ? fsLog : progLog || 'link failed'
@@ -1552,26 +1564,72 @@ function handleActivateShader(p: ThetaActivateShaderPayload): void {
     }
     state.genActive = null
     state.genActiveId = BUILTIN_SHADER_ID
+    // 🖥️ WAVE 8268 — volver a builtin invalida cualquier activación
+    // diferida en vuelo (bump de seq → se descartan al finalizar).
+    state.genActivateSeq++
     return
   }
   // 🧬 WAVE 8233 · G1 — shaderId es el átomo; la caché va por programKey
   // (fuente+genes). Sin spec cargada → el shader nunca llegó al worker.
   const spec = state.genSources.get(p.shaderId)
-  const ent = spec ? state.genPrograms.get(spec.programKey) : undefined
+  let ent = spec ? state.genPrograms.get(spec.programKey) : undefined
+  if (!ent && spec && !state.genPending.has(spec.programKey)) {
+    // 🖥️ WAVE 8268 — SELF-HEALING LRU: el programa fue evictado (caché de
+    // 8 slots < kit de 11+ átomos) o murió con el contexto GL, pero la
+    // FUENTE sigue en genSources → recompilar al vuelo en vez de fallar.
+    loadShaderSource(p.shaderId, spec.source, spec.steps, spec.genes, spec.exprGenes)
+    ent = state.genPrograms.get(spec.programKey) // síncrono si no hay KHR ext
+  }
   if (!ent) {
     if (spec && state.genPending.has(spec.programKey)) {
       // Aún compilando en paralelo → activar al finalizar (§4.4).
-      state.genPendingActivate = {
+      // Cola multi-intent + seq: el último pedido gana la pantalla.
+      state.genPendingActivates.set(spec.programKey, {
         shaderId: p.shaderId,
-        programKey: spec.programKey,
         crossfadeMs: fadeMs,
-      }
+        seq: ++state.genActivateSeq,
+      })
       return
     }
     emitShaderStatus({ shaderId: p.shaderId, ok: false, log: 'shader not loaded' })
     return
   }
+  state.genActivateSeq++
   activateGenProgram(ent, p.shaderId, fadeMs)
+}
+
+/**
+ * 🖥️ WAVE 8268 — `theia:hydrate`: boot-state ATÓMICO encolado tras INIT.
+ * Se procesa con el GL ya vivo (initGL corre síncrono en handleInit) —
+ * uniforms → previewDims → todas las fuentes (activo al FINAL del array,
+ * así ninguna evicción LRU lo toca antes de activarse) → activate.
+ */
+function handleHydrate(p: ThetaHydratePayload): void {
+  if (!p || typeof p !== 'object') return
+  if (Array.isArray(p.uniforms)) {
+    for (const [name, value] of p.uniforms) {
+      if (typeof name === 'string' && typeof value === 'number') {
+        state.uniforms.set(name, value)
+      }
+    }
+  }
+  if (p.previewDims && p.previewDims.width > 0 && p.previewDims.height > 0) {
+    state.pendingPreviewDims = { width: p.previewDims.width, height: p.previewDims.height }
+    if (state.previewCanvas) {
+      resizePreviewCanvas(p.previewDims.width, p.previewDims.height)
+      state.pendingPreviewDims = null
+    }
+  }
+  if (Array.isArray(p.shaders)) {
+    for (const s of p.shaders) {
+      if (s && typeof s.shaderId === 'string' && typeof s.source === 'string') {
+        handleLoadShader(s)
+      }
+    }
+  }
+  if (typeof p.activeShaderId === 'string' && p.activeShaderId !== BUILTIN_SHADER_ID) {
+    handleActivateShader({ shaderId: p.activeShaderId, crossfadeMs: 0 })
+  }
 }
 
 /** Conmuta el programa activo: snapshot prev-frame + rampa crossfade. */
@@ -2828,7 +2886,8 @@ function handleShutdown(): void {
   state.genPrograms.clear()
   state.genActive = null
   state.genActiveId = 'builtin'
-  state.genPendingActivate = null
+  state.genPendingActivates.clear()
+  state.genActivateSeq = 0
   state.genPrevValid = false
   state.gpuQuery = null
   state.gpuMs = 0
@@ -2933,6 +2992,10 @@ self.addEventListener('message', (ev: MessageEvent<ThetaMessage>) => {
         break
       case 'theia:activate-shader':
         handleActivateShader(msg.payload as ThetaActivateShaderPayload)
+        break
+      // 🖥️ WAVE 8268 — boot-state atómico (va encolado tras INIT)
+      case 'theia:hydrate':
+        handleHydrate(msg.payload as ThetaHydratePayload)
         break
       default:
         sendError(`Unknown message type: ${msg.type}`, false)

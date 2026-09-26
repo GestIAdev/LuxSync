@@ -50,6 +50,8 @@ const LiveDeck: React.FC = () => {
   const packsMap        = useTheiaPackStore((s) => s.packs)
   const livePackId      = useTheiaPackStore((s) => s.livePackId)
   const expandedPackId  = useTheiaPackStore((s) => s.expandedPackId)
+  const armedAtomId     = useTheiaPackStore((s) => s.armedAtomId)
+  const setArmedAtom    = useTheiaPackStore((s) => s.setArmedAtom)
   const setLivePack     = useTheiaPackStore((s) => s.setLivePack)
   const setExpandedPack = useTheiaPackStore((s) => s.setExpandedPack)
   const removePack      = useTheiaPackStore((s) => s.removePack)
@@ -86,17 +88,24 @@ const LiveDeck: React.FC = () => {
   }, [removePack])
 
   const handleAtomTrigger = useCallback(async (atom: ITheiaAtom) => {
+    const theta = getThetaOrchestrator()
     try {
-      await getThetaOrchestrator().playAtom({
+      await theta.playAtom({
         atomId: atom.id,
         startMs: atom.trim.startMs,
         crossfadeMs: FORCE_TRIGGER_CROSSFADE_MS,
         reason: `manual:force-trigger|atom=${atom.id}`,
       })
+      // 🖥️ WAVE 8268 — STRICT LIVE GATE: si el motor está apagado o a
+      // medio boot el intent quedó ARMADO (pendingPlayIntent) — el tile
+      // brilla en standby hasta que LIVE lo dispare. Si está corriendo,
+      // desarma lo que hubiera (la pantalla ya muestra el átomo).
+      const st = theta.getStatus()
+      setArmedAtom(st.isRunning && st.isReady ? null : atom.id)
     } catch (err) {
       console.error('[LiveDeck] playAtom failed:', err)
     }
-  }, [])
+  }, [setArmedAtom])
 
   // ── 🎛️ WAVE 8239 · U1 — Drag & Drop fallback (misma vía que LOAD ASSETS) ──
 
@@ -219,6 +228,7 @@ const LiveDeck: React.FC = () => {
                   key={atom.id}
                   atom={atom}
                   accent={expandedPack.manifest?.accentColor}
+                  isArmed={atom.id === armedAtomId}
                   onTrigger={handleAtomTrigger}
                 />
               ))}
@@ -321,10 +331,12 @@ const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, 
 interface AtomTileProps {
   atom: ITheiaAtom
   accent?: string
+  /** 🖥️ WAVE 8268 — intent armado (motor OFF): standby hasta LIVE. */
+  isArmed?: boolean
   onTrigger: (atom: ITheiaAtom) => void
 }
 
-const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, onTrigger }) => {
+const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, isArmed, onTrigger }) => {
   const isShader = atom.source?.kind === 'shader'
   const durMs = atom.trim.endMs - atom.trim.startMs
   // 🎛️ U1 — duración honesta: los shader atoms loopean (∞); un vídeo sin
@@ -335,11 +347,11 @@ const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, onTrigger }) => {
   return (
     <button
       type="button"
-      className={`theia-atom-tile${isShader ? ' is-shader' : ''}`}
+      className={`theia-atom-tile${isShader ? ' is-shader' : ''}${isArmed ? ' is-armed' : ''}`}
       style={accent ? { ['--atom-accent' as string]: accent } : undefined}
       onClick={() => onTrigger(atom)}
       data-midi-bind={`theia.live.atom.${atom.packId}.${atom.id}`}
-      title={`${atom.id}\n${kindLabel} · A${atom.aggression.toFixed(2)} · C${atom.chaos.toFixed(2)} · O${atom.organicity.toFixed(2)}\nzone ${atom.energyZone.min}→${atom.energyZone.max}`}
+      title={`${atom.id}\n${kindLabel} · A${atom.aggression.toFixed(2)} · C${atom.chaos.toFixed(2)} · O${atom.organicity.toFixed(2)}\nzone ${atom.energyZone.min}→${atom.energyZone.max}${isArmed ? '\nARMED — fires on LIVE' : ''}`}
     >
       <span className="theia-atom-tile__thumb" aria-hidden>
         <LuxIcon name={isShader ? 'dna' : 'play'} size={20} />

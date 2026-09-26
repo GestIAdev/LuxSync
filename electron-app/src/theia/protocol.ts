@@ -33,6 +33,8 @@ export type ThetaMessageType =
   // 🔮 WAVE 8229 — Euclid Oracle · E3: shader contract (§4.3)
   | 'theia:load-shader'
   | 'theia:activate-shader'
+  // 🖥️ WAVE 8268 — hidratación atómica de boot (tras INIT, antes de ready)
+  | 'theia:hydrate'
   // Lifecycle (worker → orchestrator)
   | 'theia:ready'
   | 'theia:heartbeat-ack'
@@ -320,6 +322,27 @@ export interface ThetaActivateShaderPayload {
   shaderId: string
   /** Duración del crossfade visual (ms). 0/undefined → corte directo. */
   crossfadeMs?: number
+}
+
+/**
+ * 🖥️ WAVE 8268 — `theia:hydrate`: paquete ATÓMICO de estado que el
+ * orchestrator encola justo detrás de `theia:init` en el spawn. El worker
+ * recibe su universo completo en un solo mensaje — cero interleaving,
+ * cero carrera con uniforms/resizes/shaders que lleguen sueltos.
+ *
+ * `shaders` va ORDENADO: el `activeShaderId` viaja el ÚLTIMO del array —
+ * con la LRU a 8 slots y un kit de 11+ átomos, re-cargar el activo al
+ * final garantiza que ninguna evicción lo pueda tocar antes de activarse.
+ */
+export interface ThetaHydratePayload {
+  /** Pares [name, value] del mapa `desiredUniforms` del orchestrator. */
+  uniforms: [string, number][]
+  /** Dims del preview medidas mientras no había worker (dpr-scaled). */
+  previewDims: { width: number; height: number } | null
+  /** Fuentes de artista a pre-compilar — ACTIVO ÚLTIMO (ver docstring). */
+  shaders: ThetaLoadShaderPayload[]
+  /** Shader a activar tras la carga ('builtin' = plasma interno). */
+  activeShaderId: string
 }
 
 /** `theia:shader-status` — resultado de una compilación generativa. */

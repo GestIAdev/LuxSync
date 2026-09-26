@@ -97,12 +97,16 @@ const TheiaEngineView: React.FC = () => {
   const resumeAfterBlackoutRef = useRef(false)
 
   // 🌊 WAVE 8242 · U4 — IGNITION sync: si el motor arranca por otra vía
-  // (click en un tile del LiveDeck → playAtom auto-start, respawn Phoenix),
-  // el epoch del worker refleja `isRunning` en el toggle POWER/STREAMING.
+  // (respawn Phoenix), el epoch del worker refleja `isRunning` en el
+  // toggle POWER/STREAMING.
+  // 🖥️ WAVE 8268 — un spawn real (LIVE/Phoenix) desarma el tile: el
+  // pendingPlayIntent se dispara tras 'theia:ready' + hydrate, así que el
+  // marcador "armed" ya cumplió su función visual.
   useEffect(() => {
     const theta = getThetaOrchestrator()
     return theta.onWorkerEpoch(() => {
       setEnginePower(theta.getStatus().isRunning)
+      useTheiaPackStore.getState().setArmedAtom(null)
     })
   }, [])
 
@@ -256,6 +260,9 @@ const TheiaEngineView: React.FC = () => {
   // LOAD ASSETS acepta vídeo (.mp4 .webm .mkv .mov .avi), átomos (.theia) y
   // shaders (.glsl). Todos nacen como átomos jugables en el pack; el primer
   // átomo se dispara por playAtom (la misma vía que un click del LiveDeck).
+  // 🖥️ WAVE 8268 — STRICT LIVE GATE: SIN auto-arranque. Con el motor
+  // apagado el intent queda ARMADO (pendingPlayIntent + tile is-armed) y
+  // se dispara cuando el operador pulse LIVE.
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter((f) =>
       isSupportedMediaFile(f.name),
@@ -267,7 +274,8 @@ const TheiaEngineView: React.FC = () => {
       return
     }
 
-    const { ingestFiles, updateRawClip, updateAtomTrim } = useTheiaPackStore.getState()
+    const { ingestFiles, updateRawClip, updateAtomTrim, setArmedAtom } =
+      useTheiaPackStore.getState()
     const { clips, atoms } = await ingestFiles(files)
     if (atoms.length === 0 && clips.length === 0) return
 
@@ -275,7 +283,6 @@ const TheiaEngineView: React.FC = () => {
     const primary = atoms[0]
 
     try {
-      await theta.start()
       if (primary) {
         await theta.playAtom({
           atomId: primary.id,
@@ -283,6 +290,11 @@ const TheiaEngineView: React.FC = () => {
           crossfadeMs: 80,
           reason: `manual:ingest|atom=${primary.id}`,
         })
+
+        // 🖥️ WAVE 8268 — si el motor estaba apagado el intent quedó armado
+        // (no arrancó: STRICT LIVE GATE) → el tile se ilumina en standby.
+        const st = theta.getStatus()
+        setArmedAtom(st.isRunning && st.isReady ? null : primary.id)
 
         // Duración real del clip para el media pool (metadata ya cargada).
         const clip = clips.find((c) => c.id === primary.id)

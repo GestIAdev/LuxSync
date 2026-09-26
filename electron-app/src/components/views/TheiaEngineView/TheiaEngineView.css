@@ -1361,6 +1361,35 @@
   transform: translateY(0);
 }
 
+/* 🖥️ WAVE 8268 — STRICT LIVE GATE: átomo ARMADO con el motor apagado.
+   Pulso ámbar en standby — distinto del hover y del rojo "confirm delete"
+   (.theia-pack-slot__delete.is-armed): aquí ámbar = "dispara al pulsar
+   LIVE", no un destructivo. */
+.theia-atom-tile.is-armed {
+  border-color: rgba(251, 191, 36, 0.85);
+  background:
+    linear-gradient(180deg, rgba(251, 191, 36, 0.16) 0%, rgba(251, 191, 36, 0.05) 100%),
+    rgba(8, 11, 20, 0.92);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+  animation: theia-atom-arm 0.9s ease-in-out infinite alternate;
+}
+
+.theia-atom-tile.is-armed::after {
+  content: 'ARMED';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(251, 191, 36, 0.95);
+}
+
+@keyframes theia-atom-arm {
+  from { box-shadow: 0 0 6px rgba(251, 191, 36, 0.22); }
+  to   { box-shadow: 0 0 18px rgba(251, 191, 36, 0.55); }
+}
+
 .theia-atom-tile__thumb {
   display: flex;
   align-items: center;

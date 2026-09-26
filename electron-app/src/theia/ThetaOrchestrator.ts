@@ -30,6 +30,8 @@ import {
   type ThetaForceStatePayload,
   type ThetaHeartbeatAckPayload,
   type ThetaHeartbeatPayload,
+  type ThetaHydratePayload,
+  type ThetaLoadShaderPayload,
   type ThetaLoadStreamPayload,
   type ThetaMessage,
   type ThetaSeekAckPayload,
@@ -244,6 +246,18 @@ export class ThetaOrchestrator {
   private currentAtomUrl: string | null = null
   /** Último ack de seek recibido del worker (telemetría). */
   private lastSeekAck: ThetaSeekAckPayload | null = null
+
+  // 🖥️ WAVE 8268 — STRICT LIVE GATE: intents de reproducción recibidos con
+  // el motor apagado (o a medio boot) se arman aquí — latest-wins. El
+  // intent se dispara en 'theia:ready', tras la hidratación atómica.
+  // NUNCA arranca el worker: eso es privilegio exclusivo del botón LIVE.
+  private pendingPlayIntent: {
+    atomId: string
+    startMs: number
+    crossfadeMs: number
+    reason: string
+    urlResolver?: (atomId: string) => string | null
+  } | null = null
 
   private heartbeatHandle: number | null = null
   private heartbeatSequence = 0
@@ -669,18 +683,15 @@ export class ThetaOrchestrator {
      *  `setClipUrlResolver()`. */
     urlResolver?: (atomId: string) => string | null
   }): Promise<void> {
-    if (!this.isRunning || !this.worker) {
-      // 🌊 WAVE 8242 · U4 — IGNITION (Click to Play): un trigger de átomo
-      // con el motor parado arranca el orchestrator. `loadShader` y
-      // `activateShader` persisten en `desiredShaders`/`desiredActiveShader`
-      // y se reenvían en 'theia:ready' — el clic jamás se pierde aunque el
-      // worker aún no haya terminado de spawnear.
-      await this.start()
-      if (!this.worker) {
-        // eslint-disable-next-line no-console
-        console.warn('[THETA 🎬] playAtom — worker unavailable after start')
-        return
-      }
+    // 🖥️ WAVE 8268 — STRICT LIVE GATE: el motor solo arranca por el botón
+    // LIVE. Con motor apagado O a medio boot (worker sin 'theia:ready') el
+    // intent queda ARMADO en pendingPlayIntent y se dispara tras la
+    // hidratación — el clic jamás se pierde, pero nunca spawnea el worker.
+    if (!this.isRunning || !this.worker || !this.isReady) {
+      this.pendingPlayIntent = { ...intent }
+      // eslint-disable-next-line no-console
+      console.log(`[THETA 🎬] play-atom '${intent.atomId}' armed — waiting for LIVE`)
+      return
     }
 
     // ── Caso 1: blackout ─────────────────────────────────────────────────
@@ -1459,6 +1470,30 @@ export class ThetaOrchestrator {
     // Tras transferir el canvas perdemos su control en este lado.
     if (canvas) this.offscreenCanvas = null
 
+    // 🖥️ WAVE 8268 — HIDRATACIÓN ATÓMICA: un solo paquete encolado detrás
+    // de INIT (FIFO por el port del worker — se procesa tras initGL, con el
+    // contexto ya vivo). Lleva uniforms + dims + TODAS las fuentes en
+    // `desiredShaders` y la activación deseada. ORDEN CRÍTICO: el shader
+    // activo viaja el ÚLTIMO — con la LRU a 8 slots y un kit de 11+ átomos,
+    // ninguna evicción puede tocarlo antes de su `theia:activate-shader`.
+    const shaders: ThetaLoadShaderPayload[] = []
+    for (const [shaderId, s] of this.desiredShaders) {
+      shaders.push({ shaderId, source: s.source, meta: s.meta })
+    }
+    const activeId = this.desiredActiveShader
+    if (activeId !== 'builtin') {
+      const ai = shaders.findIndex((s) => s.shaderId === activeId)
+      if (ai >= 0) shaders.push(shaders.splice(ai, 1)[0])
+    }
+    worker.postMessage(
+      makeThetaMessage('theia:hydrate', {
+        uniforms: Array.from(this.desiredUniforms.entries()),
+        previewDims: this.pendingPreviewDims,
+        shaders,
+        activeShaderId: activeId,
+      } satisfies ThetaHydratePayload),
+    )
+
     // 🌊 WAVE 8215 — flush del video port si el broker lo entregó antes
     // del spawn (página tardía / respawn): transferencia inmediata.
     if (this.pendingVideoPort) {
@@ -1504,48 +1539,18 @@ export class ThetaOrchestrator {
         this.circuit.failures = 0
         // eslint-disable-next-line no-console
         console.log('[THETA] worker READY')
-        // 🌊 WAVE 8211 — replay persisted uniforms (fresh worker is stateless)
-        if (this.desiredUniforms.size > 0) {
-          for (const [name, value] of this.desiredUniforms) {
-            try {
-              this.worker?.postMessage(makeThetaMessage('theia:set-uniform', { name, value }))
-            } catch { /* replay is best-effort */ }
-          }
-        }
-        // 🌊 WAVE 8225 — replay de las dims del viewport medidas mientras el
-        // worker no existía (resizePreviewCanvas las stashó). El worker las
-        // aplica si el preview ya llegó, o las retiene en pendingPreviewDims
-        // hasta el attach del canvas.
-        if (this.pendingPreviewDims) {
-          try {
-            this.worker?.postMessage(
-              makeThetaMessage('theia:resize-preview', this.pendingPreviewDims),
-            )
-          } catch { /* replay best-effort */ }
-        }
-        // 🔮 WAVE 8229 · E3 — replay de shaders tras respawn: el worker
-        // nuevo llega sin caché GL; reenviar fuentes + activación deseada.
-        if (this.desiredShaders.size > 0) {
-          for (const [shaderId, s] of this.desiredShaders) {
-            try {
-              this.worker?.postMessage(
-                makeThetaMessage('theia:load-shader', {
-                  shaderId,
-                  source: s.source,
-                  meta: s.meta,
-                }),
-              )
-            } catch { /* replay best-effort */ }
-          }
-          if (this.desiredActiveShader !== 'builtin') {
-            try {
-              this.worker?.postMessage(
-                makeThetaMessage('theia:activate-shader', {
-                  shaderId: this.desiredActiveShader,
-                  crossfadeMs: 0,
-                }),
-              )
-            } catch { /* replay best-effort */ }
+        // 🖥️ WAVE 8268 — el replay de uniforms/dims/shaders ya NO vive aquí:
+        // viajó atómico en `theia:hydrate` (encolado tras el INIT). Lo único
+        // pendiente tras ready es el intent armado por el operador con el
+        // motor apagado (STRICT LIVE GATE — se dispara ahora con el worker
+        // hidratado y listo).
+        {
+          const pending = this.pendingPlayIntent
+          this.pendingPlayIntent = null
+          if (pending) {
+            // eslint-disable-next-line no-console
+            console.log(`[THETA 🎬] firing armed play-atom '${pending.atomId}'`)
+            void this.playAtom(pending)
           }
         }
         break

@@ -79,6 +79,10 @@ interface TheiaPackState {
   readonly livePackId: string | null
   /** Pack visualmente desplegado en LiveDeck (puede diferir del live). */
   readonly expandedPackId: string | null
+  /** 🖥️ WAVE 8268 — átomo ARMADO con el motor apagado (STRICT LIVE GATE):
+   *  refleja el `pendingPlayIntent` del orchestrator para que el tile
+   *  brille en standby hasta que LIVE lo dispare. Latest-wins. */
+  readonly armedAtomId: string | null
 }
 
 interface TheiaPackActions {
@@ -87,6 +91,8 @@ interface TheiaPackActions {
   removePack(packId: string): void
   setLivePack(packId: string | null): void
   setExpandedPack(packId: string | null): void
+  /** 🖥️ WAVE 8268 — marca/desmarca el átomo armado (null = desarmar). */
+  setArmedAtom(atomId: string | null): void
 
   // ── Raw clips ────────────────────────────────────────────────────────────
   addRawClips(clips: readonly RawClip[]): void
@@ -187,6 +193,7 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
   rawClips: [],
   livePackId: null,
   expandedPackId: null,
+  armedAtomId: null,
 
   // ── Packs ────────────────────────────────────────────────────────────────
   upsertPack(pack) {
@@ -198,11 +205,18 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
   removePack(packId) {
     const next = new Map(get().packs)
     if (!next.delete(packId)) return
-    const { livePackId, expandedPackId } = get()
+    const { livePackId, expandedPackId, armedAtomId } = get()
+    const removed = get().packs.get(packId)
     set({
       packs: next,
       livePackId: livePackId === packId ? null : livePackId,
       expandedPackId: expandedPackId === packId ? null : expandedPackId,
+      // Si el pack borrado contenía el átomo armado, desarma (el intent del
+      // orchestrator fallará limpio al disparar → queda log, sin zombie UI).
+      armedAtomId:
+        armedAtomId && removed?.atoms.some((a) => a.id === armedAtomId)
+          ? null
+          : armedAtomId,
     })
   },
 
@@ -217,6 +231,10 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
   setExpandedPack(packId) {
     if (packId !== null && !get().packs.has(packId)) return
     set({ expandedPackId: packId })
+  },
+
+  setArmedAtom(atomId) {
+    set({ armedAtomId: atomId })
   },
 
   // ── Raw clips ────────────────────────────────────────────────────────────

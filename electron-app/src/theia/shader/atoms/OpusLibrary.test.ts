@@ -136,15 +136,17 @@ describe('U4 — ensureEuclidShaderAtoms (arranque)', () => {
   })
 })
 
-describe('U4-hotfix — playAtom shader routing (WAVE 8243)', () => {
+describe('U4-hotfix — playAtom shader routing (WAVE 8243 + 8268)', () => {
   /**
    * Contrato: un átomo `source.kind='shader'` registrado en el registry
    * toma el path generativo (`theia:load-shader` + `theia:activate-shader`)
    * AUNQUE `_shaderSourceResolver` sea null (wiring Selene detach) —
-   * nunca cae al pipeline de vídeo (`theia:load-stream`). Además el
-   * trigger auto-arranca el motor (ignition U4).
+   * nunca cae al pipeline de vídeo (`theia:load-stream`).
+   * 🖥️ WAVE 8268 — STRICT LIVE GATE: con el motor apagado el intent NO
+   * auto-arranca — queda armado (`pendingPlayIntent`) y se dispara tras
+   * `theia:ready` cuando el operador pulsa LIVE.
    */
-  it('resuelve por registry fallback, ignora el vídeo y auto-arranca', async () => {
+  it('arma el intent apagado y al pulsar LIVE resuelve por registry fallback, ignorando el vídeo', async () => {
     const g = globalThis as Record<string, unknown>
     const origWindow = g.window
     const origWorker = g.Worker
@@ -166,12 +168,29 @@ describe('U4-hotfix — playAtom shader routing (WAVE 8243)', () => {
     try {
       ensureEuclidShaderAtoms()
       const theta = getThetaOrchestrator()
+
+      // ── Motor APAGADO: el intent se arma, NO spawnea worker. ──────────
       await theta.playAtom({
         atomId: AETHER_SERPENT_ATOM_ID,
         startMs: 0,
         crossfadeMs: 80,
-        reason: 'manual:test|opuS-routing',
+        reason: 'manual:test|opus-routing',
       })
+      expect(theta.getStatus().isRunning).toBe(false)
+      expect(theta.getActiveShaderId()).toBe('builtin')
+      expect(posted).not.toContain('theia:init')
+
+      // ── LIVE: start() spawnea y encola la hidratación atómica. ────────
+      await theta.start()
+      expect(posted).toContain('theia:init')
+      expect(posted).toContain('theia:hydrate')
+
+      // El worker real emitiría 'theia:ready' tras initGL — el fake no
+      // responde, así que lo inyectamos (handleWorkerMessage es private
+      // de TS, alcanzable en runtime).
+      ;(theta as unknown as {
+        handleWorkerMessage(m: { type: string }): void
+      }).handleWorkerMessage({ type: 'theia:ready' })
 
       // Path generativo alcanzado — genoma resuelto desde el registry.
       expect(theta.getActiveShaderId()).toBe(AETHER_SERPENT_ATOM_ID)

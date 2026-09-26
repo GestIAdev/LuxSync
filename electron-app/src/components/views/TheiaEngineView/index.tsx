@@ -89,6 +89,25 @@ const TheiaEngineView: React.FC = () => {
   const [blackout, setBlackout] = useState(false)
   const [contrast, setContrast] = useState(0.5)
 
+  // 🌊 WAVE 8242 · U4 — estado del fade BLACKOUT + resumen del transporte.
+  const blackoutLevelRef = useRef(0)
+  const blackoutRafRef = useRef<number | null>(null)
+  const resumeAfterBlackoutRef = useRef(false)
+
+  // 🌊 WAVE 8242 · U4 — IGNITION sync: si el motor arranca por otra vía
+  // (click en un tile del LiveDeck → playAtom auto-start, respawn Phoenix),
+  // el epoch del worker refleja `isRunning` en el toggle POWER/STREAMING.
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    return theta.onWorkerEpoch(() => {
+      setEnginePower(theta.getStatus().isRunning)
+    })
+  }, [])
+
+  useEffect(() => () => {
+    if (blackoutRafRef.current !== null) cancelAnimationFrame(blackoutRafRef.current)
+  }, [])
+
   // ── Inspector ──────────────────────────────────────────────────────────
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const toggleInspector = useCallback(() => setInspectorOpen((o) => !o), [])
@@ -191,11 +210,39 @@ const TheiaEngineView: React.FC = () => {
   }, [])
 
   const handleBlackout = useCallback(() => {
-    // 🌊 WAVE 8220 — mismo saneamiento que handlePower: el setUniform es un
-    // postMessage síncrono — no pertenece a la fase de render del updater.
+    // 🌊 WAVE 8242 · U4 — BLACKOUT suave: u_blackout rampea 0↔1 por rAF
+    // (smoothstep, ~320ms) — nada de corte seco. Con el nivel a 1 el worker
+    // salta el pase pesado y la GPU descansa (early-out en el render loop).
+    // Además el transporte se pausa al activar y se reanuda al liberar.
+    const theta = getThetaOrchestrator()
     const next = !blackout
     setBlackout(next)
-    getThetaOrchestrator().setUniform('u_blackout', next ? 1 : 0)
+
+    const vid = theta.getVideoElement()
+    if (next) {
+      resumeAfterBlackoutRef.current = !!vid && !vid.paused
+      try { vid?.pause() } catch { /* noop */ }
+    } else if (resumeAfterBlackoutRef.current) {
+      resumeAfterBlackoutRef.current = false
+      vid?.play().catch((err) => {
+        console.warn('[Theia UI] resume after blackout failed:', err)
+      })
+    }
+
+    if (blackoutRafRef.current !== null) cancelAnimationFrame(blackoutRafRef.current)
+    const from = blackoutLevelRef.current
+    const to = next ? 1 : 0
+    const t0 = performance.now()
+    const dur = 320
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / dur)
+      const s = k * k * (3 - 2 * k) // smoothstep
+      const v = from + (to - from) * s
+      blackoutLevelRef.current = v
+      theta.setUniform('u_blackout', v)
+      blackoutRafRef.current = k < 1 ? requestAnimationFrame(step) : null
+    }
+    blackoutRafRef.current = requestAnimationFrame(step)
   }, [blackout])
 
   const handleSpeedChange = useCallback((value: number) => {

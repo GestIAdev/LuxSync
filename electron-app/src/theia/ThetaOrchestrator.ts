@@ -574,9 +574,17 @@ export class ThetaOrchestrator {
     urlResolver?: (atomId: string) => string | null
   }): Promise<void> {
     if (!this.isRunning || !this.worker) {
-      // eslint-disable-next-line no-console
-      console.warn('[THETA 🎬] playAtom called before start — ignored')
-      return
+      // 🌊 WAVE 8242 · U4 — IGNITION (Click to Play): un trigger de átomo
+      // con el motor parado arranca el orchestrator. `loadShader` y
+      // `activateShader` persisten en `desiredShaders`/`desiredActiveShader`
+      // y se reenvían en 'theia:ready' — el clic jamás se pierde aunque el
+      // worker aún no haya terminado de spawnear.
+      await this.start()
+      if (!this.worker) {
+        // eslint-disable-next-line no-console
+        console.warn('[THETA 🎬] playAtom — worker unavailable after start')
+        return
+      }
     }
 
     // ── Caso 1: blackout ─────────────────────────────────────────────────

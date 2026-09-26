@@ -2053,6 +2053,23 @@ function renderCurrentFrame(timestampMs: number): void {
   // we step it BEFORE drawing so we know the alphas for THIS tick.
   const xfStep = state.crossfade.step()
 
+  // 🌊 WAVE 8242 · U4 — BLACKOUT total: con u_blackout≈1 el epílogo ya
+  // multiplica por ~0 (`col *= 1-u_blackout`) — saltamos el pase pesado
+  // completo (raymarch/video tex) y dejamos un clear a negro. La GPU
+  // descansa; el smoother, el governor y la telemetría siguen vivos, así
+  // que al bajar de 0.999 el render retorna sin discontinuidad.
+  const blackoutNow = state.uniforms.get('u_blackout') ?? 0
+  if (blackoutNow > 0.999) {
+    if (frame) {
+      frame.close()
+      state.currentFrame = null
+    }
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    gl.clearColor(0, 0, 0, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    return
+  }
+
   if (frame) {
     // 🛡️ WAVE 7569: OILPAN GUARD — Clamp render dimensions to MAX 1920×1080.
     const targetW = Math.min(frame.displayWidth, MAX_CANVAS_WIDTH)

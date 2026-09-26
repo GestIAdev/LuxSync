@@ -33,7 +33,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isSupportedMediaFile, useTheiaPackStore } from '../../stores/useTheiaPackStore'
 import { getThetaOrchestrator } from '../../theia'
 import type { ITheiaAtom, ITheiaPack } from '../../types/theiaTypes'
@@ -212,6 +212,29 @@ const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, 
 
   const accent = pack.manifest?.accentColor
 
+  // 🌊 WAVE 8252 — arm-confirm: el botón invisible (opacity:0 salvo hover)
+  // borraba packs por clicks accidentales sobre el slot. Ahora el primer
+  // click ARMA (rojo + tooltip "click again"), el segundo confirma, y se
+  // desarma solo a los 2.5s.
+  const [armed, setArmed] = useState(false)
+  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (armTimerRef.current) clearTimeout(armTimerRef.current)
+  }, [])
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!armed) {
+      setArmed(true)
+      if (armTimerRef.current) clearTimeout(armTimerRef.current)
+      armTimerRef.current = setTimeout(() => setArmed(false), 2500)
+      return
+    }
+    if (armTimerRef.current) clearTimeout(armTimerRef.current)
+    setArmed(false)
+    onDelete(pack.id)
+  }
+
   return (
     <div
       role="button"
@@ -229,11 +252,12 @@ const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, 
     >
       <button
         type="button"
-        className="theia-pack-slot__delete"
-        title="Remove pack from memory"
-        onClick={(e) => { e.stopPropagation(); onDelete(pack.id) }}
+        className={`theia-pack-slot__delete${armed ? ' is-armed' : ''}`}
+        title={armed ? 'Click again to CONFIRM removal' : 'Remove pack from memory'}
+        onClick={handleDeleteClick}
         onDoubleClick={(e) => e.stopPropagation()}
         aria-label={`Remove pack ${pack.id}`}
+        aria-pressed={armed}
       >
         <LuxIcon name="trash" size={11} />
       </button>

@@ -101,16 +101,13 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
     
     // Suscribirse al canal de la verdad (TITAN 2.0)
     const removeListener = window.lux.onTruthUpdate((data: SeleneTruth) => {
-      // 🩸 WAVE-6060: Silenciado — solo loggear cada ~5s para debug
-      if (frameCountRef.current % 60 === 0) {
-        console.log(`[useSeleneTruth 🩸] TRUTH received. frameCountRef=${frameCountRef.current} system.frameNumber=${data.system?.frameNumber}`)
-      }
-      // WAVE 380: Debug fixture IDs arriving from backend
-      frameCountRef.current++
-      if (frameCountRef.current % 300 === 0) { // Every ~5s
+      // 🌊 WAVE 8252 — los logs periódicos capturaban el truth COMPLETO
+      // (Chrome serializa los args de console eager) ~40×/min sobre el
+      // payload gordo con fixtures — main-thread tax en la ruta caliente.
+      // Solo se loggea si el caller pidió debugInterval explícito.
+      if (debugInterval > 0 && frameCountRef.current % 300 === 0) {
         const fixtureCount = data?.hardware?.fixtures?.length || 0
-        const firstIds = data?.hardware?.fixtures?.slice(0, 3).map((f: any) => f?.id).join(', ') || 'none'
-        console.log(`[useSeleneTruth] 🩸 Received ${fixtureCount} fixtures:`, firstIds, '...')
+        console.log(`[useSeleneTruth] 🩸 frame=${data.system?.frameNumber} fixtures=${fixtureCount}`)
       }
       
       // ═══════════════════════════════════════════════════════════════════

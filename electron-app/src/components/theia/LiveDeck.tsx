@@ -54,9 +54,17 @@ const LiveDeck: React.FC = () => {
   const setExpandedPack = useTheiaPackStore((s) => s.setExpandedPack)
   const removePack      = useTheiaPackStore((s) => s.removePack)
   const [isDragOver, setIsDragOver] = useState(false)
+  // 🌊 WAVE 8255 — accordion: la fila de Pack Slots puede plegarse para
+  // ceder todo el vertical a la grilla de átomos.
+  const [slotsCollapsed, setSlotsCollapsed] = useState(false)
 
   const packs = useMemo(() => Array.from(packsMap.values()), [packsMap])
   const expandedPack = expandedPackId ? packsMap.get(expandedPackId) ?? null : null
+  const livePack = livePackId ? packsMap.get(livePackId) ?? null : null
+  const activePack = expandedPack ?? livePack
+  const activePackName = activePack
+    ? (activePack.manifest?.displayName ?? activePack.id)
+    : null
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -119,7 +127,7 @@ const LiveDeck: React.FC = () => {
 
   return (
     <section
-      className={`theia-live-deck${isDragOver ? ' is-dragover' : ''}`}
+      className={`theia-live-deck${isDragOver ? ' is-dragover' : ''}${slotsCollapsed ? ' is-slots-collapsed' : ''}`}
       data-deck="live"
       aria-label="Live pack deck"
       onDragOver={handleDragOver}
@@ -127,7 +135,21 @@ const LiveDeck: React.FC = () => {
       onDrop={handleDrop}
     >
       <div className="theia-live-deck__header">
+        <button
+          type="button"
+          className="theia-live-deck__collapse"
+          onClick={() => setSlotsCollapsed((c) => !c)}
+          aria-expanded={!slotsCollapsed}
+          title={slotsCollapsed ? 'Expand pack slots' : 'Collapse pack slots — more room for atoms'}
+        >
+          <LuxIcon name={slotsCollapsed ? 'chevron-down' : 'chevron-up'} size={11} />
+        </button>
         <span className="theia-live-deck__title">DECK · PACK SLOTS</span>
+        {slotsCollapsed && activePackName && (
+          <span className="theia-live-deck__active-name" title={activePackName}>
+            ▸ <span className={expandedPack ? '' : 'is-live'}>{activePackName}</span>
+          </span>
+        )}
         <span className="theia-live-deck__count">
           {packs.length} {packs.length === 1 ? 'PACK' : 'PACKS'}
         </span>

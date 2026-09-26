@@ -38,6 +38,8 @@ import {
   // UI affordances
   PlusIcon,
   XIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
   // Telemetry / state
   BoltIcon,
   BPMHeartIcon,
@@ -100,6 +102,8 @@ const ICON_MAP = {
   add:            PlusIcon,
   x:              XIcon,
   close:          XIcon,
+  'chevron-up':   ChevronUpIcon,    // 🎛️ WAVE 8255 — deck accordion
+  'chevron-down': ChevronDownIcon,
 
   // Telemetry
   bolt:           BoltIcon,

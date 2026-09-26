@@ -507,13 +507,17 @@ function createWindow(): void {
   })
 
   // Permission handlers — WAVE 3301: midi + midiSysex unlocked for nanoPAD2
+  // 🖥️ WAVE 8262: 'fullscreen' debe estar en la whitelist — en Electron la
+  // Fullscreen API (element.requestFullscreen) consulta este handler y una
+  // denegación es SILENCIOSA (sin error en consola): el preview de Theia no
+  // podía expandirse al monitor sin esta línea.
   mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) => {
     if (permission === 'midi' || permission === 'midiSysex') return true
-    return ['media', 'mediaKeySystem', 'geolocation'].includes(permission)
+    return ['media', 'mediaKeySystem', 'geolocation', 'fullscreen'].includes(permission)
   })
 
   mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
-    const allowedPermissions = ['media', 'mediaKeySystem', 'geolocation', 'midi', 'midiSysex']
+    const allowedPermissions = ['media', 'mediaKeySystem', 'geolocation', 'midi', 'midiSysex', 'fullscreen']
     callback(allowedPermissions.includes(permission))
   })
 

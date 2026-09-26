@@ -652,8 +652,17 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout }) => {
     const onFsChange = () => {
       setIsFullscreen(document.fullscreenElement === viewportRef.current)
     }
+    // Una denegación de permiso (Electron session handler) puede no rechazar
+    // la promise — 'fullscreenerror' es el único rastro visible.
+    const onFsError = (ev: Event) => {
+      console.warn('[Theia UI] fullscreen request denied:', ev)
+    }
     document.addEventListener('fullscreenchange', onFsChange)
-    return () => document.removeEventListener('fullscreenchange', onFsChange)
+    document.addEventListener('fullscreenerror', onFsError)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('fullscreenerror', onFsError)
+    }
   }, [])
 
   const handleToggleFullscreen = useCallback(() => {

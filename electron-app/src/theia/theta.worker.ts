@@ -1088,7 +1088,13 @@ function initGL(): boolean {
     // Required: the GL canvas is blitted into the 2D thumb/preview mirrors
     // and sampled by copyTexImage2D outside the immediate draw task.
     preserveDrawingBuffer: true,
-    alpha: false,
+    // 🌊 WAVE 8251 — alpha:true: el backbuffer RGBX8 (alpha:false) hacía
+    // que el CopyTextureCHROMIUM interno de `drawImage(glCanvas)` hacia los
+    // lienzos 2D (preview/thumb) emitiera `GL_INVALID_OPERATION: Invalid
+    // copy texture format combination` por frame. Con canal alpha real la
+    // copia es RGBA8→RGBA8 nativa. Sin impacto visual: el plasma builtin y
+    // el epílogo ya escriben alpha=1 y clearColor mantiene (0,0,0,1).
+    alpha: true,
     antialias: false,
     depth: false,
     stencil: false,

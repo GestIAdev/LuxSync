@@ -354,13 +354,15 @@ const TheiaOutputView: React.FC = () => {
     // 🌊 WAVE 8250 — TELEMETRY WATCHDOG (mismo patrón que el
     // ThetaOrchestrator de WAVE 8246): el pull inicial es single-shot y un
     // IPC perdido dejaba a Modo B sordo para siempre. Link sano = port
-    // atado Y timestamp del FrameContext (slots 1-2 del ring) fresco <2s.
+    // atado Y timestamp del FrameContext (slots 1-2 del ring) fresco <4s
+    // (WAVE 8251: 2s entraba en pánico ante stalls legítimos y re-armaba
+    // el channel en cada barrido).
     const telemetryWatchdog = window.setInterval(() => {
       if (cancelled) return
       const tsMs =
         Atomics.load(telRingI32, 2) * 0x100000000 +
         (Atomics.load(telRingI32, 1) >>> 0)
-      const stale = tsMs <= 0 || Date.now() - tsMs > 2000
+      const stale = tsMs <= 0 || Date.now() - tsMs > 4000
       if (telemetryPort === null || stale) {
         requestTheiaPort('telemetry-port')
       }

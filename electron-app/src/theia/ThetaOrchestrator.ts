@@ -522,7 +522,9 @@ export class ThetaOrchestrator {
 
   /**
    * Link sano = port atado Y ring fresco (timestamp del FrameContext,
-   * slots 1-2, <2s — el pump publica a 44Hz cuando el link vive).
+   * slots 1-2, <4s — WAVE 8251: el umbral de 2s entraba en pánico ante
+   * stalls legítimos del main thread y re-armaba el channel cada barrido,
+   * generando churn de ports + spam del log de attach).
    * Port ausente o ring stale → re-pull (idempotente: cada pull arma un
    * channel nuevo en main; el attach subsiguiente cierra el port viejo).
    */
@@ -531,7 +533,7 @@ export class ThetaOrchestrator {
     const i32 = this.telemetryRingI32
     const tsMs =
       Atomics.load(i32, 2) * 0x100000000 + (Atomics.load(i32, 1) >>> 0)
-    const stale = tsMs <= 0 || Date.now() - tsMs > 2000
+    const stale = tsMs <= 0 || Date.now() - tsMs > 4000
     if (this.telemetryPort === null || stale) {
       requestTheiaPort('telemetry-port')
     }

@@ -1631,6 +1631,11 @@ function captureGenPrevFrame(): void {
   const canvas = state.glCanvas
   if (!gl || !canvas || canvas.width <= 0 || canvas.height <= 0) return
   ensureGenPrevTex(canvas.width, canvas.height)
+  // 🌊 WAVE 8244 — fuente = backbuffer RGBA8 SIEMPRE: si un FBO ajeno quedó
+  // bound (early-return, excepción a mitad de pase, pool RGBA16F del G5),
+  // copyTexImage2D leería un source 16F → INVALID copy texture format
+  // combination, y el error se repite cada captura → consola inundada.
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
   gl.bindTexture(gl.TEXTURE_2D, state.genPrevTex)
   gl.copyTexImage2D(
     gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, canvas.width, canvas.height, 0,
@@ -2211,6 +2216,7 @@ function renderCurrentFrame(timestampMs: number): void {
           state.videoPool.push(writer)
         } else {
           try {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null) // 🌊 WAVE 8244 — idem
             gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, dst)
             const seq = (state.videoFrameSeq + 1) | 0
             state.videoFrameSeq = seq
@@ -2340,6 +2346,10 @@ function issuePboReadback(w: number, h: number): void {
     return
   }
   try {
+    // 🌊 WAVE 8244 — la lectura es del backbuffer RGBA8: si un FBO float
+    // (pool RGBA16F del G5) quedó bound por un early-return, readPixels
+    // emitiría "Invalid copy texture format combination" por frame.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.bindBuffer(gl.PIXEL_PACK_BUFFER, free.pbo)
     // Offset- overload: el destino es el PBO, NO memoria CPU — asíncrono.
     gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 0)
@@ -2414,6 +2424,8 @@ function captureCurrentSnapshot(): void {
     state.prevTexH = h
   }
 
+  // 🌊 WAVE 8244 — el snapshot lee el backbuffer (RGBA8): rebind defensivo.
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
   gl.bindTexture(gl.TEXTURE_2D, state.prevTex)
   gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, w, h, 0)
   state.prevSnapshotValid = true

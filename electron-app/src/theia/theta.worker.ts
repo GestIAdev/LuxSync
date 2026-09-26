@@ -2095,6 +2095,9 @@ function renderCurrentFrame(timestampMs: number): void {
   state.lastRenderPerfMs = perfNow
   const tel = state.telReader
   const telFresh = tel !== null && tel.read()
+  // 🌊 WAVE 8259 — el fader SPEED gobierna también el reloj musical:
+  // se escribe ANTES del step para que beatTime lo integre este frame.
+  state.smoother.masterSpeed = state.uniforms.get('u_speed') ?? 1.0
   state.smoother.step(
     tel !== null ? tel.scratch : null,
     tel !== null ? tel.flags : 0,

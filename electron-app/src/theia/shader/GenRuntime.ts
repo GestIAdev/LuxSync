@@ -805,6 +805,9 @@ export class GenRuntime {
     this.timeScale +=
       ((audioLive ? 1.0 : 0.5) * masterSpeed - this.timeScale) *
       (1 - Math.exp(-dtMs / 160))
+    // 🌊 WAVE 8259 — y el reloj musical del smoother del gemelo (se aplica
+    // al beatTime del PRÓXIMO frame — el step ya corrió en el caller).
+    sm.masterSpeed = masterSpeed
     this.shaderTimeSec += dtMs * 0.001 * this.timeScale
     const shaderTimeSec = this.shaderTimeSec
 

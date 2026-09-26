@@ -82,6 +82,11 @@ export class TelemetrySmoother {
   // ── Derivados del oráculo (§3.4) — escalares, se suben como uniforms ──
   /** Beats acumulados continuos, re-anclados a BEAT_PHASE suavemente. */
   beatTime = 0
+  /** 🌊 WAVE 8259 — escala del master SPEED sobre el reloj musical. El host
+   *  la escribe desde `u_speed` antes de cada `step()`; el anclaje suave a
+   *  BEAT_PHASE se conserva (los flancos siguen en el beat real — lo que
+   *  se ralentiza es la evolución continua entre beats). */
+  masterSpeed = 1.0
   /** exp(−t_since_edge / τ) disparado por el flanco KICK_EDGE. */
   kickPulse = 0
   /** Ídem con el flanco SNARE. */
@@ -291,7 +296,10 @@ export class TelemetrySmoother {
     this.approach += (rampTarget - this.approach) * ka
 
     // u_beatTime — beats acumulados continuos; re-ancla suave a BEAT_PHASE.
-    this.beatTime += dtS * bps
+    // 🌊 WAVE 8259 — × masterSpeed: el fader SPEED escala el diferencial de
+    // tiempo musical (paridad con el gobernador de u_time). La corrección
+    // de fase NO se escala: conserva el anclaje al beat real.
+    this.beatTime += dtS * bps * this.masterSpeed
     const phaseTarget = out[TELEMETRY_SLOT.BEAT_PHASE - SLOT_PAYLOAD_BASE]
     let phaseErr = phaseTarget - (this.beatTime - Math.floor(this.beatTime))
     phaseErr -= Math.round(phaseErr)

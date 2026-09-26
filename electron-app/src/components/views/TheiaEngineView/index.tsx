@@ -84,13 +84,12 @@ const TELEMETRY_STALE_MS = 750
 const TheiaEngineView: React.FC = () => {
   // ── Master controls ───────────────────────────────────────────────────
   const [enginePower, setEnginePower] = useState(false)
-  const [brightness, setBrightness] = useState(0.85)
-  const [speed, setSpeed] = useState(1.0)
   const [blackout, setBlackout] = useState(false)
-  // 🌊 WAVE 8256 — neutro REAL: u_contrast=0.5 comprimía el rango a
-  // [0.25,0.75] pre-gamma → grises lavados y negros imposibles (el washout
-  // reportado). 1.0 = identidad; el slider ahora cubre 0–2 (boost incluido).
-  const [contrast, setContrast] = useState(1.0)
+  // 🌊 WAVE 8259 — BRIGHT/SPEED/CONTRAST ya NO viven en la raíz: cada `input`
+  // del fader re-renderizaba el árbol entero (Viewport+Deck+Inspector) a
+  // ~100Hz → el hilo se saturaba y el telemetry port pasaba hambre
+  // (telGap>500ms). Ahora residen en <MastersCluster/> dentro del Inspector:
+  // el re-render queda acotado a 3 nodos y los efectos caros van throttled.
 
   // 🌊 WAVE 8242 · U4 — estado del fade BLACKOUT + resumen del transporte.
   const blackoutLevelRef = useRef(0)
@@ -145,13 +144,11 @@ const TheiaEngineView: React.FC = () => {
 
   // ─── 🌊 WAVE 8211 (H2) — Push initial master values to the worker once.
   // The orchestrator replays them on every 'theia:ready' (Phoenix respawn),
-  // so this just keeps the UI and the shader in sync at mount. ────────────
+  // so this just keeps the UI and the shader in sync at mount.
+  // 🌊 WAVE 8259 — brightness/contrast/speed empujan su inicial desde
+  // <MastersCluster/>; aquí solo queda el master que también posee la raíz.
   useEffect(() => {
-    const theta = getThetaOrchestrator()
-    theta.setUniform('u_brightness', brightness)
-    theta.setUniform('u_contrast', contrast)
-    theta.setUniform('u_speed', speed)
-    theta.setUniform('u_blackout', blackout ? 1 : 0)
+    getThetaOrchestrator().setUniform('u_blackout', blackout ? 1 : 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -201,16 +198,8 @@ const TheiaEngineView: React.FC = () => {
     }
   }, [])
 
-  // ── 🌊 WAVE 8211 (H2) — Masters wired to the worker via set-uniform ───
-  const handleBrightnessChange = useCallback((value: number) => {
-    setBrightness(value)
-    getThetaOrchestrator().setUniform('u_brightness', value)
-  }, [])
-
-  const handleContrastChange = useCallback((value: number) => {
-    setContrast(value)
-    getThetaOrchestrator().setUniform('u_contrast', value)
-  }, [])
+  // ── 🌊 WAVE 8211 (H2) — Masters: brightness/contrast/speed viven en
+  // <MastersCluster/> (WAVE 8259 — el estado salió de la raíz). ────────────
 
   const handleBlackout = useCallback(() => {
     // 🌊 WAVE 8242 · U4 — BLACKOUT suave: u_blackout rampea 0↔1 por rAF
@@ -248,12 +237,7 @@ const TheiaEngineView: React.FC = () => {
     blackoutRafRef.current = requestAnimationFrame(step)
   }, [blackout])
 
-  const handleSpeedChange = useCallback((value: number) => {
-    setSpeed(value)
-    const theta = getThetaOrchestrator()
-    theta.setPlaybackRate(value)
-    theta.setUniform('u_speed', value)
-  }, [])
+
 
   // ── File Picker ──────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -421,12 +405,6 @@ const TheiaEngineView: React.FC = () => {
           onPower={handlePower}
           blackout={blackout}
           onBlackout={handleBlackout}
-          brightness={brightness}
-          onBrightness={handleBrightnessChange}
-          speed={speed}
-          onSpeed={handleSpeedChange}
-          contrast={contrast}
-          onContrast={handleContrastChange}
         />
       </div>
     </div>
@@ -480,6 +458,126 @@ const MasterSlider: React.FC<MasterSliderProps> = ({
         {format ? format(value) : `${Math.round(pct)}%`}
       </div>
     </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUB-COMPONENT: MastersCluster — 🌊 WAVE 8259 (Slider Choke fix)
+// Los faders BRIGHT/SPEED/CONTRAST poseen su estado AQUÍ, no en la raíz:
+// cada `input` event re-renderiza solo este clúster (3 nodos) en vez del
+// árbol entero de la vista. Los efectos caros — `postMessage` al worker y
+// `video.playbackRate` — viajan por un throttle trailing (~90ms): el drag
+// fluye fluido y el ÚLTIMO valor siempre aterriza en el motor.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Throttle trailing: corre de inmediato si pasaron ≥ms, si no agenda el
+ *  último `fn` para cuando venza la ventana (nunca pierde el valor final). */
+function makeTrailingThrottle(ms: number): (fn: () => void) => void {
+  let lastAt = -Infinity
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let pending: (() => void) | null = null
+  return (fn) => {
+    const now = performance.now()
+    const elapsed = now - lastAt
+    if (elapsed >= ms) {
+      lastAt = now
+      fn()
+      return
+    }
+    pending = fn
+    if (timer === null) {
+      timer = setTimeout(() => {
+        timer = null
+        lastAt = performance.now()
+        const p = pending
+        pending = null
+        p?.()
+      }, ms - elapsed)
+    }
+  }
+}
+
+const MastersCluster: React.FC = () => {
+  const [brightness, setBrightness] = useState(0.85)
+  const [speed, setSpeed] = useState(1.0)
+  // 🌊 WAVE 8256 — neutro REAL: u_contrast=0.5 comprimía el rango a
+  // [0.25,0.75] pre-gamma → grises lavados. 1.0 = identidad; slider 0–2.
+  const [contrast, setContrast] = useState(1.0)
+
+  // Un throttle por canal — drags simultáneos (MIDI) no se pisan el pending.
+  const throttlesRef = useRef<Map<string, (fn: () => void) => void> | null>(null)
+  if (throttlesRef.current === null) throttlesRef.current = new Map()
+  const throttled = (key: string, fn: () => void) => {
+    const map = throttlesRef.current!
+    let t = map.get(key)
+    if (!t) {
+      t = makeTrailingThrottle(90)
+      map.set(key, t)
+    }
+    t(fn)
+  }
+
+  // Push inicial de masters al worker (el replay del orchestrator cubre
+  // respawns; esto sincroniza el shader con la UI desde el mount).
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    theta.setUniform('u_brightness', brightness)
+    theta.setUniform('u_contrast', contrast)
+    theta.setUniform('u_speed', speed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleBrightness = useCallback((v: number) => {
+    setBrightness(v)
+    throttled('u_brightness', () =>
+      getThetaOrchestrator().setUniform('u_brightness', v))
+  }, [])
+
+  const handleContrast = useCallback((v: number) => {
+    setContrast(v)
+    throttled('u_contrast', () =>
+      getThetaOrchestrator().setUniform('u_contrast', v))
+  }, [])
+
+  const handleSpeed = useCallback((v: number) => {
+    setSpeed(v)
+    // playbackRate + uniform viajan juntos en el mismo canal throttled.
+    throttled('u_speed', () => {
+      const theta = getThetaOrchestrator()
+      theta.setPlaybackRate(v)
+      theta.setUniform('u_speed', v)
+    })
+  }, [])
+
+  return (
+    <>
+      <MasterSlider
+        label="BRIGHT"
+        bindId="theia.brightness"
+        value={brightness}
+        onChange={handleBrightness}
+        color="#a3e635"
+      />
+      <MasterSlider
+        label="SPEED"
+        bindId="theia.speed"
+        value={speed}
+        onChange={handleSpeed}
+        min={0.25}
+        max={2}
+        color="#84cc16"
+        format={(v) => `${v.toFixed(2)}×`}
+      />
+      <MasterSlider
+        label="CONTRAST"
+        bindId="theia.contrast"
+        value={contrast}
+        onChange={handleContrast}
+        max={2}
+        color="#d9f99d"
+        format={(v) => `${v.toFixed(2)}×`}
+      />
+    </>
   )
 }
 
@@ -680,17 +778,10 @@ interface InspectorProps {
   onPower: () => void
   blackout: boolean
   onBlackout: () => void
-  brightness: number
-  onBrightness: (v: number) => void
-  speed: number
-  onSpeed: (v: number) => void
-  contrast: number
-  onContrast: (v: number) => void
 }
 
 const Inspector: React.FC<InspectorProps> = ({
   open, onToggle, enginePower, onPower, blackout, onBlackout,
-  brightness, onBrightness, speed, onSpeed, contrast, onContrast,
 }) => {
   // 🎛️ WAVE 8240 · U2 — telemetría zero-alloc: refs a nodos DOM + rAF que
   // lee el ring 256B (TelemetryWireReader sobre el espejo local del pump).
@@ -912,32 +1003,9 @@ const Inspector: React.FC<InspectorProps> = ({
             </div>
 
             <div className="theia-insp__masters">
-              <MasterSlider
-                label="BRIGHT"
-                bindId="theia.brightness"
-                value={brightness}
-                onChange={onBrightness}
-                color="#a3e635"
-              />
-              <MasterSlider
-                label="SPEED"
-                bindId="theia.speed"
-                value={speed}
-                onChange={onSpeed}
-                min={0.25}
-                max={2}
-                color="#84cc16"
-                format={(v) => `${v.toFixed(2)}×`}
-              />
-              <MasterSlider
-                label="CONTRAST"
-                bindId="theia.contrast"
-                value={contrast}
-                onChange={onContrast}
-                max={2}
-                color="#d9f99d"
-                format={(v) => `${v.toFixed(2)}×`}
-              />
+              {/* 🌊 WAVE 8259 — estado localizado: los faders re-renderizan
+                  solo este clúster, no el árbol de la vista. */}
+              <MastersCluster />
             </div>
           </div>
 

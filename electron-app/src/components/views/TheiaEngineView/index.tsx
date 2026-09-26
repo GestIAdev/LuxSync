@@ -40,6 +40,8 @@ import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
 // 🔮 WAVE 8230 — EUCLID · E4: átomos generativos + meta @euclid → sliders
 import { ensureEuclidShaderAtoms } from '../../../theia/shader/atoms'
 import type { EuclidMeta } from '../../../theia'
+// 🧬 WAVE 8241 · U3 — gene faders (u_gene fast-path) + HUD biológico
+import { layoutExprGenes, resolveGeneValues, getFitness } from '../../../theia'
 import { useControlStore } from '../../../stores/controlStore'
 import {
   isSupportedMediaFile,
@@ -289,30 +291,40 @@ const TheiaEngineView: React.FC = () => {
             <span className="theia-header__subtitle">VIDEO ENGINE</span>
           </div>
           <span className="theia-header__beta">BETA</span>
+          {/* 🎛️ WAVE 8241 · U3 — OUTPUT vuelve al header: inconfundible,
+              siempre visible, inmediatamente a la derecha del badge. */}
+          <button
+            className={`theia-header__output-btn${isOutputActive ? ' theia-header__output-btn--active' : ''}`}
+            onClick={handleToggleOutput}
+            title="Open Theia output window (HDMI / LED wall)"
+            data-midi-bind="theia.toggle-output"
+          >
+            OUTPUT
+          </button>
         </div>
 
-        {/* 🎛️ WAVE 8240 · U2 — header limpio: logo + ingestión únicamente.
-            POWER/BLACKOUT/OUTPUT/masters viven ahora en el Inspector. */}
+        {/* 🎛️ WAVE 8240 · U2 — header limpio: logo + OUTPUT + ingestión.
+            POWER/BLACKOUT/masters viven ahora en el Inspector. */}
         <div className="theia-header__spacer" />
 
-        {/* ── File Picker ── */}
+        {/* ── File Picker (ghost/outline, solo LuxIcons) ── */}
         <button
-          className="theia-load-assets-btn"
+          className="theia-ingest-btn"
           onClick={() => fileInputRef.current?.click()}
           title="Media Pool: vídeo (.mp4 · .webm · .mkv · .mov · .avi) · átomos (.theia) · shaders (.glsl)"
           data-midi-bind="theia.load-assets"
         >
-          <span className="theia-load-assets-btn__icon">📂</span>
-          <span className="theia-load-assets-btn__label">LOAD ASSETS</span>
+          <LuxIcon name="folder" size={14} />
+          <span>LOAD ASSETS</span>
         </button>
         <button
-          className="theia-load-assets-btn theia-load-assets-btn--pack"
+          className="theia-ingest-btn"
           onClick={() => packInputRef.current?.click()}
           title="Cargar una carpeta entera como Pack"
           data-midi-bind="theia.load-pack"
         >
-          <span className="theia-load-assets-btn__icon">🗂️</span>
-          <span className="theia-load-assets-btn__label">LOAD PACK</span>
+          <LuxIcon name="pack" size={14} />
+          <span>LOAD PACK</span>
         </button>
         <input
           ref={fileInputRef}
@@ -365,8 +377,6 @@ const TheiaEngineView: React.FC = () => {
           onSpeed={handleSpeedChange}
           contrast={contrast}
           onContrast={handleContrastChange}
-          isOutputActive={isOutputActive}
-          onToggleOutput={handleToggleOutput}
         />
       </div>
     </div>
@@ -626,14 +636,11 @@ interface InspectorProps {
   onSpeed: (v: number) => void
   contrast: number
   onContrast: (v: number) => void
-  isOutputActive: boolean
-  onToggleOutput: () => void
 }
 
 const Inspector: React.FC<InspectorProps> = ({
   open, onToggle, enginePower, onPower, blackout, onBlackout,
   brightness, onBrightness, speed, onSpeed, contrast, onContrast,
-  isOutputActive, onToggleOutput,
 }) => {
   // 🎛️ WAVE 8240 · U2 — telemetría zero-alloc: refs a nodos DOM + rAF que
   // lee el ring 256B (TelemetryWireReader sobre el espejo local del pump).
@@ -854,15 +861,6 @@ const Inspector: React.FC<InspectorProps> = ({
               </button>
             </div>
 
-            <button
-              className={`theia-header__output-btn${isOutputActive ? ' theia-header__output-btn--active' : ''}`}
-              onClick={onToggleOutput}
-              title="Open Theia output window (HDMI / LED wall)"
-              data-midi-bind="theia.toggle-output"
-            >
-              {isOutputActive ? 'OUTPUT ● ON' : 'OUTPUT'}
-            </button>
-
             <div className="theia-insp__masters">
               <MasterSlider
                 label="BRIGHT"
@@ -891,8 +889,11 @@ const Inspector: React.FC<InspectorProps> = ({
             </div>
           </div>
 
-          {/* ── SECTION 3: Ecosystem Control — botones Darwin ── */}
+          {/* ── SECTION 3: Ecosystem Control — botones Darwin + HUD ── */}
           <EcosystemControl />
+
+          {/* ── SECTION 3.4: Genetic Parameters — faders u_gene[k] ── */}
+          <GeneFadersPanel />
 
           {/* ── SECTION 3.5: Shader params — sliders automáticos desde
               los `@euclid param` del shader activo (Euclid §4.2) ── */}
@@ -929,12 +930,28 @@ const EcosystemControl: React.FC = () => {
   const [activeId, setActiveId] = useState(() =>
     getThetaOrchestrator().getActiveShaderId(),
   )
+  // 🧬 WAVE 8241 · U3 — HUD biológico: ADN {a,c,o} + fitness, refresco ~1Hz
+  // con el perf-report (baja frecuencia — useState legítimo aquí).
+  const [genome, setGenome] = useState<Record<string, number>>({})
+  const [fitness, setFitness] = useState(0)
 
   useEffect(() => {
     const theta = getThetaOrchestrator()
-    return theta.onPerfReport((p) => {
+    const refresh = () => {
+      const id = theta.getActiveShaderId()
+      setGenome(theta.getShaderMeta(id)?.genome ?? {})
+      setFitness(getFitness(id))
+    }
+    const offPerf = theta.onPerfReport((p) => {
       if (p.activeShader !== undefined) setActiveId(p.activeShader)
+      refresh()
     })
+    const offMeta = theta.onShaderMeta(refresh)
+    refresh()
+    return () => {
+      offPerf()
+      offMeta()
+    }
   }, [])
 
   // 'builtin' = shader de vídeo (átomo kind:'video') — no hay genoma que
@@ -984,6 +1001,40 @@ const EcosystemControl: React.FC = () => {
         </span>
       </div>
 
+      {/* 🧬 HUD biológico: ADN {aggression, chaos, organicity} + fitness.
+          Refresh ~1 Hz vía perf-report — no es ruta caliente. */}
+      {isGenome && (
+        <div className="theia-insp__hud">
+          {(['aggression', 'chaos', 'organicity'] as const).map((k) => {
+            const v = Math.max(0, Math.min(1, genome[k] ?? 0))
+            return (
+              <div key={k} className="theia-insp__hud-row">
+                <span className="theia-insp__hud-key">{k.slice(0, 3).toUpperCase()}</span>
+                <div className="theia-insp__hud-track">
+                  <div
+                    className="theia-insp__hud-fill"
+                    style={{ width: `${v * 100}%` }}
+                  />
+                </div>
+                <span className="theia-insp__hud-val">{v.toFixed(2)}</span>
+              </div>
+            )
+          })}
+          <div className="theia-insp__hud-row">
+            <span className="theia-insp__hud-key">FIT</span>
+            <div className="theia-insp__hud-track">
+              <div
+                className={`theia-insp__hud-fill${fitness < 0 ? ' is-neg' : ''}`}
+                style={{ width: `${Math.max(0, Math.min(1, Math.abs(fitness))) * 100}%` }}
+              />
+            </div>
+            <span className={`theia-insp__hud-val${fitness < 0 ? ' is-neg' : ''}`}>
+              {fitness.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="theia-insp__buttons theia-insp__buttons--darwin">
         <button
           className="theia-insp__btn theia-insp__btn--fav"
@@ -1022,6 +1073,131 @@ const EcosystemControl: React.FC = () => {
           <span>FORCE MUTATION</span>
         </button>
       </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 WAVE 8241 · U3 — SUB-COMPONENT: GeneFadersPanel (GENETIC PARAMETERS)
+//
+// Faders dinámicos de los genes `expr` del shader activo — un slider por
+// declaración `@euclid gene ... expr` en el orden de `layoutExprGenes`
+// (índice = slot `u_gene[k]`). La escritura usa la ruta rápida G3:
+// `setUniform('u_gene[k]', v)` — el worker la aplica por lazy-loc DESPUÉS
+// del `uniform1fv` de `genGeneValues`, así el override persiste cada frame
+// sin recompilar ni crossfade. `struct` genes = badges read-only (mutarlos
+// exige recompilación → vive en Darwin, no en un fader).
+//
+//   data-midi-bind="theia.shader.<G_NAME>"  — MIDI Learn nativo.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const GeneFadersPanel: React.FC = () => {
+  const [activeId, setActiveId] = useState(() =>
+    getThetaOrchestrator().getActiveShaderId(),
+  )
+  const [meta, setMeta] = useState<EuclidMeta | null>(null)
+  const [values, setValues] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    const offPerf = theta.onPerfReport((p) => {
+      if (p.activeShader !== undefined) setActiveId(p.activeShader)
+    })
+    const offMeta = theta.onShaderMeta(() => {
+      setMeta(theta.getShaderMeta(theta.getActiveShaderId()))
+    })
+    setMeta(theta.getShaderMeta(theta.getActiveShaderId()))
+    return () => {
+      offPerf()
+      offMeta()
+    }
+  }, [])
+
+  const exprGenes = meta ? layoutExprGenes(meta) : []
+
+  // Relee meta + seed de valores efectivos al cambiar de shader. El Map de
+  // `saved` conserva los movimientos del operador por id (la LRU del worker
+  // retiene el programa — al volver, el shader recibe los valores previos).
+  const savedRef = useRef<Map<string, Record<string, number>>>(new Map())
+  const pushedRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    const m = theta.getShaderMeta(activeId)
+    setMeta(m)
+    const layout = m ? layoutExprGenes(m) : []
+    const resolved = m ? (resolveGeneValues(m) ?? {}) : {}
+    const saved = savedRef.current.get(activeId)
+    const seed: Record<string, number> = {}
+    for (const name of layout) seed[name] = saved?.[name] ?? resolved[name] ?? 0
+    setValues(seed)
+    // Primer mount del id: empuja los valores efectivos a u_gene[k] —
+    // los uniforms GLSL arrancan en 0 hasta que el host los puebla.
+    if (layout.length > 0 && !pushedRef.current.has(activeId)) {
+      pushedRef.current.add(activeId)
+      layout.forEach((name, k) => {
+        theta.setUniform(`u_gene[${k}]`, seed[name])
+      })
+    }
+  }, [activeId])
+
+  if (activeId === 'builtin' || !meta || meta.genes.length === 0) {
+    return null
+  }
+
+  const structGenes = meta.genes.filter((g) => g.cls === 'struct')
+
+  return (
+    <div className="theia-insp__block">
+      <div className="theia-insp__block-header">
+        <span className="theia-insp__block-icon">
+          <LuxIcon name="dna" size={12} />
+        </span>
+        <span className="theia-insp__block-title">GENETIC PARAMETERS</span>
+      </div>
+
+      {exprGenes.length > 0 && (
+        <div className="theia-insp__masters">
+          {exprGenes.map((name, k) => {
+            const decl = meta.genes.find((g) => g.name === name)
+            if (!decl) return null
+            return (
+              <MasterSlider
+                key={name}
+                label={(decl.label ?? name.replace(/^G_/, '')).toUpperCase()}
+                bindId={`theia.shader.${name}`}
+                value={values[name] ?? decl.defaultValue}
+                min={decl.min}
+                max={decl.max}
+                color="#a3e635"
+                format={(v) =>
+                  decl.type === 'int' ? `${Math.round(v)}` : v.toFixed(2)
+                }
+                onChange={(v) => {
+                  const val = decl.type === 'int' ? Math.round(v) : v
+                  setValues((prev) => {
+                    const next = { ...prev, [name]: val }
+                    savedRef.current.set(activeId, next)
+                    return next
+                  })
+                  // Fast-path G3: override directo del slot del array.
+                  getThetaOrchestrator().setUniform(`u_gene[${k}]`, val)
+                }}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {structGenes.length > 0 && (
+        <div className="theia-insp__struct">
+          {structGenes.map((g) => (
+            <span key={g.name} className="theia-insp__struct-chip" title={`struct gene — evoluciona vía Darwin, no por fader`}>
+              {(g.label ?? g.name.replace(/^G_/, '')).toUpperCase()}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

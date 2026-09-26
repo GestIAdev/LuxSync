@@ -33,6 +33,7 @@ import {
   SaveIcon,
   FileIcon,
   FolderIcon,
+  PackIcon,
   TrashIcon,
   // UI affordances
   PlusIcon,
@@ -87,6 +88,8 @@ const ICON_MAP = {
   export:         SaveIcon,
   file:           FileIcon,
   folder:         FolderIcon,
+  pack:           PackIcon,          // 🎛️ WAVE 8241 — LOAD PACK
+  box:            PackIcon,
   'folder-open':  FolderIcon,
   load:           FolderIcon,
   trash:          TrashIcon,

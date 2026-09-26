@@ -2871,6 +2871,55 @@ export const UranusIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/**
+ * 📦 PACK ICON - Caja de empaquetado (isométrica, outline)
+ * Para: Theia Hybrid Deck · LOAD PACK (WAVE 8241 · U3)
+ */
+export const PackIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Caja isométrica — cara superior + dos laterales */}
+    <path
+      d="M12 2.5L21 7.25V16.75L12 21.5L3 16.75V7.25L12 2.5Z"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    {/* Aristas internas: tapa */}
+    <path
+      d="M3 7.25L12 12L21 7.25"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    {/* Arista frontal vertical */}
+    <path
+      d="M12 12V21.5"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    {/* Cinta de embalaje */}
+    <path
+      d="M7.5 4.9L16.5 9.65"
+      stroke={color}
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      opacity="0.6"
+    />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -3005,4 +3054,6 @@ export default {
   LiquidDrop: LiquidDropIcon,
   // WAVE 7692: Project Uranus — color engine toggle
   Uranus: UranusIcon,
+  // WAVE 8241: Theia Hybrid Deck — pack/box icon
+  Pack: PackIcon,
 }

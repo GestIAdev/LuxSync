@@ -2181,6 +2181,23 @@ function renderCurrentFrame(timestampMs: number): void {
     }
   }
 
+  // 🌊 WAVE 8246 — AGGRESSIVE IDLE SHORT-CIRCUIT: con el plasma builtin
+  // como salida y SIN contenido real (ni átomo generativo ni vídeo), el
+  // frame termina aquí. Todo lo que sigue lee el framebuffer — thumb
+  // mirror, readbacks PBO asíncronos y la pierna síncrona WebGL1 — y era
+  // la última fuente de `GL_INVALID_OPERATION: Invalid copy texture
+  // format combination` por frame en reposo. El preview mirror de arriba
+  // se mantiene: es el propio viewport, no una captura. Con vídeo activo
+  // (Modo A) o gen activo (Modo B) el flujo continúa intacto.
+  const port = state.videoPort
+  if (!state.genActive && !state.hasVideoTex) {
+    // Higiene: cosecha los fences que quedaran en vuelo de la última
+    // publicación (devuelve writers al pool y borra los syncs) — no emite
+    // lecturas nuevas, solo impide la muerte por starvation del pool.
+    if (port && state.glIsWebGL2) flushPboReadbacks(port)
+    return
+  }
+
   // ── 64×64 thumb for AetherCanvas twin-output (top-down, tiny alloc) ──
   if (state.thumbCtx) {
     state.thumbCtx.drawImage(canvas, 0, 0, 64, 64)
@@ -2198,7 +2215,8 @@ function renderCurrentFrame(timestampMs: number): void {
   // MODO A (vídeo/plasma): WebGL2 → readPixels ASÍNCRONO sobre PBO +
   // fenceSync (getBufferSubData diferido al frame siguiente — la GPU no
   // bloquea el hilo); WebGL1 → readPixels síncrono legacy.
-  const port = state.videoPort
+  // 🌊 WAVE 8246 — el plasma vacío ya retornó arriba: aquí abajo siempre
+  // hay contenido real (vídeo) o un gen activo.
   if (port) {
     if (state.glIsWebGL2) {
       flushPboReadbacks(port)

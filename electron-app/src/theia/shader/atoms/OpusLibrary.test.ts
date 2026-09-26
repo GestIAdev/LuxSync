@@ -7,7 +7,7 @@
  * los registra al arranque junto al Oracle KIFS de prueba.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getTheiaRegistry } from '../../../core/theia/TheiaRegistry'
 import { useTheiaPackStore } from '../../../stores/useTheiaPackStore'
 import { parseEuclidMeta } from '../ShaderAssembler'
@@ -169,6 +169,56 @@ describe('U4-hotfix — playAtom shader routing (WAVE 8243)', () => {
       expect(posted).not.toContain('theia:load-stream')
     } finally {
       await getThetaOrchestrator().stop()
+      g.window = origWindow
+      g.Worker = origWorker
+    }
+  })
+})
+
+describe('WAVE 8246 — Telemetry Watchdog (cut wire re-pull)', () => {
+  /**
+   * Contrato: mientras el motor corre sin link sano (port null o ring
+   * stale), el watchdog re-emite `requestTheiaPort('telemetry-port')`
+   * cada ~2s. El pull original era single-shot → un IPC perdido dejaba
+   * NO LINK permanente (auditoría WAVE 8245).
+   */
+  it('re-pide telemetry-port a 2s mientras isRunning y el link no llega', async () => {
+    const g = globalThis as Record<string, unknown>
+    const origWindow = g.window
+    const origWorker = g.Worker
+    const reqs: Record<string, unknown>[] = []
+    g.window = {
+      postMessage: (m: Record<string, unknown>) => {
+        reqs.push(m)
+      },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }
+    g.Worker = class {
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      postMessage(): void {}
+      terminate(): void {}
+    }
+
+    const pulls = () =>
+      reqs.filter((r) => r.__luxTheiaReq === 'telemetry-port').length
+
+    vi.useFakeTimers()
+    try {
+      const theta = getThetaOrchestrator()
+      await theta.start()
+      // armGlassBridge() → pull inicial de ambos kinds.
+      expect(pulls()).toBe(1)
+
+      // Watchdog: port nunca llegó → re-pull en cada barrido de 2s.
+      vi.advanceTimersByTime(2100)
+      expect(pulls()).toBe(2)
+      vi.advanceTimersByTime(2100)
+      expect(pulls()).toBe(3)
+    } finally {
+      await getThetaOrchestrator().stop()
+      vi.useRealTimers()
       g.window = origWindow
       g.Worker = origWorker
     }

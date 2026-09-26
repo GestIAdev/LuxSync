@@ -196,9 +196,14 @@ export class ThetaOrchestrator {
    * Se pasa al worker en INIT como `frameContextSAB` — intra-proceso, legal.
    */
   private readonly telemetryRing: SharedArrayBuffer = createTelemetryRing()
+  /** 🌊 WAVE 8246 — vista Int32 pre-asignada para el sondeo del watchdog
+   *  (lee el timestamp del FC en slots 1-2 sin alojar nada por barrido). */
+  private readonly telemetryRingI32: Int32Array = new Int32Array(this.telemetryRing)
   /** Port del canal de telemetría (main pump ↔ esta página). Vive AQUÍ —
    *  no en el worker — para sobrevivir respawns Phoenix. */
   private telemetryPort: MessagePort | null = null
+  /** 🌊 WAVE 8246 — handle del watchdog de telemetría (re-pull ~2s). */
+  private telemetryWatchdogHandle: number | null = null
   /** Port de video buffered si llega antes del spawn del worker. */
   private pendingVideoPort: MessagePort | null = null
   private unsubGlass: (() => void) | null = null
@@ -347,6 +352,7 @@ export class ThetaOrchestrator {
       console.warn('[THETA] window.lux.theia missing — Glass Bridge relay may be unavailable')
     }
     this.armGlassBridge()
+    this.startTelemetryWatchdog()
 
     this.isRunning = true
     // 🌊 WAVE 8221 — CLEAN SLATE: un restart manual es una orden del
@@ -370,6 +376,7 @@ export class ThetaOrchestrator {
   async stop(): Promise<void> {
     this.isRunning = false
     this.stopHeartbeat()
+    this.stopTelemetryWatchdog()
     this.teardownVideo()
     // 🌊 WAVE 8215 — cerrar los extremos Glass: el pump (main) retira el
     // link al ver 'close' y el worker libera su link en terminate().
@@ -475,7 +482,59 @@ export class ThetaOrchestrator {
       mirrorTelemetryIntoRing(this.telemetryRing, data.buffer)
       ackTelemetryFrame(port, data)
     }
+    // 🌊 WAVE 8246 — si el entangle muere (el pump cerró su extremo o el
+    // mensaje no fue clonable), suelta la referencia: el watchdog vuelve a
+    // pedir 'telemetry-port' en el próximo barrido. El pull single-shot
+    // original dejaba un NO LINK permanente ante cualquier fallo (WAVE 8245).
+    const release = () => {
+      if (this.telemetryPort === port) this.telemetryPort = null
+    }
+    port.onmessageerror = release
+    try {
+      port.addEventListener('close', release)
+    } catch { /* 'close' no soportado — el chequeo de frescura lo cubre */ }
     port.start()
+    // eslint-disable-next-line no-console
+    console.log('[THETA] 📡 Telemetry Port Attached! — pump↔ring @44Hz')
+  }
+
+  // ── 🌊 WAVE 8246 — TELEMETRY WATCHDOG ─────────────────────────────────
+  // El pull de `requestTheiaPort` era single-shot: si el IPC se perdía, el
+  // channel fallaba o el link moría en silencio, nadie volvía a pedirlo →
+  // el ring local quedaba a cero y la UI mostraba NO LINK para siempre.
+  // Mientras el motor corre, este barrido de 2s re-emite el pull cuando el
+  // port no está atado O cuando el ring deja de frescar (link zombie).
+  // Zero-alloc: un setInterval lento + la vista Int32 fija del ring.
+  private startTelemetryWatchdog(): void {
+    if (this.telemetryWatchdogHandle !== null) return
+    this.telemetryWatchdogHandle = (
+      globalThis as unknown as Window
+    ).setInterval(() => this.checkTelemetryLink(), 2000) as unknown as number
+  }
+
+  private stopTelemetryWatchdog(): void {
+    if (this.telemetryWatchdogHandle === null) return
+    ;(globalThis as unknown as Window).clearInterval(
+      this.telemetryWatchdogHandle as unknown as number,
+    )
+    this.telemetryWatchdogHandle = null
+  }
+
+  /**
+   * Link sano = port atado Y ring fresco (timestamp del FrameContext,
+   * slots 1-2, <2s — el pump publica a 44Hz cuando el link vive).
+   * Port ausente o ring stale → re-pull (idempotente: cada pull arma un
+   * channel nuevo en main; el attach subsiguiente cierra el port viejo).
+   */
+  private checkTelemetryLink(): void {
+    if (!this.isRunning) return
+    const i32 = this.telemetryRingI32
+    const tsMs =
+      Atomics.load(i32, 2) * 0x100000000 + (Atomics.load(i32, 1) >>> 0)
+    const stale = tsMs <= 0 || Date.now() - tsMs > 2000
+    if (this.telemetryPort === null || stale) {
+      requestTheiaPort('telemetry-port')
+    }
   }
 
   /**

@@ -56,7 +56,7 @@ const TAB_COLORS: Record<TabId, string> = {
   'hephaestus': '#ff6b2b',   // Deep Orange/Ember (The God Forge) - WAVE 2030.3
   'core': '#f59e0b',         // Amber (AI Monitor)
   'nexus': '#ef4444',
-  'theia': '#06b6d4',    // Cyan-500 (Theia Video Engine) - WAVE 4863
+  'theia': '#a3e635',    // 🎛️ WAVE 8239 — Acid Green (Theia Video Engine)
   'vibe-lab': '#00e5ff',  // 🧬 FASE 3 Vibe Lab
 }
 

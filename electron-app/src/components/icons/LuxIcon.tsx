@@ -71,6 +71,8 @@ const ICON_MAP = {
   play:           PlayIcon,
   pause:          PauseIcon,
   stop:           StopIcon,
+  loop:           LoopIcon,         // 🎛️ WAVE 8239 — transport loop toggle
+  repeat:         LoopIcon,
   'play-circle':  PlayCircleIcon,
 
   // Workshop / DNA

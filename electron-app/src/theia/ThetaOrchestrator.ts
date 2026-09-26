@@ -70,6 +70,8 @@ import {
   skipAtom,
 } from './genome/GenomePool'
 import { genomeChildSeed } from './genome/GenomeExpander'
+// 🎛️ WAVE 8239 · U1 — transporte reactivo del medio oculto (Hybrid Deck)
+import { useTheiaTransportStore } from '../stores/useTheiaTransportStore'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
@@ -823,6 +825,7 @@ export class ThetaOrchestrator {
     video.style.opacity = '0'
     video.style.pointerEvents = 'none'
     this.videoElement = video
+    this._attachTransportSync(video)
 
     // 2) Wait for metadata to resolve dimensions
     await new Promise<void>((resolve, reject) => {
@@ -900,6 +903,44 @@ export class ThetaOrchestrator {
     if (this.videoElement) {
       this.videoElement.playbackRate = rate
     }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // 🎛️ WAVE 8239 · U1 — Transport commands (Hybrid Deck)
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Toggle PLAY/PAUSE del medio activo. El store se actualiza por eventos
+   * ('play'/'pause') — este método solo emite la orden al elemento.
+   */
+  toggleTransport(): void {
+    const video = this.videoElement
+    if (!video) return
+    if (video.paused || video.ended) this.play()
+    else this.pause()
+  }
+
+  /**
+   * Loop del transporte. Persistido en `useTheiaTransportStore` — el handler
+   * 'ended' lo consulta al cerrar el medio. No usa `video.loop` nativo:
+   * el loop manual reinicia desde el inicio del átomo y mantiene el store
+   * notificado.
+   */
+  setTransportLoop(loop: boolean): void {
+    useTheiaTransportStore.getState().setLoop(loop)
+  }
+
+  /**
+   * Scrub absoluto (segundos) sobre el medio activo. Clamp defensivo a
+   * [0, duration]; el sync del store llega por 'timeupdate' pero se
+   * anticipa aquí para que el fader reaccione sin latencia.
+   */
+  seekTransport(seconds: number): void {
+    const video = this.videoElement
+    if (!video || !Number.isFinite(seconds)) return
+    const dur = Number.isFinite(video.duration) ? video.duration : 0
+    video.currentTime = Math.max(0, Math.min(seconds, dur > 0 ? dur : seconds))
+    useTheiaTransportStore.getState().syncFromVideo({ currentTime: video.currentTime })
   }
 
   /**
@@ -1116,6 +1157,68 @@ export class ThetaOrchestrator {
     }
   }
 
+  // ───────────────────────────────────────────────────────────────────────
+  // 🎛️ WAVE 8239 · U1 — Transport sync (HTMLVideoElement → Zustand)
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Handlers del medio oculto. Guardados para poder desconectarlos en
+   * `teardownVideo` (el elemento muere → el store no debe quedar escuchándolo).
+   */
+  private _transportHandlers: Partial<
+    Record<
+      'play' | 'pause' | 'timeupdate' | 'ended' | 'durationchange' | 'loadedmetadata',
+      () => void
+    >
+  > | null = null
+
+  /**
+   * Conecta los eventos del `HTMLVideoElement` al `useTheiaTransportStore`.
+   * `ended` implementa el loop manual: con `loop` activo reinicia el medio
+   * (garantiza re-disparo del pipeline; `video.loop` nativo ni siquiera
+   * emitiría 'ended' y el store quedaría ciego).
+   */
+  private _attachTransportSync(video: HTMLVideoElement): void {
+    const sync = useTheiaTransportStore.getState().syncFromVideo
+    const onPlay = (): void => sync({ isPlaying: true })
+    const onPause = (): void => sync({ isPlaying: false })
+    const onTime = (): void =>
+      sync({
+        currentTime: video.currentTime,
+        duration: Number.isFinite(video.duration) ? video.duration : 0,
+      })
+    const onEnded = (): void => {
+      if (useTheiaTransportStore.getState().loop) {
+        video.currentTime = 0
+        video.play().catch(() => sync({ isPlaying: false }))
+      } else {
+        sync({ isPlaying: false })
+      }
+    }
+    this._transportHandlers = {
+      play: onPlay,
+      pause: onPause,
+      timeupdate: onTime,
+      ended: onEnded,
+      durationchange: onTime,
+      loadedmetadata: onTime,
+    }
+    for (const [ev, fn] of Object.entries(this._transportHandlers)) {
+      video.addEventListener(ev, fn as () => void)
+    }
+    sync({ hasVideo: true })
+  }
+
+  private _detachTransportSync(video: HTMLVideoElement): void {
+    if (this._transportHandlers) {
+      for (const [ev, fn] of Object.entries(this._transportHandlers)) {
+        video.removeEventListener(ev, fn as () => void)
+      }
+      this._transportHandlers = null
+    }
+    useTheiaTransportStore.getState().resetTransport()
+  }
+
   private teardownVideo(): void {
     // 🎬 WAVE 4922 — clear play-atom tracking when the underlying átomo goes away.
     this.currentAtomId = null
@@ -1133,6 +1236,7 @@ export class ThetaOrchestrator {
       this.videoStream = null
     }
     if (this.videoElement) {
+      this._detachTransportSync(this.videoElement)
       this.videoElement.pause()
       this.videoElement.src = ''
       this.videoElement.remove()

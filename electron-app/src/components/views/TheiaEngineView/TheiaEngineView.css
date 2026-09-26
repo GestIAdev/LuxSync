@@ -1,14 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎬 THEIA ENGINE VIEW — STYLES (WAVE 4862)
- * Industrial-cyberpunk · cyan/teal palette · glassmorphism inspector
+ * Industrial-cyberpunk · acid-green phosphor palette · glassmorphism inspector
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 :root {
-  --theia-cyan:        #06b6d4;
-  --theia-cyan-bright: #22d3ee;
-  --theia-teal:        #14b8a6;
+  /* 🎛️ WAVE 8239 · U1 — identidad Theia: verde fósforo/ácido.
+     --theia-primary y derivadas son el color de marca; los alias --theia-acid*
+     se conservan para las reglas existentes. */
+  --theia-primary:        #a3e635;
+  --theia-primary-dim:    #84cc16;
+  --theia-primary-deep:   #65a30d;
+  --theia-acid:           var(--theia-primary-dim);
+  --theia-acid-bright:    var(--theia-primary);
+  --theia-acid-deep:      var(--theia-primary-deep);
   --theia-amber:       #fbbf24;
   --theia-red:         #ef4444;
   --theia-bg-deep:     #050510;
@@ -31,7 +37,7 @@
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(circle at 15% -10%, rgba(6, 182, 212, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 15% -10%, rgba(132, 204, 22, 0.06) 0%, transparent 40%),
     radial-gradient(circle at 90% 110%, rgba(168, 85, 247, 0.04) 0%, transparent 50%),
     var(--theia-bg-deep);
   color: var(--theia-text);
@@ -52,11 +58,11 @@
   padding: 0 16px;
   background: linear-gradient(
     180deg,
-    rgba(6, 182, 212, 0.06) 0%,
-    rgba(6, 182, 212, 0.015) 70%,
+    rgba(132, 204, 22, 0.06) 0%,
+    rgba(132, 204, 22, 0.015) 70%,
     transparent 100%
   );
-  border-bottom: 1px solid rgba(6, 182, 212, 0.18);
+  border-bottom: 1px solid rgba(132, 204, 22, 0.18);
   position: relative;
   z-index: 10;
 }
@@ -71,10 +77,10 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    var(--theia-cyan) 50%,
+    var(--theia-acid) 50%,
     transparent 100%
   );
-  box-shadow: 0 0 16px rgba(6, 182, 212, 0.7);
+  box-shadow: 0 0 16px rgba(132, 204, 22, 0.7);
 }
 
 /* ── Brand cluster ── */
@@ -91,7 +97,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1.5px solid rgba(6, 182, 212, 0.4);
+  border: 1.5px solid rgba(132, 204, 22, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,24 +105,24 @@
 }
 
 .theia-header__logo.is-on {
-  border-color: var(--theia-cyan-bright);
+  border-color: var(--theia-acid-bright);
   box-shadow:
-    0 0 14px rgba(6, 182, 212, 0.6),
-    inset 0 0 12px rgba(6, 182, 212, 0.25);
+    0 0 14px rgba(132, 204, 22, 0.6),
+    inset 0 0 12px rgba(132, 204, 22, 0.25);
   animation: theia-logo-pulse 2.5s ease-in-out infinite;
 }
 
 @keyframes theia-logo-pulse {
-  0%, 100% { box-shadow: 0 0 14px rgba(6, 182, 212, 0.5), inset 0 0 12px rgba(6, 182, 212, 0.2); }
-  50%      { box-shadow: 0 0 22px rgba(6, 182, 212, 0.8), inset 0 0 18px rgba(6, 182, 212, 0.4); }
+  0%, 100% { box-shadow: 0 0 14px rgba(132, 204, 22, 0.5), inset 0 0 12px rgba(132, 204, 22, 0.2); }
+  50%      { box-shadow: 0 0 22px rgba(132, 204, 22, 0.8), inset 0 0 18px rgba(132, 204, 22, 0.4); }
 }
 
 .theia-header__logo-eye {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--theia-cyan-bright);
-  box-shadow: 0 0 6px var(--theia-cyan-bright);
+  background: var(--theia-acid-bright);
+  box-shadow: 0 0 6px var(--theia-acid-bright);
 }
 
 .theia-header__title-block {
@@ -131,11 +137,11 @@
   font-weight: 800;
   letter-spacing: 6px;
   margin: 0;
-  background: linear-gradient(180deg, var(--theia-cyan-bright) 0%, var(--theia-cyan) 100%);
+  background: linear-gradient(180deg, var(--theia-acid-bright) 0%, var(--theia-acid) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 24px rgba(6, 182, 212, 0.3);
+  text-shadow: 0 0 24px rgba(132, 204, 22, 0.3);
 }
 
 .theia-header__subtitle {
@@ -163,30 +169,30 @@
   font-weight: 700;
   letter-spacing: 2px;
   padding: 3px 9px;
-  background: rgba(6, 182, 212, 0.1);
-  border: 1px solid rgba(6, 182, 212, 0.4);
+  background: rgba(132, 204, 22, 0.1);
+  border: 1px solid rgba(132, 204, 22, 0.4);
   border-radius: 3px;
-  color: #06b6d4;
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.12);
+  color: #84cc16;
+  box-shadow: 0 0 8px rgba(132, 204, 22, 0.12);
   cursor: pointer;
   font-family: inherit;
   transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
 .theia-header__output-btn:hover {
-  background: rgba(6, 182, 212, 0.2);
-  border-color: rgba(6, 182, 212, 0.7);
-  box-shadow: 0 0 14px rgba(6, 182, 212, 0.3);
+  background: rgba(132, 204, 22, 0.2);
+  border-color: rgba(132, 204, 22, 0.7);
+  box-shadow: 0 0 14px rgba(132, 204, 22, 0.3);
 }
 /* 💡 WAVE 4870 — Active state when projector window is open */
 .theia-header__output-btn--active {
-  background: rgba(6, 182, 212, 0.25);
-  border-color: #06b6d4;
-  box-shadow: 0 0 18px rgba(6, 182, 212, 0.5), 0 0 6px rgba(6, 182, 212, 0.4) inset;
+  background: rgba(132, 204, 22, 0.25);
+  border-color: #84cc16;
+  box-shadow: 0 0 18px rgba(132, 204, 22, 0.5), 0 0 6px rgba(132, 204, 22, 0.4) inset;
   color: #fff;
 }
 .theia-header__output-btn--active:hover {
-  background: rgba(6, 182, 212, 0.35);
-  box-shadow: 0 0 22px rgba(6, 182, 212, 0.6), 0 0 8px rgba(6, 182, 212, 0.5) inset;
+  background: rgba(132, 204, 22, 0.35);
+  box-shadow: 0 0 22px rgba(132, 204, 22, 0.6), 0 0 8px rgba(132, 204, 22, 0.5) inset;
 }
 
 /* ── Power button ── */
@@ -215,18 +221,18 @@
 }
 
 .theia-power.is-off:hover {
-  border-color: rgba(6, 182, 212, 0.4);
-  color: var(--theia-cyan);
+  border-color: rgba(132, 204, 22, 0.4);
+  color: var(--theia-acid);
 }
 
 .theia-power.is-on {
-  border-color: var(--theia-cyan-bright);
-  color: var(--theia-cyan-bright);
-  background: rgba(6, 182, 212, 0.08);
+  border-color: var(--theia-acid-bright);
+  color: var(--theia-acid-bright);
+  background: rgba(132, 204, 22, 0.08);
   box-shadow:
-    0 0 18px rgba(6, 182, 212, 0.4),
-    inset 0 0 14px rgba(6, 182, 212, 0.1);
-  text-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+    0 0 18px rgba(132, 204, 22, 0.4),
+    inset 0 0 14px rgba(132, 204, 22, 0.1);
+  text-shadow: 0 0 8px rgba(132, 204, 22, 0.6);
 }
 
 .theia-power__core {
@@ -374,9 +380,9 @@
   justify-content: center;
   gap: 10px;
   padding: 0 18px;
-  border: 1.5px solid rgba(6, 182, 212, 0.45);
+  border: 1.5px solid rgba(132, 204, 22, 0.45);
   border-radius: 4px;
-  background: linear-gradient(180deg, rgba(6, 182, 212, 0.12), rgba(6, 182, 212, 0.05));
+  background: linear-gradient(180deg, rgba(132, 204, 22, 0.12), rgba(132, 204, 22, 0.05));
   color: #89f7ff;
   font-size: 10px;
   font-weight: 800;
@@ -385,16 +391,16 @@
   transition: all 0.15s ease;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 0 12px rgba(6, 182, 212, 0.18);
+    0 0 12px rgba(132, 204, 22, 0.18);
 }
 
 .theia-load-assets-btn:hover {
-  border-color: rgba(34, 211, 238, 0.8);
-  background: linear-gradient(180deg, rgba(6, 182, 212, 0.22), rgba(6, 182, 212, 0.09));
+  border-color: rgba(163, 230, 53, 0.8);
+  background: linear-gradient(180deg, rgba(132, 204, 22, 0.22), rgba(132, 204, 22, 0.09));
   color: #c8feff;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 18px rgba(34, 211, 238, 0.35);
+    0 0 18px rgba(163, 230, 53, 0.35);
 }
 
 .theia-load-assets-btn:active {
@@ -426,14 +432,14 @@
 }
 
 .theia-insp-btn:hover {
-  background: rgba(6, 182, 212, 0.08);
-  border-color: rgba(6, 182, 212, 0.4);
-  color: var(--theia-cyan);
+  background: rgba(132, 204, 22, 0.08);
+  border-color: rgba(132, 204, 22, 0.4);
+  color: var(--theia-acid);
 }
 
 .theia-insp-btn.is-open {
-  color: var(--theia-cyan);
-  border-color: rgba(6, 182, 212, 0.3);
+  color: var(--theia-acid);
+  border-color: rgba(132, 204, 22, 0.3);
 }
 
 /* ── WAVE 4910.2: PERFORM ◐ AUTHOR mode toggle ── */
@@ -462,14 +468,14 @@
 }
 
 .theia-mode-toggle__btn:hover {
-  background: rgba(6, 182, 212, 0.08);
-  color: var(--theia-cyan);
+  background: rgba(132, 204, 22, 0.08);
+  color: var(--theia-acid);
 }
 
 .theia-mode-toggle__btn.is-active {
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--theia-cyan);
-  text-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+  background: rgba(132, 204, 22, 0.15);
+  color: var(--theia-acid);
+  text-shadow: 0 0 8px rgba(132, 204, 22, 0.6);
 }
 
 .theia-mode-toggle.is-author .theia-mode-toggle__btn.is-active {
@@ -599,8 +605,8 @@
 }
 
 .theia-vp__live-dot.is-on {
-  background: var(--theia-cyan-bright);
-  box-shadow: 0 0 8px var(--theia-cyan-bright);
+  background: var(--theia-acid-bright);
+  box-shadow: 0 0 8px var(--theia-acid-bright);
   animation: theia-live-blink 1.5s ease-in-out infinite;
 }
 
@@ -628,13 +634,13 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  border: 1px solid rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(132, 204, 22, 0.15);
   border-radius: 4px;
   overflow: hidden;
   background: var(--theia-bg-deep);
   box-shadow:
     inset 0 0 80px rgba(0, 0, 0, 0.7),
-    0 0 30px rgba(6, 182, 212, 0.06);
+    0 0 30px rgba(132, 204, 22, 0.06);
 }
 
 .theia-viewport.is-blackout .theia-vp__canvas-wrap {
@@ -649,8 +655,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(6, 182, 212, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(6, 182, 212, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(132, 204, 22, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(132, 204, 22, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   opacity: 0.6;
@@ -735,7 +741,7 @@
   position: absolute;
   width: 16px;
   height: 16px;
-  border-color: rgba(6, 182, 212, 0.4);
+  border-color: rgba(132, 204, 22, 0.4);
   border-style: solid;
   z-index: 5;
   pointer-events: none;
@@ -745,453 +751,6 @@
 .theia-vp__bracket--bl { bottom: 6px; left: 6px; border-width: 0 0 1.5px 1.5px; }
 .theia-vp__bracket--br { bottom: 6px; right: 6px; border-width: 0 1.5px 1.5px 0; }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- * ASSET DECK
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-.theia-deck {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, transparent 100%);
-  border-top: 1px solid var(--theia-line);
-}
-
-.theia-deck__header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--theia-line);
-}
-
-.theia-deck__title {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  color: var(--theia-cyan);
-  text-shadow: 0 0 6px rgba(6, 182, 212, 0.4);
-}
-
-.theia-deck__count {
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  color: var(--theia-text-muted);
-}
-
-.theia-deck__nav {
-  margin-left: auto;
-  display: flex;
-  gap: 4px;
-}
-
-.theia-deck__nav button {
-  width: 24px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--theia-line-strong);
-  border-radius: 3px;
-  color: var(--theia-text-dim);
-  font-size: 10px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.theia-deck__nav button:hover {
-  background: rgba(6, 182, 212, 0.1);
-  border-color: rgba(6, 182, 212, 0.4);
-  color: var(--theia-cyan);
-}
-
-.theia-deck__rail {
-  flex: 1;
-  display: flex;
-  gap: 10px;
-  padding: 12px 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-}
-
-.theia-deck__rail::-webkit-scrollbar { height: 6px; }
-.theia-deck__rail::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-.theia-deck__rail::-webkit-scrollbar-thumb {
-  background: rgba(6, 182, 212, 0.3);
-  border-radius: 3px;
-}
-
-/* ── AUTHOR asset deck (WAVE 4910.9) ── */
-.theia-author-deck {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-  min-height: 0;
-  background:
-    linear-gradient(180deg, rgba(9, 14, 24, 0.78) 0%, rgba(5, 10, 18, 0.56) 100%),
-    radial-gradient(circle at 10% -40%, rgba(34, 211, 238, 0.12) 0%, transparent 60%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px) saturate(1.05);
-}
-
-.theia-author-deck__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
-  gap: 12px;
-  padding: 10px 16px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.theia-author-deck__title {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 3px;
-  color: var(--theia-cyan-bright);
-  text-shadow: 0 0 10px rgba(34, 211, 238, 0.38);
-}
-
-.theia-author-deck__count {
-  font-size: 9px;
-  letter-spacing: 1.6px;
-  color: var(--theia-text-muted);
-}
-
-.theia-author-deck__rail {
-  display: flex;
-  flex-wrap: nowrap;
-  min-width: 0;
-  gap: 10px;
-  padding: 12px 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(34, 211, 238, 0.35) rgba(0, 0, 0, 0.25);
-}
-
-.theia-author-deck__rail::-webkit-scrollbar { height: 5px; }
-.theia-author-deck__rail::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.25); }
-.theia-author-deck__rail::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.35);
-  border-radius: 3px;
-}
-.theia-author-deck__rail::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.6);
-}
-
-.theia-asset-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 186px;
-  min-height: 76px;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%),
-    rgba(2, 6, 14, 0.62);
-  color: var(--theia-text);
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  padding: 10px 12px;
-  transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-}
-
-.theia-asset-card:hover {
-  border-color: rgba(34, 211, 238, 0.74);
-  background:
-    linear-gradient(180deg, rgba(34, 211, 238, 0.18) 0%, rgba(34, 211, 238, 0.07) 100%),
-    rgba(4, 14, 24, 0.78);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.46), 0 0 14px rgba(34, 211, 238, 0.2);
-}
-
-.theia-asset-card.is-active {
-  border-color: rgba(236, 72, 153, 0.88);
-  background:
-    linear-gradient(180deg, rgba(236, 72, 153, 0.22) 0%, rgba(236, 72, 153, 0.08) 100%),
-    rgba(14, 6, 16, 0.72);
-  box-shadow:
-    0 0 16px rgba(236, 72, 153, 0.35),
-    inset 0 0 16px rgba(236, 72, 153, 0.12);
-}
-
-/* ── Draft card — archivo primario en edición activa ── */
-.theia-asset-card.is-draft {
-  cursor: default;
-  border-color: rgba(251, 191, 36, 0.6);
-  background:
-    linear-gradient(180deg, rgba(251, 191, 36, 0.14) 0%, rgba(251, 191, 36, 0.04) 100%),
-    rgba(14, 10, 2, 0.72);
-  box-shadow:
-    0 0 12px rgba(251, 191, 36, 0.2),
-    inset 0 0 12px rgba(251, 191, 36, 0.06);
-}
-
-.theia-asset-card.is-draft .theia-asset-card__cues {
-  color: rgba(251, 191, 36, 0.75);
-}
-
-.theia-asset-card.is-draft .theia-asset-card__badge {
-  font-size: 14px;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-/* ── Placeholder vacío ── */
-.theia-asset-card--empty {
-  cursor: default;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1.5px dashed rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(255, 255, 255, 0.25);
-  text-align: center;
-}
-
-/* ── Deck header hint ── */
-.theia-author-deck__hint {
-  margin-left: auto;
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.18);
-  font-style: italic;
-  letter-spacing: 0.03em;
-}
-
-.theia-asset-card__id {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  color: var(--theia-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.theia-asset-card__cues {
-  margin-top: 8px;
-  font-size: 9px;
-  letter-spacing: 1.4px;
-  color: var(--theia-text-muted);
-  text-transform: uppercase;
-}
-
-.theia-asset-card--new {
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1.5px dashed rgba(34, 211, 238, 0.48);
-  background:
-    linear-gradient(180deg, rgba(34, 211, 238, 0.08) 0%, rgba(34, 211, 238, 0.02) 100%),
-    rgba(2, 10, 18, 0.58);
-  color: var(--theia-cyan-bright);
-  text-align: center;
-}
-
-.theia-asset-card--new:hover {
-  border-color: rgba(34, 211, 238, 0.9);
-  background:
-    linear-gradient(180deg, rgba(34, 211, 238, 0.18) 0%, rgba(34, 211, 238, 0.07) 100%),
-    rgba(4, 16, 26, 0.78);
-  box-shadow: 0 0 16px rgba(34, 211, 238, 0.35);
-}
-
-.theia-asset-card__icon {
-  font-size: 24px;
-  font-weight: 300;
-  line-height: 1;
-}
-
-.theia-asset-card__label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
-}
-
-/* ── Clip card ── */
-.theia-clip {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 220px;
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--theia-line-strong);
-  border-radius: 5px;
-  cursor: pointer;
-  overflow: hidden;
-  transition: all 0.18s ease;
-  font-family: inherit;
-  text-align: left;
-  padding: 0;
-}
-
-.theia-clip:hover {
-  background: rgba(6, 182, 212, 0.06);
-  border-color: rgba(6, 182, 212, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
-}
-
-.theia-clip.is-active {
-  background: rgba(6, 182, 212, 0.1);
-  border-color: var(--theia-cyan-bright);
-  box-shadow:
-    0 0 18px rgba(6, 182, 212, 0.35),
-    inset 0 0 14px rgba(6, 182, 212, 0.05);
-}
-
-.theia-clip--drop {
-  border-color: var(--theia-red);
-  box-shadow: 0 0 18px rgba(239, 68, 68, 0.4);
-  animation: theia-clip-drop 0.8s ease-in-out infinite;
-}
-
-@keyframes theia-clip-drop {
-  0%, 100% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.4); }
-  50%      { box-shadow: 0 0 26px rgba(239, 68, 68, 0.7); }
-}
-
-.theia-clip__palette {
-  display: flex;
-  height: 4px;
-}
-
-.theia-clip__palette span {
-  flex: 1;
-  box-shadow: 0 0 6px currentColor;
-}
-
-.theia-clip__body {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.theia-clip__name {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--theia-text);
-}
-
-.theia-clip__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 9px;
-  letter-spacing: 1px;
-}
-
-.theia-clip__duration {
-  color: var(--theia-text-muted);
-}
-
-.theia-clip__state {
-  padding: 2px 6px;
-  border-radius: 2px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-}
-
-.theia-clip__state--ambient   { background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
-.theia-clip__state--drop      { background: rgba(239, 68, 68, 0.12); color: var(--theia-red); border: 1px solid rgba(239, 68, 68, 0.4); }
-.theia-clip__state--transition{ background: rgba(251, 191, 36, 0.12); color: var(--theia-amber); border: 1px solid rgba(251, 191, 36, 0.3); }
-.theia-clip__state--idle      { background: rgba(255, 255, 255, 0.04); color: var(--theia-text-muted); border: 1px solid var(--theia-line-strong); }
-
-/* ── Asset DNA timeline ── */
-.theia-clip__dna {
-  position: relative;
-  height: 14px;
-  margin-top: 2px;
-}
-
-.theia-clip__dna-track {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(6, 182, 212, 0.4) 20%,
-    rgba(6, 182, 212, 0.4) 80%,
-    transparent 100%
-  );
-  transform: translateY(-50%);
-}
-
-.theia-clip__dna-marker {
-  position: absolute;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--theia-amber);
-  box-shadow:
-    0 0 calc(4px + var(--energy, 0.5) * 8px) var(--theia-amber),
-    0 0 calc(2px + var(--energy, 0.5) * 4px) var(--theia-amber);
-  transform: translate(-50%, -50%) scale(calc(0.6 + var(--energy, 0.5) * 0.6));
-  transition: transform 0.15s ease;
-}
-
-.theia-clip:hover .theia-clip__dna-marker {
-  transform: translate(-50%, -50%) scale(calc(0.8 + var(--energy, 0.5) * 0.8));
-}
-
-.theia-clip__live-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 30%;
-  height: 2px;
-  background: var(--theia-cyan-bright);
-  box-shadow: 0 0 8px var(--theia-cyan-bright);
-  animation: theia-live-bar 3s linear infinite;
-}
-
-@keyframes theia-live-bar {
-  0%   { left: 0; }
-  100% { left: 70%; }
-}
-
-/* ── Add clip button ── */
-.theia-deck__add {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100px;
-  flex-shrink: 0;
-  border: 1.5px dashed var(--theia-line-strong);
-  border-radius: 5px;
-  color: var(--theia-text-muted);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.theia-deck__add:hover {
-  border-color: rgba(6, 182, 212, 0.4);
-  color: var(--theia-cyan);
-  background: rgba(6, 182, 212, 0.04);
-}
-
-.theia-deck__add > span:first-child {
-  font-size: 22px;
-  font-weight: 300;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * INSPECTOR (right rail)
@@ -1205,7 +764,7 @@
     rgba(10, 14, 24, 0.4) 100%
   );
   backdrop-filter: blur(12px) saturate(1.1);
-  border-left: 1px solid rgba(6, 182, 212, 0.18);
+  border-left: 1px solid rgba(132, 204, 22, 0.18);
   overflow: hidden;
   box-shadow:
     inset 1px 0 0 rgba(255, 255, 255, 0.03),
@@ -1250,7 +809,7 @@
 .theia-insp__content::-webkit-scrollbar { width: 5px; }
 .theia-insp__content::-webkit-scrollbar-track { background: transparent; }
 .theia-insp__content::-webkit-scrollbar-thumb {
-  background: rgba(6, 182, 212, 0.25);
+  background: rgba(132, 204, 22, 0.25);
   border-radius: 3px;
 }
 
@@ -1272,9 +831,9 @@
 }
 
 .theia-insp__block-icon {
-  color: var(--theia-cyan);
+  color: var(--theia-acid);
   font-size: 11px;
-  text-shadow: 0 0 6px var(--theia-cyan);
+  text-shadow: 0 0 6px var(--theia-acid);
 }
 
 .theia-insp__block-title {
@@ -1282,7 +841,7 @@
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 2.5px;
-  color: var(--theia-cyan);
+  color: var(--theia-acid);
 }
 
 /* 🔮 WAVE 8230 · E4 — shader params: sliders automáticos @euclid param */
@@ -1310,8 +869,8 @@
 }
 
 .theia-insp__pulse.is-on {
-  background: var(--theia-cyan-bright);
-  box-shadow: 0 0 6px var(--theia-cyan-bright);
+  background: var(--theia-acid-bright);
+  box-shadow: 0 0 6px var(--theia-acid-bright);
   animation: theia-live-blink 1.2s ease-in-out infinite;
 }
 
@@ -1392,8 +951,8 @@
 .theia-insp__metric-value {
   font-size: 13px;
   font-weight: 700;
-  color: var(--theia-cyan);
-  text-shadow: 0 0 6px rgba(6, 182, 212, 0.3);
+  color: var(--theia-acid);
+  text-shadow: 0 0 6px rgba(132, 204, 22, 0.3);
 }
 
 /* ── Override buttons ── */
@@ -1447,8 +1006,8 @@
   align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(6, 182, 212, 0.04);
-  border: 1px solid rgba(6, 182, 212, 0.15);
+  background: rgba(132, 204, 22, 0.04);
+  border: 1px solid rgba(132, 204, 22, 0.15);
   border-radius: 4px;
   font-size: 9px;
   line-height: 1.5;
@@ -1460,8 +1019,8 @@
 
 .theia-insp__footer code {
   font-family: inherit;
-  background: rgba(6, 182, 212, 0.12);
-  color: var(--theia-cyan-bright);
+  background: rgba(132, 204, 22, 0.12);
+  color: var(--theia-acid-bright);
   padding: 1px 4px;
   border-radius: 2px;
   font-size: 9px;
@@ -1476,9 +1035,9 @@
   flex-direction: column;
   min-height: 132px;
   background:
-    linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, rgba(11, 18, 32, 0.92) 60%),
+    linear-gradient(180deg, rgba(132, 204, 22, 0.08) 0%, rgba(11, 18, 32, 0.92) 60%),
     rgba(8, 11, 20, 0.94);
-  border: 1px solid rgba(6, 182, 212, 0.2);
+  border: 1px solid rgba(132, 204, 22, 0.2);
   border-radius: 8px;
   backdrop-filter: blur(10px) saturate(1.05);
   overflow: hidden;
@@ -1497,8 +1056,8 @@
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 3px;
-  color: var(--theia-cyan-bright);
-  text-shadow: 0 0 10px rgba(6, 182, 212, 0.45);
+  color: var(--theia-acid-bright);
+  text-shadow: 0 0 10px rgba(132, 204, 22, 0.45);
 }
 
 .theia-live-deck__count {
@@ -1515,18 +1074,18 @@
   overflow-x: auto;
   flex: 0 0 auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(6, 182, 212, 0.35) rgba(0, 0, 0, 0.24);
+  scrollbar-color: rgba(132, 204, 22, 0.35) rgba(0, 0, 0, 0.24);
 }
 
 .theia-live-deck__slots::-webkit-scrollbar { height: 6px; }
 .theia-live-deck__slots::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.24); }
 .theia-live-deck__slots::-webkit-scrollbar-thumb {
-  background: rgba(6, 182, 212, 0.35);
+  background: rgba(132, 204, 22, 0.35);
   border-radius: 4px;
 }
 
 .theia-pack-slot {
-  --pack-accent: rgba(6, 182, 212, 0.85);
+  --pack-accent: rgba(132, 204, 22, 0.85);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1556,7 +1115,7 @@
 .theia-pack-slot.is-expanded {
   border-color: var(--pack-accent);
   background:
-    linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(6, 182, 212, 0.05) 100%),
+    linear-gradient(180deg, rgba(132, 204, 22, 0.18) 0%, rgba(132, 204, 22, 0.05) 100%),
     rgba(8, 11, 20, 0.92);
 }
 
@@ -1666,7 +1225,7 @@
   flex-direction: column;
   max-height: 290px;
   overflow: hidden;
-  border-top: 1px solid rgba(6, 182, 212, 0.18);
+  border-top: 1px solid rgba(132, 204, 22, 0.18);
   background: rgba(0, 0, 0, 0.32);
   padding: 10px 16px 14px;
 }
@@ -1682,7 +1241,7 @@
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 2px;
-  color: var(--theia-cyan-bright);
+  color: var(--theia-acid-bright);
 }
 
 .theia-live-deck__expansion-count {
@@ -1713,7 +1272,8 @@
 .theia-live-deck__tile-grid::-webkit-scrollbar { display: none; }
 
 .theia-atom-tile {
-  --atom-accent: rgba(6, 182, 212, 0.85);
+  --atom-accent: rgba(132, 204, 22, 0.85);
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1734,7 +1294,7 @@
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5), 0 0 14px var(--atom-accent);
   background:
-    linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(6, 182, 212, 0.05) 100%),
+    linear-gradient(180deg, rgba(132, 204, 22, 0.18) 0%, rgba(132, 204, 22, 0.05) 100%),
     rgba(8, 11, 20, 0.92);
 }
 
@@ -1797,25 +1357,149 @@
   border-color: rgba(244, 114, 182, 0.7);
 }
 
-/* ── Workshop deck — refinamiento de la card con state badge ── */
-.theia-asset-card__head {
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🎛️ TRANSPORT BAR — WAVE 8239 · U1 (Hybrid Deck)
+ * Play/Pause · Loop · SeekBar bajo el viewport, encima del LiveDeck.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.theia-transport {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 10px;
+  padding: 8px 14px;
+  background:
+    linear-gradient(180deg, rgba(9, 14, 24, 0.82) 0%, rgba(5, 10, 18, 0.6) 100%);
+  border-top: 1px solid rgba(163, 230, 53, 0.14);
+  border-bottom: 1px solid var(--theia-line);
 }
 
-.theia-asset-card__state {
-  font-size: 8px;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
+.theia-transport.is-inactive {
+  opacity: 0.45;
+}
+
+.theia-transport__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  background: rgba(163, 230, 53, 0.06);
+  border: 1px solid rgba(163, 230, 53, 0.3);
+  border-radius: 4px;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  font-family: inherit;
+}
+
+.theia-transport__btn:hover:not(:disabled) {
+  color: var(--theia-primary);
+  border-color: rgba(163, 230, 53, 0.6);
+  background: rgba(163, 230, 53, 0.12);
+  box-shadow: 0 0 10px rgba(163, 230, 53, 0.25);
+}
+
+.theia-transport__btn.is-active {
+  color: var(--theia-primary);
+  border-color: rgba(163, 230, 53, 0.7);
+  background: rgba(163, 230, 53, 0.16);
+  box-shadow:
+    0 0 12px rgba(163, 230, 53, 0.3),
+    inset 0 0 8px rgba(163, 230, 53, 0.08);
+  text-shadow: 0 0 6px rgba(163, 230, 53, 0.6);
+}
+
+.theia-transport__btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* ── SeekBar ── */
+.theia-transport__seek {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background:
+    linear-gradient(
+      90deg,
+      var(--theia-primary) 0%,
+      var(--theia-primary-dim) var(--pct, 0%),
+      rgba(255, 255, 255, 0.09) var(--pct, 0%)
+    );
+  cursor: pointer;
+  outline: none;
+}
+
+.theia-transport__seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--theia-primary);
+  box-shadow: 0 0 8px rgba(163, 230, 53, 0.7);
+  transition: transform 0.1s ease;
+}
+
+.theia-transport__seek::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+
+.theia-transport__seek::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: var(--theia-primary);
+  box-shadow: 0 0 8px rgba(163, 230, 53, 0.7);
+}
+
+.theia-transport__seek:disabled {
+  cursor: default;
+}
+
+.theia-transport__clock {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--theia-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.theia-transport__clock-sep {
+  margin: 0 4px;
   color: var(--theia-text-muted);
 }
 
-.theia-asset-card.is-exported {
-  border-color: rgba(34, 197, 94, 0.55);
+/* ── LiveDeck: drag-over affordance (D&D fallback U1) ── */
+.theia-live-deck.is-dragover {
+  outline: 1.5px dashed rgba(163, 230, 53, 0.6);
+  outline-offset: -4px;
+  background: rgba(163, 230, 53, 0.05);
 }
 
-.theia-asset-card.is-exported .theia-asset-card__state {
-  color: rgba(34, 197, 94, 0.9);
+/* ── Atom tile: media-kind chip (GEN shader / VID video) ── */
+.theia-atom-tile__kind {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  color: var(--theia-text-muted);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--theia-line-strong);
+}
+
+.theia-atom-tile.is-shader .theia-atom-tile__kind {
+  color: var(--theia-primary);
+  border-color: rgba(163, 230, 53, 0.5);
+  text-shadow: 0 0 6px rgba(163, 230, 53, 0.5);
 }

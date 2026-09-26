@@ -24,13 +24,17 @@
  *   - Click Atom   → FORCE-TRIGGER manual: invoca `orchestrator.playAtom(...)`
  *                    saltándose a Selene durante el crossfade.
  *
+ * 🎛️ WAVE 8239 · U1 — Drag & Drop fallback: dropear ficheros del media
+ * pool (`.mp4 .webm .mkv .mov .avi .theia .glsl`) sobre el deck los ingesta
+ * por la misma vía que el botón LOAD ASSETS.
+ *
  * El LiveDeck es *read-only* respecto al filesystem: los packs y átomos
  * llegan ya consolidados desde `useTheiaPackStore`.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useCallback, useMemo } from 'react'
-import { useTheiaPackStore } from '../../stores/useTheiaPackStore'
+import React, { useCallback, useMemo, useState } from 'react'
+import { isSupportedMediaFile, useTheiaPackStore } from '../../stores/useTheiaPackStore'
 import { getThetaOrchestrator } from '../../theia'
 import type { ITheiaAtom, ITheiaPack } from '../../types/theiaTypes'
 import { LuxIcon } from '../icons'
@@ -49,6 +53,7 @@ const LiveDeck: React.FC = () => {
   const setLivePack     = useTheiaPackStore((s) => s.setLivePack)
   const setExpandedPack = useTheiaPackStore((s) => s.setExpandedPack)
   const removePack      = useTheiaPackStore((s) => s.removePack)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const packs = useMemo(() => Array.from(packsMap.values()), [packsMap])
   const expandedPack = expandedPackId ? packsMap.get(expandedPackId) ?? null : null
@@ -81,10 +86,46 @@ const LiveDeck: React.FC = () => {
     }
   }, [])
 
+  // ── 🎛️ WAVE 8239 · U1 — Drag & Drop fallback (misma vía que LOAD ASSETS) ──
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'copy'
+    setIsDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // dragleave también salta al entrar en hijos — solo apaga si sale del deck.
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return
+    setIsDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    const files = Array.from(e.dataTransfer.files).filter((f) =>
+      isSupportedMediaFile(f.name),
+    )
+    if (files.length === 0) {
+      console.warn('[LiveDeck] drop ignorado — extensiones no soportadas')
+      return
+    }
+    void useTheiaPackStore.getState().ingestFiles(files)
+  }, [])
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <section className="theia-live-deck" data-deck="live" aria-label="Live pack deck">
+    <section
+      className={`theia-live-deck${isDragOver ? ' is-dragover' : ''}`}
+      data-deck="live"
+      aria-label="Live pack deck"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="theia-live-deck__header">
         <span className="theia-live-deck__title">DECK · PACK SLOTS</span>
         <span className="theia-live-deck__count">
@@ -130,7 +171,7 @@ const LiveDeck: React.FC = () => {
           {expandedPack.atoms.length === 0 ? (
             <div className="theia-live-deck__expansion-empty">
               <LuxIcon name="folder" size={18} />
-              <span>Pack vacío — exporta un átomo en WORKSHOP.</span>
+              <span>Pack vacío — dropea media aquí o usa LOAD ASSETS.</span>
             </div>
           ) : (
             <div className="theia-live-deck__tile-grid">
@@ -221,24 +262,29 @@ interface AtomTileProps {
 }
 
 const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, onTrigger }) => {
+  const isShader = atom.source?.kind === 'shader'
   const durMs = atom.trim.endMs - atom.trim.startMs
-  const durSec = Math.max(1, Math.round(durMs / 1000))
+  // 🎛️ U1 — duración honesta: los shader atoms loopean (∞); un vídeo sin
+  // metadata medida aún muestra '—' en lugar de una cifra inventada.
+  const durLabel = isShader ? '∞' : durMs > 0 ? `${Math.round(durMs / 1000)}s` : '—'
+  const kindLabel = isShader ? 'GEN' : 'VID'
 
   return (
     <button
       type="button"
-      className="theia-atom-tile"
+      className={`theia-atom-tile${isShader ? ' is-shader' : ''}`}
       style={accent ? { ['--atom-accent' as string]: accent } : undefined}
       onClick={() => onTrigger(atom)}
       data-midi-bind={`theia.live.atom.${atom.packId}.${atom.id}`}
-      title={`${atom.id}\nA${atom.aggression.toFixed(2)} · C${atom.chaos.toFixed(2)} · O${atom.organicity.toFixed(2)}\n${durSec}s · zone ${atom.energyZone.min}→${atom.energyZone.max}`}
+      title={`${atom.id}\n${kindLabel} · A${atom.aggression.toFixed(2)} · C${atom.chaos.toFixed(2)} · O${atom.organicity.toFixed(2)}\nzone ${atom.energyZone.min}→${atom.energyZone.max}`}
     >
       <span className="theia-atom-tile__thumb" aria-hidden>
-        <LuxIcon name="play" size={20} />
+        <LuxIcon name={isShader ? 'dna' : 'play'} size={20} />
       </span>
+      <span className="theia-atom-tile__kind">{kindLabel}</span>
       <span className="theia-atom-tile__name">{atom.id}</span>
       <span className="theia-atom-tile__meta">
-        {durSec}s · A{atom.aggression.toFixed(1)}/C{atom.chaos.toFixed(1)}/O{atom.organicity.toFixed(1)}
+        {durLabel} · A{atom.aggression.toFixed(1)}/C{atom.chaos.toFixed(1)}/O{atom.organicity.toFixed(1)}
       </span>
       <span className="theia-atom-tile__badges">
         {atom.isDivineCandidate && (
@@ -262,7 +308,7 @@ const EmptySlot: React.FC = () => (
   <div className="theia-pack-slot is-empty" role="listitem">
     <LuxIcon name="folder" size={22} />
     <span className="theia-pack-slot__name">NO PACKS LOADED</span>
-    <span className="theia-pack-slot__count">↑ LOAD ASSETS o exporta desde WORKSHOP</span>
+    <span className="theia-pack-slot__count">LOAD ASSETS o dropea media aquí</span>
   </div>
 )
 

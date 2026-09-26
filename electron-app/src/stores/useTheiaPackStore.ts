@@ -1,41 +1,53 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📦 THEIA PACK STORE — WAVE 4922 (Atomic Paradigm · Fase 3)
+ *    🎛️ WAVE 8239 · U1 — Universal Media Pool (Theia es 100% LIVE)
  *
- * Estado de sesión para Packs y "raw clips" del WORKSHOP.
+ * Estado de sesión para Packs y clips del MEDIA POOL.
  *
  * Dos cubos de estado independientes:
  *
  *   1. `packs`     → Packs *ya consolidados* (cada uno con ≥1 átomo válido).
- *                    Es lo que ve el LIVE Deck. Pueden venir del filesystem
- *                    (exported) o quedarse en memoria como `pending` hasta
- *                    el primer export.
+ *                    Es lo que ve el LIVE Deck. Los vídeos ingestados, los
+ *                    `.theia` y los `.glsl` nacen directamente como átomos
+ *                    dentro de su pack — sin paso intermedio.
  *
- *   2. `rawClips`  → Archivos `.mp4/.webm/...` dropeados en la sesión actual
- *                    que aún no han pasado por el WORKSHOP (trim + ADN +
- *                    export). Es la cola del WORKSHOP Deck.
+ *   2. `rawClips`  → Tracking de los archivos de vídeo dropeados (blob URL,
+ *                    duración una vez medida). Cada uno lleva pareado un
+ *                    átomo `kind:'video'` ya jugable en el deck.
  *
- * Es deliberadamente *sólo* memoria de la sesión activa. La persistencia
- * real ocurre en el filesystem cuando el operador exporta.
- *
- * No mezclar con `useTheiaEditorStore`:
- *   - `useTheiaEditorStore`   → el ÁTOMO actualmente bajo edición (1).
- *   - `useTheiaPackStore`     → todo lo demás (N raw clips, N packs).
+ * Es deliberadamente *sólo* memoria de la sesión activa.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import { create } from 'zustand'
-import type { ITheiaAtom, ITheiaPack } from '../types/theiaTypes'
+import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
+import { parseEuclidMeta } from '../theia/shader/ShaderAssembler'
+import { ENERGY_ZONE_ORDINAL } from '../types/theiaTypes'
+import type { EnergyZone, ITheiaAtom, ITheiaPack } from '../types/theiaTypes'
 
-// ─── RAW CLIP ────────────────────────────────────────────────────────────────
+// ─── MEDIA POOL ───────────────────────────────────────────────────────────────
 
-/** Estado de un raw clip a lo largo del flujo WORKSHOP. */
+/** Estado de un raw clip (vídeo ingestado, aún sin duración medida). */
 export type RawClipState = 'queued' | 'editing' | 'exported'
 
+/** 🎛️ WAVE 8239 · U1 — extensiones aceptadas por el Universal Media Pool. */
+export const MEDIA_POOL_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mkv', '.mov', '.avi'] as const
+export const MEDIA_POOL_ATOM_EXTENSIONS = ['.theia', '.glsl'] as const
+export const MEDIA_POOL_ACCEPT =
+  [...MEDIA_POOL_VIDEO_EXTENSIONS, ...MEDIA_POOL_ATOM_EXTENSIONS].join(',')
+
+/** ¿El filename pertenece al conjunto aceptado por el media pool? */
+export function isSupportedMediaFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase()
+  return [...MEDIA_POOL_VIDEO_EXTENSIONS, ...MEDIA_POOL_ATOM_EXTENSIONS]
+    .some((ext) => lower.endsWith(ext))
+}
+
 /**
- * Archivo bruto dropeado por el operador. No es un átomo todavía: el átomo
- * nace cuando se ejecuta el primer `newDraftFromPath` sobre él (estado
- * `editing`) y se materializa al exportarlo (`exported`).
+ * Archivo de vídeo dropeado por el operador. Cada clip lleva pareado un
+ * átomo `source.kind='video'` (mismo `id`) que ya es jugable en el LiveDeck:
+ * `filePath` del átomo apunta a la blob URL de este clip.
  */
 export interface RawClip {
   /** Slug único en la sesión (`<basename>-<ts>` por defecto). */
@@ -82,22 +94,33 @@ interface TheiaPackActions {
   removeRawClip(clipId: string): void
   clearRawClips(): void
 
+  // ── Atoms ────────────────────────────────────────────────────────────────
+  /** 🎛️ U1 — parchea el trim de un átomo dentro de su pack (p.ej. tras medir
+   *  la duración real de un vídeo). Re-registra en el TheiaRegistry. */
+  updateAtomTrim(atomId: string, packId: string, endMs: number): void
+
   // ── Bulk ingestion helper ────────────────────────────────────────────────
   /**
-   * Convierte un FileList en raw clips agrupados por carpeta contenedora.
-   * Devuelve los clips creados y el `packId` inferido para el primer file.
+   * 🎛️ WAVE 8239 · U1 — Universal Media Pool ingestion.
+   *
+   * Convierte un FileList en átomos jugables agrupados por carpeta:
+   *
+   *   - Video (`.mp4 .webm .mkv .mov .avi`) → `RawClip` (blob URL) + átomo
+   *     `source.kind='video'` adjunto al pack del bucket.
+   *   - `.theia` → ITheiaAtom parseado y adjunto al pack correspondiente.
+   *   - `.glsl`  → lee el texto, parsea `@euclid` y nace un átomo
+   *     `source.kind='shader'` registrado en el TheiaRegistry.
    *
    * Grouping rule:
    *   - Si `file.webkitRelativePath` viene definido (folder-pick),
    *     el primer segmento del path se usa como `packId`.
    *   - Si no, todos van al mismo Pack autogenerado `New_Pack_<n>`.
    *
-   * WAVE 4924 — M2: Los archivos `.theia` se parsean como ITheiaAtom y se
-   * adjuntan directamente al Pack correspondiente. El pack pierde el flag
-   * `pending` en cuanto tiene ≥1 átomo real.
+   * Devuelve clips creados, átomos adjuntados y el packId del primer file.
    */
   ingestFiles(files: readonly File[]): Promise<{
     clips: readonly RawClip[]
+    atoms: readonly ITheiaAtom[]
     packId: string
   }>
 }
@@ -130,6 +153,12 @@ function _packIdFromPath(file: File): string | null {
 function _safeBasename(name: string): string {
   return name.replace(/\.[^.]+$/, '').replace(/[^\w\-]+/g, '_') || 'clip'
 }
+
+/**
+ * 🎛️ U1 — trim nominal de un átomo vídeo recién ingestado (la duración real
+ * se parchea con `updateAtomTrim` cuando `loadedmetadata` llega).
+ */
+const NOMINAL_VIDEO_TRIM_MS = 60_000
 
 /**
  * Validación mínima runtime de un objeto como ITheiaAtom.
@@ -217,67 +246,122 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
     set({ rawClips: [] })
   },
 
+  // ── Atoms ────────────────────────────────────────────────────────────────
+  updateAtomTrim(atomId, packId, endMs) {
+    const pack = get().packs.get(packId)
+    const atom = pack?.atoms.find((a) => a.id === atomId)
+    if (!pack || !atom || !Number.isFinite(endMs) || endMs <= atom.trim.startMs) return
+    const nextAtom: ITheiaAtom = { ...atom, trim: { ...atom.trim, endMs } }
+    const nextPacks = new Map(get().packs)
+    nextPacks.set(packId, {
+      ...pack,
+      atoms: pack.atoms.map((a) => (a.id === atomId ? nextAtom : a)),
+    })
+    set({ packs: nextPacks })
+    getTheiaRegistry().register(nextAtom) // re-freeze con el trim real
+  },
+
   // ── Bulk ingestion ───────────────────────────────────────────────────────
   async ingestFiles(files) {
     if (files.length === 0) {
-      return { clips: [], packId: '' }
+      return { clips: [], atoms: [], packId: '' }
     }
 
     const state = get()
     const ts = Date.now()
 
-    // Separar archivos de vídeo de archivos .theia
-    const videoFiles = files.filter((f) => !f.name.toLowerCase().endsWith('.theia'))
-    const theiaFiles = files.filter((f) => f.name.toLowerCase().endsWith('.theia'))
+    // Separar por familia: vídeo / .theia (átomo serializado) / .glsl (shader)
+    const isExt = (f: File, ext: string): boolean => f.name.toLowerCase().endsWith(ext)
+    const videoFiles = files.filter((f) => !isExt(f, '.theia') && !isExt(f, '.glsl'))
+    const theiaFiles = files.filter((f) => isExt(f, '.theia'))
+    const glslFiles = files.filter((f) => isExt(f, '.glsl'))
 
-    // STEP 1 — Determinar packId (carpeta) por archivo de vídeo.
-    const groupKeys: string[] = videoFiles.map((f) => _packIdFromPath(f) ?? '')
-    const allEmpty = groupKeys.every((k) => k === '')
+    // STEP 1 — Determinar packId (carpeta) por archivo.
+    const groupKeys = new Map<File, string>(
+      files.map((f) => [f, _packIdFromPath(f) ?? '']),
+    )
+    const allEmpty = [...groupKeys.values()].every((k) => k === '')
     const autoPackId = allEmpty ? _nextAutoPackId(state.packs) : ''
+
+    const packIdFor = (f: File, fallback = ''): string =>
+      groupKeys.get(f) || fallback || autoPackId
 
     // STEP 2 — Construir clips + asegurar Packs `pending` para cada bucket.
     const nextPacks = new Map(state.packs)
     const clips: RawClip[] = []
+    const atoms: ITheiaAtom[] = []
     const ensuredPacks = new Set<string>()
+    const registry = getTheiaRegistry()
+
+    const ensurePack = (packId: string): void => {
+      if (ensuredPacks.has(packId)) return
+      ensuredPacks.add(packId)
+      if (!nextPacks.has(packId)) {
+        nextPacks.set(packId, {
+          id: packId,
+          rootPath: '',
+          atoms: [],
+          manifest: null,
+          scannedAt: ts,
+          pending: true,
+        })
+      }
+    }
+
+    const attach = (atom: ITheiaAtom): void => {
+      ensurePack(atom.packId)
+      const pack = nextPacks.get(atom.packId)!
+      nextPacks.set(atom.packId, {
+        ...pack,
+        atoms: [...pack.atoms.filter((a) => a.id !== atom.id), atom],
+        scannedAt: ts,
+      })
+      registry.register(atom) // resoluble por playAtom (clip/shader resolver)
+      atoms.push(atom)
+    }
 
     videoFiles.forEach((file, idx) => {
-      const explicit = groupKeys[idx]
-      const packId = explicit || autoPackId
+      const packId = packIdFor(file)
       const base = _safeBasename(file.name)
       const clipId = `${packId}__${base}__${ts}_${idx}`
-
-      const fp =
-        (file as File & { path?: string }).path ??
-        (file as File & { webkitRelativePath?: string }).webkitRelativePath ??
-        file.name
+      const url = URL.createObjectURL(file)
 
       clips.push({
         id: clipId,
         name: file.name,
-        filePath: fp,
-        url: URL.createObjectURL(file),
+        filePath:
+          (file as File & { path?: string }).path ??
+          (file as File & { webkitRelativePath?: string }).webkitRelativePath ??
+          file.name,
+        url,
         packId,
         state: 'queued',
         durationMs: 0,
         addedAt: ts + idx,
       })
 
-      if (!ensuredPacks.has(packId)) {
-        ensuredPacks.add(packId)
-        if (!nextPacks.has(packId)) {
-          nextPacks.set(packId, {
-            id: packId,
-            rootPath: '',
-            atoms: [],
-            manifest: null,
-            scannedAt: ts,
-            pending: true,
-          })
-        }
-      }
+      // 🎛️ U1 — el vídeo nace como átomo jugable: filePath = blob URL (el
+      // clipUrlResolver lo pasa intacto a loadVideo). Genoma neutro — los
+      // genes del shader no aplican a un medio decodificado.
+      // trim nominal: la duración real se mide tras el primer loadVideo y se
+      // parchea vía updateAtomTrim. `compatibleVibes:['generic']` — untagged
+      // media no reclama vibes de Selene (el trigger manual es su vía).
+      attach({
+        id: clipId,
+        packId,
+        filePath: url,
+        aggression: 0.5,
+        chaos: 0.5,
+        organicity: 0.5,
+        energyZone: { min: 'gentle', max: 'peak' },
+        validSections: ['verse', 'buildup', 'drop', 'breakdown', 'outro'],
+        trim: { startMs: 0, endMs: NOMINAL_VIDEO_TRIM_MS },
+        compatibleVibes: ['generic'],
+        source: { kind: 'video' },
+      })
     })
 
-    // STEP 3 — Parsear archivos .theia y adjuntar sus átomos al pack.
+    // STEP 3 — Archivos .theia: átomo serializado directo al pack.
     for (const file of theiaFiles) {
       try {
         const text = await file.text()
@@ -287,35 +371,19 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
           continue
         }
         const atom = parsed as ITheiaAtom
-
-        // packId: preferir el segmento de carpeta sobre el packId embebido en el .theia
-        const packId = _packIdFromPath(file) ?? atom.packId
-
-        if (!ensuredPacks.has(packId)) {
-          ensuredPacks.add(packId)
-          if (!nextPacks.has(packId)) {
-            nextPacks.set(packId, {
-              id: packId,
-              rootPath: '',
-              atoms: [],
-              manifest: null,
-              scannedAt: ts,
-              pending: false,
-            })
-          }
-        }
-
-        // Adjuntar átomo al pack (dedup por id).
-        const existingPack = nextPacks.get(packId)!
-        const dedupAtoms = existingPack.atoms.filter((a) => a.id !== atom.id)
-        nextPacks.set(packId, {
-          ...existingPack,
-          atoms: [...dedupAtoms, atom],
-          pending: false,
-          scannedAt: ts,
-        })
+        attach({ ...atom, packId: _packIdFromPath(file) ?? atom.packId })
       } catch (err) {
         console.warn(`[PackStore] ingestFiles: error al parsear .theia: ${file.name}`, err)
+      }
+    }
+
+    // STEP 4 — Archivos .glsl: leer texto → meta @euclid → átomo shader.
+    for (const file of glslFiles) {
+      try {
+        const glsl = await file.text()
+        attach(_buildGlslAtom(file.name, glsl, packIdFor(file, 'glsl_pool')))
+      } catch (err) {
+        console.warn(`[PackStore] ingestFiles: error al leer .glsl: ${file.name}`, err)
       }
     }
 
@@ -324,11 +392,46 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
       rawClips: [...state.rawClips, ...clips],
     })
 
-    return { clips, packId: clips[0]?.packId ?? autoPackId }
+    return { clips, atoms, packId: clips[0]?.packId ?? atoms[0]?.packId ?? autoPackId }
   },
 }))
 
 // ─── BULK HELPERS (free functions) ───────────────────────────────────────────
+
+/** Zona de energía válida o fallback defensivo. */
+function _toEnergyZone(s: string | undefined, fallback: EnergyZone): EnergyZone {
+  return s && s in ENERGY_ZONE_ORDINAL ? (s as EnergyZone) : fallback
+}
+
+/**
+ * 🎛️ WAVE 8239 · U1 — construye un `ITheiaAtom` `source.kind='shader'`
+ * desde un `.glsl` dropeado. El shader es su propio manifiesto: genoma y
+ * zona se derivan del header `@euclid` (defaults neutros si ausente).
+ * `id` estable por basename → re-dropear el mismo archivo reemplaza.
+ */
+export function buildGlslAtom(fileName: string, glsl: string, packId: string): ITheiaAtom {
+  const meta = parseEuclidMeta(glsl)
+  const base = _safeBasename(fileName)
+  return {
+    id: `glsl_${base}`,
+    packId,
+    filePath: `file://${fileName}`, // identidad simbólica — el medio es el glsl embebido
+    aggression: meta.genome.aggression ?? 0.5,
+    chaos: meta.genome.chaos ?? 0.5,
+    organicity: meta.genome.organicity ?? 0.5,
+    energyZone: {
+      min: _toEnergyZone(meta.zone?.from, 'gentle'),
+      max: _toEnergyZone(meta.zone?.to, 'peak'),
+    },
+    validSections: ['verse', 'buildup', 'drop', 'breakdown', 'outro'],
+    trim: { startMs: 0, endMs: 8000 }, // loop infinito — trim nominal
+    compatibleVibes: ['generic'], // untagged — el trigger manual es su vía
+    source: { kind: 'shader', glsl },
+  }
+}
+
+// alias interno usado por ingestFiles
+const _buildGlslAtom = buildGlslAtom
 
 /**
  * Adjunta un átomo recién exportado a su Pack. Si el Pack no existe lo crea

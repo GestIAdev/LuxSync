@@ -52,6 +52,8 @@ import {
   isTelemetryMessage,
   mirrorTelemetryIntoRing,
 } from './TheiaTelemetryRing'
+// 🩺 WAVE 8253 — sonda de gap de llegada del port (main-thread stall probe)
+import { noteTelemetryArrival } from '../core/diagnostics/MainThreadMonitor'
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
 import { createThumbSAB } from './TheiaThumbBuffer'
 // 🔮 WAVE 8230 — EUCLID · E4: parser @euclid (meta → sliders UI)
@@ -202,6 +204,9 @@ export class ThetaOrchestrator {
   /** Port del canal de telemetría (main pump ↔ esta página). Vive AQUÍ —
    *  no en el worker — para sobrevivir respawns Phoenix. */
   private telemetryPort: MessagePort | null = null
+  /** 🩺 WAVE 8253 — timestamp de la última llegada al port (sonda de stall:
+   *  el pump emite ~23ms; un hueco aquí es el chock point del tick gap). */
+  private readonly telemetryLastMsgAt = { v: 0 }
   /** 🌊 WAVE 8246 — handle del watchdog de telemetría (re-pull ~2s). */
   private telemetryWatchdogHandle: number | null = null
   /** Port de video buffered si llega antes del spawn del worker. */
@@ -477,6 +482,10 @@ export class ThetaOrchestrator {
     try { this.telemetryPort?.close() } catch { /* noop */ }
     this.telemetryPort = port
     port.onmessage = (ev: MessageEvent) => {
+      // 🩺 WAVE 8253 — sonda de gap de llegada: el pump emite @44Hz (~23ms);
+      // un gap >400ms aquí es la evidencia DIRECTA del stall que congela el
+      // ring (onmessage asfixiado por el hilo de página o pump sin pool).
+      noteTelemetryArrival(this.telemetryLastMsgAt)
       const data = ev.data
       if (!isTelemetryMessage(data)) return
       mirrorTelemetryIntoRing(this.telemetryRing, data.buffer)

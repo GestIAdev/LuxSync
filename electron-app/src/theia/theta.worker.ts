@@ -666,8 +666,10 @@ function onFrameContextTick(snap: FrameContextSnapshot): void {
   if (state.lastTickId >= 0) {
     const gap = snap.tickId - state.lastTickId
     if (gap > 2) {
+      // 🩺 WAVE 8253 — epoch en el warn: correlaciona con los probes de
+      // __luxPerf en la página (longtask/rAF/truth/tel gaps, mismo reloj).
       // eslint-disable-next-line no-console
-      console.warn(`[THETA ⚠️] tick gap=${gap} (lastTickId=${state.lastTickId} → ${snap.tickId})`)
+      console.warn(`[THETA ⚠️] tick gap=${gap} (lastTickId=${state.lastTickId} → ${snap.tickId}) @${Date.now()}`)
     }
   }
   state.lastTickId = snap.tickId

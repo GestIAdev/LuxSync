@@ -7,7 +7,13 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AppCommander from './AppCommander'
 import TheiaOutputView from './components/views/TheiaOutputView'  // 🎬 WAVE 4864
+import { installMainThreadMonitor } from './core/diagnostics/MainThreadMonitor'  // 🩺 WAVE 8253
 import './styles/globals.css'
+
+// 🩺 WAVE 8253 — instalar ANTES de createRoot para capturar hasta el mount
+// cascade de React. Ambas ventanas (principal + Theia output) llevan sondas:
+// el tick-gap del worker nace de stalls del hilo que alimenta su ring.
+installMainThreadMonitor()
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 7608: CRYSTAL BOX UNLOCK — Dev console exposure for stage dimensions

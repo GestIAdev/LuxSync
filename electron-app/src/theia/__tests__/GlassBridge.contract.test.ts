@@ -169,7 +169,7 @@ describe('🌊 WAVE 8215 — Modo B: telemetry ring mirror', () => {
     expect(snap!.tickId).toBe(42)
   })
 
-  it('ackTelemetryFrame devuelve el MISMO buffer (ping-pong estricto)', () => {
+  it('ackTelemetryFrame envía CRÉDITO puro {ack, seq} — SIN buffer ni transfer (WAVE 8253)', () => {
     const port = makeFakePort()
     const wire = new ArrayBuffer(TELEMETRY_RING_BYTES)
     ackTelemetryFrame(port as unknown as MessagePort, {
@@ -179,7 +179,11 @@ describe('🌊 WAVE 8215 — Modo B: telemetry ring mirror', () => {
     })
     expect(port.posted).toHaveLength(1)
     expect(port.posted[0].data).toMatchObject({ ack: true, seq: 9 })
-    expect(port.posted[0].transfer[0]).toBe(wire) // identidad, no clon
+    // 🩹 WAVE 8253 — mojo despojaba el ArrayBuffer transferido → llegaba
+    // `undefined` a main y el link moría a los 3 ticks. El ack es solo un
+    // crédito de vuelo: sin buffer, sin transfer list.
+    expect((port.posted[0].data as { buffer?: unknown }).buffer).toBeUndefined()
+    expect(port.posted[0].transfer).toHaveLength(0)
   })
 })
 
@@ -230,7 +234,7 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
     vi.advanceTimersByTime(23)
   }
 
-  it('publica a N links con pools independientes; el ack devuelve el buffer al pool', () => {
+  it('publica a N links con créditos inFlight independientes; el ack libera un slot', () => {
     const src = createFrameContextSAB()
     new FrameContextWriter(src).advance(1, Date.now())
     const pump = new TheiaTelemetryPump(() => ({ fc: src, tel: null }))
@@ -250,16 +254,15 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
       expect(post.transfer).toHaveLength(0)
     }
     const msgMain = mainWin.posted[0].data as { type: string; seq: number; buffer: ArrayBuffer }
-    const msgOut = outputWin.posted[0].data as { type: string; seq: number; buffer: ArrayBuffer }
     expect(msgMain.type).toBe('theia:telemetry')
-    // Cada link recibe SU buffer (pool propio) — no comparten instancia.
-    expect(msgMain.buffer).not.toBe(msgOut.buffer)
+    expect(msgMain.buffer.byteLength).toBeGreaterThanOrEqual(TELEMETRY_RING_BYTES)
 
-    // ack del link main → su buffer vuelve a SU pool (identidad).
-    mainWin.emit('message', { data: { ack: true, seq: msgMain.seq, buffer: msgMain.buffer } })
+    // 🩹 WAVE 8253 — el ack ya es crédito puro (sin buffer: mojo despojaba
+    // los transferables renderer→main). Libera un slot de inFlight.
+    mainWin.emit('message', { data: { ack: true, seq: msgMain.seq } })
     tick()
-    // main ya recuperó buffer → publica de nuevo; output sin ack → pool
-    // agotado → drop (3 buffers, 2 en vuelo tras 2 ticks sin ack).
+    // main liberó crédito → publica de nuevo; output sin ack → tras 3
+    // mensajes en vuelo, saturación → drop.
     expect(mainWin.posted.length).toBeGreaterThanOrEqual(2)
   })
 
@@ -281,7 +284,7 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
     expect(b.posted).toHaveLength(1) // el vivo sigue
   })
 
-  it('pool starvation → drop contabilizado, jamás nueva asignación', () => {
+  it('saturación inFlight (sin acks) → drop contabilizado, jamás nueva asignación', () => {
     const src = createFrameContextSAB()
     new FrameContextWriter(src).advance(1, Date.now())
     const pump = new TheiaTelemetryPump(() => ({ fc: src, tel: null }))

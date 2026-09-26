@@ -72,6 +72,7 @@ import {
 import { genomeChildSeed } from './genome/GenomeExpander'
 // 🎛️ WAVE 8239 · U1 — transporte reactivo del medio oculto (Hybrid Deck)
 import { useTheiaTransportStore } from '../stores/useTheiaTransportStore'
+import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
@@ -606,9 +607,25 @@ export class ThetaOrchestrator {
       return
     }
 
-    // ── Caso 1b (🔮 E4): átomo generativo kind:'shader' — no toca el
-    // videoElement: compila (si hiciera falta) y activa con crossfade.
-    const shaderSrc = this._shaderSourceResolver?.(intent.atomId) ?? null
+    // ── Caso 1b (🔮 E4 · 🌊 U4-fix WAVE 8243): átomo generativo
+    // `source.kind='shader'` — BYPASS total del pipeline de vídeo.
+    // Precedencia: 1) `_shaderSourceResolver` externo (variantes
+    // `core#seed` y overrides de test/wiring); 2) fallback directo al
+    // TheiaRegistry — la ruta shader NO puede depender de que
+    // `attachSeleneTheia` esté viva, o un click con el wiring caído
+    // intentaba cargar `euclid://…`/`*.glsl` como VÍDEO (bug U4).
+    let shaderSrc = this._shaderSourceResolver?.(intent.atomId) ?? null
+    if (!shaderSrc) {
+      const atom = getTheiaRegistry().getAtom(intent.atomId)
+      if (atom?.source?.kind === 'shader' && atom.source.glsl) {
+        shaderSrc = {
+          source: atom.source.glsl,
+          meta: atom.source.genes
+            ? { genes: { ...atom.source.genes } }
+            : undefined,
+        }
+      }
+    }
     if (shaderSrc) {
       // Dedup: re-trigger del mismo átomo no recompila si la fuente Y el
       // fenotipo no cambiaron (la caché LRU del worker ya la conserva).

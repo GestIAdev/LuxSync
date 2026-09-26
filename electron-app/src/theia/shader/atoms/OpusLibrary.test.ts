@@ -20,6 +20,7 @@ import {
 } from './opusLibrary'
 import { ensureEuclidShaderAtoms } from './index'
 import { ORACLE_KIFS_ATOM_ID, EUCLID_PACK_ID } from './oracleKifs'
+import { getThetaOrchestrator } from '../../ThetaOrchestrator'
 
 import AETHER_SRC from '../../../../assets/shaders/aether_serpent.glsl?raw'
 import TRIBU_SRC from '../../../../assets/shaders/tribu_mental.glsl?raw'
@@ -117,5 +118,59 @@ describe('U4 — ensureEuclidShaderAtoms (arranque)', () => {
     ensureEuclidShaderAtoms()
     const opus = useTheiaPackStore.getState().packs.get(OPUS_PACK_ID)
     expect(opus?.atoms).toHaveLength(2)
+  })
+})
+
+describe('U4-hotfix — playAtom shader routing (WAVE 8243)', () => {
+  /**
+   * Contrato: un átomo `source.kind='shader'` registrado en el registry
+   * toma el path generativo (`theia:load-shader` + `theia:activate-shader`)
+   * AUNQUE `_shaderSourceResolver` sea null (wiring Selene detach) —
+   * nunca cae al pipeline de vídeo (`theia:load-stream`). Además el
+   * trigger auto-arranca el motor (ignition U4).
+   */
+  it('resuelve por registry fallback, ignora el vídeo y auto-arranca', async () => {
+    const g = globalThis as Record<string, unknown>
+    const origWindow = g.window
+    const origWorker = g.Worker
+    const posted: string[] = []
+    g.window = {
+      postMessage: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }
+    g.Worker = class {
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      postMessage(msg: { type?: string }): void {
+        if (msg?.type) posted.push(msg.type)
+      }
+      terminate(): void {}
+    }
+
+    try {
+      ensureEuclidShaderAtoms()
+      const theta = getThetaOrchestrator()
+      await theta.playAtom({
+        atomId: AETHER_SERPENT_ATOM_ID,
+        startMs: 0,
+        crossfadeMs: 80,
+        reason: 'manual:test|opuS-routing',
+      })
+
+      // Path generativo alcanzado — genoma resuelto desde el registry.
+      expect(theta.getActiveShaderId()).toBe(AETHER_SERPENT_ATOM_ID)
+      expect(
+        theta.getShaderMeta(AETHER_SERPENT_ATOM_ID)?.genome.aggression,
+      ).toBeCloseTo(0.4)
+      expect(posted).toContain('theia:load-shader')
+      expect(posted).toContain('theia:activate-shader')
+      // BYPASS de vídeo: jamás se intentó cargar stream ni se emitió seek.
+      expect(posted).not.toContain('theia:load-stream')
+    } finally {
+      await getThetaOrchestrator().stop()
+      g.window = origWindow
+      g.Worker = origWorker
+    }
   })
 })

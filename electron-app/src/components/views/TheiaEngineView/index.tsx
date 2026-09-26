@@ -87,7 +87,10 @@ const TheiaEngineView: React.FC = () => {
   const [brightness, setBrightness] = useState(0.85)
   const [speed, setSpeed] = useState(1.0)
   const [blackout, setBlackout] = useState(false)
-  const [contrast, setContrast] = useState(0.5)
+  // 🌊 WAVE 8256 — neutro REAL: u_contrast=0.5 comprimía el rango a
+  // [0.25,0.75] pre-gamma → grises lavados y negros imposibles (el washout
+  // reportado). 1.0 = identidad; el slider ahora cubre 0–2 (boost incluido).
+  const [contrast, setContrast] = useState(1.0)
 
   // 🌊 WAVE 8242 · U4 — estado del fade BLACKOUT + resumen del transporte.
   const blackoutLevelRef = useRef(0)
@@ -931,7 +934,9 @@ const Inspector: React.FC<InspectorProps> = ({
                 bindId="theia.contrast"
                 value={contrast}
                 onChange={onContrast}
+                max={2}
                 color="#d9f99d"
+                format={(v) => `${v.toFixed(2)}×`}
               />
             </div>
           </div>

@@ -181,8 +181,10 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
        * exp(-3.0 * length(uv));                               // estallido LOCAL, no full-field
   if (ACID) col *= 0.75 + 0.25 * sin(vec3(0.0, 2.1, 4.2) + length(uv) * 18.0 - gBeats * PI);
 
-  // ── 6. TONEMAP + VIÑETA (el epílogo aplica masters, limitador y sRGB) ──
-  col = 1.0 - exp(-col * (1.0 + 0.6 * u_energy));
+  // ── 6. EXPOSURE + VIÑETA — espacio LINEAL puro: el epílogo del motor
+  //     posee el tonemap ACES + sRGB (WAVE 8256 — sin self-tonemap aquí).
+  //     La energía modula exposición lineal, no compresión.
+  col *= 1.0 + 0.6 * u_energy;
   col *= 1.0 - 0.35 * dot(uv, uv);
   c = vec4(col, 1.0);
 }

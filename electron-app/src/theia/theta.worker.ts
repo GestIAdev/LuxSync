@@ -1675,15 +1675,21 @@ function pollGpuTimer(): void {
 /** 🔮 WAVE 8231 · E5 — resolución del gemelo Modo B (§6): con un átomo
  *  `kind:'shader'` activo el worker solo renderiza el thumb DMX + preview. */
 const GEN_THUMB_RES = 64
+/** 🌊 WAVE 8256 — techo absoluto del FBO de escena (eje mayor). El preview
+ *  manda su resolución física; esto impide freír la GPU si la ventana se
+ *  maximiza a 4K — la nitidez percibida no mejora más allá del tamaño real
+ *  del canvas DOM. */
+const GEN_SCENE_MAX_DIM = 1280
 
 /**
  * Frame generativo: escena del artista a FBO escalado (governor) → blit a
  * canvas → capture del frame para el limitador/crossfade del siguiente.
  *
- * 🔮 WAVE 8231 · E5 — MODO B: el FBO de escena queda fijado a 64×64 — el
- * único consumidor local es el thumb DMX + el preview espejo; la ventana
- * HDMI renderiza el mismo .glsl a resolución nativa (§6). El governor sigue
- * corriendo para el perf-report pero no influye en el gemelo.
+ * 🔮 WAVE 8231 · E5 — MODO B: la ventana HDMI renderiza el mismo .glsl a
+ * resolución nativa (§6). El FBO de escena local alimenta el thumb DMX y
+ * el preview espejo.
+ * 🌊 WAVE 8256 — el FBO sigue al tamaño físico del previewCanvas × governor
+ * (cap GEN_SCENE_MAX_DIM): sin preview adjunto cae a GEN_THUMB_RES=64.
  */
 function renderGenerativeFrame(
   xfStep: CrossfadeStep,
@@ -1695,9 +1701,23 @@ function renderGenerativeFrame(
   const gl = state.gl as WebGL2RenderingContext
   const ent = state.genActive
   if (!ent || !state.blitProgram) return
-  const scale = state.governor.renderScale
-  const sw = GEN_THUMB_RES
-  const sh = GEN_THUMB_RES
+  // 🌊 WAVE 8256 — FBO de escena ADAPTATIVO (el pin a 64×64 de WAVE 8231
+  // dejaba el preview irreconocible — un upscale bilineal del thumb). Con
+  // preview mirror adjunto, la escena se rinde al tamaño FÍSICO del canvas
+  // preview (ya DPR-scaled por la página) × governor scale, capado a
+  // GEN_SCENE_MAX_DIM en el eje mayor. Sin preview (headless / solo twin
+  // HDMI, que re-renderiza nativo) vuelve a 64×64 — solo alimenta el thumb.
+  const pvW = state.previewCanvas?.width ?? 0
+  const pvH = state.previewCanvas?.height ?? 0
+  const scale = Math.min(1, Math.max(0.05, state.governor.renderScale))
+  let sw = pvW > 0 ? Math.round(pvW * scale) : GEN_THUMB_RES
+  let sh = pvH > 0 ? Math.round(pvH * scale) : GEN_THUMB_RES
+  const sceneMax = Math.max(sw, sh)
+  if (sceneMax > GEN_SCENE_MAX_DIM) {
+    const k = GEN_SCENE_MAX_DIM / sceneMax
+    sw = Math.max(1, Math.round(sw * k))
+    sh = Math.max(1, Math.round(sh * k))
+  }
   if (!ensureGenFbo(sw, sh)) {
     sendError('generative FBO incomplete — falling back to builtin plasma', false)
     state.genActive = null

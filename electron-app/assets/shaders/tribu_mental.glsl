@@ -122,7 +122,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   col = mix(col, vec3(lum) * vec3(1.0, 0.95, 1.1), 0.6 * tc);
   col += rel * 0.3 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                              vec3(0.0, 0.33, 0.67)) * exp(-2.0 * r);
-  col = 1.0 - exp(-col * 1.2);
+  col *= 1.2;  // exposición lineal — el epílogo posee ACES + sRGB (WAVE 8256)
   if (RHYTHMIC_VOID) col *= 0.4;                          // el silencio rítmico deja eco
 
   // ── 6. MEMORIA: feedback conforme sobre u_prevFrame ─────────────────

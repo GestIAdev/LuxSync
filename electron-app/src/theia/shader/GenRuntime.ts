@@ -798,8 +798,13 @@ export class GenRuntime {
     // acumular el reloj gobernado UNA vez por frame (compartido por el
     // pase de sim y la escena visual).
     const audioLive = (sm.flags & (1 << TEL_FLAG.AUDIO_LIVE)) !== 0
+    // 🌊 WAVE 8257 — MASTER SPEED: el fader multiplica el target del
+    // gobernador — autoridad absoluta sobre el reloj del gemelo HDMI
+    // sin romper el suavizado exponencial (sin time-jumps).
+    const masterSpeed = uniforms.get('u_speed') ?? 1.0
     this.timeScale +=
-      ((audioLive ? 1.0 : 0.5) - this.timeScale) * (1 - Math.exp(-dtMs / 160))
+      ((audioLive ? 1.0 : 0.5) * masterSpeed - this.timeScale) *
+      (1 - Math.exp(-dtMs / 160))
     this.shaderTimeSec += dtMs * 0.001 * this.timeScale
     const shaderTimeSec = this.shaderTimeSec
 

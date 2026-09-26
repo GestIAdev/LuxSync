@@ -343,6 +343,12 @@ interface WorkerState {
   /** 🌊 WAVE 8250 — reloj gobernado (AUDIO_LIVE ? 1.0 : 0.5, exponencial). */
   genShaderTimeSec: number
   genTimeScale: number
+  /** 🌊 WAVE 8257 — master speed suavizado + relojes acumulados del path
+   *  builtin (fase plasma + u_time) — el fader SPEED gobierna ambos sin
+   *  saltos temporales. */
+  speedScale: number
+  builtinTimeSec: number
+  builtinPhase: number
   /** Programa passthrough FBO→canvas. */
   blitProgram: WebGLProgram | null
   blitTexLoc: WebGLUniformLocation | null
@@ -488,6 +494,9 @@ const state: WorkerState = {
   genPrevValid: false,
   genShaderTimeSec: 0,
   genTimeScale: 0.5,
+  speedScale: 1.0,
+  builtinTimeSec: 0,
+  builtinPhase: 0,
   blitProgram: null,
   blitTexLoc: null,
   blitPos: -1,
@@ -1730,9 +1739,14 @@ function renderGenerativeFrame(
   // GenRuntime): `u_time` crece a la velocidad del audio — AUDIO_LIVE →
   // 1.0, sordo → 0.5 — suavizado exponencial independiente del frame-rate
   // (τ=160ms ≈ 10%/frame @60fps). `u_dt` sigue siendo el dt físico.
+  // 🌊 WAVE 8257 — MASTER SPEED: el fader multiplica el TARGET del
+  // gobernador — autoridad absoluta sobre el reloj sin romper el
+  // suavizado exponencial (mover el slider no produce time-jumps).
   const audioLive = (sm.flags & (1 << TEL_FLAG.AUDIO_LIVE)) !== 0
+  const masterSpeed = state.uniforms.get('u_speed') ?? 1.0
+  const speedTarget = (audioLive ? 1.0 : 0.5) * masterSpeed
   state.genTimeScale +=
-    ((audioLive ? 1.0 : 0.5) - state.genTimeScale) * (1 - Math.exp(-dtMs / 160))
+    (speedTarget - state.genTimeScale) * (1 - Math.exp(-dtMs / 160))
   state.genShaderTimeSec += dtMs * 0.001 * state.genTimeScale
   const shaderTimeSec = state.genShaderTimeSec
 
@@ -2153,6 +2167,19 @@ function renderCurrentFrame(timestampMs: number): void {
   const w = canvas.width
   const h = canvas.height
 
+  // 🌊 WAVE 8257 — relojes gobernados del path builtin: la fase del plasma
+  // y u_time acumulan dt × speedScale (suavizado exp. τ=160ms hacia
+  // u_speed) — el fader SPEED tiene autoridad sin provocar saltos de fase.
+  // Se actualiza ANTES del upload de uniforms, cada frame, ambos paths.
+  {
+    const masterSpeed = state.uniforms.get('u_speed') ?? 1.0
+    state.speedScale +=
+      (masterSpeed - state.speedScale) * (1 - Math.exp(-dtMs / 160))
+    state.builtinTimeSec += dtMs * 0.001 * state.speedScale
+    state.builtinPhase =
+      (state.builtinPhase + dtMs * (TAU / PLASMA_PERIOD_MS) * state.speedScale) % TAU
+  }
+
   // 🔮 WAVE 8229 · E3 — camino generativo (shader de artista activo y
   // contexto WebGL2): escena → FBO escalado → blit → canvas. En cualquier
   // otro caso, el plasma/video builtin de siempre.
@@ -2173,7 +2200,9 @@ function renderCurrentFrame(timestampMs: number): void {
   gl.uniform1f(state.glUniformHasVideo, state.hasVideoTex ? 1 : 0)
   gl.uniform1f(state.glUniformHasPrev, state.prevSnapshotValid ? 1 : 0)
   gl.uniform1f(state.glUniformBlend, xfStep.alphaSecondary)
-  gl.uniform1f(state.glUniformPhase, ((timestampMs % PLASMA_PERIOD_MS) / PLASMA_PERIOD_MS) * TAU)
+  // 🌊 WAVE 8257 — fase gobernada por master speed (reloj acumulado,
+  // no timestampMs crudo — el fader ya no provoca saltos de fase).
+  gl.uniform1f(state.glUniformPhase, state.builtinPhase)
   // 🌊 WAVE 8211 — masters (fall back to neutral defaults if unset)
   gl.uniform1f(state.glUniformBrightness, state.uniforms.get('u_brightness') ?? 1.0)
   gl.uniform1f(state.glUniformContrast, state.uniforms.get('u_contrast') ?? 1.0)
@@ -2195,7 +2224,7 @@ function renderCurrentFrame(timestampMs: number): void {
       sm.energyZone,
     )
   }
-  if (state.euTime) gl.uniform1f(state.euTime, perfNow * 0.001)
+  if (state.euTime) gl.uniform1f(state.euTime, state.builtinTimeSec)
   if (state.euDt) gl.uniform1f(state.euDt, dtMs * 0.001)
   if (state.euResolution) gl.uniform3f(state.euResolution, w, h, 1)
   if (state.euBeatTime) gl.uniform1f(state.euBeatTime, sm.beatTime)

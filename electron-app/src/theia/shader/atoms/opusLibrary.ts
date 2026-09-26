@@ -13,6 +13,7 @@
  *                           Lissajous, domain warping analítico (§6.1)
  *   tribu_mental.glsl     — Enjambre conforme: mandala log-polar Droste +
  *                           24 cargas que cantan el cromagrama (§6.2)
+ *   + 9 átomos del kit SHADER_ATOM_BASE (neon_conduit … turing_cannibals).
  *
  * Cada fichero es su propio manifiesto (§4.2): el header `@euclid` se
  * parsea con `parseEuclidMeta` y de ahí salen genoma, zona y parámetros —
@@ -25,6 +26,15 @@ import { parseEuclidMeta } from '../ShaderAssembler'
 
 import AETHER_SERPENT_GLSL from '../../../../assets/shaders/aether_serpent.glsl?raw'
 import TRIBU_MENTAL_GLSL from '../../../../assets/shaders/tribu_mental.glsl?raw'
+import NEON_CONDUIT_GLSL from '../../../../assets/shaders/neon_conduit.glsl?raw'
+import SACRED_BOUNCER_GLSL from '../../../../assets/shaders/sacred_bouncer.glsl?raw'
+import LIQUID_NEBULA_GLSL from '../../../../assets/shaders/liquid_nebula.glsl?raw'
+import VOXEL_MONOLITH_GLSL from '../../../../assets/shaders/voxel_monolith.glsl?raw'
+import MORPHING_CORE_GLSL from '../../../../assets/shaders/morphing_core.glsl?raw'
+import QUANTUM_SWARM_GLSL from '../../../../assets/shaders/quantum_swarm.glsl?raw'
+import FERRO_HEART_GLSL from '../../../../assets/shaders/ferro_heart.glsl?raw'
+import EVENT_HORIZON_GLSL from '../../../../assets/shaders/event_horizon.glsl?raw'
+import TURING_CANNIBALS_GLSL from '../../../../assets/shaders/turing_cannibals.glsl?raw'
 
 export const OPUS_PACK_ID = 'opus-infinite-genome'
 export const OPUS_PACK_LABEL = 'Opus Infinite Genome'
@@ -52,6 +62,26 @@ const OPUS_SPECS: readonly OpusAtomSpec[] = [
     glsl: TRIBU_MENTAL_GLSL,
     vibes: ['psytrance', 'mental-tribe', 'techno-industrial'],
   },
+  // 🎨 Fases 1–3 del kit SHADER_ATOM_BASE — el id es el nombre del fichero.
+  // Vibes canónicas de VibeCanon → el matcher de Selene puede elegirlos.
+  { id: 'neon_conduit', fileName: 'neon_conduit.glsl', glsl: NEON_CONDUIT_GLSL,
+    vibes: ['techno-club', 'rave'] },
+  { id: 'sacred_bouncer', fileName: 'sacred_bouncer.glsl', glsl: SACRED_BOUNCER_GLSL,
+    vibes: ['fiesta-latina', 'pop-rock'] },
+  { id: 'liquid_nebula', fileName: 'liquid_nebula.glsl', glsl: LIQUID_NEBULA_GLSL,
+    vibes: ['chill-lounge'] },
+  { id: 'voxel_monolith', fileName: 'voxel_monolith.glsl', glsl: VOXEL_MONOLITH_GLSL,
+    vibes: ['techno-club', 'rave'] },
+  { id: 'morphing_core', fileName: 'morphing_core.glsl', glsl: MORPHING_CORE_GLSL,
+    vibes: ['techno-club', 'chill-lounge', 'rave'] },
+  { id: 'quantum_swarm', fileName: 'quantum_swarm.glsl', glsl: QUANTUM_SWARM_GLSL,
+    vibes: ['techno-club', 'rave'] },
+  { id: 'ferro_heart', fileName: 'ferro_heart.glsl', glsl: FERRO_HEART_GLSL,
+    vibes: ['rave', 'techno-club', 'fiesta-latina'] },
+  { id: 'event_horizon', fileName: 'event_horizon.glsl', glsl: EVENT_HORIZON_GLSL,
+    vibes: ['chill-lounge', 'techno-club'] },
+  { id: 'turing_cannibals', fileName: 'turing_cannibals.glsl', glsl: TURING_CANNIBALS_GLSL,
+    vibes: ['fiesta-latina', 'chill-lounge'] },
 ]
 
 /**

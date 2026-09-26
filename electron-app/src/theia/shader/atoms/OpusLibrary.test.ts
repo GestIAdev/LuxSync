@@ -25,6 +25,13 @@ import { getThetaOrchestrator } from '../../ThetaOrchestrator'
 import AETHER_SRC from '../../../../assets/shaders/aether_serpent.glsl?raw'
 import TRIBU_SRC from '../../../../assets/shaders/tribu_mental.glsl?raw'
 
+const KIT_IDS = [
+  'neon_conduit', 'sacred_bouncer', 'liquid_nebula',
+  'voxel_monolith', 'morphing_core', 'quantum_swarm',
+  'ferro_heart', 'event_horizon', 'turing_cannibals',
+]
+const OPUS_ALL_IDS = [AETHER_SERPENT_ATOM_ID, TRIBU_MENTAL_ATOM_ID, ...KIT_IDS]
+
 describe('U4 — Opus Library (.glsl físicos)', () => {
   it('importa los dos shaders §6 como fuente GLSL cruda', () => {
     expect(AETHER_SRC).toContain('// @euclid name    "Æther Serpent"')
@@ -65,7 +72,7 @@ describe('U4 — Opus Library (.glsl físicos)', () => {
 
   it('construye átomos kind:shader válidos para el registry', () => {
     const atoms = buildOpusGenomeAtoms()
-    expect(atoms).toHaveLength(2)
+    expect(atoms.map((a) => a.id)).toEqual(OPUS_ALL_IDS)
     const serpent = atoms.find((a) => a.id === AETHER_SERPENT_ATOM_ID)
     const tribu = atoms.find((a) => a.id === TRIBU_MENTAL_ATOM_ID)
     expect(serpent?.source).toEqual({ kind: 'shader', glsl: AETHER_SRC })
@@ -74,6 +81,19 @@ describe('U4 — Opus Library (.glsl físicos)', () => {
     expect(tribu?.energyZone).toEqual({ min: 'gentle', max: 'peak' })
     expect(serpent?.aggression).toBeCloseTo(0.4)
     expect(serpent?.organicity).toBeCloseTo(0.9)
+  })
+
+  it('los 9 átomos del kit traen header @euclid completo y cuerpo', () => {
+    for (const atom of buildOpusGenomeAtoms().filter((a) => KIT_IDS.includes(a.id))) {
+      const glsl = atom.source.kind === 'shader' ? atom.source.glsl : ''
+      const meta = parseEuclidMeta(glsl)
+      expect(meta.name, atom.id).toBeTruthy()
+      expect(meta.zone, atom.id).toBeDefined()
+      expect(meta.params.length, atom.id).toBe(2)
+      expect(meta.genes.length, atom.id).toBeGreaterThan(0)
+      expect(glsl, atom.id).toContain('void mainImage(out vec4 c, in vec2 fragCoord)')
+      expect(atom.compatibleVibes.length, atom.id).toBeGreaterThan(0)
+    }
   })
 })
 
@@ -86,15 +106,12 @@ describe('U4 — ensureEuclidShaderAtoms (arranque)', () => {
     registry.unregister(AETHER_SERPENT_ATOM_ID)
     registry.unregister(TRIBU_MENTAL_ATOM_ID)
     registry.unregister(ORACLE_KIFS_ATOM_ID)
+    for (const id of KIT_IDS) registry.unregister(id)
   })
 
-  it('registra los 3 átomos generativos y crea el pack Opus', () => {
+  it('registra los átomos generativos y crea el pack Opus', () => {
     const ids = ensureEuclidShaderAtoms()
-    expect(ids).toEqual([
-      ORACLE_KIFS_ATOM_ID,
-      AETHER_SERPENT_ATOM_ID,
-      TRIBU_MENTAL_ATOM_ID,
-    ])
+    expect(ids).toEqual([ORACLE_KIFS_ATOM_ID, ...OPUS_ALL_IDS])
 
     const registry = getTheiaRegistry()
     expect(registry.getAtom(AETHER_SERPENT_ATOM_ID)?.source.kind).toBe('shader')
@@ -104,10 +121,8 @@ describe('U4 — ensureEuclidShaderAtoms (arranque)', () => {
     const opus = store.packs.get(OPUS_PACK_ID)
     expect(opus).toBeDefined()
     expect(opus?.manifest.displayName).toBe(OPUS_PACK_LABEL)
-    expect(opus?.atoms.map((a) => a.id)).toEqual([
-      AETHER_SERPENT_ATOM_ID,
-      TRIBU_MENTAL_ATOM_ID,
-    ])
+    expect(opus?.atoms.map((a) => a.id)).toEqual(OPUS_ALL_IDS)
+    for (const id of KIT_IDS) expect(registry.getAtom(id)?.source.kind, id).toBe('shader')
     // El KIFS de prueba conserva su pack propio (contrato E4).
     const euclid = store.packs.get(EUCLID_PACK_ID)
     expect(euclid?.atoms.map((a) => a.id)).toEqual([ORACLE_KIFS_ATOM_ID])
@@ -117,7 +132,7 @@ describe('U4 — ensureEuclidShaderAtoms (arranque)', () => {
     ensureEuclidShaderAtoms()
     ensureEuclidShaderAtoms()
     const opus = useTheiaPackStore.getState().packs.get(OPUS_PACK_ID)
-    expect(opus?.atoms).toHaveLength(2)
+    expect(opus?.atoms).toHaveLength(OPUS_ALL_IDS.length)
   })
 })
 

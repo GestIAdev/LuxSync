@@ -355,3 +355,79 @@ describe('G1 — relojes integrales (u_energyTime / u_barCount)', () => {
     expect(snap![TELEMETRY_SLOT.BAR_COUNT]).toBe(42)
   })
 })
+
+describe('🌊 WAVE 8279 · F3 — página B: schema físico Liquid/GodEar', () => {
+  it('slots 64-92 tienen nombre real (no RESERVED) y u_tel4 alineados a vec4', () => {
+    const pageB = TELEMETRY_SCHEMA.filter((d) => d.slot >= TELEMETRY_PAGE_B_BASE)
+    // 64-92 nombrados + 83 reservado + 93-127 reserva generada
+    const named = pageB.filter((d) => !d.name.startsWith('RESERVED_'))
+    expect(named.length).toBe(28) // 64-92 menos RESERVED_83
+    // Los grupos semánticos están alineados a frontera vec4 (idx%4==0):
+    // vocal=64, void=68, snare=72, zoneA=76, zoneB=80, texture=84, delta=88, master=92
+    for (const base of [64, 68, 72, 76, 80, 84, 88, 92]) {
+      expect((base - SLOT_PAYLOAD_BASE) % 4).toBe(0)
+    }
+    // Lookup nombre→slot
+    expect(TELEMETRY_SLOT.VOCAL_SUSTAIN).toBe(64)
+    expect(TELEMETRY_SLOT.VOCAL_ISOLATION).toBe(65)
+    expect(TELEMETRY_SLOT.CLEAN_MID).toBe(66)
+    expect(TELEMETRY_SLOT.SYNTH_SUSTAIN).toBe(67)
+    expect(TELEMETRY_SLOT.RHYTHMIC_VOID).toBe(68)
+    expect(TELEMETRY_SLOT.PERC_ABSENCE).toBe(69)
+    expect(TELEMETRY_SLOT.VOID_HOLD).toBe(70)
+    expect(TELEMETRY_SLOT.VOCAL_TIME).toBe(71)
+    expect(TELEMETRY_SLOT.SNARE_DRIVE).toBe(72)
+    expect(TELEMETRY_SLOT.SNARE_MOMENTUM).toBe(73)
+    expect(TELEMETRY_SLOT.GATE_HEALTH).toBe(74)
+    expect(TELEMETRY_SLOT.SNARE_CRACK).toBe(75)
+    expect(TELEMETRY_SLOT.Z_FRONT_L).toBe(76)
+    expect(TELEMETRY_SLOT.Z_MOVER_L).toBe(80)
+    expect(TELEMETRY_SLOT.Z_SNARE_ATTACK).toBe(82)
+    expect(TELEMETRY_SLOT.WHITE_NOISE).toBe(84)
+    expect(TELEMETRY_SLOT.WALL_INTENSITY).toBe(85)
+    expect(TELEMETRY_SLOT.SPECTRAL_DENSITY).toBe(86)
+    expect(TELEMETRY_SLOT.FLUX_BASELINE_N).toBe(87)
+    expect(TELEMETRY_SLOT.RAW_MID_DELTA).toBe(88)
+    expect(TELEMETRY_SLOT.RAW_HH_DELTA).toBe(91)
+    expect(TELEMETRY_SLOT.AGC_STRESS).toBe(92)
+  })
+
+  it('flags página B 17-22 declarados + STROBE_ACTIVE sigue existiendo (deprecated)', () => {
+    expect(TEL_FLAG.REAL_SILENCE).toBe(17)
+    expect(TEL_FLAG.VOCAL_ONSET).toBe(18)
+    expect(TEL_FLAG.NOISE_MODE).toBe(19)
+    expect(TEL_FLAG.GATE_DEAD).toBe(20)
+    expect(TEL_FLAG.SNARE_TRUE).toBe(21)
+    expect(TEL_FLAG.VOID_RELEASE).toBe(22)
+    expect(TEL_FLAG.STROBE_ACTIVE).toBe(14) // slot preservado, fijo a 0
+  })
+
+  it('relojes integrales VOID_HOLD/VOCAL_TIME son verbatim (kind none, sin smoother)', () => {
+    const voidHold = TELEMETRY_SCHEMA.find((d) => d.slot === TELEMETRY_SLOT.VOID_HOLD)
+    const vocalTime = TELEMETRY_SCHEMA.find((d) => d.slot === TELEMETRY_SLOT.VOCAL_TIME)
+    expect(voidHold?.kind).toBe('none')
+    expect(vocalTime?.kind).toBe('none')
+    // Los deltas crudos tampoco se suavizan — interpolar un transitorio lo destruye
+    for (const s of ['RAW_MID_DELTA', 'RAW_HIGHMID_DELTA', 'RAW_TREBLE_DELTA', 'RAW_HH_DELTA']) {
+      expect(TELEMETRY_SCHEMA.find((d) => d.slot === TELEMETRY_SLOT[s])?.kind).toBe('none')
+    }
+  })
+
+  it('round-trip: writer publica página B y el reader la recibe verbatim', () => {
+    const sab = createTelemetryRing()
+    const writer = new TelemetryWriter(sab)
+    const reader = new TelemetryReader(sab)
+    writer.publish(9, 1 << TEL_FLAG.REAL_SILENCE, 0, (p) => {
+      p[TELEMETRY_SLOT.VOCAL_ISOLATION] = 0.77
+      p[TELEMETRY_SLOT.VOID_HOLD] = 4.25
+      p[TELEMETRY_SLOT.Z_SNARE_ATTACK] = 0.91
+      p[TELEMETRY_SLOT.AGC_STRESS] = 0.66
+    })
+    const snap = reader.read()
+    expect(snap).not.toBeNull()
+    expect(snap![TELEMETRY_SLOT.VOCAL_ISOLATION]).toBeCloseTo(0.77, 5)
+    expect(snap![TELEMETRY_SLOT.VOID_HOLD]).toBeCloseTo(4.25, 5)
+    expect(snap![TELEMETRY_SLOT.Z_SNARE_ATTACK]).toBeCloseTo(0.91, 5)
+    expect(snap![TELEMETRY_SLOT.AGC_STRESS]).toBeCloseTo(0.66, 5)
+  })
+})

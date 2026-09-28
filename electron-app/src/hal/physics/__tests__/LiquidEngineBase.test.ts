@@ -30,6 +30,7 @@ import {
   hihatBands,
   snareBands,
   melodicBands,
+  chillPadBands,
   guitarBands,
   generateBroadbandNoise,
   generate4x4Pattern,
@@ -659,5 +660,202 @@ describe('⏱️ LiquidEngine41 dt Stress', () => {
         expect(Number.isFinite(result.moverRightIntensity), `NaN at dt=${dt} frame=${i}`).toBe(true)
       }
     }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 8279 · F3 — LIQUID PHYSICS TELEMETRY (página B del anillo Euclid)
+// physicsTel: objeto PREASIGNADO mutado in-place en cada applyBands,
+// incluidas las ramas de silencio y glacier (EUCLID_RING_EXPANSION §1.7/§2.2).
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('🌊 LiquidPhysicsTelemetry (WAVE 8279 · F3)', () => {
+  let engine: LiquidEngine71
+
+  beforeEach(() => {
+    engine = new LiquidEngine71(TECHNO_PROFILE)
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(10000))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('expone physicsTel PREASIGNADO — misma identidad entre frames (zero-alloc)', () => {
+    const tel = engine.physicsTel
+    vi.advanceTimersByTime(50)
+    engine.applyBands(makeInput(kickBands(0.8), { isKick: true }))
+    vi.advanceTimersByTime(50)
+    engine.applyBands(makeInput(kickBands(0.8), { isKick: true }))
+    expect(engine.physicsTel).toBe(tel)
+    expect(tel.now).toBe(Date.now())
+  })
+
+  it('rama de silencio → zonas a cero + realSilence=true + now stamped', () => {
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(50)
+      engine.applyBands(makeInput(kickBands(0.85), { isKick: true }))
+    }
+    vi.advanceTimersByTime(50)
+    engine.applyBands(makeInput(kickBands(0.9), { isRealSilence: true }))
+    const tel = engine.physicsTel
+    expect(tel.realSilence).toBe(true)
+    expect(tel.zFrontL).toBe(0)
+    expect(tel.zFrontR).toBe(0)
+    expect(tel.zBackL).toBe(0)
+    expect(tel.zBackR).toBe(0)
+    expect(tel.zMoverL).toBe(0)
+    expect(tel.zMoverR).toBe(0)
+    expect(tel.zSnareAttack).toBe(0)
+    expect(tel.cleanMid).toBe(0)
+    expect(tel.vocalIsolation).toBe(0)
+    expect(tel.snareDrive).toBe(0)
+    expect(tel.spectralDensity).toBe(0)
+    expect(tel.rawMidDelta).toBe(0)
+    expect(tel.snareMacdOnset).toBe(false)
+    expect(tel.now).toBe(Date.now())
+  })
+
+  it('frames normales → zonas vivas + realSilence=false + deltas crudos ≥0', () => {
+    for (let i = 0; i < 8; i++) {
+      vi.advanceTimersByTime(50)
+      engine.applyBands(makeInput(kickBands(0.85), { isKick: i % 2 === 0 }))
+    }
+    const tel = engine.physicsTel
+    expect(tel.realSilence).toBe(false)
+    // El routing 7.1 Latino manda el kick a front-LEFT (asimetría física).
+    expect(tel.zFrontL).toBeGreaterThan(0)
+    expect(tel.rawMidDelta).toBeGreaterThanOrEqual(0)
+    expect(tel.rawTrebleDelta).toBeGreaterThanOrEqual(0)
+    expect(tel.rawHighMidDelta).toBeGreaterThanOrEqual(0)
+  })
+
+  it('synthSustain es CONTINUO — sin los escalones {0,0.3,0.5,1} de tonalSquelch', () => {
+    // mid=0.60 (harmonicBase>0.05); transientTop = 0.20+0.10+0.02 = 0.32
+    // ratio = 0.32/0.60 ≈ 0.533 → synthSustain = 1 − 0.533/1.12 ≈ 0.52
+    vi.advanceTimersByTime(50)
+    engine.applyBands(makeInput({
+      subBass: 0.05, bass: 0.10, lowMid: 0.20,
+      mid: 0.60, highMid: 0.20, treble: 0.10, ultraAir: 0.04,
+    }))
+    const s1 = engine.physicsTel.synthSustain
+    expect(s1).toBeGreaterThan(0.05)
+    expect(s1).toBeLessThan(0.95)
+    for (const step of [0, 0.3, 0.5, 1]) expect(s1).not.toBe(step)
+    // Contenido puramente percusivo → ratio > 1.12 → sustain clamp a 0
+    vi.advanceTimersByTime(50)
+    engine.applyBands(makeInput({
+      subBass: 0.02, bass: 0.05, lowMid: 0.05,
+      mid: 0.30, highMid: 0.50, treble: 0.40, ultraAir: 0.10,
+    }))
+    expect(engine.physicsTel.synthSustain).toBe(0)
+  })
+
+  it('MACD armado (techno) exporta snareDrive/momentum/gateHealth reales', () => {
+    for (let i = 0; i < 30; i++) {
+      vi.advanceTimersByTime(50)
+      engine.applyBands(makeInput(
+        i % 4 === 2 ? snareBands(0.8) : kickBands(0.7),
+        {
+          isKick: i % 4 === 0,
+          snare_energy: 0.5,
+          hh_energy: 0.3,
+          snare_crack_flux: i % 4 === 2 ? 0.6 : 0.05,
+          snare_energy_ungated: i % 4 === 2 ? 0.5 : 0.1,
+        },
+      ))
+    }
+    const tel = engine.physicsTel
+    expect(Number.isFinite(tel.snareDrive)).toBe(true)
+    expect(Number.isFinite(tel.snareMomentum)).toBe(true)
+    expect(tel.gateHealth).toBeGreaterThanOrEqual(0)
+    expect(tel.gateHealth).toBeLessThanOrEqual(1)
+  })
+
+  it('fallback universal (poprock sin MACD) → gateHealth=1, momentum=0, drive=ungated×crack', () => {
+    const pop = new LiquidEngine71(POPROCK_PROFILE)
+    vi.advanceTimersByTime(50)
+    pop.applyBands(makeInput(kickBands(0.8), {
+      snare_crack_flux: 0.4,
+      snare_energy_ungated: 0.5,
+    }))
+    const tel = pop.physicsTel
+    expect(tel.gateHealth).toBe(1)
+    expect(tel.snareMomentum).toBe(0)
+    expect(tel.snareDrive).toBeCloseTo(0.5 * 0.4, 5)
+  })
+
+  it('fallback SNARE_TRUE: snareMacdOnset solo en el flanco crack>0.25', () => {
+    const pop = new LiquidEngine71(POPROCK_PROFILE)
+    vi.advanceTimersByTime(50)
+    pop.applyBands(makeInput(kickBands(0.7), { snare_crack_flux: 0.1 }))
+    expect(pop.physicsTel.snareMacdOnset).toBe(false)
+    // Flanco al alza
+    vi.advanceTimersByTime(50)
+    pop.applyBands(makeInput(kickBands(0.7), { snare_crack_flux: 0.5 }))
+    expect(pop.physicsTel.snareMacdOnset).toBe(true)
+    // Sigue alto → NO re-dispara (edge, no level)
+    vi.advanceTimersByTime(50)
+    pop.applyBands(makeInput(kickBands(0.7), { snare_crack_flux: 0.6 }))
+    expect(pop.physicsTel.snareMacdOnset).toBe(false)
+    // Baja → rearma; nuevo flanco → onset otra vez
+    vi.advanceTimersByTime(50)
+    pop.applyBands(makeInput(kickBands(0.7), { snare_crack_flux: 0.1 }))
+    vi.advanceTimersByTime(50)
+    pop.applyBands(makeInput(kickBands(0.7), { snare_crack_flux: 0.5 }))
+    expect(pop.physicsTel.snareMacdOnset).toBe(true)
+  })
+
+  it('rama glacier (chill pureAmbient): zonas = osciladores, DSP a cero, no-silencio', () => {
+    const chill = new LiquidEngine71(CHILL_PROFILE)
+    vi.advanceTimersByTime(50)
+    chill.applyBands(makeInput(silentBands()))
+    const tel = chill.physicsTel
+    expect(tel.realSilence).toBe(false)   // motor generativo vivo
+    expect(tel.zFrontL).toBeGreaterThan(0.05) // oscilador [0.10, 0.60]
+    expect(tel.zFrontL).toBeLessThanOrEqual(0.60 + 1e-6)
+    expect(tel.zMoverL).toBeGreaterThan(0.02)
+    expect(tel.vocalSustain).toBe(0)
+    expect(tel.vocalIsolation).toBe(0)
+    expect(tel.snareDrive).toBe(0)
+    expect(tel.spectralDensity).toBe(0)
+    expect(tel.fluxBaseline).toBe(0)
+    expect(tel.zSnareAttack).toBe(0)
+    expect(tel.cleanMid).toBe(0)
+    expect(tel.now).toBe(Date.now())
+  })
+
+  it('vocalSustain sigue decayendo en silencio (cola honesta, §1.8.2)', () => {
+    for (let i = 0; i < 10; i++) {
+      vi.advanceTimersByTime(50)
+      engine.applyBands(makeInput(melodicBands()))
+    }
+    const sustainBefore = engine.physicsTel.vocalSustain
+    expect(sustainBefore).toBeGreaterThan(0.3)
+    vi.advanceTimersByTime(50)
+    engine.applyBands(makeInput(silentBands(), { isRealSilence: true }))
+    const sustainAfter = engine.physicsTel.vocalSustain
+    expect(sustainAfter).toBeGreaterThan(0)
+    expect(sustainAfter).toBeLessThan(sustainBefore)
+  })
+
+  it('vocalIsolation sube con mid sostenido tonal, baja con percusión pura', () => {
+    // chillPad: mid alto + transitorios mínimos (ratio percusivo ≈0.48)
+    // + flatness baja → presencia vocal/lead real.
+    for (let i = 0; i < 14; i++) {
+      vi.advanceTimersByTime(50)
+      engine.applyBands(makeInput(chillPadBands(0.7), { flatness: 0.1 }))
+    }
+    const vocalIso = engine.physicsTel.vocalIsolation
+    expect(vocalIso).toBeGreaterThan(0.1)
+
+    const perc = new LiquidEngine71(TECHNO_PROFILE)
+    for (let i = 0; i < 14; i++) {
+      vi.advanceTimersByTime(50)
+      perc.applyBands(makeInput(kickBands(0.9), { isKick: true, flatness: 0.5 }))
+    }
+    // kickBands.mid ≈ 0.085 → vocalSustain bajo → aislamiento < vocal sostenida
+    expect(perc.physicsTel.vocalIsolation).toBeLessThan(vocalIso)
   })
 })

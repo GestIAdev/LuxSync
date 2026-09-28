@@ -191,6 +191,15 @@ export class TickEngine {
         this._euclidContext = null;
         this._euclidAd = null;
         this._euclidLf = null;
+        // 🌊 WAVE 8279 · F3 — página B: física Liquid viva (referencia al
+        // physicsTel preasignado del engine, o null si stale >500ms) + relojes
+        // integrales host (VOCAL_TIME / VOID_HOLD) y gates con histéresis.
+        this._euclidPhys = null;
+        this._euclidMsPerBar = 0;
+        this._liquidClockPrevMs = 0;
+        this._vocalTimeSec = 0;
+        this._voidHoldSec = 0;
+        this._vocalOnsetArmed = true;
         /**
          * Fill pre-bound asignado UNA vez — lee los scratch fields y escribe
          * directo sobre la vista f32 del anillo (writer.publish invoca con el
@@ -267,6 +276,52 @@ export class TickEngine {
             // 🧬 WAVE 8233 · G1 — relojes integrales (slots 58/59, kind 'none').
             p[S.ENERGY_TIME] = this._euclidClocks.energyTime;
             p[S.BAR_COUNT] = this._euclidClocks.barCount;
+            // ── 🌊 PÁGINA B (64-92) — WAVE 8279 · F3: física Liquid + GodEar ──
+            // `pt` = referencia viva al physicsTel del engine activo (o null si
+            // stale >500 ms → ceros). Todo escalar, cero allocs, §2.2.
+            const pt = this._euclidPhys;
+            // VOCAL — u_vocalVec = u_tel4[15]
+            p[S.VOCAL_SUSTAIN] = pt?.vocalSustain ?? 0;
+            p[S.VOCAL_ISOLATION] = pt?.vocalIsolation ?? 0;
+            p[S.CLEAN_MID] = pt?.cleanMid ?? 0;
+            p[S.SYNTH_SUSTAIN] = pt?.synthSustain ?? 0;
+            // VOID — u_voidVec = u_tel4[16]
+            p[S.RHYTHMIC_VOID] = rhythmic?.rhythmic_void ?? 0;
+            const absenceMs = Math.min(rhythmic?.snare_absence_ms ?? 0, rhythmic?.hh_absence_ms ?? 0);
+            p[S.PERC_ABSENCE] = this._euclidMsPerBar > 0
+                ? Math.min(16, absenceMs / this._euclidMsPerBar)
+                : 0;
+            p[S.VOID_HOLD] = this._voidHoldSec;
+            p[S.VOCAL_TIME] = this._vocalTimeSec;
+            // SNARE-C — u_snareVec = u_tel4[17]
+            p[S.SNARE_DRIVE] = pt?.snareDrive ?? 0;
+            p[S.SNARE_MOMENTUM] = pt?.snareMomentum ?? 0;
+            p[S.GATE_HEALTH] = pt?.gateHealth ?? 1;
+            p[S.SNARE_CRACK] = rhythmic?.snare_energy_ungated ?? 0;
+            // ZONES — u_zoneA/B = u_tel4[18..19] (envolventes físicas del rig)
+            p[S.Z_FRONT_L] = pt?.zFrontL ?? 0;
+            p[S.Z_FRONT_R] = pt?.zFrontR ?? 0;
+            p[S.Z_BACK_L] = pt?.zBackL ?? 0;
+            p[S.Z_BACK_R] = pt?.zBackR ?? 0;
+            p[S.Z_MOVER_L] = pt?.zMoverL ?? 0;
+            p[S.Z_MOVER_R] = pt?.zMoverR ?? 0;
+            p[S.Z_SNARE_ATTACK] = pt?.zSnareAttack ?? 0;
+            // TEXTURE — u_textureVec = u_tel4[20]
+            p[S.WHITE_NOISE] = photon?.whiteNoiseScore ?? 0;
+            p[S.WALL_INTENSITY] = photon?.wallIntensity ?? 0;
+            p[S.SPECTRAL_DENSITY] = pt?.spectralDensity ?? 0;
+            p[S.FLUX_BASELINE_N] = Math.min(1, Math.max(0, ((pt?.fluxBaseline ?? 0) - 0.03) / 0.10));
+            // DELTAS — u_deltaVec = u_tel4[21] (crudos, sin suavizado)
+            p[S.RAW_MID_DELTA] = pt?.rawMidDelta ?? 0;
+            p[S.RAW_HIGHMID_DELTA] = pt?.rawHighMidDelta ?? 0;
+            p[S.RAW_TREBLE_DELTA] = pt?.rawTrebleDelta ?? 0;
+            p[S.RAW_HH_DELTA] = rhythmic?.raw_hh_delta ?? 0;
+            // MASTER — u_tel4[22]: estrés del AGC normalizado — 0 sin reducción,
+            // −6dB→0.67, −9dB→1.0 (saturación master brickwall, §2.2).
+            const agcGain = ad?.agcGainFactor ?? 1;
+            p[S.AGC_STRESS] = agcGain >= 1
+                ? 0
+                : Math.min(1, Math.max(0, Math.log2(Math.max(1e-6, agcGain)) / -1.5));
         };
         this.ctx = ctx;
         TickEngine._instances.add(this);
@@ -2028,6 +2083,48 @@ export class TickEngine {
         // 🧬 WAVE 8233 · G1 — ∫energy·dt corre SIEMPRE (incluso sin writer:
         // el integral debe seguir continuo para cuando el consumidor vuelva).
         stepIntegralClocks(this._euclidClocks, now, m.energy, m.beatCount);
+        // 🌊 WAVE 8279 · F3 — física Liquid + relojes/gates host. Corren
+        // SIEMPRE como _euclidClocks: continuidad del integral aunque el
+        // consumidor desaparezca. `pt.now` es el stamp del último applyBands
+        // — si el motor lleva >500ms sin correr (chill generativo aparte,
+        // engine stale), la página B se publica a cero.
+        const ptRaw = this.engine?.getLiquidPhysicsTelemetry() ?? null;
+        const pt = ptRaw !== null && ptRaw.now > 0 && (now - ptRaw.now) < 500
+            ? ptRaw
+            : null;
+        this._euclidPhys = pt;
+        const dtSec = this._liquidClockPrevMs > 0
+            ? Math.min(0.5, Math.max(0, (now - this._liquidClockPrevMs) * 0.001))
+            : 0;
+        this._liquidClockPrevMs = now;
+        const vocalIsoNow = pt?.vocalIsolation ?? 0;
+        // Ley-1: ∫vocalIsolation·dt — reloj propio de la voz; si calla, se para.
+        this._vocalTimeSec += vocalIsoNow * dtSec;
+        // VOID_HOLD: segundos continuos con rhythmic_void ≥0.75. VOID_RELEASE
+        // es el flanco de salida tras ≥2 s de hold (la amplitud del pulso la
+        // deriva el worker a partir del hold acumulado).
+        const rhythmicVoidNow = this.audioPipeline.lastAudioData?.rhythmic?.rhythmic_void ?? 0;
+        let voidRelease = false;
+        if (rhythmicVoidNow >= 0.75) {
+            this._voidHoldSec += dtSec;
+        }
+        else {
+            if (this._voidHoldSec >= 2.0)
+                voidRelease = true;
+            this._voidHoldSec = 0;
+        }
+        // VOCAL_ONSET con histéresis (§2.3): flanco al cruzar 0.35 al alza,
+        // se rearma cuando vocalIsolation cae <0.2 — anti-chatter.
+        let vocalOnset = false;
+        if (this._vocalOnsetArmed) {
+            if (vocalIsoNow >= 0.35) {
+                vocalOnset = true;
+                this._vocalOnsetArmed = false;
+            }
+        }
+        else if (vocalIsoNow < 0.2) {
+            this._vocalOnsetArmed = true;
+        }
         const writer = this.trinity?.getTelemetryWriter();
         if (!writer)
             return;
@@ -2072,8 +2169,9 @@ export class TickEngine {
         // 🧠 WAVE 8275 — eventos soberanos / cognitivos (bits 13-16)
         if (sel.crestEvent)
             flags |= 1 << TEL_FLAG.CREST_EVENT;
-        if (photon?.strobe?.active)
-            flags |= 1 << TEL_FLAG.STROBE_ACTIVE;
+        // 🔮 WAVE 8276 §1.8 — STROBE_ACTIVE (bit 14) DEPRECATED: queda fijo a
+        // 0. El motor de estrobo está prohibido; los flashes son pulsos +
+        // limitador fotosensible en el epílogo del shader.
         if (sel.sovereignEtaMs >= 0)
             flags |= 1 << TEL_FLAG.SOVEREIGN_COUNTDOWN;
         // GLASS_BREAK: el stamp vive ~45s en memoria; el flag dura UN publish
@@ -2081,6 +2179,19 @@ export class TickEngine {
         // smoother del worker dispare el pulso sin perderlo entre frames).
         if (sel.glassBreakAgeMs <= 250)
             flags |= 1 << TEL_FLAG.GLASS_BREAK;
+        // 🌊 WAVE 8279 · F3 — página B flags (bits 17-22, §2.3)
+        if (pt?.realSilence)
+            flags |= 1 << TEL_FLAG.REAL_SILENCE;
+        if (vocalOnset)
+            flags |= 1 << TEL_FLAG.VOCAL_ONSET;
+        if (pt?.noiseMode ?? lf?.noiseMode)
+            flags |= 1 << TEL_FLAG.NOISE_MODE;
+        if ((pt?.gateHealth ?? 1) < 0.1)
+            flags |= 1 << TEL_FLAG.GATE_DEAD;
+        if (pt?.snareMacdOnset)
+            flags |= 1 << TEL_FLAG.SNARE_TRUE;
+        if (voidRelease)
+            flags |= 1 << TEL_FLAG.VOID_RELEASE;
         // ENUMS empaquetados inline (sin packEnums — evita el objeto arg por tick).
         const enumsPacked = (SCHEMA_VERSION & 0xff) |
             ((predType & 0xff) << 8) |
@@ -2119,6 +2230,7 @@ export class TickEngine {
         this._euclidNow = now;
         this._euclidEtaMs = etaMs;
         this._euclidEtaBeats = etaBeats;
+        this._euclidMsPerBar = msPerBeat * 4;
         this._euclidM = m;
         this._euclidContext = context;
         this._euclidAd = ad;

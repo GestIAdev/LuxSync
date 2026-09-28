@@ -1188,6 +1188,14 @@ export class TitanEngine extends EventEmitter {
     getLastProcessedFrame() {
         return this.nervousSystem.getLastActiveLiquidEngine()?.lastFrame ?? null;
     }
+    /**
+     * 🌊 WAVE 8279 · F3 — telemetría física viva del motor Liquid activo
+     * (página B del anillo Euclid). Referencia al objeto preasignado del
+     * engine — se muta in-place cada applyBands, nunca se copia.
+     */
+    getLiquidPhysicsTelemetry() {
+        return this.nervousSystem.getLastActiveLiquidEngine()?.physicsTel ?? null;
+    }
     /** Brecha T1 — morphFactor escalar puro (profundidad armónica 0-1). */
     getLastMorphFactor() {
         return this.getLastProcessedFrame()?.morphFactor ?? 0;

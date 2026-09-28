@@ -62,9 +62,19 @@ export const TEL_FLAG = {
     RHYTHMIC_VOID: 12,
     // 🧠 WAVE 8275 — Cognitive payload coupling (Selene V3 / Iliquidcore)
     CREST_EVENT: 13, // cresta CF>2 — evento de latencia cero (FluidDescriptors)
-    STROBE_ACTIVE: 14, // GodEar StrobeEngine disparando
+    /** 🔮 WAVE 8276 §1.8 — DEPRECATED: siempre 0. La fuente GodEar estaba
+     *  hardcodeada a inactiva y el motor de estrobo queda prohibido — los
+     *  flashes pasan por pulsos + el limitador fotosensible del epílogo. */
+    STROBE_ACTIVE: 14,
     SOVEREIGN_COUNTDOWN: 15, // pre-buffer Cassandra con predictedEventAt pendiente
     GLASS_BREAK: 16, // efecto soberano disparado antes del countdown (ruptura)
+    // 🌊 WAVE 8279 · F3 — página B flags (EUCLID_RING_EXPANSION_8276 §2.3)
+    REAL_SILENCE: 17, // nivel — physicsTel.realSilence (rama silencio/AGC-trap)
+    VOCAL_ONSET: 18, // flanco — vocalIsolation cruza 0.35 al alza (rearme <0.2)
+    NOISE_MODE: 19, // nivel — flatness > umbral del perfil
+    GATE_DEAD: 20, // nivel — gateHealth < 0.1 (caja sintética / AND-gate muerta)
+    SNARE_TRUE: 21, // flanco — onset MACD; fallback: edge de crack_flux > 0.25
+    VOID_RELEASE: 22, // flanco — el vacío termina tras VOID_HOLD ≥ 2 s
 };
 export function telFlag(flags, bit) {
     return ((flags >>> bit) & 1) === 1;
@@ -165,12 +175,49 @@ export const TELEMETRY_SCHEMA = [
     { slot: 61, name: 'PERCUSSIVENESS', uniform: 'u_percussiveness', kind: 'linear' },
     { slot: 62, name: 'MELODICITY', uniform: 'u_melodicity', kind: 'linear' },
     { slot: 63, name: 'CREST_RATE', uniform: 'u_crestRate', kind: 'linear', attack: 0.7, release: 0.2 },
-    // ── PÁGINA B (slots 64..127) — 🔮 WAVE 8278 · F1: ancho de banda nuevo.
-    // Todo RESERVED hasta F3 (LiquidEngineBase DSP mining, expansión §2.2).
-    // `kind:'none'` = el smoother copia el valor crudo verbatim a u_tel; los
-    // slots sin nombre no emiten macro. Generados, no escritos a mano.
-    ...Array.from({ length: TELEMETRY_RING_SLOTS - TELEMETRY_PAGE_B_BASE }, (_, i) => {
-        const slot = TELEMETRY_PAGE_B_BASE + i;
+    // ── PÁGINA B (slots 64..127) — 🌊 WAVE 8279 · F3: física Liquid/GodEar
+    // viva (EUCLID_RING_EXPANSION_8276 §2.2). Grupos alineados a vec4.
+    // VOCAL — u_vocalVec = u_tel4[15]
+    { slot: 64, name: 'VOCAL_SUSTAIN', uniform: 'u_vocalSustain', kind: 'linear', attack: 0.7, release: 0.3 },
+    { slot: 65, name: 'VOCAL_ISOLATION', uniform: 'u_vocalIsolation', kind: 'linear', attack: 0.5, release: 0.15 },
+    { slot: 66, name: 'CLEAN_MID', uniform: 'u_cleanMid', kind: 'linear', attack: 0.8, release: 0.4 },
+    { slot: 67, name: 'SYNTH_SUSTAIN', uniform: 'u_synthSustain', kind: 'linear', attack: 0.4, release: 0.1 },
+    // VOID — u_voidVec = u_tel4[16]
+    { slot: 68, name: 'RHYTHMIC_VOID', uniform: 'u_rhythmicVoid', kind: 'linear', attack: 0.3, release: 0.3 },
+    { slot: 69, name: 'PERC_ABSENCE', uniform: 'u_percAbsence', kind: 'linear' },
+    { slot: 70, name: 'VOID_HOLD', uniform: 'u_voidHold', kind: 'none' },
+    { slot: 71, name: 'VOCAL_TIME', uniform: 'u_vocalTime', kind: 'none' },
+    // SNARE-C — u_snareVec = u_tel4[17] (detector MACD + fallback universal)
+    { slot: 72, name: 'SNARE_DRIVE', uniform: 'u_snareDrive', kind: 'none' },
+    { slot: 73, name: 'SNARE_MOMENTUM', uniform: 'u_snareMomentum', kind: 'none' },
+    { slot: 74, name: 'GATE_HEALTH', uniform: 'u_gateHealth', kind: 'linear', attack: 0.3, release: 0.3 },
+    { slot: 75, name: 'SNARE_CRACK', uniform: 'u_snareCrack', kind: 'linear', attack: 0.9, release: 0.35 },
+    // ZONES-A — u_zoneA = u_tel4[18] (gemelo del rig físico)
+    { slot: 76, name: 'Z_FRONT_L', uniform: 'u_zFrontL', kind: 'linear', attack: 0.9, release: 0.6 },
+    { slot: 77, name: 'Z_FRONT_R', uniform: 'u_zFrontR', kind: 'linear', attack: 0.9, release: 0.6 },
+    { slot: 78, name: 'Z_BACK_L', uniform: 'u_zBackL', kind: 'linear', attack: 0.9, release: 0.6 },
+    { slot: 79, name: 'Z_BACK_R', uniform: 'u_zBackR', kind: 'linear', attack: 0.9, release: 0.6 },
+    // ZONES-B — u_zoneB = u_tel4[19]
+    { slot: 80, name: 'Z_MOVER_L', uniform: 'u_zMoverL', kind: 'linear', attack: 0.9, release: 0.6 },
+    { slot: 81, name: 'Z_MOVER_R', uniform: 'u_zMoverR', kind: 'linear', attack: 0.9, release: 0.6 },
+    { slot: 82, name: 'Z_SNARE_ATTACK', uniform: 'u_zSnareAttack', kind: 'linear', attack: 1.0, release: 0.6 },
+    { slot: 83, name: 'RESERVED_83', uniform: '', kind: 'none' },
+    // TEXTURE — u_textureVec = u_tel4[20]
+    { slot: 84, name: 'WHITE_NOISE', uniform: 'u_whiteNoise', kind: 'linear', attack: 0.6, release: 0.2 },
+    { slot: 85, name: 'WALL_INTENSITY', uniform: 'u_wallIntensity', kind: 'linear', attack: 0.3, release: 0.1 },
+    { slot: 86, name: 'SPECTRAL_DENSITY', uniform: 'u_spectralDensity', kind: 'linear', attack: 0.4, release: 0.15 },
+    { slot: 87, name: 'FLUX_BASELINE_N', uniform: 'u_fluxBaseline', kind: 'linear', attack: 0.3, release: 0.1 },
+    // DELTAS — u_deltaVec = u_tel4[21] (crudos: interpolar un transitorio lo destruye)
+    { slot: 88, name: 'RAW_MID_DELTA', uniform: 'u_midDelta', kind: 'none' },
+    { slot: 89, name: 'RAW_HIGHMID_DELTA', uniform: 'u_highMidDelta', kind: 'none' },
+    { slot: 90, name: 'RAW_TREBLE_DELTA', uniform: 'u_trebleDelta', kind: 'none' },
+    { slot: 91, name: 'RAW_HH_DELTA', uniform: 'u_hhDelta', kind: 'none' },
+    // MASTER — u_tel4[22]
+    { slot: 92, name: 'AGC_STRESS', uniform: 'u_agcStress', kind: 'linear', attack: 0.2, release: 0.05 },
+    // 93-95: reserva stereo width/corr/balance (wave futura — el pipeline
+    // aún no retransmite GodEarSpectrum.stereo). 96-127: margen, generados.
+    ...Array.from({ length: TELEMETRY_RING_SLOTS - 93 }, (_, i) => {
+        const slot = 93 + i;
         return { slot, name: `RESERVED_${slot}`, uniform: '', kind: 'none' };
     }),
 ];

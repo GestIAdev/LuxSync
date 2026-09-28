@@ -81,6 +81,48 @@ export interface ProcessedFrame {
   airIntensity: number
 }
 
+/**
+ * 🌊 WAVE 8279 · F3 (EUCLID_RING_EXPANSION_8276 §1.7) — telemetría física
+ * para la página B del anillo Theia.
+ *
+ * Objeto PREASIGNADO por engine, mutado in-place en cada `applyBands()`
+ * (incluidas las ramas de silencio y glacier/pureAmbient — el vacío se
+ * escribe como vacío, nunca se congela como `lastFrame`). El consumidor
+ * (TickEngine → Euclid ring) lee por referencia: cero allocs a 44 Hz.
+ */
+export interface LiquidPhysicsTelemetry {
+  /** Stamp (Date.now) del último applyBands — el lector detecta engine stale. */
+  now: number
+  // VOCAL — energía mid sostenida / aislamiento / medios limpios / sustain tonal
+  vocalSustain: number
+  vocalIsolation: number
+  cleanMid: number
+  synthSustain: number
+  // SNARE-C — detector MACD (perfil techno); fallbacks universales fuera
+  snareDrive: number
+  snareMomentum: number
+  gateHealth: number
+  snareMacdOnset: boolean
+  // ZONES — envolventes físicas del rig (valores post-envelope, pre-routeZones)
+  zFrontL: number
+  zFrontR: number
+  zBackL: number
+  zBackR: number
+  zMoverL: number
+  zMoverR: number
+  zSnareAttack: number
+  // TEXTURE
+  spectralDensity: number
+  fluxBaseline: number
+  // DELTAS — deltas de banda crudos (≥0, rectificados en la fuente)
+  rawMidDelta: number
+  rawHighMidDelta: number
+  rawTrebleDelta: number
+  // FLAGS
+  realSilence: boolean
+  noiseMode: boolean
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // AGC REBOUND — Constante de hardware, invariante entre perfiles
 // ═══════════════════════════════════════════════════════════════════════════
@@ -495,6 +537,38 @@ export abstract class LiquidEngineBase {
   // Release lento (alpha=0.04, ~25 frames) para que la penalización persista post-frase vocal.
   private _vocalSustainEMA: number = 0
 
+  // 🌊 WAVE 8279 · F3 — telemetría física para la página B del anillo
+  // Theia. PREASIGNADA: se muta in-place cada applyBands() en TODAS las
+  // ramas (normal / silencio / glacier) — nunca se reemplaza, cero allocs.
+  readonly physicsTel: LiquidPhysicsTelemetry = {
+    now: 0,
+    vocalSustain: 0,
+    vocalIsolation: 0,
+    cleanMid: 0,
+    synthSustain: 0,
+    snareDrive: 0,
+    snareMomentum: 0,
+    gateHealth: 1,
+    snareMacdOnset: false,
+    zFrontL: 0,
+    zFrontR: 0,
+    zBackL: 0,
+    zBackR: 0,
+    zMoverL: 0,
+    zMoverR: 0,
+    zSnareAttack: 0,
+    spectralDensity: 0,
+    fluxBaseline: 0,
+    rawMidDelta: 0,
+    rawHighMidDelta: 0,
+    rawTrebleDelta: 0,
+    realSilence: false,
+    noiseMode: false,
+  }
+  // Edge-tracker del fallback SNARE_TRUE para perfiles sin MACD (§2.3):
+  // flanco al alza de snare_crack_flux > 0.25.
+  private _prevSnareCrackFlux = 0
+
   // WAVE 4521.3: El último ProcessedFrame producido por applyBands().
   // Expuesto para que LiquidAetherAdapter pueda consumirlo sin re-llamar al engine.
   // Nunca es null después del primer frame procesado.
@@ -759,6 +833,23 @@ export abstract class LiquidEngineBase {
       this._vocalSustainEMA = this._vocalSustainEMA * 0.96 + bands.mid * 0.04
     }
 
+    // 🌊 WAVE 8279 · F3 — escritura temprana a physicsTel, ANTES del check
+    // de silencio: en el vacío la EMA vocal sigue decayendo (cola honesta,
+    // §1.8.2) y synthSustain cae a 0 solo (harmonicBase ≤ 0.05).
+    const pt = this.physicsTel
+    pt.vocalSustain = this._vocalSustainEMA
+    // synthSustain: versión CONTINUA de tonalSquelch (§2.1②) — 1→tonal,
+    // 0→percusivo real. El escalón {0,0.3,0.5,1} queda solo para DMX:
+    // en un shader produciría cortes visibles.
+    pt.synthSustain = harmonicBase > 0.05
+      ? Math.min(1, Math.max(0, 1 - percussiveRatio / 1.12))
+      : 0
+    // Edge-tracker del fallback SNARE_TRUE universal (§2.3 bit 21):
+    // flanco al alza de snare_crack_flux > 0.25 (válido en todo perfil).
+    const snareCrackNow = input.snare_crack_flux ?? 0
+    const snareCrackEdge = snareCrackNow > 0.25 && this._prevSnareCrackFlux <= 0.25
+    this._prevSnareCrackFlux = snareCrackNow
+
     // ⚒️ WAVE 7749.52: Air EMA REMOVED — Air zone now processed by envAir
     // (LiquidEnvelope with zero-attack, fast decay, high gate, high crush).
     // The old _airEMA soft-follower had ~8 frame attack delay, causing aerial
@@ -771,6 +862,31 @@ export abstract class LiquidEngineBase {
     if (isRealSilence || isAGCTrap) {
       this.inSilence = true
       this.lastSilenceTime = now
+      // 🌊 WAVE 8279 · F3 — el vacío se publica como vacío: página B a cero
+      // (§2.2 + §3 R9). Se conservan: now (stamp), realSilence, noiseMode,
+      // vocalSustain/synthSustain (escritos arriba, decay honesto),
+      // fluxBaseline (sigue siendo el suelo adaptativo real) y gateHealth
+      // (EMA persistente — el gate sobrevive al vacío).
+      pt.now = now
+      pt.realSilence = true
+      pt.noiseMode = noiseMode
+      pt.vocalIsolation = 0
+      pt.cleanMid = 0
+      pt.snareDrive = 0
+      pt.snareMomentum = 0
+      pt.snareMacdOnset = false
+      pt.zFrontL = 0
+      pt.zFrontR = 0
+      pt.zBackL = 0
+      pt.zBackR = 0
+      pt.zMoverL = 0
+      pt.zMoverR = 0
+      pt.zSnareAttack = 0
+      pt.spectralDensity = 0
+      pt.rawMidDelta = 0
+      pt.rawHighMidDelta = 0
+      pt.rawTrebleDelta = 0
+      pt.fluxBaseline = this._fluxBaseline
       return this.buildSilenceResult(acidMode, noiseMode)
     } else if (this.inSilence) {
       this.inSilence = false
@@ -1596,6 +1712,13 @@ export abstract class LiquidEngineBase {
         } else {
           this._snareSilenceFrames = 0
         }
+        // 🌊 WAVE 8279 · F3 — exporta el detector MACD a la página B
+        // (u_snareVec). Solo en perfiles con snareMomentumThreshold;
+        // el resto recibe fallbacks universales al final del frame.
+        pt.snareDrive = snareDrive
+        pt.snareMomentum = momentum
+        pt.gateHealth = gateHealth
+        pt.snareMacdOnset = rawOnset
       } else if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
         // ⚒️ WAVE 7749.64: PROFILE-GATED BASSΔ FLOOR — anti-hi-hat surfer.
         //   In techno, bass is continuous → every hi-hat has bassE > 0.40.
@@ -2257,6 +2380,50 @@ export abstract class LiquidEngineBase {
       airIntensity,
     }
 
+    // 🌊 WAVE 8279 · F3 — snapshot físico → página B del anillo Theia.
+    // Mutación in-place sobre la instancia del ctor (zero-alloc, §1.7).
+    // vocalSustain/synthSustain ya escritos tras la EMA vocal; el bloque
+    // MACD ya exportó snareDrive/momentum/gateHealth/snareMacdOnset.
+    pt.now = now
+    pt.realSilence = false
+    pt.noiseMode = noiseMode
+    pt.cleanMid = cleanMid
+    pt.zFrontL = frontLeft
+    pt.zFrontR = frontRight
+    pt.zBackL = backLeft
+    pt.zBackR = backRight
+    pt.zMoverL = moverLeft
+    pt.zMoverR = moverRight
+    pt.zSnareAttack = snareAttack
+    pt.rawMidDelta = midDelta
+    pt.rawHighMidDelta = highMidDelta
+    pt.rawTrebleDelta = trebleDelta
+    pt.fluxBaseline = this._fluxBaseline
+    // Densidad espectral compuesta (§2.2) — misma fórmula que el umbral
+    // MACD dinámico (WAVE 7749.82): hh_energy es el discriminador real.
+    pt.spectralDensity = Math.max(0, Math.min(1,
+      0.25 * harshness + 0.15 * flatness + 0.60 * (input.hh_energy ?? 0)))
+    // vocalIsolation — heurística de presencia vocal/lead (§2.2 ①):
+    // energía mid SOSTENIDA + tonal + no-percusiva. No separa fuentes —
+    // un pad sintético también la activa (documentado en blueprint).
+    const sustainTerm = this._vocalSustainEMA *
+      Math.min(1, Math.max(0, 1 - midDelta / Math.max(this._vocalSustainEMA, 1e-3)))
+    const tonalTerm = Math.min(1, Math.max(0,
+      1 - flatness / Math.max(p.moverLTonalThreshold, 1e-3)))
+    const synthPerc = Math.min(1, Math.max(0, percussiveRatio / 1.12))
+    pt.vocalIsolation = Math.min(1, Math.max(0,
+      sustainTerm * tonalTerm * (1 - synthPerc) * 1.6))
+    // Fallbacks universales (§2.2): perfil sin MACD, o MACD presente pero
+    // sin entrada snare_energy (el bloque vive dentro de ese guard → sus
+    // escrituras nunca corrieron). Crack-gate ungated×crackFlux + EMAs
+    // neutras + onset = edge de crack_flux > 0.25.
+    if (p.snareMomentumThreshold === undefined || input.snare_energy === undefined) {
+      pt.snareDrive = (input.snare_energy_ungated ?? 0) * snareCrackNow
+      pt.snareMomentum = 0
+      pt.gateHealth = 1
+      pt.snareMacdOnset = snareCrackEdge
+    }
+
     this.lastFrame = frame
     const result = this.routeZones(frame)
     this.lastResult = result
@@ -2293,6 +2460,8 @@ export abstract class LiquidEngineBase {
     this._crackBleedK = 0
     // ⚒️ WAVE 7749.85: reset gate health EMA
     this._snareEnergyEma = 0
+    // 🌊 WAVE 8279 · F3: reset fallback SNARE_TRUE edge-tracker
+    this._prevSnareCrackFlux = 0
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -2358,6 +2527,34 @@ export abstract class LiquidEngineBase {
       ambientIntensity: Math.min(1.0, morphFactor * 0.60),
       airIntensity:     0,
     }
+
+    // 🌊 WAVE 8279 · F3 — rama glacier: las zonas son los osciladores
+    // (gemelo honesto del rig chill); el resto del DSP se publica a cero.
+    // realSilence=false: el motor generativo está vivo, no es un vacío.
+    const pt = this.physicsTel
+    pt.now = now
+    pt.realSilence = false
+    pt.noiseMode = false
+    pt.vocalSustain = 0
+    pt.vocalIsolation = 0
+    pt.cleanMid = 0
+    pt.synthSustain = 0
+    pt.snareDrive = 0
+    pt.snareMomentum = 0
+    pt.gateHealth = 1
+    pt.snareMacdOnset = false
+    pt.zFrontL = frontLeft
+    pt.zFrontR = frontRight
+    pt.zBackL = backLeft
+    pt.zBackR = backRight
+    pt.zMoverL = moverLeft
+    pt.zMoverR = moverRight
+    pt.zSnareAttack = 0
+    pt.spectralDensity = 0
+    pt.fluxBaseline = 0
+    pt.rawMidDelta = 0
+    pt.rawHighMidDelta = 0
+    pt.rawTrebleDelta = 0
 
     this.lastFrame = frame
     const ambResult = this.routeZones(frame)

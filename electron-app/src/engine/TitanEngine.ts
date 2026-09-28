@@ -49,7 +49,7 @@ import { StrategyArbiter, StrategyArbiterInput, StrategyArbiterOutput, ColorStra
 
 // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
 import { SeleneLux } from '../core/reactivity'
-import type { LiquidEngineBase, ProcessedFrame } from '../hal/physics/LiquidEngineBase'
+import type { LiquidEngineBase, ProcessedFrame, LiquidPhysicsTelemetry } from '../hal/physics/LiquidEngineBase'
 import type { SeleneLuxOutput } from '../core/reactivity'
 import { getModifiersFromKey } from './physics/ElementalModifiers'
 
@@ -1552,6 +1552,15 @@ export class TitanEngine extends EventEmitter {
    */
   public getLastProcessedFrame(): ProcessedFrame | null {
     return this.nervousSystem.getLastActiveLiquidEngine()?.lastFrame ?? null
+  }
+
+  /**
+   * 🌊 WAVE 8279 · F3 — telemetría física viva del motor Liquid activo
+   * (página B del anillo Euclid). Referencia al objeto preasignado del
+   * engine — se muta in-place cada applyBands, nunca se copia.
+   */
+  public getLiquidPhysicsTelemetry(): LiquidPhysicsTelemetry | null {
+    return this.nervousSystem.getLastActiveLiquidEngine()?.physicsTel ?? null
   }
 
   /** Brecha T1 — morphFactor escalar puro (profundidad armónica 0-1). */

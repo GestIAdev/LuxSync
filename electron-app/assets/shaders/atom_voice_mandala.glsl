@@ -83,7 +83,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // de gate: el pico aislado no basta, la frase sostenida sí.
   vec4  T     = euTimbre();
   float voice = clamp(smoothstep(0.10, 0.35, T.x) * (0.55 + 0.45 * u_vocalSustain) * (1.0 + 0.5 * u_order), 0.0, 1.0);
-  float order = smoothstep(0.05, 0.6, voice);
+  // 🔬 WAVE 8284 — bloom: envolvente ataque-rápido / release-lento.
+  // `order` ya NO sigue a `voice` instantáneo: en ráfagas de 2-3 notas/s
+  // la simetría parpadeaba caos↔orden. u_vocalSustain es una EMA lenta en
+  // el DSP (la inercia física de la frase) — su envolvente SOSTIENE el
+  // orden entre sílabas y lo suelta con decaimiento orgánico; `voice`
+  // solo aporta el ataque inmediato cuando llega la voz.
+  float bloom = max(voice, smoothstep(0.15, 0.42, u_vocalSustain));
+  float order = smoothstep(0.05, 0.6, bloom);
   float vt    = u_vocalTime * G_BREATH;                 // ∫voz·dt — Ley 1
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
@@ -106,7 +113,10 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // Capa MANDALA: la simetría se duplica con la voz — mezcla entre dos
   // pliegues ENTEROS (sin costura en a=±π durante la transición).
-  float foldF = mix(G_FOLD, G_FOLD * 2.0, order);
+  // WAVE 8284 — ease-in-out cúbico en el plegado: la morfosis 6→12 no
+  // arranca ni frena en seco, el mandala "florece" en vez de encajar.
+  float foldEase = order * order * (3.0 - 2.0 * order);
+  float foldF = mix(G_FOLD, G_FOLD * 2.0, foldEase);
   float f0 = floor(foldF);
   float spin = a + beats * TAU / 64.0;
   float k  = mix(G_RINGS, G_RINGS * 3.0, u_melodicity);   // más melodía → más armónicos

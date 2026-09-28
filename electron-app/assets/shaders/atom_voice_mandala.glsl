@@ -76,8 +76,13 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // Voz = peso convexo de euTimbre × presencia sostenida (una sílaba
   // suelta no basta para ordenar el universo).
+  // 🔬 WAVE 8283 — remapeo AGRESIVO: smoothstep(0.10→0.35) sobre T.x.
+  // Con euTimbre lineal (WAVE 8282) una voz real en mezcla masterizada
+  // aporta ~0.30 — el umbral viejo la dejaba a medio gas (65% de caos
+  // residual). Ahora T.x≈0.30 → orden total, warp = 0. El sustain sigue
+  // de gate: el pico aislado no basta, la frase sostenida sí.
   vec4  T     = euTimbre();
-  float voice = clamp(T.x * (0.55 + 0.45 * u_vocalSustain) * (1.0 + 0.5 * u_order), 0.0, 1.0);
+  float voice = clamp(smoothstep(0.10, 0.35, T.x) * (0.55 + 0.45 * u_vocalSustain) * (1.0 + 0.5 * u_order), 0.0, 1.0);
   float order = smoothstep(0.05, 0.6, voice);
   float vt    = u_vocalTime * G_BREATH;                 // ∫voz·dt — Ley 1
 

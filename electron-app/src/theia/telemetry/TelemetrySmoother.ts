@@ -58,6 +58,15 @@ const CREST_TAU_MS = 110
 /** 🧠 WAVE 8275 — τ del pulso Glass Break (ruptura soberana — visible). */
 const GLASS_BREAK_TAU_MS = 380
 
+/** 🌊 WAVE 8279 · F4 — τ del onset vocal (aparición lenta — respiración). */
+const VOCAL_ONSET_TAU_MS = 600
+
+/** 🌊 WAVE 8279 · F4 — τ del rebote tras vacío rítmico (§2.3). */
+const VOID_RELEASE_TAU_MS = 450
+
+/** 🌊 WAVE 8279 · F4 — ln(1−k) del coeficiente circular, hoist a módulo. */
+const LN1M_CIRCULAR = Math.log(1 - CIRCULAR_K)
+
 /** Horizonte de anticipación de u_approach (beats — §3.4). */
 const APPROACH_HORIZON_BEATS = 8
 
@@ -117,6 +126,15 @@ export class TelemetrySmoother {
   strobeGate = 0
   /** 🧠 WAVE 8275 — u_glassBreak: exp(−t/380ms) desde el flanco GLASS_BREAK. */
   glassBreak = 0
+  /** 🌊 WAVE 8279 · F4 — u_vocalOnset: exp(−t/600ms) desde VOCAL_ONSET. */
+  vocalOnset = 0
+  /** 🌊 WAVE 8279 · F4 — u_snareTruePulse: exp(−t/¼beat) desde SNARE_TRUE
+   *  (la caja sin falsos positivos vocales — detector MACD). */
+  snareTruePulse = 0
+  /** 🌊 WAVE 8279 · F4 — u_voidRelease: A·exp(−t/450ms) desde VOID_RELEASE,
+   *  A = clamp(voidHold_previo/8s, 0.25, 1) — el rebote es proporcional a
+   *  lo que duró el vacío (§2.3). */
+  voidRelease = 0
 
   // ── Header del último frame ingerido ──
   flags = 0
@@ -130,6 +148,16 @@ export class TelemetrySmoother {
   private readonly _kind = new Uint8Array(TELEMETRY_PAYLOAD_SLOTS)
   private readonly _attackK = new Float32Array(TELEMETRY_PAYLOAD_SLOTS)
   private readonly _releaseK = new Float32Array(TELEMETRY_PAYLOAD_SLOTS)
+  // 🌊 WAVE 8279 · F4 — ln(1−k) precalculado: kk = 1 − exp(dtF·ln1k)
+  // (una transcendente por slot en lugar de Math.pow — §1 tabla).
+  private readonly _ln1mAtk = new Float32Array(TELEMETRY_PAYLOAD_SLOTS)
+  private readonly _ln1mRel = new Float32Array(TELEMETRY_PAYLOAD_SLOTS)
+  // 🌊 WAVE 8279 · F4 — tablas de índices activos (§1): el bucle itera
+  // solo los slots que necesitan matemática; 'none' → copia verbatim en
+  // lote; 'extrapolate' → fuera del bucle como siempre.
+  private readonly _linIdx: Uint8Array
+  private readonly _circIdx: Uint8Array
+  private readonly _noneIdx: Uint8Array
 
   // Estado interno de los derivados.
   private _prevEtaPositive = false
@@ -138,13 +166,42 @@ export class TelemetrySmoother {
   private _impactMs = -1
   private _crestEdgeMs = -1
   private _glassBreakMs = -1
+  private _vocalOnsetMs = -1
+  private _snareTrueMs = -1
+  private _voidReleaseMs = -1
+  private _voidReleaseAmp = 0
+  private _lastVoidHold = 0
 
   constructor() {
+    let nLin = 0
+    let nCirc = 0
+    let nNone = 0
     for (const d of TELEMETRY_SCHEMA) {
       const idx = d.slot - SLOT_PAYLOAD_BASE
-      this._kind[idx] = kindCode(d.kind)
-      this._attackK[idx] = d.attack ?? DEFAULT_ATTACK
-      this._releaseK[idx] = d.release ?? DEFAULT_RELEASE
+      const kc = kindCode(d.kind)
+      this._kind[idx] = kc
+      const atk = d.attack ?? DEFAULT_ATTACK
+      const rel = d.release ?? DEFAULT_RELEASE
+      this._attackK[idx] = atk
+      this._releaseK[idx] = rel
+      this._ln1mAtk[idx] = Math.log(1 - atk)
+      this._ln1mRel[idx] = Math.log(1 - rel)
+      if (kc === KIND_LINEAR) nLin++
+      else if (kc === KIND_CIRCULAR) nCirc++
+      else if (kc === KIND_NONE) nNone++
+    }
+    this._linIdx = new Uint8Array(nLin)
+    this._circIdx = new Uint8Array(nCirc)
+    this._noneIdx = new Uint8Array(nNone)
+    let iL = 0
+    let iC = 0
+    let iN = 0
+    for (const d of TELEMETRY_SCHEMA) {
+      const idx = d.slot - SLOT_PAYLOAD_BASE
+      const kc = this._kind[idx]
+      if (kc === KIND_LINEAR) this._linIdx[iL++] = idx
+      else if (kc === KIND_CIRCULAR) this._circIdx[iC++] = idx
+      else if (kc === KIND_NONE) this._noneIdx[iN++] = idx
     }
   }
 
@@ -198,6 +255,24 @@ export class TelemetrySmoother {
       if ((flags & (1 << TEL_FLAG.GLASS_BREAK)) !== 0) {
         this._glassBreakMs = nowMs
       }
+      // 🌊 WAVE 8279 · F4 — flancos de página B (§2.3).
+      if ((flags & (1 << TEL_FLAG.VOCAL_ONSET)) !== 0) {
+        this._vocalOnsetMs = nowMs
+      }
+      if ((flags & (1 << TEL_FLAG.SNARE_TRUE)) !== 0) {
+        this._snareTrueMs = nowMs
+      }
+      // VOID_RELEASE: la amplitud sale del VOID_HOLD observado ANTES del
+      // reset — en el frame del flanco el host ya publica 0, así que se
+      // usa el pico reciente (max del hold actual vs el del frame previo).
+      if ((flags & (1 << TEL_FLAG.VOID_RELEASE)) !== 0) {
+        this._voidReleaseMs = nowMs
+        this._voidReleaseAmp = Math.min(
+          1,
+          Math.max(0.25, Math.max(raw[TELEMETRY_SLOT.VOID_HOLD], this._lastVoidHold) / 8),
+        )
+      }
+      this._lastVoidHold = raw[TELEMETRY_SLOT.VOID_HOLD]
       this.flags = flags
       this.enumsPacked = enums
       this.schemaVersion = enums & 0xff
@@ -207,36 +282,34 @@ export class TelemetrySmoother {
     }
 
     if (raw !== null) {
-      // ── Smoother por slot (§3.3) ──────────────────────────────────────
-      for (const d of TELEMETRY_SCHEMA) {
-        const idx = d.slot - SLOT_PAYLOAD_BASE
-        const target = raw[d.slot]
-        switch (this._kind[idx]) {
-          case KIND_NONE:
-            out[idx] = target
-            break
-          case KIND_LINEAR: {
-            const k = target > out[idx] ? this._attackK[idx] : this._releaseK[idx]
-            // Corrección de dt: k' = 1 − (1−k)^(dt·60) — curva idéntica a
-            // cualquier frecuencia de refresco.
-            const kk = 1 - Math.pow(1 - k, dtF)
-            out[idx] += (target - out[idx]) * kk
-            break
-          }
-          case KIND_CIRCULAR: {
-            // Interpolación angular [0,1) por el camino corto (§3.3).
-            let dd = target - out[idx]
-            dd -= Math.round(dd)
-            const kk = 1 - Math.pow(1 - CIRCULAR_K, dtF)
-            let v = out[idx] + dd * kk
-            v -= Math.floor(v)
-            out[idx] = v
-            break
-          }
-          // KIND_EXTRAPOLATE se procesa fuera del bucle (re-ancla + avance).
-          default:
-            break
-        }
+      // ── Smoother por slot (§3.3) — 🌊 WAVE 8279 · F4: iteración por
+      // tablas de índices activos (§1). Sin switch por slot: los ~40
+      // reservados/crudos van a copia verbatim en lote; los extrapolate
+      // siguen fuera del bucle. kk = 1 − exp(dtF·ln(1−k)) ≡ 1−(1−k)^dtF.
+      const linIdx = this._linIdx
+      const lnAtk = this._ln1mAtk
+      const lnRel = this._ln1mRel
+      for (let i = 0; i < linIdx.length; i++) {
+        const idx = linIdx[i]
+        const target = raw[idx + SLOT_PAYLOAD_BASE]
+        const kk = 1 - Math.exp(dtF * (target > out[idx] ? lnAtk[idx] : lnRel[idx]))
+        out[idx] += (target - out[idx]) * kk
+      }
+      const circIdx = this._circIdx
+      const circK = 1 - Math.exp(dtF * LN1M_CIRCULAR) // mismo k para todos
+      for (let i = 0; i < circIdx.length; i++) {
+        const idx = circIdx[i]
+        // Interpolación angular [0,1) por el camino corto (§3.3).
+        let dd = raw[idx + SLOT_PAYLOAD_BASE] - out[idx]
+        dd -= Math.round(dd)
+        let v = out[idx] + dd * circK
+        v -= Math.floor(v)
+        out[idx] = v
+      }
+      const noneIdx = this._noneIdx
+      for (let i = 0; i < noneIdx.length; i++) {
+        const idx = noneIdx[i]
+        out[idx] = raw[idx + SLOT_PAYLOAD_BASE]
       }
 
       this._stepExtrapolated(raw, fresh, dtMs, dtS, bps)
@@ -321,6 +394,26 @@ export class TelemetrySmoother {
     // debe "romperse" de forma legible, no en un solo fotograma).
     this.glassBreak =
       this._glassBreakMs >= 0 ? Math.exp(-(nowMs - this._glassBreakMs) / GLASS_BREAK_TAU_MS) : 0
+
+    // 🌊 WAVE 8279 · F4 — pulsos de página B (§2.3).
+    // u_vocalOnset — aparición lenta de la voz (τ=600ms, respiración).
+    this.vocalOnset =
+      this._vocalOnsetMs >= 0
+        ? Math.exp(-(nowMs - this._vocalOnsetMs) / VOCAL_ONSET_TAU_MS)
+        : 0
+    // u_snareTruePulse — la caja MACD sin falsos positivos vocales; τ = ¼
+    // de beat como kickPulse/snarePulse (tempo-relativo).
+    this.snareTruePulse =
+      this._snareTrueMs >= 0
+        ? Math.exp(-(nowMs - this._snareTrueMs) / tauPulse)
+        : 0
+    // u_voidRelease — rebote ∝ al vacío que terminó (amplitud capturada
+    // del VOID_HOLD previo en la ingesta).
+    this.voidRelease =
+      this._voidReleaseMs >= 0
+        ? this._voidReleaseAmp *
+          Math.exp(-(nowMs - this._voidReleaseMs) / VOID_RELEASE_TAU_MS)
+        : 0
 
     // 🧠 WAVE 8275 — u_strobeGate: nivel binario (persiste mientras el
     // StrobeEngine esté activo — no es flanco, es un gate).

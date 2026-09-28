@@ -1076,3 +1076,62 @@ describe('WAVE 8278 · F2 — EuclidTel UBO contract', () => {
     expect(calls).toHaveLength(0)
   })
 })
+
+// ─────────────────── 🌊 WAVE 8279 · F4 — Liquid pulses + euTimbre ───────────────────
+
+describe('WAVE 8279 · F4 — pulsos líquidos + euTimbre (§2.3)', () => {
+  const pre = buildPreamble()
+
+  it('los 3 pulsos físicos son uniforms reales del preámbulo', () => {
+    expect(pre).toContain('uniform float u_vocalOnset;')
+    expect(pre).toContain('uniform float u_snareTruePulse;')
+    expect(pre).toContain('uniform float u_voidRelease;')
+  })
+
+  it('euTimbre() — pesos convexos (Σ=1), dominante exagerado, fallback calma', () => {
+    expect(pre).toContain('vec4 euTimbre() {')
+    // Las 4 texturas físicas: voz · synth · percusión · grano/ruido.
+    expect(pre).toContain('vec4(u_vocalIsolation, u_synthSustain, u_percussiveness,')
+    expect(pre).toContain('max(u_whiteNoise, u_spectralDensity)')
+    // w² exagera el dominante antes de normalizar (convexidad neta).
+    expect(pre).toContain('w *= w')
+    expect(pre).toContain('float s = w.x + w.y + w.z + w.w;')
+    // Silencio → calma viscosa (synth puro), jamás NaN.
+    expect(pre).toContain('return s > 1e-4 ? w / s : vec4(0.0, 1.0, 0.0, 0.0);')
+  })
+
+  it('las 4 entradas de euTimbre resuelven a macros u_tel4 del schema', () => {
+    const S = (n: string) => TELEMETRY_SCHEMA.find((d) => d.name === n)!
+    const ref = (n: string) => {
+      const i = S(n).slot - SLOT_PAYLOAD_BASE
+      return `u_tel4[${i >> 2}].${'xyzw'[i & 3]}`
+    }
+    expect(pre).toContain('#define u_vocalIsolation')
+    expect(pre).toContain(ref('VOCAL_ISOLATION'))
+    expect(pre).toContain('#define u_synthSustain')
+    expect(pre).toContain(ref('SYNTH_SUSTAIN'))
+    expect(pre).toContain('#define u_percussiveness')
+    expect(pre).toContain(ref('PERCUSSIVENESS'))
+    expect(pre).toContain('#define u_whiteNoise')
+    expect(pre).toContain(ref('WHITE_NOISE'))
+    expect(pre).toContain('#define u_spectralDensity')
+    expect(pre).toContain(ref('SPECTRAL_DENSITY'))
+    // Los flags de página B existen como macros telFlag para los artistas.
+    expect(pre).toContain('VOCAL_ONSET')
+    expect(pre).toContain('SNARE_TRUE')
+    expect(pre).toContain('VOID_RELEASE')
+  })
+
+  it('un shader de artista puede mezclar pulsos físicos + euTimbre', () => {
+    const asm = assembleFragmentShader(
+      `void mainImage(out vec4 c, in vec2 fragCoord) {
+        vec4 tb = euTimbre();
+        float pulse = u_snareTruePulse + u_voidRelease * 0.6;
+        c = vec4(tb.rgb * pulse + u_vocalOnset * tb.a, 1.0);
+      }`,
+    )
+    expect(asm.fragSource).toContain('vec4 euTimbre()')
+    expect(asm.fragSource).toContain('uniform float u_snareTruePulse;')
+    expect(asm.fragSource).toContain('uniform float u_vocalOnset;')
+  })
+})

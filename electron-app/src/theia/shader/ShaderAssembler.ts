@@ -165,6 +165,12 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     'uniform float u_crestPulse;',
     'uniform float u_strobeGate;',
     'uniform float u_glassBreak;',
+    '// 🌊 WAVE 8279 · F4 — eventos físicos de página B (§2.3):',
+    '// onset vocal (τ=600ms) · caja MACD sin falsos vocales (τ=¼beat) ·',
+    '// rebote de vacío rítmico (A∝voidHold_previo, τ=450ms)',
+    'uniform float u_vocalOnset;',
+    'uniform float u_snareTruePulse;',
+    'uniform float u_voidRelease;',
     '// Masters UI + seguridad (epílogo)',
     'uniform float u_brightness;',
     'uniform float u_contrast;',
@@ -248,6 +254,21 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     '  glitch = APOCALYPSE ? u_harshness : 0.0;',
     '  live   = AUDIO_LIVE ? 1.0 : 0.3;',
     '  groove = PLL_LOCKED ? u_beatConfidence : 0.25;',
+    '}',
+    '',
+  )
+
+  // 🌊 WAVE 8279 · F4 — euTimbre (§2.3): pesos convexos (Σ=1) de las 4
+  // "texturas" físicas — voz · synth · percusión · grano/ruido. Los
+  // cuadrados exageran el dominante (w*=w); silencio total → calma
+  // viscosa (synth puro) en lugar de NaN.
+  lines.push(
+    'vec4 euTimbre() {',
+    '  vec4 w = vec4(u_vocalIsolation, u_synthSustain, u_percussiveness,',
+    '                max(u_whiteNoise, u_spectralDensity));',
+    '  w *= w;',
+    '  float s = w.x + w.y + w.z + w.w;',
+    '  return s > 1e-4 ? w / s : vec4(0.0, 1.0, 0.0, 0.0);',
     '}',
     '',
   )

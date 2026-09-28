@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest'
 import {
   SLOT_PAYLOAD_BASE,
   TELEMETRY_RING_BYTES,
+  TELEMETRY_RING_SLOTS,
   TELEMETRY_SLOT,
   TEL_FLAG,
   TelemetryWireReader,
@@ -44,9 +45,10 @@ function writeWireFrame(
   Atomics.store(i32, 3, gen) // generation AL FINAL — commit barrier
 }
 
-/** Scratch Float32Array(64) para alimentar al smoother sin wire reader. */
+/** Scratch Float32Array(128) para alimentar al smoother sin wire reader
+ *  (página B incluida — índices absolutos de slot). */
 function rawScratch(values: Partial<Record<number, number>> = {}): Float32Array {
-  const s = new Float32Array(64)
+  const s = new Float32Array(TELEMETRY_RING_SLOTS)
   for (const [k, v] of Object.entries(values)) s[Number(k)] = v
   return s
 }
@@ -435,5 +437,107 @@ describe('TelemetrySmoother — WAVE 8275 cognitive payload', () => {
     const outRef = sm.out
     for (let i = 1; i <= 10; i++) sm.step(raw, 0, 0, false, 16.7, i * 16.7)
     expect(sm.out).toBe(outRef)
+  })
+})
+
+// ─────────────────── 🌊 WAVE 8279 · F4 — Liquid pulses (§2.3) ───────────────────
+
+const VOID_HOLD = TELEMETRY_SLOT.VOID_HOLD
+const VOCAL_SUSTAIN = TELEMETRY_SLOT.VOCAL_SUSTAIN
+const SNARE_DRIVE = TELEMETRY_SLOT.SNARE_DRIVE
+const RAW_MID = TELEMETRY_SLOT.RAW_MID_DELTA
+
+const VOCAL_ONSET_BIT = 1 << TEL_FLAG.VOCAL_ONSET
+const SNARE_TRUE_BIT = 1 << TEL_FLAG.SNARE_TRUE
+const VOID_RELEASE_BIT = 1 << TEL_FLAG.VOID_RELEASE
+
+describe('TelemetrySmoother — WAVE 8279 F4 liquid pulses', () => {
+  it('u_vocalOnset — flanco VOCAL_ONSET con τ=600ms (aparición lenta)', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({ [BPM]: 120 })
+    sm.step(raw, 0, 0, true, 16.7, 1000)
+    expect(sm.vocalOnset).toBe(0)
+    sm.step(raw, VOCAL_ONSET_BIT, 0, true, 16.7, 1017)
+    expect(sm.vocalOnset).toBeCloseTo(1, 2)
+    // +600ms (1τ) → e^-1 ≈ 0.368 — independiente del tempo.
+    sm.step(raw, 0, 0, false, 600, 1617)
+    expect(sm.vocalOnset).toBeCloseTo(Math.exp(-1), 2)
+  })
+
+  it('u_snareTruePulse — flanco SNARE_TRUE con τ=¼beat (tempo-bound)', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({ [BPM]: 120 }) // msPerBeat=500 → τ=125ms
+    sm.step(raw, SNARE_TRUE_BIT, 0, true, 16.7, 2000)
+    expect(sm.snareTruePulse).toBeCloseTo(1, 2)
+    sm.step(raw, 0, 0, false, 125, 2125) // +1τ
+    expect(sm.snareTruePulse).toBeCloseTo(Math.exp(-1), 2)
+    // A 60 BPM el τ dobla (250ms) — mismo decay relativo.
+    const sm2 = new TelemetrySmoother()
+    const raw2 = rawScratch({ [BPM]: 60 })
+    sm2.step(raw2, SNARE_TRUE_BIT, 0, true, 16.7, 0)
+    sm2.step(raw2, 0, 0, false, 250, 250)
+    expect(sm2.snareTruePulse).toBeCloseTo(Math.exp(-1), 2)
+  })
+
+  it('u_voidRelease — amplitud ∝ VOID_HOLD previo (hold 4s → A=0.5), τ=450ms', () => {
+    const sm = new TelemetrySmoother()
+    // El vacío se sostiene 4s — el smoother observa el hold ANTES del reset.
+    sm.step(rawScratch({ [BPM]: 120, [VOID_HOLD]: 4 }), 0, 0, true, 16.7, 1000)
+    // En el frame del flanco el host ya publica hold=0 → amplitud = pico previo.
+    sm.step(rawScratch({ [BPM]: 120, [VOID_HOLD]: 0 }), VOID_RELEASE_BIT, 0, true, 16.7, 1017)
+    expect(sm.voidRelease).toBeCloseTo(0.5, 2)
+    // +450ms (1τ) → A·e^-1.
+    sm.step(rawScratch({ [BPM]: 120 }), 0, 0, false, 450, 1467)
+    expect(sm.voidRelease).toBeCloseTo(0.5 * Math.exp(-1), 2)
+  })
+
+  it('u_voidRelease — hold ≥8s satura A=1; hold <2s → piso A=0.25', () => {
+    const smBig = new TelemetrySmoother()
+    smBig.step(rawScratch({ [VOID_HOLD]: 12 }), 0, 0, true, 16.7, 0)
+    smBig.step(rawScratch({ [VOID_HOLD]: 0 }), VOID_RELEASE_BIT, 0, true, 16.7, 17)
+    expect(smBig.voidRelease).toBeCloseTo(1, 2)
+
+    const smSmall = new TelemetrySmoother()
+    smSmall.step(rawScratch({ [VOID_HOLD]: 1 }), 0, 0, true, 16.7, 0)
+    smSmall.step(rawScratch({ [VOID_HOLD]: 0 }), VOID_RELEASE_BIT, 0, true, 16.7, 17)
+    expect(smSmall.voidRelease).toBeCloseTo(0.25, 2)
+  })
+
+  it('u_voidRelease — sin VOID_RELEASE no hay pulso; hold residual no dispara', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({ [BPM]: 120, [VOID_HOLD]: 9 })
+    sm.step(raw, 0, 0, true, 16.7, 0)
+    sm.step(raw, 0, 0, true, 16.7, 17)
+    expect(sm.voidRelease).toBe(0) // hold sin flanco de release → silencio
+  })
+
+  it('página B verbatim: slots kind:none (hold/time/drive/deltas) pasan crudos', () => {
+    const sm = new TelemetrySmoother()
+    sm.step(
+      rawScratch({
+        [VOID_HOLD]: 3.7,
+        [TELEMETRY_SLOT.VOCAL_TIME]: 12.5,
+        [SNARE_DRIVE]: 0.82,
+        [RAW_MID]: 0.31,
+      }),
+      0, 0, true, 16.7, 0,
+    )
+    expect(sm.out[VOID_HOLD - SLOT_PAYLOAD_BASE]).toBeCloseTo(3.7)
+    expect(sm.out[TELEMETRY_SLOT.VOCAL_TIME - SLOT_PAYLOAD_BASE]).toBeCloseTo(12.5)
+    expect(sm.out[SNARE_DRIVE - SLOT_PAYLOAD_BASE]).toBeCloseTo(0.82)
+    expect(sm.out[RAW_MID - SLOT_PAYLOAD_BASE]).toBeCloseTo(0.31)
+  })
+
+  it('página B suavizada: VOCAL_SUSTAIN (linear a=0.7) converge sin saltar', () => {
+    const sm = new TelemetrySmoother()
+    const idx = VOCAL_SUSTAIN - SLOT_PAYLOAD_BASE
+    sm.step(rawScratch({ [VOCAL_SUSTAIN]: 0.9 }), 0, 0, true, 16.7, 0)
+    const first = sm.out[idx]
+    expect(first).toBeGreaterThan(0.4) // attack 0.7 — rápido pero no snap
+    expect(first).toBeLessThan(0.9)
+    for (let i = 1; i <= 60; i++) {
+      sm.step(rawScratch({ [VOCAL_SUSTAIN]: 0.9 }), 0, 0, true, 1000 / 60, i * (1000 / 60))
+    }
+    expect(sm.out[idx]).toBeCloseTo(0.9, 1)
   })
 })

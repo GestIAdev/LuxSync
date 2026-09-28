@@ -143,6 +143,12 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS) {
         'uniform float u_crestPulse;',
         'uniform float u_strobeGate;',
         'uniform float u_glassBreak;',
+        '// 🌊 WAVE 8279 · F4 — eventos físicos de página B (§2.3):',
+        '// onset vocal (τ=600ms) · caja MACD sin falsos vocales (τ=¼beat) ·',
+        '// rebote de vacío rítmico (A∝voidHold_previo, τ=450ms)',
+        'uniform float u_vocalOnset;',
+        'uniform float u_snareTruePulse;',
+        'uniform float u_voidRelease;',
         '// Masters UI + seguridad (epílogo)',
         'uniform float u_brightness;',
         'uniform float u_contrast;',
@@ -211,6 +217,11 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS) {
     lines.push('//   live   — factor de vida: audio vivo vs. latido libre');
     lines.push('//   groove — swing solo con pulso fiable (PLL_LOCKED)');
     lines.push('void euChannels(out float tc, out float td, out float glitch,', '                out float live, out float groove) {', '  bool breakNx = (u_enums.y == 3);', '  tc     = breakNx ? 0.0 : u_approach * u_approach;', '  td     = breakNx ? u_approach : 0.0;', '  glitch = APOCALYPSE ? u_harshness : 0.0;', '  live   = AUDIO_LIVE ? 1.0 : 0.3;', '  groove = PLL_LOCKED ? u_beatConfidence : 0.25;', '}', '');
+    // 🌊 WAVE 8279 · F4 — euTimbre (§2.3): pesos convexos (Σ=1) de las 4
+    // "texturas" físicas — voz · synth · percusión · grano/ruido. Los
+    // cuadrados exageran el dominante (w*=w); silencio total → calma
+    // viscosa (synth puro) en lugar de NaN.
+    lines.push('vec4 euTimbre() {', '  vec4 w = vec4(u_vocalIsolation, u_synthSustain, u_percussiveness,', '                max(u_whiteNoise, u_spectralDensity));', '  w *= w;', '  float s = w.x + w.y + w.z + w.w;', '  return s > 1e-4 ? w / s : vec4(0.0, 1.0, 0.0, 0.0);', '}', '');
     lines.push('// ── Librería Euclid (§4.1 — cero coste si no se usa) ──');
     lines.push('mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }', 'vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {', '  return a + b * cos(6.28318 * (c * t + d)); // IQ cosine palette', '}', 'float hash21(vec2 p) {', '  p = fract(p * vec2(234.34, 435.345));', '  p += dot(p, p + 34.23);', '  return fract(p.x * p.y);', '}', 'float hash31(vec3 p) {', '  // Hoskins — hash 3D→1D sin senos (estable en highp)', '  p = fract(p * vec3(0.1031, 0.1030, 0.0973));', '  p += dot(p, p.yzx + 33.33);', '  return fract((p.x + p.y) * p.z);', '}', 'float noise3(vec3 p) {', '  // WAVE 8232 · G0 (H2) — value noise TRILINEAL C1 en [-1,1]: las 8', '  // esquinas hasheadas sobre la retícula entera + smoothstep. El truco', '  // IQ original interpolaba vía textura bilineal; con hash sobre', '  // coords continuas era ruido blanco en xy (fBm → flicker).', '  vec3 i = floor(p);', '  vec3 f = fract(p);', '  f = f * f * (3.0 - 2.0 * f);', '  float n000 = hash31(i);', '  float n100 = hash31(i + vec3(1.0, 0.0, 0.0));', '  float n010 = hash31(i + vec3(0.0, 1.0, 0.0));', '  float n110 = hash31(i + vec3(1.0, 1.0, 0.0));', '  float n001 = hash31(i + vec3(0.0, 0.0, 1.0));', '  float n101 = hash31(i + vec3(1.0, 0.0, 1.0));', '  float n011 = hash31(i + vec3(0.0, 1.0, 1.0));', '  float n111 = hash31(i + vec3(1.0, 1.0, 1.0));', '  return mix(mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),', '             mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y), f.z) * 2.0 - 1.0;', '}', 'float sdSphere(vec3 p, float r) { return length(p) - r; }', 'float sdBox(vec3 p, vec3 b) {', '  vec3 q = abs(p) - b;', '  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);', '}', 'float sdTorus(vec3 p, vec2 t) {', '  vec2 q = vec2(length(p.xz) - t.x, p.y);', '  return length(q) - t.y;', '}', 'float smin(float a, float b, float k) {', '  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);', '  return mix(b, a, h) - k * h * (1.0 - h);', '}', 'vec3 opRep(vec3 p, vec3 c) { return mod(p + 0.5 * c, c) - 0.5 * c; }', '', `// Governor — techo de iteraciones para raymarching (§4.5, hint @euclid)`, `#define MAX_STEPS ${Math.max(8, Math.floor(maxSteps))}`, '');
     return lines.join('\n');

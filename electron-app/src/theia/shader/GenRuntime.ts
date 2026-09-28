@@ -53,6 +53,7 @@ const GEN_STD_UNIFORMS = new Set([
   'u_resolution',
   'u_beatTime', 'u_kickPulse', 'u_snarePulse', 'u_predictiveETA',
   'u_approach', 'u_impact', 'u_crestPulse', 'u_strobeGate', 'u_glassBreak',
+  'u_vocalOnset', 'u_snareTruePulse', 'u_voidRelease',
   'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_flashBudgetRate',
@@ -87,6 +88,10 @@ interface GenLocs {
   crestPulse: WebGLUniformLocation | null
   strobeGate: WebGLUniformLocation | null
   glassBreak: WebGLUniformLocation | null
+  // 🌊 WAVE 8279 · F4 — pulsos de página B (§2.3)
+  vocalOnset: WebGLUniformLocation | null
+  snareTruePulse: WebGLUniformLocation | null
+  voidRelease: WebGLUniformLocation | null
   brightness: WebGLUniformLocation | null
   contrast: WebGLUniformLocation | null
   blackout: WebGLUniformLocation | null
@@ -122,6 +127,10 @@ interface SimLocs {
   crestPulse: WebGLUniformLocation | null
   strobeGate: WebGLUniformLocation | null
   glassBreak: WebGLUniformLocation | null
+  // 🌊 WAVE 8279 · F4 — pulsos de página B (sim pass)
+  vocalOnset: WebGLUniformLocation | null
+  snareTruePulse: WebGLUniformLocation | null
+  voidRelease: WebGLUniformLocation | null
   gene: WebGLUniformLocation | null
   state: WebGLUniformLocation | null
   stateInit: WebGLUniformLocation | null
@@ -329,6 +338,9 @@ export class GenRuntime {
       crestPulse: gl.getUniformLocation(prog, 'u_crestPulse'),
       strobeGate: gl.getUniformLocation(prog, 'u_strobeGate'),
       glassBreak: gl.getUniformLocation(prog, 'u_glassBreak'),
+      vocalOnset: gl.getUniformLocation(prog, 'u_vocalOnset'),
+      snareTruePulse: gl.getUniformLocation(prog, 'u_snareTruePulse'),
+      voidRelease: gl.getUniformLocation(prog, 'u_voidRelease'),
       brightness: gl.getUniformLocation(prog, 'u_brightness'),
       contrast: gl.getUniformLocation(prog, 'u_contrast'),
       blackout: gl.getUniformLocation(prog, 'u_blackout'),
@@ -366,6 +378,9 @@ export class GenRuntime {
       crestPulse: gl.getUniformLocation(prog, 'u_crestPulse'),
       strobeGate: gl.getUniformLocation(prog, 'u_strobeGate'),
       glassBreak: gl.getUniformLocation(prog, 'u_glassBreak'),
+      vocalOnset: gl.getUniformLocation(prog, 'u_vocalOnset'),
+      snareTruePulse: gl.getUniformLocation(prog, 'u_snareTruePulse'),
+      voidRelease: gl.getUniformLocation(prog, 'u_voidRelease'),
       gene: gl.getUniformLocation(prog, 'u_gene[0]'),
       state: gl.getUniformLocation(prog, 'u_state'),
       stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
@@ -921,6 +936,9 @@ export class GenRuntime {
       gl.uniform1f(SL.crestPulse, sm.crestPulse)
       gl.uniform1f(SL.strobeGate, sm.strobeGate)
       gl.uniform1f(SL.glassBreak, sm.glassBreak)
+      gl.uniform1f(SL.vocalOnset, sm.vocalOnset)
+      gl.uniform1f(SL.snareTruePulse, sm.snareTruePulse)
+      gl.uniform1f(SL.voidRelease, sm.voidRelease)
       if (SL.gene) gl.uniform1fv(SL.gene, this.geneValues)
       gl.uniform1i(SL.state, 0)
       gl.uniform1f(SL.stateInit, stateInitF)
@@ -980,6 +998,9 @@ export class GenRuntime {
     gl.uniform1f(L.crestPulse, sm.crestPulse)
     gl.uniform1f(L.strobeGate, sm.strobeGate)
     gl.uniform1f(L.glassBreak, sm.glassBreak)
+    gl.uniform1f(L.vocalOnset, sm.vocalOnset)
+    gl.uniform1f(L.snareTruePulse, sm.snareTruePulse)
+    gl.uniform1f(L.voidRelease, sm.voidRelease)
     // 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo (§4.2 v2).
     if (L.gene) gl.uniform1fv(L.gene, this.geneValues)
     gl.uniform1f(L.brightness, uniforms.get('u_brightness') ?? 1.0)

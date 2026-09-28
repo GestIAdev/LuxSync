@@ -10,6 +10,7 @@
 // @euclid gene    G_HUE_SPREAD expr   float 0.05 0.6   0.30 c:+0.6 o:+0.2
 // @euclid gene    G_SEED       expr   float 0.0  100.0 0.0
 // @euclid steps   56
+// Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
 uniform float u_warpBoost;     // Regla del Cero Neutro: 0 = diseño canónico
 uniform float u_densityBoost;

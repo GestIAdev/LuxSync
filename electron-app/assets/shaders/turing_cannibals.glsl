@@ -10,6 +10,7 @@
 // @euclid gene    G_KILL  expr   float 0.060 0.066 0.0649 a:+0.3
 // @euclid gene    G_HUE   expr   float 0.0  1.0   0.30   c:+0.3
 // @euclid gene    G_SEED  expr   float 0.0  100.0 0.0
+// Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
 uniform float u_hunger;   // Regla del Cero Neutro: 0 = diseño canónico
 uniform float u_relief;
@@ -33,6 +34,17 @@ uniform float u_relief;
 #define PI        3.14159265359
 #define TAU       6.28318530718
 #define SEEDS_MAX 6
+
+// ── Theia 2.0 · capa reactiva v2 (inyectado por migrate_atoms_v2) ──
+// Vacío rítmico v2: rampa suave sobre u_rhythmicVoid (el flag binario
+// RHYTHMIC_VOID era ≥0.75 — mismo centro, sin salto de fotograma).
+float euVoidAmt() { return smoothstep(0.6, 0.9, u_rhythmicVoid); }
+// Atenuación del vacío + rebote ∝ a lo que duró (u_voidRelease, §2.3).
+float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voidRelease); }
+// Caja v2: manda la caja MACD verdadera; el pulso legado se atenúa con
+// la presencia vocal (su fuente de falsos positivos). Sin página B viva
+// (u_vocalIsolation = 0) el pulso legado queda intacto.
+float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_vocalIsolation)); }
 
 // ── Utilidades compartidas por la simulación y el visual ───────────────
 vec2 hash22(vec2 p) {
@@ -98,7 +110,7 @@ void mainState(out vec4 s, in vec2 fragCoord) {
   float tc, td, glitch, live, groove;
   euChannels(tc, td, glitch, live, groove);
   float F = G_FEED + 0.006 * u_energy * live + 0.004 * u_hunger - 0.004 * tc;
-  float k = G_KILL + 0.0035 * tc - 0.0015 * u_bass + 0.03 * u_snarePulse * snareStripe(cuv);
+  float k = G_KILL + 0.0035 * tc - 0.0015 * u_bass + 0.03 * euSnare() * snareStripe(cuv);
 
   float uvv = u * v * v;
   float du = 1.0 * lap.x - uvv + F * (1.0 - u);
@@ -175,14 +187,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   vec3 comp = palette(u_chromaHue + G_HUE + 0.5, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
   col += rel * 2.2 * smoothstep(0.22, 0.42, v) * comp;
   // SNARE: el filo de la guadaña deja un destello frío al pasar.
-  col += u_snarePulse * snareStripe(cuv) * vec3(0.5, 0.7, 1.0) * 0.6;
+  col += euSnare() * snareStripe(cuv) * vec3(0.5, 0.7, 1.0) * 0.6;
   // HI-HAT: cilios chispeando en las membranas.
   col += membrane * u_hihatEnergy * step(0.8, hash21(floor(fragCoord * 0.5) + floor(beats * 8.0))) * 1.5;
 
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(col, vec3(lum) * vec3(0.9, 1.0, 1.1), 0.5 * tc);        // inanición: se apaga el color
   if (glitch > 0.01) col = mix(col, col.brg, 0.5 * glitch);
-  if (RHYTHMIC_VOID) col *= 0.45;
+  col *= euVoidGate(0.45);
   col *= 1.0 + 0.5 * u_energy;
   col *= 1.0 - 0.25 * dot(cuv, cuv);
   c = vec4(col, 1.0);

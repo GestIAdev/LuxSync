@@ -35,6 +35,9 @@ import QUANTUM_SWARM_GLSL from '../../../../assets/shaders/quantum_swarm.glsl?ra
 import FERRO_HEART_GLSL from '../../../../assets/shaders/ferro_heart.glsl?raw'
 import EVENT_HORIZON_GLSL from '../../../../assets/shaders/event_horizon.glsl?raw'
 import TURING_CANNIBALS_GLSL from '../../../../assets/shaders/turing_cannibals.glsl?raw'
+// 🌊 WAVE 8279 · F6 — átomos piloto del contrato v2 (página B Liquid).
+import VOICE_MANDALA_GLSL from '../../../../assets/shaders/atom_voice_mandala.glsl?raw'
+import PHASE_MERCURY_GLSL from '../../../../assets/shaders/atom_phase_mercury.glsl?raw'
 
 export const OPUS_PACK_ID = 'opus-infinite-genome'
 export const OPUS_PACK_LABEL = 'Opus Infinite Genome'
@@ -82,6 +85,13 @@ const OPUS_SPECS: readonly OpusAtomSpec[] = [
     vibes: ['chill-lounge', 'techno-club'] },
   { id: 'turing_cannibals', fileName: 'turing_cannibals.glsl', glsl: TURING_CANNIBALS_GLSL,
     vibes: ['fiesta-latina', 'chill-lounge'] },
+  // 🌊 WAVE 8279 · F6 — pilotos v2: D1 "La Voz Interior" (la voz ordena el
+  // caos) y D4 "Mercurio ↔ Cristal" (el material cambia de fase con
+  // synthSustain/percussiveness).
+  { id: 'atom_voice_mandala', fileName: 'atom_voice_mandala.glsl', glsl: VOICE_MANDALA_GLSL,
+    vibes: ['pop-rock', 'chill-lounge', 'fiesta-latina'] },
+  { id: 'atom_phase_mercury', fileName: 'atom_phase_mercury.glsl', glsl: PHASE_MERCURY_GLSL,
+    vibes: ['techno-club', 'rave', 'chill-lounge'] },
 ]
 
 /**

@@ -11,6 +11,7 @@
 // @euclid gene    G_FOLD     expr   float 0.2  0.9   0.45 c:+0.6 o:-0.2
 // @euclid gene    G_HUE_STEP expr   float 0.02 0.3   0.09 c:+0.4 o:+0.3
 // @euclid gene    G_SEED     expr   float 0.0  100.0 0.0
+// Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
 uniform float u_bounce;   // Regla del Cero Neutro: 0 = diseño canónico
 uniform float u_bloom;
@@ -38,6 +39,17 @@ uniform float u_bloom;
 #define TAU      6.28318530718
 #define ITER_MAX 9
 
+// ── Theia 2.0 · capa reactiva v2 (inyectado por migrate_atoms_v2) ──
+// Vacío rítmico v2: rampa suave sobre u_rhythmicVoid (el flag binario
+// RHYTHMIC_VOID era ≥0.75 — mismo centro, sin salto de fotograma).
+float euVoidAmt() { return smoothstep(0.6, 0.9, u_rhythmicVoid); }
+// Atenuación del vacío + rebote ∝ a lo que duró (u_voidRelease, §2.3).
+float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voidRelease); }
+// Caja v2: manda la caja MACD verdadera; el pulso legado se atenúa con
+// la presencia vocal (su fuente de falsos positivos). Sin página B viva
+// (u_vocalIsolation = 0) el pulso legado queda intacto.
+float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_vocalIsolation)); }
+
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
   float tc, td, glitch, live, groove;
@@ -58,7 +70,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 3. CALEIDOSCOPIO — rotación continua al compás (obedece SPEED) ──
   float r = length(uv);
-  float a = atan(uv.y, uv.x) + dir * (beats * TAU / 32.0) + u_snarePulse * 0.25;
+  float a = atan(uv.y, uv.x) + dir * (beats * TAU / 32.0) + euSnare() * 0.25;
   float seg = TAU / G_SYM;
   a = mod(a, seg);
   a = abs(a - 0.5 * seg);
@@ -119,7 +131,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(col, vec3(lum) * vec3(1.05, 0.95, 1.1), 0.55 * tc);
   if (ACID) col *= 0.75 + 0.25 * sin(vec3(0.0, 2.1, 4.2) + r * 16.0 - beats * PI);
-  if (RHYTHMIC_VOID) col *= 0.4;
+  col *= euVoidGate(0.4);
   col *= 1.0 + 0.6 * u_energy;
   col *= 1.0 - 0.3 * dot(uv, uv);
   c = vec4(col, 1.0);

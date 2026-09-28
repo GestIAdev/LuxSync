@@ -11,6 +11,7 @@
 // @euclid gene    G_FLOW   expr   float 0.02 0.3   0.08 a:+0.4 o:-0.2
 // @euclid gene    G_HUE    expr   float 0.0  1.0   0.62 c:+0.3
 // @euclid gene    G_SEED   expr   float 0.0  100.0 0.0
+// Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
 uniform float u_viscosity;   // Regla del Cero Neutro: 0 = diseño canónico
 uniform float u_trails;
@@ -37,6 +38,13 @@ uniform float u_trails;
 #define PI      3.14159265359
 #define TAU     6.28318530718
 #define OCT_MAX 6
+
+// ── Theia 2.0 · capa reactiva v2 (inyectado por migrate_atoms_v2) ──
+// Vacío rítmico v2: rampa suave sobre u_rhythmicVoid (el flag binario
+// RHYTHMIC_VOID era ≥0.75 — mismo centro, sin salto de fotograma).
+float euVoidAmt() { return smoothstep(0.6, 0.9, u_rhythmicVoid); }
+// Atenuación del vacío + rebote ∝ a lo que duró (u_voidRelease, §2.3).
+float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voidRelease); }
 
 // FBM de value-noise — octavas rotadas para matar artefactos de retícula.
 float fbm(vec3 p) {
@@ -107,7 +115,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 6. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.4 * tc); // la subida blanquea
-  if (RHYTHMIC_VOID) col *= 0.5;
+  col *= euVoidGate(0.5);
   col *= (1.0 + 0.5 * u_energy) * (0.45 + 0.55 * live);
   col *= 1.0 - 0.25 * dot(uv, uv);
 

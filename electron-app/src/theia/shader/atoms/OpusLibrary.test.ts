@@ -30,7 +30,9 @@ const KIT_IDS = [
   'voxel_monolith', 'morphing_core', 'quantum_swarm',
   'ferro_heart', 'event_horizon', 'turing_cannibals',
 ]
-const OPUS_ALL_IDS = [AETHER_SERPENT_ATOM_ID, TRIBU_MENTAL_ATOM_ID, ...KIT_IDS]
+// 🌊 WAVE 8279 · F6 — pilotos del contrato v2 (D1 + D4).
+const PILOT_IDS = ['atom_voice_mandala', 'atom_phase_mercury']
+const OPUS_ALL_IDS = [AETHER_SERPENT_ATOM_ID, TRIBU_MENTAL_ATOM_ID, ...KIT_IDS, ...PILOT_IDS]
 
 describe('U4 — Opus Library (.glsl físicos)', () => {
   it('importa los dos shaders §6 como fuente GLSL cruda', () => {
@@ -97,6 +99,59 @@ describe('U4 — Opus Library (.glsl físicos)', () => {
   })
 })
 
+// ─────────────────── 🌊 WAVE 8279 · F6 — contrato Theia 2.0 ───────────────────
+
+describe('F6 — todos los átomos de la Opus Library cumplen el contrato v2', () => {
+  const code = (glsl: string) => glsl.split('\n').map((l) => l.split('//')[0]).join('\n')
+  const atoms = buildOpusGenomeAtoms()
+  const glslOf = (id: string) => {
+    const a = atoms.find((x) => x.id === id)
+    return a?.source.kind === 'shader' ? a.source.glsl : ''
+  }
+
+  it('los 13 átomos llevan el marcador v2 (migrate_atoms_v2 o nativos)', () => {
+    expect(atoms.map((a) => a.id)).toEqual(OPUS_ALL_IDS)
+    for (const a of atoms) expect(glslOf(a.id), a.id).toContain('Theia 2.0 · contract v2')
+  })
+
+  it('cero API deprecada en código: estrobo (Fase 5) ni array plano u_tel[ (v1)', () => {
+    for (const a of atoms) {
+      const c = code(glslOf(a.id))
+      expect(c, a.id).not.toMatch(/\bu_strobeGate\b|\bSTROBE_ACTIVE\b/)
+      expect(c, a.id).not.toMatch(/\bu_tel\s*\[/)
+    }
+  })
+
+  it('la capa reactiva migrada: sin corte binario de vacío ni u_snarePulse crudo', () => {
+    for (const a of atoms) {
+      const c = code(glslOf(a.id))
+      expect(c, a.id).not.toMatch(/if\s*\(\s*RHYTHMIC_VOID\s*\)/)
+      // u_snarePulse solo sobrevive dentro del helper euSnare().
+      const raw = c.split('\n').filter((l) => /\bu_snarePulse\b/.test(l) && !/float\s+euSnare\s*\(/.test(l))
+      expect(raw, a.id).toEqual([])
+    }
+  })
+
+  it('D1 Voice Mandala: la voz ordena vía euTimbre + reloj vocal + onset', () => {
+    const c = code(glslOf('atom_voice_mandala'))
+    expect(c).toContain('euTimbre()')
+    expect(c).toContain('u_vocalTime')
+    expect(c).toContain('u_melodicity')
+    expect(c).toContain('u_vocalOnset')
+    expect(parseEuclidMeta(glslOf('atom_voice_mandala')).params).toHaveLength(2)
+  })
+
+  it('D4 Phase Mercury: visc(synthSustain, percussiveness) gobierna smin, facetas y memoria', () => {
+    const c = code(glslOf('atom_phase_mercury'))
+    expect(c).toMatch(/smoothstep\(0\.15, 0\.75, u_synthSustain\) \* \(1\.0 - 0\.8 \* u_percussiveness\)/)
+    expect(c).toContain('mix(0.008, 0.40, gVisc)')           // cristal → mercurio
+    expect(c).toContain('floor(n0 * F + 0.5)')               // normales facetadas
+    expect(c).toContain('mix(0.78, 0.94, gVisc)')            // estela del mercurio
+    expect(c).toContain('u_snareTruePulse')                  // la caja MACD fractura
+    expect(parseEuclidMeta(glslOf('atom_phase_mercury')).params).toHaveLength(2)
+  })
+})
+
 describe('U4 — ensureEuclidShaderAtoms (arranque)', () => {
   beforeEach(() => {
     const store = useTheiaPackStore.getState()
@@ -106,7 +161,7 @@ describe('U4 — ensureEuclidShaderAtoms (arranque)', () => {
     registry.unregister(AETHER_SERPENT_ATOM_ID)
     registry.unregister(TRIBU_MENTAL_ATOM_ID)
     registry.unregister(ORACLE_KIFS_ATOM_ID)
-    for (const id of KIT_IDS) registry.unregister(id)
+    for (const id of [...KIT_IDS, ...PILOT_IDS]) registry.unregister(id)
   })
 
   it('registra los átomos generativos y crea el pack Opus', () => {

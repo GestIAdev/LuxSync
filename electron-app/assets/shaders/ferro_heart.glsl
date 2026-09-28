@@ -12,6 +12,7 @@
 // @euclid gene    G_HUE     expr   float 0.0  1.0   0.58 c:+0.3
 // @euclid gene    G_SEED    expr   float 0.0  100.0 0.0
 // @euclid steps   110
+// Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
 uniform float u_field;   // Regla del Cero Neutro: 0 = diseño canónico
 uniform float u_gloss;
@@ -38,6 +39,17 @@ uniform float u_gloss;
 #define PI  3.14159265359
 #define TAU 6.28318530718
 #define FAR 30.0
+
+// ── Theia 2.0 · capa reactiva v2 (inyectado por migrate_atoms_v2) ──
+// Vacío rítmico v2: rampa suave sobre u_rhythmicVoid (el flag binario
+// RHYTHMIC_VOID era ≥0.75 — mismo centro, sin salto de fotograma).
+float euVoidAmt() { return smoothstep(0.6, 0.9, u_rhythmicVoid); }
+// Atenuación del vacío + rebote ∝ a lo que duró (u_voidRelease, §2.3).
+float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voidRelease); }
+// Caja v2: manda la caja MACD verdadera; el pulso legado se atenúa con
+// la presencia vocal (su fuente de falsos positivos). Sin página B viva
+// (u_vocalIsolation = 0) el pulso legado queda intacto.
+float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_vocalIsolation)); }
 
 // ── Canales globales (una evaluación por píxel) ─────────────────────────
 float gBeats, gH, gK, gEnvK, gTower, gFlip, gRot, gGlitch;
@@ -101,7 +113,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   gFlip  = 1.0 - 2.0 * smoothstep(0.35, 0.9, rel);                 // DROP: inversión de campo
   gRot   = gBeats * TAU / 96.0;
   float ta = hash21(vec2(floor(u_beatTime * 2.0), G_SEED)) * TAU;
-  gTilt  = vec2(cos(ta), sin(ta)) * 0.35 * u_snarePulse;           // snare: latigazo del campo
+  gTilt  = vec2(cos(ta), sin(ta)) * 0.35 * euSnare();           // snare: latigazo del campo
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
 
@@ -162,7 +174,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.5 * tc);
   if (glitch > 0.01) col = mix(col, col.gbr, 0.5 * glitch * step(0.6, hash21(vec2(floor(fragCoord.y / 4.0), floor(gBeats * 8.0)))));
-  if (RHYTHMIC_VOID) col *= 0.4;
+  col *= euVoidGate(0.4);
   col *= 1.0 + 0.5 * u_energy;
   col *= 1.0 - 0.3 * dot(uv, uv);
   c = vec4(col, 1.0);

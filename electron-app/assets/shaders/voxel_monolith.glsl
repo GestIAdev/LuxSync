@@ -13,6 +13,7 @@
 // @euclid gene    G_HUE     expr   float 0.0  1.0   0.48 c:+0.3
 // @euclid gene    G_SEED    expr   float 0.0  100.0 0.0
 // @euclid steps   96
+// Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
 uniform float u_extrude;   // Regla del Cero Neutro: 0 = diseño canónico
 uniform float u_neon;
@@ -43,6 +44,17 @@ uniform float u_neon;
 #define TAU   6.28318530718
 #define FAR   48.0
 #define H_MAX 4.4          // techo de extrusión: la cámara vuela a ~5.6
+
+// ── Theia 2.0 · capa reactiva v2 (inyectado por migrate_atoms_v2) ──
+// Vacío rítmico v2: rampa suave sobre u_rhythmicVoid (el flag binario
+// RHYTHMIC_VOID era ≥0.75 — mismo centro, sin salto de fotograma).
+float euVoidAmt() { return smoothstep(0.6, 0.9, u_rhythmicVoid); }
+// Atenuación del vacío + rebote ∝ a lo que duró (u_voidRelease, §2.3).
+float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voidRelease); }
+// Caja v2: manda la caja MACD verdadera; el pulso legado se atenúa con
+// la presencia vocal (su fuente de falsos positivos). Sin página B viva
+// (u_vocalIsolation = 0) el pulso legado queda intacto.
+float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_vocalIsolation)); }
 
 // ── Canales globales (una evaluación por píxel) ─────────────────────────
 float gBeats, gBeatIdx, gGlitch, gLive, gExtrude;
@@ -182,7 +194,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
       // Grietas: fallas del monolito que el snare ilumina desde dentro.
       float cr = abs(noise3(p * vec3(3.0, 5.0, 3.0) + vec3(hid * 7.1, G_SEED)));
       float crack = exp(-cr * 45.0);
-      col += crack * (u_snarePulse * 3.5 + 0.08 * u_spectralFlux) * vec3(0.7, 0.9, 1.0);
+      col += crack * (euSnare() * 3.5 + 0.08 * u_spectralFlux) * vec3(0.7, 0.9, 1.0);
     }
     col = mix(col, fogCol, 1.0 - exp(-t * 0.045));
   }
@@ -196,7 +208,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 6. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(col, vec3(lum), 0.5 * tc);
-  if (RHYTHMIC_VOID) col *= 0.35;
+  col *= euVoidGate(0.35);
   col *= 1.0 + 0.6 * u_energy;
   col *= 1.0 - 0.3 * dot(uv, uv);
   c = vec4(col, 1.0);

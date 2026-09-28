@@ -12,6 +12,7 @@
 // @euclid gene    G_SPIN  expr   float 0.2  2.0   0.7  a:+0.4
 // @euclid gene    G_SEED  expr   float 0.0  100.0 0.0
 // @euclid steps   80
+// Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
 uniform float u_melt;     // Regla del Cero Neutro: 0 = diseño canónico
 uniform float u_spikes;
@@ -38,6 +39,17 @@ uniform float u_spikes;
 #define PI      3.14159265359
 #define TAU     6.28318530718
 #define BOUND_R 2.7
+
+// ── Theia 2.0 · capa reactiva v2 (inyectado por migrate_atoms_v2) ──
+// Vacío rítmico v2: rampa suave sobre u_rhythmicVoid (el flag binario
+// RHYTHMIC_VOID era ≥0.75 — mismo centro, sin salto de fotograma).
+float euVoidAmt() { return smoothstep(0.6, 0.9, u_rhythmicVoid); }
+// Atenuación del vacío + rebote ∝ a lo que duró (u_voidRelease, §2.3).
+float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voidRelease); }
+// Caja v2: manda la caja MACD verdadera; el pulso legado se atenúa con
+// la presencia vocal (su fuente de falsos positivos). Sin página B viva
+// (u_vocalIsolation = 0) el pulso legado queda intacto.
+float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_vocalIsolation)); }
 
 // ── Canales globales (una evaluación por píxel) ─────────────────────────
 float gAmp, gSpike, gMelt, gPhase, gMorph, gRotY, gRotZ;
@@ -106,7 +118,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // Transitorios (tiempo real): amplitudes de la deformación.
   gAmp   = max(0.0, (0.08 + 0.38 * u_kickPulse + 0.22 * rel + 0.10 * u_bass) * live);
-  gSpike = max(0.0, 0.03 + 0.45 * rel + 0.22 * u_snarePulse + 0.18 * tc + 0.2 * u_spikes);
+  gSpike = max(0.0, 0.03 + 0.45 * rel + 0.22 * euSnare() + 0.18 * tc + 0.2 * u_spikes);
   gMelt  = max(0.0, 0.3 * u_melt + 0.6 * td);
 
   vec2 fc = fragCoord;
@@ -165,7 +177,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     float heat = smoothstep(0.15, 0.8, boil(lp * G_FREQ + vec3(0.0, gPhase, G_SEED)));
     col += heat * (u_kickPulse * 0.9 + rel * 1.4) * vec3(2.4, 0.65, 0.15);
     // Puntas de los pinchos: incandescencia blanca con el impacto.
-    col += smoothstep(0.55, 0.95, ridge(lp)) * (rel * 2.5 + u_snarePulse * 0.8) * vec3(1.0, 0.95, 0.9);
+    col += smoothstep(0.55, 0.95, ridge(lp)) * (rel * 2.5 + euSnare() * 0.8) * vec3(1.0, 0.95, 0.9);
     // Destellos del hi-hat sobre el metal.
     col += step(0.993 - 0.02 * u_ultraAir, hash21(floor(fc * 0.5) + floor(beats * 6.0)))
          * u_hihatEnergy * fres * vec3(2.0);
@@ -180,7 +192,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(col, vec3(lum), 0.45 * tc);
   if (ACID) col *= 0.75 + 0.25 * sin(vec3(0.0, 2.1, 4.2) + r * 14.0 - beats * PI);
-  if (RHYTHMIC_VOID) col *= 0.4;
+  col *= euVoidGate(0.4);
   col *= (1.0 + 0.6 * u_energy) * (0.5 + 0.5 * live);
   col *= 1.0 - 0.3 * dot(uv, uv);
   c = vec4(col, 1.0);

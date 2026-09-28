@@ -204,21 +204,33 @@ export class LiquidAetherAdapter {
     }
     _routeUniversalIntensity(node, result, bus) {
         const zoneIntensity = clamp01(selectZoneFromResult(result, node.zoneId ?? ''));
-        if (zoneIntensity <= 0.005)
-            return;
         const hasPhysicalDimmer = node.channels.some((ch) => ch.type === 'dimmer');
+        // WAVE 8269: el set de "canales de mezcla electrónica" debe coincidir con
+        // ELECTRONIC_COLOR_CHANNELS del NodeResolver (rgb + rgbw + cmy + amber/uv).
         const hasColorCh = node.channels.some((ch) => ch.type === 'red' || ch.type === 'green' || ch.type === 'blue' ||
-            ch.type === 'white' || ch.type === 'amber' || ch.type === 'uv');
+            ch.type === 'white' || ch.type === 'amber' || ch.type === 'uv' ||
+            ch.type === 'cyan' || ch.type === 'magenta' || ch.type === 'yellow');
         if (hasPhysicalDimmer) {
+            // Deadband seguro: la ausencia de intent equivale a dimmer=0
+            // (el canal cae a defaultValue, típicamente 0).
+            if (zoneIntensity <= 0.005)
+                return;
             this._impactValues['dimmer'] = zoneIntensity;
             this._impactScratch.nodeId = node.nodeId;
             bus.push(this._impactScratch);
             return;
         }
         if (hasColorCh) {
+            // 🌊 WAVE 8269 — FAIL-CLOSED VIRTUAL DIMMER.
+            // Emitir SIEMPRE, incluso con zoneIntensity ≈ 0: la AUSENCIA del intent
+            // equivale a brightness = 1.0 en el resolver (virtualDim default), lo que
+            // dejaba a los nodos de color sin dimmer físico (RGBW huérfanos, ej. el
+            // beam del American Pro Tungsten en zona 'air') encendidos a 255 cuando
+            // su zona estaba en silencio. El 0 explícito apaga el haz.
             this._colorValues['brightness'] = zoneIntensity;
             this._colorScratch.nodeId = node.nodeId;
             bus.push(this._colorScratch);
+            return;
         }
     }
     // ─────────────────────────────────────────────────────────────────────────

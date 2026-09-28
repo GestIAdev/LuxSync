@@ -117,7 +117,7 @@ export function applyDMXGovernors(
       // Para fixtures ópticamente excesivos en valores bajos (beams con
       // lente colimadora): exponent=2 aplana el tercio inferior, ceiling
       // capa el máximo absoluto. Precede a mapToRange (excluyentes);
-      // clampMin sigue aplicando sobre el resultado.
+      // clampMin/clampMax siguen aplicando sobre el resultado.
       if (act.curve !== undefined) {
         const inN = normalized < 0 ? 0 : normalized > 1 ? 1 : normalized
         const cRaw = act.curve.ceiling ?? 1.0
@@ -134,6 +134,15 @@ export function applyDMXGovernors(
       // clampMin: elevar el suelo físico si hay intent activo.
       if (act.clampMin !== undefined && result > 0 && result < act.clampMin) {
         result = act.clampMin
+      }
+
+      // 🌗 WAVE 8269 — clampMax: techo duro absoluto. Se aplica AL FINAL,
+      // tras cualquier transformación (curve/mapToRange) y tras clampMin.
+      // Math.min(result, clampMax) — el límite superior siempre gana.
+      // Caso de uso: limitar brillo máximo de fixtures sin dimmer físico
+      // (p.ej. beam RGBW huérfano) o demasiado potentes en el rig.
+      if (act.clampMax !== undefined && result > act.clampMax) {
+        result = act.clampMax
       }
 
       return result

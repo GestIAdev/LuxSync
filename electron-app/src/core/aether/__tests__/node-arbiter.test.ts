@@ -57,3 +57,37 @@ describe('NodeArbiter mover shield diplomatic passport', () => {
     expect(channels?.['blue']).toBeCloseTo(0.25, 6)
   })
 })
+
+describe('NodeArbiter — Inhibit Limits sobre Virtual Dimmer (WAVE 8269)', () => {
+  const busOf = (intents: any[]) => ({ getAll: () => intents }) as any
+  const l0 = (nodeId: string, values: Record<string, number>) => ({
+    nodeId, values, priority: 0, confidence: 1, source: 'liquid-aether-l0',
+  })
+
+  test('capa brightness del nodo cuando no hay dimmer en el record', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setSystemIntents(busOf([l0('beam-1:beam-color', { brightness: 0.8 })]))
+    arbiter.setInhibitLimit('beam-1:beam-color', 0.5)
+
+    const result = arbiter.arbitrate()
+    expect(result.get('beam-1:beam-color')?.['brightness']).toBeCloseTo(0.4, 6)
+  })
+
+  test('capa dimmer y brightness simultáneamente cuando ambos existen', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setSystemIntents(busOf([l0('mix-1:cell', { dimmer: 1.0, brightness: 1.0 })]))
+    arbiter.setInhibitLimit('mix-1:cell', 0.25)
+
+    const record = arbiter.arbitrate().get('mix-1:cell')
+    expect(record?.['dimmer']).toBeCloseTo(0.25, 6)
+    expect(record?.['brightness']).toBeCloseTo(0.25, 6)
+  })
+
+  test('limit=0 apaga el dimmer virtual por completo', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setSystemIntents(busOf([l0('beam-1:beam-color', { brightness: 1.0 })]))
+    arbiter.setInhibitLimit('beam-1:beam-color', 0)
+
+    expect(arbiter.arbitrate().get('beam-1:beam-color')?.['brightness']).toBe(0)
+  })
+})

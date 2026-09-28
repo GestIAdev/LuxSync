@@ -447,6 +447,11 @@ export class NodeResolver {
         this._precomputeIgnitionMap(deviceId);
         this._precomputeWheelDeviceEntry(deviceId);
         this._precomputeGovernorMap(deviceId);
+        // WAVE 8269: el mask de soft blackout depende de la topología del nodo
+        // (presencia de 'dimmer' → virtual dimmer channels). Invalidar el cache.
+        const dev = this._graph.getDevice(deviceId);
+        if (dev)
+            this._softBlackoutMasks.delete(dev.universe);
     }
     /**
      * WAVE 4522.4 + WAVE 7693: Inyectar contexto musical antes de cada resolve().
@@ -1024,6 +1029,39 @@ export class NodeResolver {
                 }
             }
         }
+        // 🏛️ WAVE 8269 — DMX GOVERNORS en la ruta Forge.
+        // La ruta clásica (_writeNode) aplica applyDMXGovernors por canal como
+        // última milla; la ruta Forge escribía directo del evaluador de grafos
+        // y los gobernadores nunca llegaban al buffer — un clampMax configurado
+        // en la Forja no hacía nada en fixtures compilados (ej. Tungsten beam).
+        const govMap = this._governorMaps.get(deviceId);
+        if (govMap !== undefined) {
+            const govNodeIds = this._graph.getDeviceNodes(deviceId);
+            for (let ni = 0; ni < govNodeIds.length; ni++) {
+                const govNode = this._graph.getNodeData(govNodeIds[ni]);
+                if (!govNode)
+                    continue;
+                const gColonIdx = govNodeIds[ni].indexOf(':');
+                const gCellSuffix = gColonIdx >= 0 ? govNodeIds[ni].substring(gColonIdx + 1) : '';
+                for (let ci = 0; ci < govNode.channels.length; ci++) {
+                    const chDef = govNode.channels[ci];
+                    const idx = baseAddr + chDef.dmxOffset;
+                    if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                        continue;
+                    const computed = buf[idx];
+                    const normalized = channelValues[`${gCellSuffix}:${chDef.type}`]
+                        ?? channelValues[chDef.type]
+                        ?? computed / 255;
+                    const governed = sanitizeDmxByte(applyDMXGovernors(govMap, chDef.dmxOffset, chDef.type, normalized, computed));
+                    if (governed !== computed) {
+                        buf[idx] = governed;
+                        if (chDef.is16bit && idx + 1 < DMX_UNIVERSE_SIZE) {
+                            buf[idx + 1] = 0;
+                        }
+                    }
+                }
+            }
+        }
         this._activeUniverses.add(device.universe);
     }
     _getOrBuildSoftBlackoutMask(universe) {
@@ -1045,13 +1083,19 @@ export class NodeResolver {
                 if (!device || device.universe !== universe)
                     return;
                 const baseAddr = device.dmxAddress - 1;
+                // 🌊 WAVE 8269 — VIRTUAL DIMMER en soft blackout.
+                // Un nodo SIN canal 'dimmer' físico no tiene ruta de apagado: el mask
+                // original solo zeraba dimmer/hard-safety, así que un RGBW huérfano
+                // (ej. beam-color del Tungsten) quedaba encendido durante el blackout.
+                const hasPhysicalDimmer = node.channels.some(c => c.type === DIMMER_CHANNEL);
                 for (let ci = 0; ci < node.channels.length; ci++) {
                     const chDef = node.channels[ci];
+                    const isVirtualDimmerChannel = !hasPhysicalDimmer && ELECTRONIC_COLOR_CHANNELS.has(chDef.type);
                     // WAVE 7737: además del dimmer, los canales de seguridad dura
                     // (emission_gate/fire_valve/fire_ignite) SIEMPRE se incluyen en
                     // el mask de soft blackout — nunca deben quedar armados mientras
                     // el show se percibe apagado.
-                    if (!SOFT_BLACKOUT_INTENSITY_CHANNELS.has(chDef.type) && !HARD_SAFETY_CHANNELS.has(chDef.type))
+                    if (!isVirtualDimmerChannel && !SOFT_BLACKOUT_INTENSITY_CHANNELS.has(chDef.type) && !HARD_SAFETY_CHANNELS.has(chDef.type))
                         continue;
                     const idx = baseAddr + chDef.dmxOffset;
                     if (idx >= 0 && idx < DMX_UNIVERSE_SIZE) {

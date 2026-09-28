@@ -291,6 +291,9 @@ export interface IGovernorRule {
     }
     readonly mapToRange?: readonly [number, number]
     readonly clampMin?: number
+    /** 🌗 WAVE 8269 — clampMax: techo duro [0-255]. result = Math.min(result, clampMax).
+     *  Se aplica al final (tras curve/mapToRange/clampMin). */
+    readonly clampMax?: number
   }
 }
 

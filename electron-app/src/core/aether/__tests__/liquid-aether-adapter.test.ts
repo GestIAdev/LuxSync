@@ -299,14 +299,17 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
       expect(bus.captured[0].values['dimmer']).toBeGreaterThanOrEqual(0)
     })
 
-    test('§1.4 — Falloff por distancia reduce la intensidad para nodos lejanos', () => {
-      // Nodo a 24m del epicentro (maxRadiusM=12 por defecto → falloff=0)
+    test('§1.4 — La posición NO modula la intensidad (epicenter falloff retirado)', () => {
+      // WAVE 8269 cleanup: _routeUniversalIntensity emite zoneIntensity puro.
+      // El falloff por distancia es responsabilidad de ImpactAdapter (que sí
+      // usa _epicenter); aquí los campos _epicenter/_maxRadiusM son dead code
+      // retenido para una futura wave de ondas espaciales. Este test documenta
+      // el contrato actual: misma zona → mismo dimmer, sin importar posición.
       const farNode  = makeImpactNode({
         nodeId:   'par-far:impact',
         zoneId:   'floor',
         position: { x: 0, y: 0, z: 24 },
       })
-      // Nodo en el epicentro → falloff=1
       const nearNode = makeImpactNode({
         nodeId:   'par-near:impact',
         zoneId:   'floor',
@@ -322,7 +325,7 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
       const farIntent  = bus.captured.find(i => i.nodeId === 'par-far:impact')!
       const nearIntent = bus.captured.find(i => i.nodeId === 'par-near:impact')!
 
-      expect(farIntent.values['dimmer']).toBe(0)
+      expect(farIntent.values['dimmer']).toBeCloseTo(1.0, 5)
       expect(nearIntent.values['dimmer']).toBeCloseTo(1.0, 5)
     })
   })
@@ -380,9 +383,9 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
   // §3 — Color Mood Intensity
   // ─────────────────────────────────────────────────────────────────────
 
-  describe('§3 — Color Mood Intensity (brightness only)', () => {
+  describe('§3 — Virtual Dimmer (brightness fail-closed)', () => {
 
-    test('§3.1 — Nodo COLOR recibe brightness derivado de morphFactor×recoveryFactor×zoneIntensity', () => {
+    test('§3.1 — Nodo COLOR sin dimmer físico recibe brightness = zoneIntensity', () => {
       const colorNode = makeColorNode({ zoneId: 'ambient', position: { x: 0, y: 0, z: 0 } })
       const graph     = makeNodeGraph({ color: [colorNode] })
       const bus       = makeSpyBus()
@@ -393,10 +396,7 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
 
       const colorIntents = bus.captured.filter(i => 'brightness' in i.values)
       expect(colorIntents).toHaveLength(1)
-
-      // mood = clamp01(0.5 × 1.0) = 0.5, zone = 0.8, falloff = 1.0 (sin pos → 1.0)
-      // brightness = clamp01(0.5 × 0.8 × 1.0) = 0.4
-      expect(colorIntents[0].values['brightness']).toBeCloseTo(0.4, 5)
+      expect(colorIntents[0].values['brightness']).toBeCloseTo(0.8, 5)
       expect(colorIntents[0].priority).toBe(0)
     })
 
@@ -416,16 +416,76 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
       expect(colorIntent!.values['b']).toBeUndefined()
     })
 
-    test('§3.3 — Con morphFactor=0, brightness es exactamente 0 (no luz sin mood)', () => {
+    test('§3.3 — FAIL-CLOSED: zona en silencio emite brightness=0 explícito (WAVE 8269)', () => {
+      // Regresión del bug "beam a 255": con el deadband antiguo
+      // (zoneIntensity <= 0.005 → return), el intent nunca llegaba y el
+      // resolver aplicaba virtualDim = 1.0 (fail-open) → RGBW a tope.
       const colorNode = makeColorNode({ zoneId: 'ambient' })
       const graph     = makeNodeGraph({ color: [colorNode] })
       const bus       = makeSpyBus()
-      const result    = makeStereoResult({ ambientIntensity: 1.0 })
-      const frame     = makeFrame({ morphFactor: 0, recoveryFactor: 1.0 })
+      const result    = makeStereoResult({ ambientIntensity: 0.0 })
 
-      new LiquidAetherAdapter(graph).ingest(frame, result, bus)
+      new LiquidAetherAdapter(graph).ingest(makeFrame(), result, bus)
 
       const colorIntent = bus.captured.find(i => 'brightness' in i.values)
+      expect(colorIntent).toBeDefined()
+      expect(colorIntent!.values['brightness']).toBe(0)
+    })
+
+    test('§3.4 — Nodo con dimmer físico recibe `dimmer`, NO `brightness`', () => {
+      const mixedNode = makeColorNode({
+        nodeId: 'wash-001:mixed',
+        zoneId: 'ambient',
+        channels: [
+          { type: 'dimmer', dmxOffset: 0, defaultValue: 0 },
+          { type: 'red',    dmxOffset: 1, defaultValue: 0 },
+          { type: 'green',  dmxOffset: 2, defaultValue: 0 },
+          { type: 'blue',   dmxOffset: 3, defaultValue: 0 },
+        ],
+      })
+      const graph = makeNodeGraph({ color: [mixedNode] })
+      const bus   = makeSpyBus()
+      const result = makeStereoResult({ ambientIntensity: 0.7 })
+
+      new LiquidAetherAdapter(graph).ingest(makeFrame(), result, bus)
+
+      const dimmerIntents = bus.captured.filter(i => 'dimmer' in i.values)
+      const brightIntents = bus.captured.filter(i => 'brightness' in i.values)
+      expect(dimmerIntents).toHaveLength(1)
+      expect(dimmerIntents[0].values['dimmer']).toBeCloseTo(0.7, 5)
+      expect(brightIntents).toHaveLength(0)
+    })
+
+    test('§3.5 — Deadband del dimmer físico intacto: zona≈0 no emite intent', () => {
+      const impactNode = makeImpactNode({ zoneId: 'floor' })
+      const graph = makeNodeGraph({ impact: [impactNode] })
+      const bus   = makeSpyBus()
+      const result = makeStereoResult({ floorIntensity: 0.0 })
+
+      new LiquidAetherAdapter(graph).ingest(makeFrame(), result, bus)
+
+      // Ausencia = 0 para dimmers (caen a defaultValue) — sin tráfico innecesario
+      expect(bus.captured).toHaveLength(0)
+    })
+
+    test('§3.6 — CMY sin dimmer también recibe brightness fail-closed (WAVE 8269)', () => {
+      const cmyNode = makeColorNode({
+        nodeId: 'cmy-001:color',
+        zoneId: 'air',
+        channels: [
+          { type: 'cyan',    dmxOffset: 0, defaultValue: 0 },
+          { type: 'magenta', dmxOffset: 1, defaultValue: 0 },
+          { type: 'yellow',  dmxOffset: 2, defaultValue: 0 },
+        ],
+      })
+      const graph = makeNodeGraph({ color: [cmyNode] })
+      const bus   = makeSpyBus()
+      const result = makeStereoResult({ airIntensity: 0.0 })
+
+      new LiquidAetherAdapter(graph).ingest(makeFrame(), result, bus)
+
+      const colorIntent = bus.captured.find(i => 'brightness' in i.values)
+      expect(colorIntent).toBeDefined()
       expect(colorIntent!.values['brightness']).toBe(0)
     })
   })
@@ -493,11 +553,15 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
       expect(bus.captured).toHaveLength(0)
     })
 
-    test('§5.2 — setEpicenter modifica el falloff para el siguiente frame', () => {
+    test('§5.2 — setEpicenter es dead API: no altera el output (epicenter falloff retirado)', () => {
+      // WAVE 8269 cleanup: documenta el contrato actual — setEpicenter existe
+      // solo para compatibilidad de API; el falloff por distancia vive en
+      // ImpactAdapter, no en este adapter. Antes este test asumía falloff
+      // activo (stale desde que se retiró la feature).
       const node = makeImpactNode({
         nodeId:   'par-near:impact',
         zoneId:   'floor',
-        position: { x: 6, y: 0, z: 0 },  // a 6m del origen
+        position: { x: 6, y: 0, z: 0 },
       })
       const graph  = makeNodeGraph({ impact: [node] })
       const bus    = makeSpyBus()
@@ -505,17 +569,13 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
 
       const adapter = new LiquidAetherAdapter(graph)
 
-      // Con epicentro en 0,0,0: falloff = 1 - 6/12 = 0.5
       adapter.ingest(makeFrame(), result, bus)
-      const dimmerDefault = bus.captured[0].values['dimmer']
-      expect(dimmerDefault).toBeCloseTo(0.5, 5)
+      expect(bus.captured[0].values['dimmer']).toBeCloseTo(1.0, 5)
 
-      // Movemos epicentro al nodo → distancia = 0 → falloff = 1.0
       bus.clear()
       adapter.setEpicenter(6, 0, 0)
       adapter.ingest(makeFrame(), result, bus)
-      const dimmerAfterMove = bus.captured[0].values['dimmer']
-      expect(dimmerAfterMove).toBeCloseTo(1.0, 5)
+      expect(bus.captured[0].values['dimmer']).toBeCloseTo(1.0, 5)
     })
 
     test('§5.3 — Todos los intents emitidos tienen priority === 0 (L0 inmutable)', () => {

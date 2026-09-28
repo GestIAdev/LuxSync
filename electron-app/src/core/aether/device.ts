@@ -136,7 +136,8 @@ export interface IGovernorCurve {
 
 /**
  * Transformación física aplicada cuando la condición de la regla hace match.
- * Precedencia: forceByte > curve > mapToRange. clampMin se aplica al final.
+ * Precedencia: forceByte > curve > mapToRange.
+ * clampMin/clampMax son bounds finales (se aplican al final, en ese orden).
  */
 export interface IGovernorAction {
   /** Sobreescribir con un byte DMX fijo [0-255]. Máxima precedencia. */
@@ -147,6 +148,14 @@ export interface IGovernorAction {
   readonly mapToRange?: readonly [number, number]
   /** Si el byte calculado es > 0 pero < clampMin, elevarlo a clampMin. */
   readonly clampMin?: number
+  /**
+   * 🌗 WAVE 8269 — clampMax: techo duro absoluto [0-255].
+   * Si el byte calculado supera clampMax, se baja a clampMax
+   * (`result = Math.min(result, clampMax)`). Se aplica al final, tras
+   * curve/mapToRange/clampMin — última milla para limitar brillo
+   * de fixtures sin dimmer físico o demasiado potentes.
+   */
+  readonly clampMax?: number
 }
 
 /**

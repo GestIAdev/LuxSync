@@ -59,9 +59,11 @@ function formatGovernorRule(rule: IGovernorRule): string {
       ? `x^${rule.then.curve.exponent ?? 2}·ceil${rule.then.curve.ceiling ?? 1}`
       : rule.then.clampMin !== undefined
         ? `≥${rule.then.clampMin}`
-        : rule.then.mapToRange !== undefined
-          ? `→[${rule.then.mapToRange[0]}-${rule.then.mapToRange[1]}]`
-          : '?'
+        : rule.then.clampMax !== undefined
+          ? `≤${rule.then.clampMax}`
+          : rule.then.mapToRange !== undefined
+            ? `→[${rule.then.mapToRange[0]}-${rule.then.mapToRange[1]}]`
+            : '?'
   return `${intent}${condition ? `(${condition})` : ''}${action}`
 }
 
@@ -347,7 +349,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                             <span style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
                             <select
                               className="gov-rule-select"
-                              value={rule.then.forceByte !== undefined ? 'forceByte' : rule.then.curve !== undefined ? 'curve' : rule.then.mapToRange !== undefined ? 'mapToRange' : 'clampMin'}
+                              value={rule.then.forceByte !== undefined ? 'forceByte' : rule.then.curve !== undefined ? 'curve' : rule.then.clampMin !== undefined ? 'clampMin' : rule.then.clampMax !== undefined ? 'clampMax' : rule.then.mapToRange !== undefined ? 'mapToRange' : 'clampMin'}
                               title="Action applied on match"
                               onChange={(e) => {
                                 const kind = e.target.value
@@ -359,7 +361,9 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                                       ? { curve: r.then.curve ?? { ceiling: 1.0, exponent: 2.0 } }
                                       : kind === 'mapToRange'
                                         ? { mapToRange: r.then.mapToRange ?? ([0, 255] as [number, number]) }
-                                        : { clampMin: r.then.clampMin ?? 64 },
+                                        : kind === 'clampMax'
+                                          ? { clampMax: r.then.clampMax ?? 200 }
+                                          : { clampMin: r.then.clampMin ?? 64 },
                                 }))
                               }}
                             >
@@ -367,6 +371,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                               <option value="curve">curve</option>
                               <option value="mapToRange">mapToRange</option>
                               <option value="clampMin">clampMin</option>
+                              <option value="clampMax">clampMax</option>
                             </select>
                             {rule.then.forceByte !== undefined && (
                               <input
@@ -382,6 +387,15 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                                 defaultValue={rule.then.clampMin}
                                 style={numStyle}
                                 onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, clampMin: parseByte(e.target.value) } }))}
+                              />
+                            )}
+                            {rule.then.clampMax !== undefined && (
+                              <input
+                                type="number" min="0" max="255"
+                                defaultValue={rule.then.clampMax}
+                                title="clampMax — hard DMX ceiling [0-255] applied last"
+                                style={numStyle}
+                                onChange={(e) => patchRule(r => ({ ...r, then: { ...r.then, clampMax: parseByte(e.target.value) } }))}
                               />
                             )}
                             {rule.then.curve !== undefined && (

@@ -905,12 +905,23 @@ export class NodeArbiter {
         // Cap sobre el canal 'dimmer' del nodo registrado.
         // Se aplica DESPUÉS del Grand Master, ANTES de retornar.
         // El blackout se aplica en egress selectivo, no en el arbitraje.
+        //
+        // 🌊 WAVE 8269 — VIRTUAL DIMMER: los nodos de color sin dimmer físico
+        // reciben 'brightness' en lugar de 'dimmer' (contrato LiquidAetherAdapter).
+        // El cap debe aplicar también sobre esa intensidad virtual — sin esto, un
+        // RGBW huérfano ignoraba completamente los inhibit limits del fixture.
         if (this._inhibitLimits.size > 0) {
             for (const [nodeId, limit] of this._inhibitLimits) {
                 const record = this._result.get(nodeId);
-                if (record && 'dimmer' in record) {
+                if (!record)
+                    continue;
+                if ('dimmer' in record) {
                     const capped = record['dimmer'] * limit;
                     record['dimmer'] = capped < 0 ? 0 : capped > 1 ? 1 : capped;
+                }
+                if ('brightness' in record) {
+                    const capped = record['brightness'] * limit;
+                    record['brightness'] = capped < 0 ? 0 : capped > 1 ? 1 : capped;
                 }
             }
         }

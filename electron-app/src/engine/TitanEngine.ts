@@ -1575,17 +1575,26 @@ export class TitanEngine extends EventEmitter {
    */
   public fillEuclidSelene(out: EuclidSeleneFrame, nowMs: number): void {
     const selene = this.selene
-    out.confidence = selene.getLastConfidence()
-    const pred = selene.getActivePrediction()
+    // 🔬 WAVE 8286 — Cognitive Exorcism: con la consciencia OFF, los campos
+    // post-gate (state.*, lastOutput, predicción Cassandra) quedan
+    // CONGELADOS en memoria — republicarlos es publicar un cadáver:
+    // PREDICTION_ACTIVE zombi re-armaba u_impact en cada KICK_EDGE y el
+    // Event Horizon colapsaba su disco. Aquí se publican neutros.
+    // Los descriptores V3 (epicness/vaporPressure/Π/M/R/crestEvent) NO se
+    // tocan: _liquidCore corre PRE-gate en process() (WAVE 8007) y sigue
+    // siendo audio puro incluso con Selene deshabilitada.
+    const enabled = selene.isEnabled()
+    out.confidence = enabled ? selene.getLastConfidence() : 0
+    const pred = enabled ? selene.getActivePrediction() : null
     out.predictionType = pred?.type ?? null
     out.predictionProbability = pred?.probability ?? 0
-    out.predictedEventAtMs = selene.getPredictedEventAtMs()
-    out.emotionalTension = selene.getEmotionalTension()
-    out.spectralBuildupScore = selene.getSpectralBuildupScore()
-    out.beautyScore = selene.getBeautyScore()
-    out.huntState = selene.getHuntPhase()
-    out.energyZone = selene.getEnergyZone()
-    out.energyZScore = selene.getEnergyZScore()
+    out.predictedEventAtMs = enabled ? selene.getPredictedEventAtMs() : 0
+    out.emotionalTension = enabled ? selene.getEmotionalTension() : 0
+    out.spectralBuildupScore = enabled ? selene.getSpectralBuildupScore() : 0
+    out.beautyScore = enabled ? selene.getBeautyScore() : 0.5
+    out.huntState = enabled ? selene.getHuntPhase() : 'sleeping'
+    out.energyZone = enabled ? selene.getEnergyZone() : 'silence'
+    out.energyZScore = enabled ? selene.getEnergyZScore() : 0
     // 🧠 WAVE 8275 — Cognitive payload (Iliquidcore + soberanos)
     out.epicness = selene.getLiquidEpicness()
     out.vaporPressure = selene.getVaporPressure()
@@ -1593,8 +1602,10 @@ export class TitanEngine extends EventEmitter {
     out.melodicity = selene.getMelodicity()
     out.crestRate = selene.getCrestRate()
     out.crestEvent = selene.getCrestEvent()
-    out.sovereignEtaMs = selene.getSovereignEtaMs(nowMs)
-    out.glassBreakAgeMs = selene.getGlassBreakAgeMs(nowMs)
+    // Eventos soberanos: también post-gate — un countdown o glass-break
+    // congelados encenderían sus flags para siempre.
+    out.sovereignEtaMs = enabled ? selene.getSovereignEtaMs(nowMs) : -1
+    out.glassBreakAgeMs = enabled ? selene.getGlassBreakAgeMs(nowMs) : Infinity
   }
 
   /**

@@ -25,8 +25,26 @@ import { makeThetaMessage, } from './protocol';
 // 🌊 WAVE 8215 — Glass Bridge page-world side + telemetry ring mirror
 import { onTheiaGlassMessage, requestTheiaPort, } from './glassBridge';
 import { ackTelemetryFrame, createTelemetryRing, isTelemetryMessage, mirrorTelemetryIntoRing, } from './TheiaTelemetryRing';
+// 🩺 WAVE 8253 — sonda de gap de llegada del port (main-thread stall probe)
+import { noteTelemetryArrival } from '../core/diagnostics/MainThreadMonitor';
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
 import { createThumbSAB } from './TheiaThumbBuffer';
+// 🔮 WAVE 8230 — EUCLID · E4: parser @euclid (meta → sliders UI)
+import { parseEuclidMeta, resolveGeneValues, geneSignature, layoutExprGenes, structGenesDiffer, } from './shader/ShaderAssembler';
+// 🧬 WAVE 8235 — INFINITE GENOME · G3: mutación en frontera de frase (§4.6)
+import { darwinTournament, favoriteAtom, skipAtom, } from './genome/GenomePool';
+import { genomeChildSeed } from './genome/GenomeExpander';
+// 🎛️ WAVE 8239 · U1 — transporte reactivo del medio oculto (Hybrid Deck)
+import { useTheiaTransportStore } from '../stores/useTheiaTransportStore';
+import { getTheiaRegistry } from '../core/theia/TheiaRegistry';
+// 🩸 WAVE 8263 — PROD BUILD WORKER RESCUE: mismo remedio que Hyperion
+// (WAVE 7790). `new Worker(new URL(...))` emitía `assets/theta.worker-*.js`
+// como fichero aparte; en prod la ventana carga por `loadFile` (file://) y
+// Chromium bloquea el script del worker desde ese origen opaco → `error`
+// con message undefined → 3 fallos → Circuit OPEN. `?worker&inline` embebe
+// el IIFE (worker.format='iife') en el bundle y lo arranca desde una Blob
+// URL: sin fetch a file://, sin CORS, sin rutas de asar. Vale en dev y prod.
+import ThetaWorker from './theta.worker.ts?worker&inline';
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
 // ─────────────────────────────────────────────────────────────────────────
@@ -41,7 +59,10 @@ const CIRCUIT_TIMEOUT = 5000;
 const CIRCUIT_HALF_OPEN_SUCCESS = 2;
 const DEFAULT_CONFIG = {
     heartbeatInterval: 1000,
-    heartbeatTimeout: 3000,
+    // 🌊 WAVE 8221 — STALL TOLERANCE: el ack del worker comparte el event
+    // loop con `gl.readPixels` (8.3MB/tick) — un stall de GPU de 3-5s es
+    // recuperable y matar al worker por él cuesta mucho más que esperarlo.
+    heartbeatTimeout: 10000,
     maxResurrections: 5,
     resurrectionDelay: 500,
     workerPollIntervalMs: 22,
@@ -71,6 +92,22 @@ export class ThetaOrchestrator {
         this.isRunning = false;
         this.isReady = false;
         this.resurrections = 0;
+        // 🌊 WAVE 8220 — PHOENIX LOCK: resurrecciones concurrentes (heartbeat tick +
+        // worker 'error'/'messageerror'/'theia:error' en la misma ventana) spawnearían
+        // workers duales — el perdedor queda zombie (contexto GL + pool 16.6MB +
+        // loop 22ms con readPixels para siempre). El candado colapsa callers
+        // solapados en una única resurrección.
+        this.isResurrecting = false;
+        // 🌊 WAVE 8221 — invalida resurrecciones en vuelo: si el operador hace
+        // stop→start dentro del resurrectionDelay (500ms), el Phoenix pendiente
+        // vería isRunning=true y spawnearía un segundo worker (zombie). El seq
+        // cambia en cada start() → la resurrección vieja aborta tras su await.
+        this.lifecycleSeq = 0;
+        // 🌊 WAVE 8223 — listeners de epoch de worker (cada spawn = epoch nuevo).
+        // La UI los usa para remontar el <canvas> de preview: un canvas DOM solo
+        // puede transferirse una vez — tras un respawn el offscreen viejo murió
+        // con el worker y hay que re-transferir un elemento nuevo.
+        this.workerEpochListeners = new Set();
         this.circuit = {
             state: CircuitState.CLOSED,
             failures: 0,
@@ -86,9 +123,19 @@ export class ThetaOrchestrator {
          * Se pasa al worker en INIT como `frameContextSAB` — intra-proceso, legal.
          */
         this.telemetryRing = createTelemetryRing();
+        /** 🌊 WAVE 8246 — vista Int32 pre-asignada para el sondeo del watchdog
+         *  (lee el timestamp del FC en slots 1-2 sin alojar nada por barrido). */
+        this.telemetryRingI32 = new Int32Array(this.telemetryRing);
         /** Port del canal de telemetría (main pump ↔ esta página). Vive AQUÍ —
          *  no en el worker — para sobrevivir respawns Phoenix. */
         this.telemetryPort = null;
+        /** 🩺 WAVE 8253 — timestamp de la última llegada al port (sonda de stall:
+         *  el pump emite ~23ms; un hueco aquí es el chock point del tick gap). */
+        this.telemetryLastMsgAt = { v: 0 };
+        /** 🩺 WAVE 8253 — mensajes recibidos en el port actual (diagnóstico). */
+        this.telemetryMsgCount = 0;
+        /** 🌊 WAVE 8246 — handle del watchdog de telemetría (re-pull ~2s). */
+        this.telemetryWatchdogHandle = null;
         /** Port de video buffered si llega antes del spawn del worker. */
         this.pendingVideoPort = null;
         this.unsubGlass = null;
@@ -112,6 +159,11 @@ export class ThetaOrchestrator {
         this.currentAtomUrl = null;
         /** Último ack de seek recibido del worker (telemetría). */
         this.lastSeekAck = null;
+        // 🖥️ WAVE 8268 — STRICT LIVE GATE: intents de reproducción recibidos con
+        // el motor apagado (o a medio boot) se arman aquí — latest-wins. El
+        // intent se dispara en 'theia:ready', tras la hidratación atómica.
+        // NUNCA arranca el worker: eso es privilegio exclusivo del botón LIVE.
+        this.pendingPlayIntent = null;
         this.heartbeatHandle = null;
         this.heartbeatSequence = 0;
         this.lastHeartbeatAt = 0;
@@ -120,7 +172,44 @@ export class ThetaOrchestrator {
         // 🌊 WAVE 8211 — Master uniforms desired by the UI. Persisted here so a
         // Phoenix respawn replays them on 'theia:ready' (the worker is stateless).
         this.desiredUniforms = new Map();
+        // 🔮 WAVE 8229 — EUCLID · E3: shader contract (§4.3). Las fuentes de
+        // artista se persisten aquí — un worker nuevo (spawn/respawn Phoenix)
+        // pierde toda su caché GL y necesita el replay completo.
+        this.desiredShaders = new Map();
+        this.desiredActiveShader = 'builtin';
+        this.shaderStatusListeners = new Set();
+        this.perfReportListeners = new Set();
+        this.lastShaderStatus = null;
+        this.lastPerfReport = null;
+        // 🔮 WAVE 8230 — EUCLID · E4: meta `@euclid` parseado por shaderId
+        // (params → sliders automáticos) + resolver shader-atom → GLSL.
+        this.shaderMeta = new Map();
+        this.shaderMetaListeners = new Set();
+        this._shaderSourceResolver = null;
+        /**
+         * 🌊 WAVE 8218 — Reenvío de resizes del viewport al espejo de preview.
+         * `transferControlToOffscreen` congela el backing del canvas DOM al tamaño
+         * medido en el mount; el DOM ya no puede alcanzarlo, así que el
+         * ResizeObserver de TheiaEngineView pasa por aquí los rects vivos y el
+         * worker re-aloja el bitmap del OffscreenCanvas. El GL render target
+         * (1920×1080) NO se ve afectado — solo el destino del blit 2D.
+         * Best-effort: sin worker vivo no hay espejo que redimensionar.
+         */
+        // 🌊 WAVE 8225 — dims del viewport pendientes: el RO/UI puede medir
+        // mientras el worker no existe (engine off, respawn en vuelo). Antes se
+        // descartaban en silencio → el espejo quedaba a las dims horneadas en el
+        // transfer (0×0 o el intrínseco 300×150) para siempre. Se reenvían al
+        // worker en el handler de 'theia:ready'.
+        this.pendingPreviewDims = null;
         this._clipUrlResolver = null;
+        // ───────────────────────────────────────────────────────────────────────
+        // 🎛️ WAVE 8239 · U1 — Transport sync (HTMLVideoElement → Zustand)
+        // ───────────────────────────────────────────────────────────────────────
+        /**
+         * Handlers del medio oculto. Guardados para poder desconectarlos en
+         * `teardownVideo` (el elemento muere → el store no debe quedar escuchándolo).
+         */
+        this._transportHandlers = null;
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
     /**
@@ -143,6 +232,15 @@ export class ThetaOrchestrator {
             return;
         }
         this.offscreenCanvas = canvas;
+    }
+    resizePreviewCanvas(width, height) {
+        this.pendingPreviewDims = { width, height };
+        if (!this.worker)
+            return;
+        try {
+            this.worker.postMessage(makeThetaMessage('theia:resize-preview', { width, height }));
+        }
+        catch { /* worker may be dead — el replay en 'theia:ready' lo cubre */ }
     }
     async start() {
         if (this.isRunning)
@@ -168,14 +266,29 @@ export class ThetaOrchestrator {
             console.warn('[THETA] window.lux.theia missing — Glass Bridge relay may be unavailable');
         }
         this.armGlassBridge();
+        this.startTelemetryWatchdog();
         this.isRunning = true;
+        // 🌊 WAVE 8221 — CLEAN SLATE: un restart manual es una orden del
+        // operador — borra la memoria penal del watchdog. Sin esto, un circuit
+        // OPEN de la sesión anterior hacía que spawnWorker() retornara en
+        // silencio y el motor quedara muerto (isRunning=true, worker=null)
+        // hasta que expirara el backoff de 30s.
+        this.circuit.state = CircuitState.CLOSED;
+        this.circuit.failures = 0;
+        this.circuit.lastFailure = 0;
+        this.circuit.successesInHalfOpen = 0;
         this.resurrections = 0;
+        // Baseline fresca: ningún tick futuro puede evaluar contra el ack del
+        // worker anterior (doble seguro con el reset en 'theia:ready', 8220).
+        this.lastHeartbeatAt = Date.now();
+        this.lifecycleSeq++;
         await this.spawnWorker();
         this.startHeartbeat();
     }
     async stop() {
         this.isRunning = false;
         this.stopHeartbeat();
+        this.stopTelemetryWatchdog();
         this.teardownVideo();
         // 🌊 WAVE 8215 — cerrar los extremos Glass: el pump (main) retira el
         // link al ver 'close' y el worker libera su link en terminate().
@@ -277,14 +390,84 @@ export class ThetaOrchestrator {
         }
         catch { /* noop */ }
         this.telemetryPort = port;
+        // 🩺 WAVE 8253 — contador por attach: si el link muere siempre tras N
+        // mensajes, N delata la causa (N=3 → pool del pump seco = acks no vuelven).
+        let msgCount = 0;
         port.onmessage = (ev) => {
+            // 🩺 WAVE 8253 — sonda de gap de llegada: el pump emite @44Hz (~23ms);
+            // un gap >400ms aquí es la evidencia DIRECTA del stall que congela el
+            // ring (onmessage asfixiado por el hilo de página o pump sin pool).
+            noteTelemetryArrival(this.telemetryLastMsgAt, `msgs=${msgCount + 1}`);
+            msgCount++;
+            this.telemetryMsgCount = msgCount;
             const data = ev.data;
             if (!isTelemetryMessage(data))
                 return;
-            mirrorTelemetryIntoRing(this.telemetryRing, data.buffer);
-            ackTelemetryFrame(port, data);
+            try {
+                mirrorTelemetryIntoRing(this.telemetryRing, data.buffer);
+                ackTelemetryFrame(port, data);
+            }
+            catch (err) {
+                // eslint-disable-next-line no-console
+                console.warn('[THETA ⚠️] telemetry mirror/ack failed:', err);
+            }
         };
+        // 🌊 WAVE 8246 — si el entangle muere (el pump cerró su extremo o el
+        // mensaje no fue clonable), suelta la referencia: el watchdog vuelve a
+        // pedir 'telemetry-port' en el próximo barrido. El pull single-shot
+        // original dejaba un NO LINK permanente ante cualquier fallo (WAVE 8245).
+        // 🩺 WAVE 8253 — release etiquetado: saber QUÉ evento corta el link.
+        const release = (why) => () => {
+            if (this.telemetryPort === port) {
+                // eslint-disable-next-line no-console
+                console.warn(`[THETA ⚠️] telemetry port released by '${why}' after ${msgCount} msgs`);
+                this.telemetryPort = null;
+            }
+        };
+        port.onmessageerror = release('messageerror');
+        try {
+            port.addEventListener('close', release('close'));
+        }
+        catch { /* 'close' no soportado — el chequeo de frescura lo cubre */ }
         port.start();
+        // eslint-disable-next-line no-console
+        console.log('[THETA] 📡 Telemetry Port Attached! — pump↔ring @44Hz');
+    }
+    // ── 🌊 WAVE 8246 — TELEMETRY WATCHDOG ─────────────────────────────────
+    // El pull de `requestTheiaPort` era single-shot: si el IPC se perdía, el
+    // channel fallaba o el link moría en silencio, nadie volvía a pedirlo →
+    // el ring local quedaba a cero y la UI mostraba NO LINK para siempre.
+    // Mientras el motor corre, este barrido de 2s re-emite el pull cuando el
+    // port no está atado O cuando el ring deja de frescar (link zombie).
+    // Zero-alloc: un setInterval lento + la vista Int32 fija del ring.
+    startTelemetryWatchdog() {
+        if (this.telemetryWatchdogHandle !== null)
+            return;
+        this.telemetryWatchdogHandle = globalThis.setInterval(() => this.checkTelemetryLink(), 2000);
+    }
+    stopTelemetryWatchdog() {
+        if (this.telemetryWatchdogHandle === null)
+            return;
+        globalThis.clearInterval(this.telemetryWatchdogHandle);
+        this.telemetryWatchdogHandle = null;
+    }
+    /**
+     * Link sano = port atado Y ring fresco (timestamp del FrameContext,
+     * slots 1-2, <4s — WAVE 8251: el umbral de 2s entraba en pánico ante
+     * stalls legítimos del main thread y re-armaba el channel cada barrido,
+     * generando churn de ports + spam del log de attach).
+     * Port ausente o ring stale → re-pull (idempotente: cada pull arma un
+     * channel nuevo en main; el attach subsiguiente cierra el port viejo).
+     */
+    checkTelemetryLink() {
+        if (!this.isRunning)
+            return;
+        const i32 = this.telemetryRingI32;
+        const tsMs = Atomics.load(i32, 2) * 0x100000000 + (Atomics.load(i32, 1) >>> 0);
+        const stale = tsMs <= 0 || Date.now() - tsMs > 4000;
+        if (this.telemetryPort === null || stale) {
+            requestTheiaPort('telemetry-port');
+        }
     }
     /**
      * Entrega el extremo productor del video link al worker por transferencia
@@ -365,9 +548,14 @@ export class ThetaOrchestrator {
      * No lanza excepciones.
      */
     async playAtom(intent) {
-        if (!this.isRunning || !this.worker) {
+        // 🖥️ WAVE 8268 — STRICT LIVE GATE: el motor solo arranca por el botón
+        // LIVE. Con motor apagado O a medio boot (worker sin 'theia:ready') el
+        // intent queda ARMADO en pendingPlayIntent y se dispara tras la
+        // hidratación — el clic jamás se pierde, pero nunca spawnea el worker.
+        if (!this.isRunning || !this.worker || !this.isReady) {
+            this.pendingPlayIntent = { ...intent };
             // eslint-disable-next-line no-console
-            console.warn('[THETA 🎬] playAtom called before start — ignored');
+            console.log(`[THETA 🎬] play-atom '${intent.atomId}' armed — waiting for LIVE`);
             return;
         }
         // ── Caso 1: blackout ─────────────────────────────────────────────────
@@ -378,9 +566,55 @@ export class ThetaOrchestrator {
                 crossfadeMs: intent.crossfadeMs,
                 reason: 'blackout',
             });
+            // 🔮 E4 — un blackout también desactiva el shader generativo (vuelta
+            // al path builtin, que es donde el operador espera la salida).
+            if (this.desiredActiveShader !== 'builtin') {
+                this.activateShader('builtin', intent.crossfadeMs);
+            }
             try {
                 if (this.videoElement)
                     this.videoElement.pause();
+            }
+            catch { /* noop */ }
+            return;
+        }
+        // ── Caso 1b (🔮 E4 · 🌊 U4-fix WAVE 8243): átomo generativo
+        // `source.kind='shader'` — BYPASS total del pipeline de vídeo.
+        // Precedencia: 1) `_shaderSourceResolver` externo (variantes
+        // `core#seed` y overrides de test/wiring); 2) fallback directo al
+        // TheiaRegistry — la ruta shader NO puede depender de que
+        // `attachSeleneTheia` esté viva, o un click con el wiring caído
+        // intentaba cargar `euclid://…`/`*.glsl` como VÍDEO (bug U4).
+        let shaderSrc = this._shaderSourceResolver?.(intent.atomId) ?? null;
+        if (!shaderSrc) {
+            const atom = getTheiaRegistry().getAtom(intent.atomId);
+            if (atom?.source?.kind === 'shader' && atom.source.glsl) {
+                shaderSrc = {
+                    source: atom.source.glsl,
+                    meta: atom.source.genes
+                        ? { genes: { ...atom.source.genes } }
+                        : undefined,
+                };
+            }
+        }
+        if (shaderSrc) {
+            // Dedup: re-trigger del mismo átomo no recompila si la fuente Y el
+            // fenotipo no cambiaron (la caché LRU del worker ya la conserva).
+            // 🧬 G1 — la firma compara el genoma RESUELTO (defaults ∪ overrides).
+            const prev = this.desiredShaders.get(intent.atomId);
+            const nextSig = geneSignature(resolveGeneValues(parseEuclidMeta(shaderSrc.source), shaderSrc.meta?.genes));
+            if (!prev ||
+                prev.source !== shaderSrc.source ||
+                geneSignature(prev.meta?.genes) !== nextSig) {
+                this.loadShader(intent.atomId, shaderSrc.source, shaderSrc.meta);
+            }
+            this.activateShader(intent.atomId, intent.crossfadeMs);
+            this.currentAtomId = intent.atomId;
+            this.currentAtomUrl = null;
+            try {
+                if (this.videoElement && !this.videoElement.paused) {
+                    this.videoElement.pause();
+                }
             }
             catch { /* noop */ }
             return;
@@ -398,6 +632,11 @@ export class ThetaOrchestrator {
                 await this.loadVideo(url);
                 this.currentAtomId = intent.atomId;
                 this.currentAtomUrl = url;
+                // 🔮 E4 — el nuevo átomo es de vídeo: si un shader generativo
+                // estaba en pantalla, vuelve al path builtin con el crossfade.
+                if (this.desiredActiveShader !== 'builtin') {
+                    this.activateShader('builtin', intent.crossfadeMs);
+                }
             }
             catch (err) {
                 // eslint-disable-next-line no-console
@@ -553,6 +792,7 @@ export class ThetaOrchestrator {
         video.style.opacity = '0';
         video.style.pointerEvents = 'none';
         this.videoElement = video;
+        this._attachTransportSync(video);
         // 2) Wait for metadata to resolve dimensions
         await new Promise((resolve, reject) => {
             video.addEventListener('loadedmetadata', () => resolve(), { once: true });
@@ -620,6 +860,44 @@ export class ThetaOrchestrator {
             this.videoElement.playbackRate = rate;
         }
     }
+    // ───────────────────────────────────────────────────────────────────────
+    // 🎛️ WAVE 8239 · U1 — Transport commands (Hybrid Deck)
+    // ───────────────────────────────────────────────────────────────────────
+    /**
+     * Toggle PLAY/PAUSE del medio activo. El store se actualiza por eventos
+     * ('play'/'pause') — este método solo emite la orden al elemento.
+     */
+    toggleTransport() {
+        const video = this.videoElement;
+        if (!video)
+            return;
+        if (video.paused || video.ended)
+            this.play();
+        else
+            this.pause();
+    }
+    /**
+     * Loop del transporte. Persistido en `useTheiaTransportStore` — el handler
+     * 'ended' lo consulta al cerrar el medio. No usa `video.loop` nativo:
+     * el loop manual reinicia desde el inicio del átomo y mantiene el store
+     * notificado.
+     */
+    setTransportLoop(loop) {
+        useTheiaTransportStore.getState().setLoop(loop);
+    }
+    /**
+     * Scrub absoluto (segundos) sobre el medio activo. Clamp defensivo a
+     * [0, duration]; el sync del store llega por 'timeupdate' pero se
+     * anticipa aquí para que el fader reaccione sin latencia.
+     */
+    seekTransport(seconds) {
+        const video = this.videoElement;
+        if (!video || !Number.isFinite(seconds))
+            return;
+        const dur = Number.isFinite(video.duration) ? video.duration : 0;
+        video.currentTime = Math.max(0, Math.min(seconds, dur > 0 ? dur : seconds));
+        useTheiaTransportStore.getState().syncFromVideo({ currentTime: video.currentTime });
+    }
     /**
      * 🌊 WAVE 8211 — Scalar uniform bridge to the worker's shader pipeline.
      * The value is persisted in `desiredUniforms` so worker respawns replay it
@@ -634,6 +912,175 @@ export class ThetaOrchestrator {
         }
         catch { /* worker may be dead — the replay on ready covers it */ }
     }
+    // ───────────────────────────────────────────────────────────────────────
+    // 🔮 WAVE 8229 — EUCLID · E3: Shader Contract facade (§4.3)
+    // ───────────────────────────────────────────────────────────────────────
+    /**
+     * Compila un fragment shader de artista (cuerpo `mainImage`) sin activarlo.
+     * La fuente queda persistida para replay post-respawn. Resultado vía
+     * `onShaderStatus` (o `lastShaderStatus`).
+     */
+    loadShader(shaderId, source, meta) {
+        // 🔮 WAVE 8230 · E4 — parsear meta @euclid una vez (params → sliders).
+        const parsed = parseEuclidMeta(source);
+        if (meta?.steps !== undefined)
+            parsed.steps = meta.steps;
+        this.shaderMeta.set(shaderId, parsed);
+        for (const l of this.shaderMetaListeners) {
+            try {
+                l(shaderId, parsed);
+            }
+            catch { /* listener errors must not break load */ }
+        }
+        // 🧬 WAVE 8233 · G1 — fenotipo efectivo: defaults `@euclid gene` ∪
+        // overrides del átomo variante (`source.genes` / futuro Expander).
+        // `resolveGeneValues` es idempotente → overrides ya resueltos pasan
+        // tal cual. El worker lo inyecta como #define → programKey propio.
+        const genes = resolveGeneValues(parsed, meta?.genes);
+        // 🧬 WAVE 8235 · G3 — orden `u_gene[8]` de los genes `expr` (fast-path:
+        // mutarlos no recompila — el worker los sube por `uniform1fv`).
+        const exprGenes = layoutExprGenes(parsed);
+        const wireMeta = {
+            ...meta,
+            ...(genes ? { genes } : {}),
+            ...(exprGenes.length ? { exprGenes } : {}),
+        };
+        this.desiredShaders.set(shaderId, { source, meta: wireMeta });
+        if (!this.worker)
+            return;
+        try {
+            this.worker.postMessage(makeThetaMessage('theia:load-shader', {
+                shaderId,
+                source,
+                meta: wireMeta,
+            }));
+        }
+        catch { /* worker may be dead — replay on ready covers it */ }
+    }
+    /**
+     * Conmuta al shader `shaderId` con crossfade opcional. `'builtin'` vuelve
+     * al plasma interno de WAVE 8207. La elección persiste para replay.
+     */
+    activateShader(shaderId, crossfadeMs = 0) {
+        this.desiredActiveShader = shaderId;
+        if (!this.worker)
+            return;
+        try {
+            this.worker.postMessage(makeThetaMessage('theia:activate-shader', { shaderId, crossfadeMs }));
+        }
+        catch { /* worker may be dead */ }
+    }
+    /**
+     * 🧬 WAVE 8235/8236 · G3+G4 — evolución en frontera de frase (Infinite
+     * Genome §4.6). El `GenomeEvolver` la llama tras verificar las compuertas
+     * (`approach < 0.2`, sin drop activo):
+     *
+     *   1. `childSeed = PCG(seed_actual ⊕ contador_de_frases)` (§4.6-1).
+     *   2. `darwinTournament` (G4): torneo de 3 sobre la población viva del
+     *      core activo — los dos mejores fitness se reproducen por crossover
+     *      (o mutación si la población es < 2) y los peores se extinguen
+     *      hasta la cota de 8. El activo en pantalla está protegido.
+     *   3. Solo `expr` cambió → `activateShader(..., 0)` y el worker fija
+     *      `u_gene` sin recompilar ni crossfade (fast-path por programKey).
+     *   4. Cambió algún `struct` → crossfade de 2 compases (`barMs·2`).
+     */
+    evolveGenome(phraseIndex, barMs = 0) {
+        const id = this.desiredActiveShader;
+        if (id === 'builtin')
+            return;
+        const meta = this.shaderMeta.get(id);
+        if (!meta || meta.genes.length === 0)
+            return;
+        const hashIdx = id.lastIndexOf('#');
+        const coreId = hashIdx >= 0 ? id.slice(0, hashIdx) : id;
+        const curSeed = hashIdx >= 0 ? (parseInt(id.slice(hashIdx + 1), 10) >>> 0) : 0;
+        const childSeed = genomeChildSeed(curSeed, phraseIndex);
+        const spawned = darwinTournament(coreId, childSeed, id);
+        if (!spawned || spawned.atomId === id)
+            return;
+        const shaderSrc = this._shaderSourceResolver?.(spawned.atomId) ?? null;
+        if (!shaderSrc)
+            return;
+        const childGenes = spawned.phenotype.genes;
+        const parentGenes = this.desiredShaders.get(id)?.meta?.genes;
+        const exprOnly = !!parentGenes && !structGenesDiffer(meta, parentGenes, childGenes);
+        this.loadShader(spawned.atomId, shaderSrc.source, shaderSrc.meta);
+        const fadeMs = exprOnly
+            ? 0
+            : barMs > 0
+                ? Math.min(6000, Math.max(400, barMs * 2))
+                : 0;
+        this.activateShader(spawned.atomId, fadeMs);
+    }
+    /**
+     * 🧬 WAVE 8236 · G4 — impulso del operador desde el LiveDeck (§4.6):
+     * FAVORITO. Sube el fitness del individuo en el próximo paso EMA.
+     */
+    markFavorite(atomId) {
+        favoriteAtom(atomId);
+    }
+    /**
+     * 🧬 WAVE 8236 · G4 — impulso del operador desde el LiveDeck (§4.6):
+     * SKIP. Baja el fitness del individuo en el próximo paso EMA.
+     */
+    markSkip(atomId) {
+        skipAtom(atomId);
+    }
+    /** Suscripción a `theia:shader-status`. Devuelve unsubscribe. */
+    onShaderStatus(listener) {
+        this.shaderStatusListeners.add(listener);
+        return () => {
+            this.shaderStatusListeners.delete(listener);
+        };
+    }
+    /** Suscripción a `theia:perf-report` (governor, ~1 Hz). */
+    onPerfReport(listener) {
+        this.perfReportListeners.add(listener);
+        return () => {
+            this.perfReportListeners.delete(listener);
+        };
+    }
+    getLastShaderStatus() {
+        return this.lastShaderStatus;
+    }
+    getLastPerfReport() {
+        return this.lastPerfReport;
+    }
+    /**
+     * 🎛️ WAVE 8240 · U2 — ring local (256B) espejado por el Glass Bridge.
+     * La UI lo lee con un `TelemetryWireReader` en un rAF: zero-alloc, sin
+     * React state. El pump ya publica por 'telemetry-port' y
+     * `mirrorTelemetryIntoRing` lo mantiene fresco — solo faltaba exponer
+     * el espejo al consumer React.
+     */
+    getTelemetryRing() {
+        return this.telemetryRing;
+    }
+    // 🔮 WAVE 8230 — EUCLID · E4: meta @euclid → UI de parámetros (§4.2)
+    // ───────────────────────────────────────────────────────────────────────
+    /** Suscripción a meta parseado en cada `loadShader`. Devuelve unsubscribe. */
+    onShaderMeta(listener) {
+        this.shaderMetaListeners.add(listener);
+        return () => {
+            this.shaderMetaListeners.delete(listener);
+        };
+    }
+    /** Meta `@euclid` ya parseado (params, genome, zone, steps) de un shader. */
+    getShaderMeta(shaderId) {
+        return this.shaderMeta.get(shaderId) ?? null;
+    }
+    /** Shader deseado actualmente activo ('builtin' = plasma interno). */
+    getActiveShaderId() {
+        return this.desiredActiveShader;
+    }
+    /**
+     * Resolver `atomId → {source GLSL}` para átomos `source.kind='shader'`
+     * (Hybrid Deck, §4.2/§6). Se consulta ANTES del resolver de vídeo en
+     * `playAtom` — Selene no distingue el medio.
+     */
+    setShaderSourceResolver(resolver) {
+        this._shaderSourceResolver = resolver;
+    }
     /**
      * Unload the current video, stopping the stream and cleaning up resources.
      */
@@ -645,6 +1092,51 @@ export class ThetaOrchestrator {
             }
             catch { /* worker may be dead */ }
         }
+    }
+    /**
+     * Conecta los eventos del `HTMLVideoElement` al `useTheiaTransportStore`.
+     * `ended` implementa el loop manual: con `loop` activo reinicia el medio
+     * (garantiza re-disparo del pipeline; `video.loop` nativo ni siquiera
+     * emitiría 'ended' y el store quedaría ciego).
+     */
+    _attachTransportSync(video) {
+        const sync = useTheiaTransportStore.getState().syncFromVideo;
+        const onPlay = () => sync({ isPlaying: true });
+        const onPause = () => sync({ isPlaying: false });
+        const onTime = () => sync({
+            currentTime: video.currentTime,
+            duration: Number.isFinite(video.duration) ? video.duration : 0,
+        });
+        const onEnded = () => {
+            if (useTheiaTransportStore.getState().loop) {
+                video.currentTime = 0;
+                video.play().catch(() => sync({ isPlaying: false }));
+            }
+            else {
+                sync({ isPlaying: false });
+            }
+        };
+        this._transportHandlers = {
+            play: onPlay,
+            pause: onPause,
+            timeupdate: onTime,
+            ended: onEnded,
+            durationchange: onTime,
+            loadedmetadata: onTime,
+        };
+        for (const [ev, fn] of Object.entries(this._transportHandlers)) {
+            video.addEventListener(ev, fn);
+        }
+        sync({ hasVideo: true });
+    }
+    _detachTransportSync(video) {
+        if (this._transportHandlers) {
+            for (const [ev, fn] of Object.entries(this._transportHandlers)) {
+                video.removeEventListener(ev, fn);
+            }
+            this._transportHandlers = null;
+        }
+        useTheiaTransportStore.getState().resetTransport();
     }
     teardownVideo() {
         // 🎬 WAVE 4922 — clear play-atom tracking when the underlying átomo goes away.
@@ -665,6 +1157,7 @@ export class ThetaOrchestrator {
             this.videoStream = null;
         }
         if (this.videoElement) {
+            this._detachTransportSync(this.videoElement);
             this.videoElement.pause();
             this.videoElement.src = '';
             this.videoElement.remove();
@@ -691,29 +1184,32 @@ export class ThetaOrchestrator {
         }
         // El ring local siempre existe (readonly, init en campo) — es un SAB
         // renderer-side, no requiere IPC ni negociación con el main process.
-        // Vite resolves this URL at build time and emits a separate worker chunk.
-        // 🌊 WAVE 8207: the worker type must match the serving mode —
-        //   dev  → Vite serves the file as ESM (imports intact) → 'module'
-        //   prod → emitted chunk is IIFE (worker.format='iife', WAVE-7790) and
-        //          file:// opaque origins reject module workers → 'classic'
-        // Two static call sites: Vite cannot parse a ternary in worker options,
-        // and the dead branch is DCE'd by the build-time env replacement.
-        const worker = import.meta.env.DEV
-            ? new Worker(new URL('./theta.worker.ts', import.meta.url), {
-                type: 'module',
-                name: 'theta',
-            })
-            : new Worker(new URL('./theta.worker.ts', import.meta.url), {
-                type: 'classic',
-                name: 'theta',
-            });
+        // 🩸 WAVE 8263 — constructor inline (Blob URL), ver import arriba. Un
+        // fallo SÍNCRONO (CSP, Blob no permitido…) se captura aquí en vez de
+        // morir como excepción sin contexto en el caller.
+        let worker;
+        try {
+            worker = new ThetaWorker({ name: 'theta' });
+        }
+        catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[THETA] worker construction failed:', err);
+            this.handleWorkerFailure(`construct: ${String(err?.message ?? err)}`);
+            return;
+        }
         worker.addEventListener('message', (ev) => {
             this.handleWorkerMessage(ev.data);
         });
         worker.addEventListener('error', (ev) => {
+            // Un fallo de CARGA del script no trae message/filename (el navegador
+            // oculta el motivo) — se vuelca el evento entero para distinguirlo de
+            // una excepción de runtime dentro del worker.
+            const detail = ev.message
+                ? `${ev.message} @ ${ev.filename ?? '?'}:${ev.lineno ?? 0}:${ev.colno ?? 0}`
+                : 'script load failure (no message — blocked fetch/CSP/parse)';
             // eslint-disable-next-line no-console
-            console.error('[THETA] worker error:', ev.message);
-            this.handleWorkerFailure(ev.message ?? 'worker error');
+            console.error('[THETA] worker error:', detail, ev.error ?? ev);
+            this.handleWorkerFailure(detail);
         });
         // Web Workers do not emit 'exit' like Node workers, but message channel
         // closure surfaces as `messageerror` on transferred-object failures.
@@ -743,12 +1239,55 @@ export class ThetaOrchestrator {
         // Tras transferir el canvas perdemos su control en este lado.
         if (canvas)
             this.offscreenCanvas = null;
+        // 🖥️ WAVE 8268 — HIDRATACIÓN ATÓMICA: un solo paquete encolado detrás
+        // de INIT (FIFO por el port del worker — se procesa tras initGL, con el
+        // contexto ya vivo). Lleva uniforms + dims + TODAS las fuentes en
+        // `desiredShaders` y la activación deseada. ORDEN CRÍTICO: el shader
+        // activo viaja el ÚLTIMO — con la LRU a 8 slots y un kit de 11+ átomos,
+        // ninguna evicción puede tocarlo antes de su `theia:activate-shader`.
+        const shaders = [];
+        for (const [shaderId, s] of this.desiredShaders) {
+            shaders.push({ shaderId, source: s.source, meta: s.meta });
+        }
+        const activeId = this.desiredActiveShader;
+        if (activeId !== 'builtin') {
+            const ai = shaders.findIndex((s) => s.shaderId === activeId);
+            if (ai >= 0)
+                shaders.push(shaders.splice(ai, 1)[0]);
+        }
+        worker.postMessage(makeThetaMessage('theia:hydrate', {
+            uniforms: Array.from(this.desiredUniforms.entries()),
+            previewDims: this.pendingPreviewDims,
+            shaders,
+            activeShaderId: activeId,
+        }));
         // 🌊 WAVE 8215 — flush del video port si el broker lo entregó antes
         // del spawn (página tardía / respawn): transferencia inmediata.
         if (this.pendingVideoPort) {
             this.deliverVideoPort(this.pendingVideoPort);
             this.pendingVideoPort = null;
         }
+        // 🌊 WAVE 8223 — epoch bump: notifica a la UI que hay un worker nuevo.
+        // El preview <canvas> se remonta vía key={epoch} y re-transfiere un
+        // OffscreenCanvas fresco (el anterior pertenece al worker muerto).
+        for (const listener of this.workerEpochListeners) {
+            try {
+                listener();
+            }
+            catch {
+                /* listener errors must not break spawn */
+            }
+        }
+    }
+    /**
+     * 🌊 WAVE 8223 — suscripción al epoch del worker. Devuelve unsubscribe.
+     * Cada spawn (start inicial o respawn Phoenix) dispara los listeners.
+     */
+    onWorkerEpoch(listener) {
+        this.workerEpochListeners.add(listener);
+        return () => {
+            this.workerEpochListeners.delete(listener);
+        };
     }
     handleWorkerMessage(msg) {
         if (!msg || typeof msg.type !== 'string')
@@ -756,17 +1295,28 @@ export class ThetaOrchestrator {
         switch (msg.type) {
             case 'theia:ready':
                 this.isReady = true;
+                // 🌊 WAVE 8220 — baseline de vida del worker NUEVO. Sin esto el
+                // watchdog hereda el ack del worker muerto: el primer tick tras
+                // 'ready' mide elapsed ≈ timeout+delay+spawn (>3000ms) contra una
+                // referencia stale y ejecuta un falso positivo → el bucle de
+                // resurrecciones se auto-perpetúa hasta agotar maxResurrections.
+                this.lastHeartbeatAt = Date.now();
                 this.circuit.state = CircuitState.CLOSED;
                 this.circuit.failures = 0;
                 // eslint-disable-next-line no-console
                 console.log('[THETA] worker READY');
-                // 🌊 WAVE 8211 — replay persisted uniforms (fresh worker is stateless)
-                if (this.desiredUniforms.size > 0) {
-                    for (const [name, value] of this.desiredUniforms) {
-                        try {
-                            this.worker?.postMessage(makeThetaMessage('theia:set-uniform', { name, value }));
-                        }
-                        catch { /* replay is best-effort */ }
+                // 🖥️ WAVE 8268 — el replay de uniforms/dims/shaders ya NO vive aquí:
+                // viajó atómico en `theia:hydrate` (encolado tras el INIT). Lo único
+                // pendiente tras ready es el intent armado por el operador con el
+                // motor apagado (STRICT LIVE GATE — se dispara ahora con el worker
+                // hidratado y listo).
+                {
+                    const pending = this.pendingPlayIntent;
+                    this.pendingPlayIntent = null;
+                    if (pending) {
+                        // eslint-disable-next-line no-console
+                        console.log(`[THETA 🎬] firing armed play-atom '${pending.atomId}'`);
+                        void this.playAtom(pending);
                     }
                 }
                 break;
@@ -806,6 +1356,32 @@ export class ThetaOrchestrator {
             case 'theia:seek-ack':
                 this.lastSeekAck = msg.payload;
                 break;
+            // 🔮 WAVE 8229 · E3 — shader contract status + governor telemetry
+            case 'theia:shader-status': {
+                this.lastShaderStatus = msg.payload;
+                const s = this.lastShaderStatus;
+                if (!s.ok && !s.pending) {
+                    // eslint-disable-next-line no-console
+                    console.error(`[THETA] shader '${s.shaderId}' failed${s.line ? ` @line ${s.line}` : ''}: ${s.log}`);
+                }
+                for (const l of this.shaderStatusListeners) {
+                    try {
+                        l(s);
+                    }
+                    catch { /* listener errors must not break dispatch */ }
+                }
+                break;
+            }
+            case 'theia:perf-report': {
+                this.lastPerfReport = msg.payload;
+                for (const l of this.perfReportListeners) {
+                    try {
+                        l(this.lastPerfReport);
+                    }
+                    catch { /* listener errors must not break dispatch */ }
+                }
+                break;
+            }
             case 'theia:error': {
                 const err = msg.payload;
                 // eslint-disable-next-line no-console
@@ -877,34 +1453,46 @@ export class ThetaOrchestrator {
         }
     }
     async resurrectWorker() {
-        if (this.worker) {
-            try {
-                this.worker.terminate();
-            }
-            catch {
-                /* noop */
-            }
-            this.worker = null;
-        }
-        this.isReady = false;
-        this.resurrections++;
-        // eslint-disable-next-line no-console
-        console.log(`[THETA] 🔥 PHOENIX: resurrecting worker (attempt ${this.resurrections})`);
-        await new Promise((r) => setTimeout(r, this.config.resurrectionDelay));
-        if (!this.isRunning)
+        // 🌊 WAVE 8220 — un solo Phoenix en vuelo: callers solapados retornan
+        // (la resurrección en curso ya termina y re-spawnea al worker).
+        if (this.isResurrecting)
             return;
+        this.isResurrecting = true;
         try {
-            await this.spawnWorker();
-            // 🌊 WAVE 8215 — el video port murió con el worker terminado (era
-            // propiedad suya): re-pull → el broker entrega un channel FRESCO a
-            // ambos extremos y el nuevo worker recibe el extremo productor.
-            // El telemetry port NO se re-pulle: vive en esta página y el ring
-            // SAB ya pasó al worker nuevo en el INIT.
-            requestTheiaPort('video-port');
-        }
-        catch (err) {
+            if (this.worker) {
+                try {
+                    this.worker.terminate();
+                }
+                catch {
+                    /* noop */
+                }
+                this.worker = null;
+            }
+            this.isReady = false;
+            this.resurrections++;
             // eslint-disable-next-line no-console
-            console.error('[THETA] resurrect failed:', err);
+            console.log(`[THETA] 🔥 PHOENIX: resurrecting worker (attempt ${this.resurrections})`);
+            const seq = this.lifecycleSeq;
+            await new Promise((r) => setTimeout(r, this.config.resurrectionDelay));
+            // Abort si el motor se apagó O si un restart manual invalidó este ciclo.
+            if (!this.isRunning || seq !== this.lifecycleSeq)
+                return;
+            try {
+                await this.spawnWorker();
+                // 🌊 WAVE 8215 — el video port murió con el worker terminado (era
+                // propiedad suya): re-pull → el broker entrega un channel FRESCO a
+                // ambos extremos y el nuevo worker recibe el extremo productor.
+                // El telemetry port NO se re-pulle: vive en esta página y el ring
+                // SAB ya pasó al worker nuevo en el INIT.
+                requestTheiaPort('video-port');
+            }
+            catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[THETA] resurrect failed:', err);
+            }
+        }
+        finally {
+            this.isResurrecting = false;
         }
     }
 }

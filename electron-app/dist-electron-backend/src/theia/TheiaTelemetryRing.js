@@ -7,14 +7,16 @@
  *   pump ──{type:'theia:telemetry', seq, buffer}──▶ consumer
  *          structured-clone 256B — `MessagePortMain` NO transfiere
  *          ArrayBuffers (WAVE 8216 fix: "Port at index 0 is not a valid port")
- *   consumer ──{ack:true, seq, buffer}──▶ pump     (ackFrame — devolución por
- *          ownership transfer: el DOM MessagePort renderer→main SÍ transfiere)
+ *   consumer ──{ack:true, seq}─────────▶ pump      (ackFrame — crédito de
+ *          vuelo: WAVE 8253 demostró que el ArrayBuffer en el transfer list
+ *          renderer→main llegaba como `undefined` — mojo lo despojaba en
+ *          silencio y el pool del pump moría tras 3 ticks)
  *
  * El consumidor NUNCA retiene el buffer: copia los 256B a su ring LOCAL
- * (`SharedArrayBuffer` intra-proceso — legal bajo el veto WAVE 8215, que
- * solo aplica a la frontera Main↔Renderer) y devuelve su copia en el mismo
- * handler. Cero alloc por tick: el ring local se crea UNA vez; el buffer
- * ack-transferido repone el pool fijo del pump (backpressure incluida).
+ * (`SharedArrayBuffer`/`ArrayBuffer` intra-proceso — legal bajo el veto
+ * WAVE 8215, que solo aplica a la frontera Main↔Renderer) y acusa recibo
+ * en el mismo handler. El ack es solo un crédito — la backpressure del
+ * pump vive en `inFlight`, no en devoluciones de buffers.
  *
  * Layout compartido (espejo de `TheiaTelemetryPump`):
  *   [0..16)   FrameContextRing verbatim — Int32[4]: tickId, tsLo, tsHi, gen
@@ -36,6 +38,18 @@ export const THEIA_TELEMETRY_MSG = 'theia:telemetry';
 /** Crea el ring LOCAL de un consumidor (intra-proceso, una sola vez). */
 export function createTelemetryRing() {
     return new SharedArrayBuffer(TELEMETRY_RING_BYTES);
+}
+/**
+ * 🌊 WAVE 8250 — ring LOCAL para consumidores de hilo único (Modo B).
+ * `Atomics.load/store` operan igual sobre una `Int32Array` respaldada por
+ * `ArrayBuffer` estándar (solo `wait`/`notify` exigen memoria compartida),
+ * así que la ventana de salida — donde el mirror corre en `port.onmessage`
+ * y el reader en `rAF`, ambos en el mismo hilo — no necesita
+ * `crossOriginIsolated` ni SAB: el ring vive aunque la página cargue por
+ * `file://`.
+ */
+export function createLocalTelemetryRing() {
+    return new ArrayBuffer(TELEMETRY_RING_BYTES);
 }
 /**
  * Espeja un buffer de telemetría recibido dentro del ring local.
@@ -62,11 +76,12 @@ export function isTelemetryMessage(data) {
         d.buffer.byteLength >= TELEMETRY_RING_BYTES);
 }
 /**
- * `ackFrame()` — devuelve el buffer al pump por ownership transfer.
- * El ÚNICO postMessage permitido por tick; nunca se instancia un buffer
- * nuevo en este camino.
+ * `ackFrame()` — acuse de recibo al pump: libera un slot de `inFlight`.
+ * El ÚNICO postMessage permitido por tick. WAVE 8253: ya NO se devuelve
+ * el buffer — los transferables a `MessagePortMain` llegan despojados
+ * (`buffer: undefined`), lo que mataba el link a los 3 ticks.
  */
 export function ackTelemetryFrame(port, msg) {
-    const ack = { ack: true, seq: msg.seq, buffer: msg.buffer };
-    port.postMessage(ack, [msg.buffer]);
+    const ack = { ack: true, seq: msg.seq };
+    port.postMessage(ack);
 }

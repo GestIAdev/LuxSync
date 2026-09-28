@@ -32,6 +32,9 @@
 import { getThetaOrchestrator } from '../../theia/ThetaOrchestrator';
 import { getSeleneTheiaAdapter, } from './SeleneTheiaAdapter';
 import { getTheiaRegistry } from './TheiaRegistry';
+// 🧬 WAVE 8235 · G3 — el GenomeEvolver (§4.6) recibe barCount+approach
+// del TickEngine y muta el átomo activo vía theta.evolveGenome().
+import { getGenomeEvolver } from '../../theia/genome/GenomeEvolver';
 // ─── BUS INTERNO (renderer-only) ──────────────────────────────────────────────
 /**
  * Bus del play-atom. Conserva semántica "IPC" para que un futuro refactor
@@ -80,6 +83,24 @@ export function attachSeleneTheia(opts) {
         return atom?.filePath ?? null;
     };
     orchestrator.setClipUrlResolver(opts.clipUrlResolver ?? defaultResolver);
+    // 1b) 🔮 WAVE 8230 · E4 — resolver atomId → fuente GLSL para átomos
+    // `source.kind='shader'` (Hybrid Deck). Consultado antes del de vídeo.
+    const defaultShaderResolver = (atomId) => {
+        const atom = getTheiaRegistry().getAtom(atomId);
+        if (atom?.source?.kind === 'shader' && atom.source.glsl) {
+            // 🧬 G1 — el átomo variante porta su fenotipo (`core#seed` §4.5).
+            return {
+                source: atom.source.glsl,
+                meta: atom.source.genes ? { genes: { ...atom.source.genes } } : undefined,
+            };
+        }
+        return null;
+    };
+    orchestrator.setShaderSourceResolver(opts.shaderSourceResolver ?? defaultShaderResolver);
+    // 1c) 🧬 WAVE 8235 · G3 — GenomeEvolver: observa u_barCount/u_approach
+    // desde el TickEngine y muta el átomo generativo en frontera de frase.
+    const evolver = getGenomeEvolver();
+    evolver.attach(orchestrator);
     // 2) Listener: Selene cognitive output → adapter → bus.
     const onCognitive = (input) => {
         let intent;
@@ -116,6 +137,8 @@ export function attachSeleneTheia(opts) {
         }
         unsubscribeBus();
         orchestrator.setClipUrlResolver(null);
+        orchestrator.setShaderSourceResolver(null);
+        getGenomeEvolver().detach();
     };
 }
 // ─── HELPERS PARA EL CALLSITE EN SELENE ──────────────────────────────────────

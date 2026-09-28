@@ -604,6 +604,14 @@ export class TitanOrchestrator {
         return this.trinity?.getFrameContextSAB() ?? null;
     }
     /**
+     * 🔮 WAVE 8227 — Exposes the Euclid TelemetryRing SAB (256B seqlock,
+     * written by TickEngine after the DMX commit) for the `TheiaTelemetryPump`
+     * wire snapshots. Returns null while Trinity hasn't spawned yet.
+     */
+    getTelemetryRing() {
+        return this.trinity?.getTelemetryRing() ?? null;
+    }
+    /**
      * Initialize all TITAN modules
      */
     async init() { await this.lifecycleManager.init(); }

@@ -15,6 +15,8 @@ import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 // only overrides top-level fields (stableEmotion, thermalTemperature, ai, vibe),
 // so the nested defaults can be shared by reference safely.
 const _cachedDefaultCognitive = createDefaultCognitive();
+import { SCHEMA_VERSION, TEL_FLAG, TELEMETRY_SLOT, createIntegralClocks, stepIntegralClocks, } from '../../../theia/telemetry/TheiaTelemetryRing';
+import { getGenomeEvolver } from '../../../theia/genome/GenomeEvolver';
 const ZONE_MAP = {
     'FRONT_PARS': 'front', 'BACK_PARS': 'back', 'LEFT_PARS': 'left', 'RIGHT_PARS': 'right',
     'CENTER_PARS': 'center', 'TRUSS_WASH': 'truss', 'FLOOR_WASH': 'floor',
@@ -24,6 +26,35 @@ const ZONE_MAP = {
     'LASER': 'effects', 'UV': 'effects',
 };
 const DMX_OUTPUT_ZEROS = Object.freeze(new Array(512).fill(0));
+// 🔮 WAVE 8227 · E1: mapas string→enum para el slot ENUMS del anillo Euclid.
+// Claves = strings internos de Selene/Cassandra; valores = códigos del
+// blueprint §2.3 (prediction_type / hunt_state / energy_zone). Módulo-estáticos:
+// cero asignación por tick.
+const EUCLID_PRED_TYPE = {
+    drop_incoming: 1,
+    buildup_starting: 2,
+    breakdown_imminent: 3,
+    transition_beat: 4,
+};
+const EUCLID_HUNT_STATE = {
+    sleeping: 0,
+    stalking: 1,
+    evaluating: 2,
+    striking: 3,
+    learning: 4,
+};
+const EUCLID_ENERGY_ZONE = {
+    silence: 0,
+    valley: 0,
+    ambient: 0,
+    calm: 0,
+    gentle: 1,
+    rising: 1,
+    active: 1,
+    intense: 2,
+    peak: 2,
+    falling: 3,
+};
 export class TickEngine {
     get brain() { return this.ctx.brain; }
     get engine() { return this.ctx.engine; }
@@ -118,6 +149,110 @@ export class TickEngine {
         // gate accepted, rejected, or was bypassed (low confidence / freewheel).
         // Values: '' | '🛡️REJECT' | '🛡️HOLD' | '🛡️ACCEPT' | '⚠️OCT-DOWN' | '⚠️OCT-UP'
         this._shieldTag = '';
+        // 🔮 WAVE 8227 · E1: scratch Selene/Cassandra reutilizado cada tick —
+        // fillEuclidSelene escribe in-place, cero objetos en el hot-path.
+        this._euclidSelene = {
+            confidence: 0,
+            huntState: 'sleeping',
+            energyZone: 'ambient',
+            predictionType: null,
+            predictionProbability: 0,
+            predictedEventAtMs: 0,
+            emotionalTension: 0,
+            spectralBuildupScore: 0,
+            beautyScore: 0.5,
+            energyZScore: 0,
+        };
+        // Stash por referencia para `_euclidFill` (closure pre-bound — el tick
+        // no instancia lambdas ni objetos, §2.4 zero-alloc).
+        this._euclidNow = 0;
+        this._euclidEtaMs = 0;
+        this._euclidEtaBeats = 0;
+        // 🧬 WAVE 8233 · G1 — relojes integrales (Infinite Genome Ley 1/§4.6):
+        // u_energyTime = ∫energy·dt monótono; u_barCount = compases absolutos.
+        // El paso vive en `stepIntegralClocks` (puro, testeable) — aquí solo
+        // persiste el estado entre ticks.
+        this._euclidClocks = createIntegralClocks();
+        this._euclidM = {
+            beatPhase: 0, isBeat: false, beatCount: 0, bpm: 0, beatConfidence: 0,
+            energy: 0, bass: 0, mid: 0, high: 0,
+            harshness: 0, spectralFlatness: 0, spectralCentroid: 0, crestFactor: 0,
+            subBass: 0, lowMid: 0, highMid: 0, kickDetected: false,
+        };
+        this._euclidContext = null;
+        this._euclidAd = null;
+        this._euclidLf = null;
+        /**
+         * Fill pre-bound asignado UNA vez — lee los scratch fields y escribe
+         * directo sobre la vista f32 del anillo (writer.publish invoca con el
+         * seqlock ya abierto en estado impar).
+         */
+        this._euclidFill = (p) => {
+            const S = TELEMETRY_SLOT;
+            const m = this._euclidM;
+            const ctx = this._euclidContext;
+            const ad = this._euclidAd;
+            const sel = this._euclidSelene;
+            const lf = this._euclidLf;
+            const photon = ad?.photon;
+            const rhythmic = ad?.rhythmic;
+            const chroma = ad?.chroma;
+            // CLOCK
+            p[S.T_SEC] = (this._euclidNow % 3600000) / 1000;
+            p[S.BPM] = ctx?.bpm ?? m.bpm;
+            p[S.BEAT_PHASE] = m.beatPhase;
+            p[S.BAR_PHASE] = ((m.beatCount % 4) + m.beatPhase) / 4;
+            p[S.BEAT_CONFIDENCE] = m.beatConfidence;
+            p[S.ENERGY] = m.energy;
+            // GODEAR — 7 bandas tácticas (post-AGC)
+            p[S.SUB_BASS] = m.subBass;
+            p[S.BASS] = m.bass;
+            p[S.LOW_MID] = m.lowMid;
+            p[S.MID] = m.mid;
+            p[S.HIGH_MID] = m.highMid;
+            p[S.TREBLE] = m.high;
+            p[S.ULTRA_AIR] = ad?.ultraAir ?? 0;
+            // GODEAR — métricas perceptuales
+            p[S.CENTROID_N] = Math.min(1, Math.max(0, m.spectralCentroid / 8000));
+            p[S.FLATNESS] = m.spectralFlatness;
+            p[S.CREST_N] = Math.min(1, Math.max(0, m.crestFactor));
+            p[S.HARSHNESS] = m.harshness;
+            p[S.SPECTRAL_FLUX] = photon?.spectralFlux ?? ad?.spectralFluxV3 ?? 0;
+            p[S.TRANSIENT_DENSITY] = photon?.transientDensity ?? 0;
+            p[S.SATURATION] = photon?.saturation ?? 0;
+            p[S.CHROMA_HUE] = photon?.hue ?? 0;
+            p[S.CHROMA_FLUX] = photon?.chromaFlux ?? 0;
+            // RITMO
+            p[S.KICK_ENERGY] = Math.max(0, m.bass - m.lowMid * 0.4);
+            p[S.SNARE_ENERGY] = rhythmic?.snare_energy ?? 0;
+            p[S.HIHAT_ENERGY] = rhythmic?.hh_energy ?? 0;
+            p[S.SYNCOPATION] = ctx?.syncopation ?? 0;
+            // SELENE / CASSANDRA
+            p[S.SEL_CONFIDENCE] = sel.confidence;
+            p[S.SEL_PRED_PROB] = sel.predictionProbability;
+            p[S.SEL_ETA_MS] = this._euclidEtaMs;
+            p[S.SEL_ETA_BEATS] = this._euclidEtaBeats;
+            p[S.SEL_TENSION] = sel.emotionalTension;
+            p[S.SEL_BEAUTY] = sel.beautyScore;
+            p[S.SEL_ZSCORE_N] = Math.min(1, Math.max(0, sel.energyZScore / 4));
+            p[S.SPECTRAL_BUILDUP] = sel.spectralBuildupScore;
+            // OMNILIQUID
+            p[S.MORPH_FACTOR] = lf?.morphFactor ?? 0;
+            p[S.RECOVERY_FACTOR] = lf?.recoveryFactor ?? 0;
+            p[S.LQ_FLOOR] = lf?.floorIntensity ?? 0;
+            p[S.LQ_AMBIENT] = lf?.ambientIntensity ?? 0;
+            p[S.LQ_AIR] = lf?.airIntensity ?? 0;
+            // CHROMAGRAMA — 12 bins C→B
+            if (chroma) {
+                const base = S.CHROMA_0;
+                for (let i = 0; i < 12; i++) {
+                    p[base + i] = chroma[i] ?? 0;
+                }
+            }
+            // 🧬 WAVE 8233 · G1 — relojes integrales (slots 58/59, kind 'none').
+            p[S.ENERGY_TIME] = this._euclidClocks.energyTime;
+            p[S.BAR_COUNT] = this._euclidClocks.barCount;
+        };
         this.ctx = ctx;
         TickEngine._instances.add(this);
     }
@@ -1553,6 +1688,10 @@ export class TickEngine {
                 if (uniList.length > 0) {
                     this.dmxWriter.commitFrame(this.frameCount, uniList, maskLo, maskHi);
                 }
+                // 🔮 WAVE 8227 — EUCLID ORACLE · E1: publicación de telemetría 256B
+                // INMEDIATAMENTE después del commit DMX (la luz sale primero, §2.4).
+                // Seqlock write a 44Hz sobre la vista del anillo — cero asignaciones.
+                this.publishEuclidTelemetry(now, engineAudioMetrics, context, beatState, workerOnBeat);
                 _t_hal_end = performance.now();
                 // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)
                 // WAVE 7124: AduanaGate log silenced for forensic profiling clarity
@@ -1859,6 +1998,105 @@ export class TickEngine {
                 `GlassBridge: ${_t_glass}ms | ` +
                 `HAL: ${_t_hal}ms`);
         }
+    }
+    /**
+     * 🔮 WAVE 8227 — EUCLID ORACLE · E1 (§2.4): publica la telemetría 256B en
+     * el anillo seqlock INMEDIATAMENTE después del commit DMX — la luz sale
+     * primero, el shader un instante después.
+     *
+     * Zero-alloc: lee accessors escalares (brechas T1/T2/T5) y stashea las
+     * fuentes por referencia en campos scratch; `_euclidFill` es un closure
+     * pre-bound construido una sola vez. Nada de object literals, spreads ni
+     * lambdas en este path.
+     */
+    publishEuclidTelemetry(now, m, context, beatState, workerOnBeat) {
+        // 🧬 WAVE 8233 · G1 — ∫energy·dt corre SIEMPRE (incluso sin writer:
+        // el integral debe seguir continuo para cuando el consumidor vuelva).
+        stepIntegralClocks(this._euclidClocks, now, m.energy, m.beatCount);
+        const writer = this.trinity?.getTelemetryWriter();
+        if (!writer)
+            return;
+        const ad = this.audioPipeline.lastAudioData;
+        const lf = this.engine?.getLastProcessedFrame() ?? null;
+        const photon = ad.photon;
+        const rhythmic = ad.rhythmic;
+        const sel = this._euclidSelene;
+        this.engine?.fillEuclidSelene(sel);
+        // FLAGS — bitfield del header (§2.3)
+        let flags = 0;
+        if (this.audioPipeline.hasRealAudio)
+            flags |= 1 << TEL_FLAG.AUDIO_LIVE;
+        if (beatState.pllLocked)
+            flags |= 1 << TEL_FLAG.PLL_LOCKED;
+        if (m.isBeat || workerOnBeat)
+            flags |= 1 << TEL_FLAG.ON_BEAT;
+        if (lf?.isKick ?? m.kickDetected)
+            flags |= 1 << TEL_FLAG.KICK;
+        if (lf?.isKickEdge)
+            flags |= 1 << TEL_FLAG.KICK_EDGE;
+        if (m.snareDetected)
+            flags |= 1 << TEL_FLAG.SNARE;
+        if (m.hihatDetected)
+            flags |= 1 << TEL_FLAG.HIHAT;
+        const predType = sel.predictionType === null ? 0 : (EUCLID_PRED_TYPE[sel.predictionType] ?? 0);
+        // El flag marca predicción viva (energy_spike/energy_drop/section_change
+        // no tienen código propio en §2.3 — caen a 0 pero el flag sube igual).
+        if (sel.predictionType !== null && sel.predictionType !== 'none') {
+            flags |= 1 << TEL_FLAG.PREDICTION_ACTIVE;
+        }
+        if (lf?.isBreakdown)
+            flags |= 1 << TEL_FLAG.BREAKDOWN;
+        if (lf?.isApocalypse)
+            flags |= 1 << TEL_FLAG.APOCALYPSE;
+        if (lf?.acidMode)
+            flags |= 1 << TEL_FLAG.ACID;
+        if (photon?.colorSnap)
+            flags |= 1 << TEL_FLAG.COLOR_SNAP;
+        if ((rhythmic?.rhythmic_void ?? 0) >= 0.75)
+            flags |= 1 << TEL_FLAG.RHYTHMIC_VOID;
+        // ENUMS empaquetados inline (sin packEnums — evita el objeto arg por tick).
+        const enumsPacked = (SCHEMA_VERSION & 0xff) |
+            ((predType & 0xff) << 8) |
+            (((EUCLID_HUNT_STATE[sel.huntState] ?? 0) & 0xff) << 16) |
+            (((EUCLID_ENERGY_ZONE[sel.energyZone] ?? 0) & 0xff) << 24);
+        // Brecha T3 — ETA DINÁMICO: tiempo real restante recalculado en el
+        // instante exacto de publicar. predictedEventAtMs es epoch absoluto
+        // (pred.timestamp + pred.estimatedTimeMs); clamp ≥0, techo 16s
+        // (el slot SEL_ETA_MS es 'extrapolate' — el reader lo decrementa).
+        const etaMs = sel.predictedEventAtMs > 0
+            ? Math.min(16000, Math.max(0, sel.predictedEventAtMs - now))
+            : 0;
+        const msPerBeat = context.bpm > 0 ? 60000 / context.bpm : 0;
+        const etaBeats = msPerBeat > 0 ? Math.min(16, etaMs / msPerBeat) : 0;
+        // 🧬 WAVE 8235 · G3 — oportunidad de mutación en frontera de frase
+        // (Infinite Genome §4.6): el evolver decide con el `u_barCount`
+        // absoluto y el `u_approach` INSTANTÁNEO del oráculo (misma fórmula
+        // del smoother sin el EMA — conservador: adelanta el veto ante un
+        // buildup naciente). Jamás muta en clímax (zona peak / apocalypse).
+        const evolver = getGenomeEvolver();
+        if (evolver.isAttached()) {
+            const predicting = sel.predictionType !== null && sel.predictionType !== 'none';
+            const approachNow = predicting
+                ? (1 - Math.min(1, Math.max(0, etaBeats / 8))) *
+                    sel.predictionProbability *
+                    sel.confidence
+                : 0;
+            const dropActive = sel.energyZone === 'peak' ||
+                (flags & (1 << TEL_FLAG.APOCALYPSE)) !== 0;
+            evolver.notify(this._euclidClocks.barCount, approachNow, dropActive, msPerBeat > 0 ? msPerBeat * 4 : 0, 
+            // 🧬 WAVE 8236 · G4 — u_beauty (slot 35) alimenta el fitness EMA
+            // del individuo activo en pantalla (ventana por frase, §4.6).
+            sel.beautyScore);
+        }
+        // Stash por referencia — el fill pre-bound lee de aquí, cero capturas.
+        this._euclidNow = now;
+        this._euclidEtaMs = etaMs;
+        this._euclidEtaBeats = etaBeats;
+        this._euclidM = m;
+        this._euclidContext = context;
+        this._euclidAd = ad;
+        this._euclidLf = lf;
+        writer.publish(this.frameCount, flags, enumsPacked, this._euclidFill);
     }
 }
 // 🩸 WAVE-6060: 44Hz / 4 = ~11Hz para UI fluida

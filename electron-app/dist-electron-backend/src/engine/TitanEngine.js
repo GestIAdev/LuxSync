@@ -1177,6 +1177,40 @@ export class TitanEngine extends EventEmitter {
     getActiveLiquidEngine() {
         return this.nervousSystem.getLastActiveLiquidEngine();
     }
+    // ─── 🔮 WAVE 8227 — EUCLID ORACLE · E1: TELEMETRÍA ESCALAR ZERO-ALLOC ───
+    // Cierra T1/T2/T5 del blueprint: lectura escalar directa en el hot-path
+    // del TickEngine sin instanciar objetos por tick.
+    /**
+     * Último ProcessedFrame de Omniliquid (referencia al frame almacenado —
+     * NO es copia). Contiene morphFactor, recoveryFactor, isKick/Edge,
+     * isBreakdown, acidMode, isApocalypse y las zonas floor/ambient/air.
+     */
+    getLastProcessedFrame() {
+        return this.nervousSystem.getLastActiveLiquidEngine()?.lastFrame ?? null;
+    }
+    /** Brecha T1 — morphFactor escalar puro (profundidad armónica 0-1). */
+    getLastMorphFactor() {
+        return this.getLastProcessedFrame()?.morphFactor ?? 0;
+    }
+    /**
+     * Brechas T2+T5 — vuelca los escalares de Selene/Cassandra sobre un
+     * out-param pre-asignado del caller. Zero-alloc: lee los getters
+     * escalares de SeleneTitanConscious, nunca getConsciousnessTelemetry().
+     */
+    fillEuclidSelene(out) {
+        const selene = this.selene;
+        out.confidence = selene.getLastConfidence();
+        const pred = selene.getActivePrediction();
+        out.predictionType = pred?.type ?? null;
+        out.predictionProbability = pred?.probability ?? 0;
+        out.predictedEventAtMs = selene.getPredictedEventAtMs();
+        out.emotionalTension = selene.getEmotionalTension();
+        out.spectralBuildupScore = selene.getSpectralBuildupScore();
+        out.beautyScore = selene.getBeautyScore();
+        out.huntState = selene.getHuntPhase();
+        out.energyZone = selene.getEnergyZone();
+        out.energyZScore = selene.getEnergyZScore();
+    }
     /**
      * 🌊 WAVE 2432: HOT-SWAP — Profile change on vibe switch
      */

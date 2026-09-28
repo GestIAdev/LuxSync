@@ -123,7 +123,14 @@ function setupTheiaHandlers(deps) {
     // the main window (ThetaOrchestrator ring mirror → theta.worker clock)
     // and the TheiaOutputView (Modo B, future shader ring). A re-request
     // (window reload / late mount) attaches a fresh link per sender.
-    const pump = new TheiaTelemetryPump(() => deps.titanOrchestrator?.getFrameContextSAB() ?? null);
+    // 🔮 WAVE 8227 · E1: el pump compone el wire buffer de 256B con DOS fuentes:
+    // FrameContextRing (reloj, cabecera 16B) + TheiaTelemetryRing Euclid
+    // (payload Selene/GodEar/Omniliquid escrito por el TickEngine tras el
+    // commit DMX). Ambas son null-tolerant.
+    const pump = new TheiaTelemetryPump(() => ({
+        fc: deps.titanOrchestrator?.getFrameContextSAB() ?? null,
+        tel: deps.titanOrchestrator?.getTelemetryRing() ?? null,
+    }));
     ipcMain.on('theia:request-telemetry', (event) => {
         // Re-request (window reload) → fresh port pair, pump re-attaches.
         try {

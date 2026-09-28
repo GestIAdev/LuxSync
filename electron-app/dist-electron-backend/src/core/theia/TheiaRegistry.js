@@ -239,6 +239,16 @@ export class TheiaRegistry {
             compatibleVibes: Object.freeze([...atom.compatibleVibes]),
             isDivineCandidate: atom.isDivineCandidate,
             isHeavyCandidate: atom.isHeavyCandidate,
+            // 🧬 G2 — `genes` se congela también: el fenotipo del individuo es
+            // inmutable una vez registrado (una mutación sería otro genoma).
+            source: atom.source
+                ? Object.freeze({
+                    ...atom.source,
+                    genes: atom.source.genes
+                        ? Object.freeze({ ...atom.source.genes })
+                        : undefined,
+                })
+                : undefined,
         });
     }
     _appendToIndices(atom) {

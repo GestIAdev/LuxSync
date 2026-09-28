@@ -5,3 +5,6 @@ scripts/keys/luxsync-private.pem
 *.luxlicense
 licenses/
 electron-app/test-data/live_audio_dump.json
+
+# Windows redirect artifact (2>nul in bash creates a literal file)
+nul

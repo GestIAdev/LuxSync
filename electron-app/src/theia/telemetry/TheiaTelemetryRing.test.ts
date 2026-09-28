@@ -1,9 +1,12 @@
 /**
  * 🔮 WAVE 8226 — EUCLID ORACLE · Fase E0: Telemetry Ring Core
  *
- * Certificación del anillo de telemetría de 256 B (seqlock):
- *  - Layout exacto: 64 slots × 4 B, header Int32 [0..3] + payload F32 [4..63],
- *    schema declarativo contiguo sin huecos ni colisiones.
+ * Certificación del anillo de telemetría de 512 B (seqlock · v2, WAVE 8278):
+ *  - Layout exacto: 128 slots × 4 B, header Int32 [0..3] + payload F32
+ *    [4..127] (página A [4..63] byte-idéntica a v1), schema declarativo
+ *    contiguo sin huecos ni colisiones.
+ *  - Tolerancia v1: readers aceptan anillos/buffers de 256 B (página B = 0,
+ *    schemaVersion expuesto = 1); el writer permanece STRICT v2.
  *  - Round-trip writer→reader de TODOS los slots del schema.
  *  - Seqlock: SEQ impar durante escritura, par al commit; el reader descarta
  *    lecturas rasgadas (SEQ impar sostenido y tearing a mitad de copia) y
@@ -24,15 +27,23 @@ import {
   SLOT_PAYLOAD_BASE,
   SLOT_SEQ,
   SLOT_TICK_ID,
+  TELEMETRY_PAGE_B_BASE,
+  TELEMETRY_PAYLOAD_SLOTS,
+  TELEMETRY_PAYLOAD_SLOTS_V1,
   TELEMETRY_RING_BYTES,
+  TELEMETRY_RING_BYTES_V1,
   TELEMETRY_RING_SLOTS,
+  TELEMETRY_RING_SLOTS_V1,
   TELEMETRY_SCHEMA,
   TELEMETRY_SLOT,
   TelemetryReader,
+  TelemetrySnapshotter,
   TelemetryWriter,
   telFlag,
   TEL_FLAG,
   unpackEnums,
+  WIRE_ENUMS_SLOT,
+  WIRE_FLAGS_SLOT,
 } from './TheiaTelemetryRing'
 
 /** Writer que interrumpe la copia del reader a mitad de camino (1 vez). */
@@ -57,15 +68,22 @@ class MidCopyTearReader extends TelemetryReader {
 }
 
 describe('🔮 WAVE 8226 — TheiaTelemetryRing: layout y schema', () => {
-  it('256 B exactos, 64 slots, vistas Int32+Float32 sobre el mismo backing', () => {
+  it('🔮 WAVE 8278 · F1: 512 B exactos, 128 slots, página B desde slot 64', () => {
     const sab = createTelemetryRing()
     expect(sab.byteLength).toBe(TELEMETRY_RING_BYTES)
-    expect(TELEMETRY_RING_SLOTS).toBe(64)
-    expect(new Int32Array(sab).length).toBe(64)
-    expect(new Float32Array(sab).length).toBe(64)
+    expect(TELEMETRY_RING_BYTES).toBe(512)
+    expect(TELEMETRY_RING_SLOTS).toBe(128)
+    expect(TELEMETRY_PAGE_B_BASE).toBe(64)
+    expect(TELEMETRY_PAYLOAD_SLOTS).toBe(124)
+    expect(TELEMETRY_RING_BYTES_V1).toBe(256)
+    expect(TELEMETRY_RING_SLOTS_V1).toBe(64)
+    expect(TELEMETRY_PAYLOAD_SLOTS_V1).toBe(60)
+    expect(SCHEMA_VERSION).toBe(2)
+    expect(new Int32Array(sab).length).toBe(128)
+    expect(new Float32Array(sab).length).toBe(128)
   })
 
-  it('el schema cubre slots 4..63 contiguos, sin duplicados, índice por nombre', () => {
+  it('el schema cubre slots 4..127 contiguos, sin duplicados, índice por nombre', () => {
     expect(TELEMETRY_SCHEMA.length).toBe(TELEMETRY_RING_SLOTS - SLOT_PAYLOAD_BASE)
     const seen = new Set<number>()
     for (const d of TELEMETRY_SCHEMA) {
@@ -98,7 +116,7 @@ describe('🔮 WAVE 8226 — TheiaTelemetryRing: layout y schema', () => {
       huntState: 0,
       energyZone: 0,
     })
-    expect(out).toEqual({ schemaVersion: 1, predictionType: 1, huntState: 3, energyZone: 2 })
+    expect(out).toEqual({ schemaVersion: SCHEMA_VERSION, predictionType: 1, huntState: 3, energyZone: 2 })
     expect(telFlag(1 << TEL_FLAG.KICK, TEL_FLAG.KICK)).toBe(true)
     expect(telFlag(1 << TEL_FLAG.KICK, TEL_FLAG.SNARE)).toBe(false)
   })
@@ -212,6 +230,57 @@ describe('🔮 WAVE 8226 — TheiaTelemetryRing: seqlock', () => {
     // Scratch aislado del anillo: mutar el ring no corrompe lo leído.
     writer.publish(3, 0, 0, (p) => { p[TELEMETRY_SLOT.BPM] = 150 })
     expect(s1![TELEMETRY_SLOT.BPM]).toBeCloseTo(140, 5)
+  })
+})
+
+// ───────────── 🔮 WAVE 8278 · F1 — tolerancia de versión v1/v2 ─────────────
+
+describe('🔮 WAVE 8278 · F1 — anillo v2 + tolerancia legado v1 (256B)', () => {
+  it('TelemetryReader tolera un anillo v1 (256B): página B del scratch a 0', () => {
+    const sab = new SharedArrayBuffer(TELEMETRY_RING_BYTES_V1)
+    const i32 = new Int32Array(sab)
+    const f32 = new Float32Array(sab)
+    i32[SLOT_SEQ] = 2 // commit par
+    f32[TELEMETRY_SLOT.BPM] = 128.5
+
+    const reader = new TelemetryReader(sab)
+    const snap = reader.read()
+    expect(snap).not.toBeNull()
+    expect(snap!.length).toBe(TELEMETRY_RING_SLOTS)
+    expect(snap![TELEMETRY_SLOT.BPM]).toBeCloseTo(128.5, 5)
+    for (let i = TELEMETRY_PAGE_B_BASE; i < TELEMETRY_RING_SLOTS; i++) {
+      expect(snap![i]).toBe(0)
+    }
+  })
+
+  it('TelemetryWriter RECHAZA un anillo v1 — STRICT (OOB sería silencioso)', () => {
+    expect(
+      () => new TelemetryWriter(new SharedArrayBuffer(TELEMETRY_RING_BYTES_V1)),
+    ).toThrow()
+  })
+
+  it('TelemetrySnapshotter tolera src v1: copia página A, página B a 0', () => {
+    const src = new SharedArrayBuffer(TELEMETRY_RING_BYTES_V1)
+    const si32 = new Int32Array(src)
+    const sf32 = new Float32Array(src)
+    si32[SLOT_SEQ] = 2
+    si32[SLOT_FLAGS] = 0x0f0f
+    si32[SLOT_ENUMS] = 0x01020304
+    sf32[TELEMETRY_SLOT.SUB_BASS] = 0.66
+
+    const wire = new ArrayBuffer(TELEMETRY_RING_BYTES)
+    const snap = new TelemetrySnapshotter(src, wire)
+    expect(snap.snapshot()).toBe(true)
+
+    const wf32 = new Float32Array(wire)
+    const wi32 = new Int32Array(wire)
+    expect(wf32[TELEMETRY_SLOT.SUB_BASS]).toBeCloseTo(0.66, 5)
+    expect(wi32[WIRE_FLAGS_SLOT]).toBe(0x0f0f)
+    expect(wi32[WIRE_ENUMS_SLOT]).toBe(0x01020304)
+    // Página B intacta a 0 — el frame v1 no la transporta.
+    for (let i = TELEMETRY_PAGE_B_BASE; i < TELEMETRY_RING_SLOTS; i++) {
+      expect(wf32[i]).toBe(0)
+    }
   })
 })
 

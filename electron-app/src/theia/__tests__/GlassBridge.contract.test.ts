@@ -4,7 +4,7 @@
  * Certificación del pivote Opus (transferable ownership ping-pong):
  *  - Modo A (video): roundtrip writer→reader + identidad de buffer en el
  *    retorno ack — NUNCA se instancia un ArrayBuffer nuevo en el circuito.
- *  - Modo B (telemetría): mirror 256B con barrera gen-last + fan-out
+ *  - Modo B (telemetría): mirror 512B con barrera gen-last + fan-out
  *    multi-link del pump (drop por pool starvation, retiro por close).
  */
 
@@ -23,7 +23,9 @@ import {
   createTelemetryRing,
   isTelemetryMessage,
   mirrorTelemetryIntoRing,
+  TelemetryMirror,
   TELEMETRY_RING_BYTES,
+  TELEMETRY_RING_BYTES_V1,
 } from '../TheiaTelemetryRing'
 import { TheiaTelemetryPump } from '../TheiaTelemetryPump'
 import { FrameContextReader, FrameContextWriter, createFrameContextSAB } from '../FrameContextRing'
@@ -33,6 +35,7 @@ import {
   SCHEMA_VERSION,
   TELEMETRY_SLOT,
   TEL_FLAG,
+  TelemetrySnapshotter,
   TelemetryWireReader,
   TelemetryWriter,
   WIRE_ENUMS_SLOT,
@@ -147,7 +150,7 @@ describe('🌊 WAVE 8215 — Modo A: video transferable ping-pong', () => {
 // ── Modo B — telemetría ───────────────────────────────────────────────────
 
 describe('🌊 WAVE 8215 — Modo B: telemetry ring mirror', () => {
-  it('mirror 256B: el reader detecta el tick por generation (gen-last)', () => {
+  it('mirror 512B: el reader detecta el tick por generation (gen-last)', () => {
     const ring = createTelemetryRing()
     const reader = new FrameContextReader(ring)
     reader.resync()
@@ -167,6 +170,78 @@ describe('🌊 WAVE 8215 — Modo B: telemetry ring mirror', () => {
     const snap = reader.readIfChanged()
     expect(snap).not.toBeNull()
     expect(snap!.tickId).toBe(42)
+  })
+
+  it('🔮 WAVE 8278 · F1 — tolerancia v1: frame 256B → página B a 0, schemaVersion=1', () => {
+    const ring = createTelemetryRing() // mirror local v2 — 512B
+    const mirror = new TelemetryMirror(ring)
+    const reader = new TelemetryWireReader(ring)
+    reader.resync()
+
+    // Frame v1 legado: 256B con cabecera FC + página A + flags/enums @56/57.
+    const wire = new ArrayBuffer(TELEMETRY_RING_BYTES_V1)
+    const wi32 = new Int32Array(wire)
+    const wf32 = new Float32Array(wire)
+    wi32[0] = 4242 // tickId
+    wi32[3] = 9 // generation
+    wf32[10] = 0.75 // SUB_BASS
+    wi32[56] = 1 << TEL_FLAG.AUDIO_LIVE
+    wi32[57] = packEnums({
+      schemaVersion: 1, predictionType: 0, huntState: 0, energyZone: 0,
+    })
+
+    expect(isTelemetryMessage({ type: 'theia:telemetry', seq: 1, buffer: wire })).toBe(true)
+    mirror.mirror(wire)
+    expect(reader.read()).toBe(true)
+    expect(reader.tickId).toBe(4242)
+    expect(reader.schemaVersion).toBe(1)
+    expect(reader.scratch[10]).toBeCloseTo(0.75)
+    expect(reader.scratch.length).toBe(128)
+    for (let i = 64; i < 128; i++) expect(reader.scratch[i]).toBe(0)
+    expect(reader.flags & (1 << TEL_FLAG.AUDIO_LIVE)).not.toBe(0)
+  })
+
+  it('🔮 WAVE 8278 · F1 — transición v2→v1: página B residual limpiada una vez', () => {
+    const ring = createTelemetryRing()
+    const mirror = new TelemetryMirror(ring)
+    const ringF32 = new Float32Array(ring)
+
+    // Frame v2 con dato en página B (slot 100).
+    const wire2 = new ArrayBuffer(TELEMETRY_RING_BYTES)
+    const w2f = new Float32Array(wire2)
+    const w2i = new Int32Array(wire2)
+    w2f[100] = 0.9
+    w2i[3] = 1
+    mirror.mirror(wire2)
+    expect(ringF32[100]).toBeCloseTo(0.9)
+
+    // Frame v1 (256B): la página B residual de v2 debe quedar a 0.
+    const wire1 = new ArrayBuffer(TELEMETRY_RING_BYTES_V1)
+    new Int32Array(wire1)[3] = 2
+    mirror.mirror(wire1)
+    expect(ringF32[100]).toBe(0)
+
+    // Segundo frame v1 — idempotente, sin estado raro.
+    const wire1b = new ArrayBuffer(TELEMETRY_RING_BYTES_V1)
+    new Int32Array(wire1b)[3] = 3
+    mirror.mirror(wire1b)
+    expect(ringF32[100]).toBe(0)
+  })
+
+  it('🔮 WAVE 8278 · F1 — TelemetryWireReader sobre mirror v1 (256B) directo', () => {
+    const sab = new SharedArrayBuffer(TELEMETRY_RING_BYTES_V1)
+    const i32 = new Int32Array(sab)
+    i32[3] = 5 // gen
+    i32[56] = 1 << TEL_FLAG.KICK_EDGE
+    new Float32Array(sab)[11] = 0.5 // BASS
+    const r = new TelemetryWireReader(sab)
+    expect(r.read()).toBe(true)
+    expect(r.schemaVersion).toBe(1)
+    expect(r.scratch.length).toBe(128)
+    expect(r.scratch[11]).toBeCloseTo(0.5)
+    expect(r.scratch[64]).toBe(0)
+    expect(r.scratch[127]).toBe(0)
+    expect(r.flags & (1 << TEL_FLAG.KICK_EDGE)).not.toBe(0)
   })
 
   it('ackTelemetryFrame envía CRÉDITO puro {ack, seq} — SIN buffer ni transfer (WAVE 8253)', () => {
@@ -190,7 +265,7 @@ describe('🌊 WAVE 8215 — Modo B: telemetry ring mirror', () => {
 // ── WAVE 8250 — Modo B: ring local ArrayBuffer (sin crossOriginIsolated) ──
 
 describe('🌊 WAVE 8250 — Modo B local ring: ArrayBuffer sin SAB', () => {
-  it('createLocalTelemetryRing devuelve un ArrayBuffer plano de 256B', () => {
+  it('createLocalTelemetryRing devuelve un ArrayBuffer plano de 512B', () => {
     const ring = createLocalTelemetryRing()
     expect(ring).toBeInstanceOf(ArrayBuffer)
     // No compartido: seguro bajo file:// (sin COOP/COEP) — mismo hilo.
@@ -297,7 +372,7 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
     expect(pump.droppedTicks).toBeGreaterThanOrEqual(3)
   })
 
-  // 🔮 WAVE 8227 · E1 — wire buffer 256B = FrameContext (16B cabecera) +
+  // 🔮 WAVE 8227 · E1 — wire buffer 512B = FrameContext (16B cabecera) +
   // payload Euclid (slots 4..55) + FLAGS/ENUMS como bits Int32 en 56/57.
   it('compone FrameContext (16B) + payload Euclid + FLAGS/ENUMS en slots 56/57', () => {
     const fc = createFrameContextSAB()
@@ -359,7 +434,142 @@ describe('🌊 WAVE 8215 — TheiaTelemetryPump fan-out (main side)', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────
-// 🔮 WAVE 8231 · E5 — control generativo sobre el video-port (Modo B §6)
+// � WAVE 8277 · Fase 0 — certificación ZERO-ALLOC del hot path
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Cuenta los `new` ejecutados sobre los constructores TypedArray/Buffer
+ * mientras corre `fn`. Los Proxy devuelven instancias REALES
+ * (Reflect.construct sobre el target), así que `instanceof` y Atomics
+ * siguen funcionando dentro del tramo medido.
+ */
+function countAllocs(fn: () => void): number {
+  let n = 0
+  const wrap = <T extends object>(ctor: T): T =>
+    new Proxy(ctor, {
+      construct: (t, args) => {
+        n++
+        return Reflect.construct(t, args)
+      },
+    })
+  vi.stubGlobal('Int32Array', wrap(Int32Array))
+  vi.stubGlobal('Float32Array', wrap(Float32Array))
+  vi.stubGlobal('ArrayBuffer', wrap(ArrayBuffer))
+  vi.stubGlobal('SharedArrayBuffer', wrap(SharedArrayBuffer))
+  try {
+    fn()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+  return n
+}
+
+describe('🔧 WAVE 8277 — Fase 0: cero `new` en tick() y snapshot', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function tick(): void {
+    vi.advanceTimersByTime(23)
+  }
+
+  it('TelemetrySnapshotter: las 4 vistas nacen en ctor — snapshot() no asigna', () => {
+    const tel = createEuclidRing()
+    const writer = new TelemetryWriter(tel)
+    const flags = (1 << TEL_FLAG.AUDIO_LIVE) | (1 << TEL_FLAG.KICK_EDGE)
+    const enums = packEnums({
+      schemaVersion: SCHEMA_VERSION,
+      predictionType: 1,
+      huntState: 2,
+      energyZone: 3,
+    })
+    writer.publish(9, flags, enums, (p) => {
+      p[TELEMETRY_SLOT.BPM] = 128.5
+    })
+
+    const wire = new ArrayBuffer(TELEMETRY_RING_BYTES)
+    const snap = new TelemetrySnapshotter(tel, wire)
+
+    const news = countAllocs(() => {
+      expect(snap.snapshot()).toBe(true)
+      expect(snap.snapshot()).toBe(true)
+      expect(snap.snapshot()).toBe(true)
+    })
+    expect(news).toBe(0)
+
+    const wi32 = new Int32Array(wire)
+    const wf32 = new Float32Array(wire)
+    expect(wf32[TELEMETRY_SLOT.BPM]).toBeCloseTo(128.5, 3)
+    expect(wi32[WIRE_FLAGS_SLOT]).toBe(flags)
+    expect(wi32[WIRE_ENUMS_SLOT]).toBe(enums)
+  })
+
+  it('snapshotter inválido (tamaños erróneos) → false sin tocar el destino', () => {
+    const tel = createEuclidRing()
+    const bad = new TelemetrySnapshotter(tel, new ArrayBuffer(128))
+    expect(bad.snapshot()).toBe(false)
+  })
+
+  it('pump.tick(): cero `new` por tick — vistas fc/snapshotter cacheadas, mensaje reutilizado', () => {
+    const fc = createFrameContextSAB()
+    new FrameContextWriter(fc).advance(0xcafe, Date.now())
+    const tel = createEuclidRing()
+    new TelemetryWriter(tel).publish(1, 1 << TEL_FLAG.AUDIO_LIVE, 0, (p) => {
+      p[TELEMETRY_SLOT.BPM] = 121
+    })
+
+    const pump = new TheiaTelemetryPump(() => ({ fc, tel }))
+    const port = makeFakePort()
+    pump.attach(port as never)
+    tick() // warm-up — aquí nacen fcView + snapshotter (cambio de identidad)
+
+    const news = countAllocs(() => {
+      tick()
+      tick()
+    })
+    expect(news).toBe(0)
+    expect(port.posted).toHaveLength(3)
+    // El MISMO objeto {type,seq,buffer} recircula — el fake guarda la
+    // referencia, así que ambos posts son idénticos y `seq` es la última.
+    expect(port.posted[1].data).toBe(port.posted[2].data)
+    expect((port.posted[2].data as { seq: number }).seq).toBe(3)
+  })
+
+  it('TelemetryMirror: dst pre-asignada — 1 vista src por mensaje, gen-last intacto', () => {
+    const ring = createTelemetryRing()
+    const mirror = new TelemetryMirror(ring)
+    const src = createFrameContextSAB()
+    new FrameContextWriter(src).advance(55, Date.now())
+
+    const wire = new ArrayBuffer(TELEMETRY_RING_BYTES)
+    new Int32Array(wire).set(new Int32Array(src))
+
+    const reader = new FrameContextReader(ring)
+    reader.resync()
+
+    const news = countAllocs(() => {
+      mirror.mirror(wire)
+      mirror.mirror(wire)
+    })
+    expect(news).toBe(2) // 1 vista Int32(src) por mensaje — nada más
+    const snap2 = reader.readIfChanged()
+    expect(snap2?.tickId).toBe(55)
+  })
+
+  it('mirrorTelemetryIntoRing (función compat): mirror cacheado por ring — 1 alloc/msg', () => {
+    const ring = createLocalTelemetryRing()
+    const wire = new ArrayBuffer(TELEMETRY_RING_BYTES)
+    mirrorTelemetryIntoRing(ring, wire) // crea el mirror del ring (1ª vez)
+    const news = countAllocs(() => mirrorTelemetryIntoRing(ring, wire))
+    expect(news).toBe(1)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// �🔮 WAVE 8231 · E5 — control generativo sobre el video-port (Modo B §6)
 // ─────────────────────────────────────────────────────────────────────────
 
 import {

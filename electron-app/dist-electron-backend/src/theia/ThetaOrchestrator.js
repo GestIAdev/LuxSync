@@ -10,7 +10,7 @@
  *  - Spawn del Web Worker.
  *  - 🌊 WAVE 8215 — GLASS BRIDGE: hacer pull de los MessagePorts al preload
  *    (`requestTheiaPort`) y consumir la telemetría por ping-pong: cada
- *    buffer 256B (clone main→renderer — WAVE 8216) se espeja al ring LOCAL
+ *    buffer 512B (clone main→renderer — WAVE 8216) se espeja al ring LOCAL
  *    (SharedArrayBuffer renderer-side — intra-proceso, legal bajo el veto)
  *    y su copia se devuelve al pump por `ack` con transfer. El reloj
  *    maestro ya NO cruza la frontera como SAB.
@@ -24,7 +24,7 @@
 import { makeThetaMessage, } from './protocol';
 // 🌊 WAVE 8215 — Glass Bridge page-world side + telemetry ring mirror
 import { onTheiaGlassMessage, requestTheiaPort, } from './glassBridge';
-import { ackTelemetryFrame, createTelemetryRing, isTelemetryMessage, mirrorTelemetryIntoRing, } from './TheiaTelemetryRing';
+import { ackTelemetryFrame, createTelemetryRing, isTelemetryMessage, TelemetryMirror, } from './TheiaTelemetryRing';
 // 🩺 WAVE 8253 — sonda de gap de llegada del port (main-thread stall probe)
 import { noteTelemetryArrival } from '../core/diagnostics/MainThreadMonitor';
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
@@ -115,7 +115,7 @@ export class ThetaOrchestrator {
             successesInHalfOpen: 0,
         };
         /**
-         * 🌊 WAVE 8215 — Telemetry ring LOCAL (256B, SharedArrayBuffer
+         * 🌊 WAVE 8215 — Telemetry ring LOCAL (512B, SharedArrayBuffer
          * renderer-side). Lo alimenta el `telemetry-port` del Glass Bridge por
          * ping-pong — ya NO se pide un SAB al main process (vetado). Sus primeros
          * 16B replican el layout FrameContextRing (tickId/ts/gen), que es lo que
@@ -126,6 +126,8 @@ export class ThetaOrchestrator {
         /** 🌊 WAVE 8246 — vista Int32 pre-asignada para el sondeo del watchdog
          *  (lee el timestamp del FC en slots 1-2 sin alojar nada por barrido). */
         this.telemetryRingI32 = new Int32Array(this.telemetryRing);
+        /** 🔧 WAVE 8277 · F0 — mirror con dst cacheada: 1 alloc por mensaje. */
+        this.telemetryMirror = new TelemetryMirror(this.telemetryRing);
         /** Port del canal de telemetría (main pump ↔ esta página). Vive AQUÍ —
          *  no en el worker — para sobrevivir respawns Phoenix. */
         this.telemetryPort = null;
@@ -379,7 +381,7 @@ export class ThetaOrchestrator {
     /**
      * Consume el port de telemetría en la PÁGINA (no en el worker): el ring
      * SAB local sobrevive respawns y también lo leen futuros consumers del
-     * renderer. Cada buffer de 256B (clone serializado — WAVE 8216: el
+     * renderer. Cada buffer de 512B (clone serializado — WAVE 8216: el
      * MessagePortMain del pump no transfiere) se espeja al ring y se devuelve
      * por `ack` CON transfer en el mismo handler — ZERO-ALLOC: aquí jamás se
      * instancia un ArrayBuffer; el ack repone el pool fijo del pump.
@@ -404,7 +406,7 @@ export class ThetaOrchestrator {
             if (!isTelemetryMessage(data))
                 return;
             try {
-                mirrorTelemetryIntoRing(this.telemetryRing, data.buffer);
+                this.telemetryMirror.mirror(data.buffer);
                 ackTelemetryFrame(port, data);
             }
             catch (err) {
@@ -1047,7 +1049,7 @@ export class ThetaOrchestrator {
         return this.lastPerfReport;
     }
     /**
-     * 🎛️ WAVE 8240 · U2 — ring local (256B) espejado por el Glass Bridge.
+     * 🎛️ WAVE 8240 · U2 — ring local (512B) espejado por el Glass Bridge.
      * La UI lo lee con un `TelemetryWireReader` en un rAF: zero-alloc, sin
      * React state. El pump ya publica por 'telemetry-port' y
      * `mirrorTelemetryIntoRing` lo mantiene fresco — solo faltaba exponer
@@ -1227,7 +1229,7 @@ export class ThetaOrchestrator {
             transfer.push(canvas);
         }
         worker.postMessage(makeThetaMessage('theia:init', {
-            // 🌊 WAVE 8215 — ring local de 256B alimentado por el telemetry
+            // 🌊 WAVE 8215 — ring local de 512B alimentado por el telemetry
             // port (ping-pong con el pump de main). Sus primeros 16B replican
             // el FrameContextRing que el worker pollea — ya no hay SAB remoto.
             frameContextSAB: this.telemetryRing,

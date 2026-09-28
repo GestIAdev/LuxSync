@@ -268,6 +268,8 @@ export class SeleneTitanConscious extends EventEmitter {
         this._lastFireDiagLog = 0;
         this._lastHuntUpgradeLog = 0;
         this._sovereignGuard = new SovereignClockGuard();
+        /** 🔮 WAVE 8275: timestamp (Date.now) del último Glass Break disparado. 0 = nunca. */
+        this._lastGlassBreakMs = 0;
         // ═══════════════════════════════════════════════════════════════════════
         // SENSE: Percepción - USANDO SENSORES REALES
         // ═══════════════════════════════════════════════════════════════════════
@@ -584,6 +586,9 @@ export class SeleneTitanConscious extends EventEmitter {
                             ? Math.min(candidate.intensity, 0.75)
                             : candidate.intensity;
                     if (verdict.trigger === 'glass_break') {
+                        // 🔮 WAVE 8275: marcar la ruptura soberana — el TickEngine la
+                        // publica como flag GLASS_BREAK durante el tick del evento.
+                        this._lastGlassBreakMs = nowSovereign;
                         console.log(`[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${fireEffectName ?? fireEffectId}" ` +
                             `| drop landed EARLY | ${verdict.reason ?? ''}`);
                     }
@@ -1959,6 +1964,46 @@ export class SeleneTitanConscious extends EventEmitter {
     /** Fase del Hunt FSM. */
     getHuntPhase() {
         return this.state.huntPhase;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 8275 — THEIA COGNITIVE PAYLOAD (Euclid Oracle §3.5 expansion)
+    // Escalares de Iliquidcore/Cassandra — mismas reglas que el bloque E1:
+    // lectura directa por referencia, cero objetos, cero alloc a 44 Hz.
+    // ═══════════════════════════════════════════════════════════════════════
+    /** Epicness del último LiquidVerdict [0,1] — autoridad única Divine. */
+    getLiquidEpicness() {
+        return this._lastLiquidVerdict?.epicness ?? 0;
+    }
+    /** V(t) — presión de vapor refractaria del fluido cognitivo [0,1]. */
+    getVaporPressure() {
+        return this._lastLiquidVerdict?.fluid.vaporPressure ?? 0;
+    }
+    /** Π — perusividad: tasa Poisson de crestas CF>2 normalizada [0,1]. */
+    getPercussiveness() {
+        return this._liquidCore.descriptors.percussiveness;
+    }
+    /** M — melodismo (presencia de banda media / consonancia) [0,1]. */
+    getMelodicity() {
+        return this._liquidCore.descriptors.melodicity;
+    }
+    /** R(t) — tasa de crestas CF>2 por segundo, sin normalizar (>0). */
+    getCrestRate() {
+        return this._liquidCore.crestRate;
+    }
+    /** Cresta CF>2 este frame — evento de latencia cero (borde, no nivel). */
+    getCrestEvent() {
+        return this._liquidCore.crestEvent;
+    }
+    /**
+     * ETA de la ejecución soberana (pre-buffer Cassandra) en ms desde `nowMs`.
+     * -1 si no hay countdown activo. Escalar — nunca instancia el status object.
+     */
+    getSovereignEtaMs(nowMs) {
+        return dreamEngineIntegrator.getPreBufferEtaMs(nowMs);
+    }
+    /** Edad del último Glass Break soberano (ms). Infinity si nunca ocurrió. */
+    getGlassBreakAgeMs(nowMs) {
+        return this._lastGlassBreakMs > 0 ? nowMs - this._lastGlassBreakMs : Infinity;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🎯 WAVE 685: HELPERS PARA CONTEXTUAL EFFECT SELECTOR

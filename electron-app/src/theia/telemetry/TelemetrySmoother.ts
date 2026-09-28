@@ -6,8 +6,8 @@
  * (render clock, rAF). Este módulo toma el scratch crudo del
  * `TelemetryWireReader` y produce:
  *
- *   1. `out` — u_tel[60] suavizado (índice = slot − 4), una subida
- *      `gl.uniform1fv` por frame (§3.2).
+ *   1. `out` — u_tel[124] suavizado (índice = slot − 4), una subida
+ *      `gl.uniform1fv` por frame (§3.2). 🔮 WAVE 8278 · F1: página B.
  *   2. Derivados del oráculo (§3.4): beatTime, kickPulse, snarePulse,
  *      predictiveEta, approach, impact.
  *
@@ -28,6 +28,7 @@
 import {
   SLOT_PAYLOAD_BASE,
   TELEMETRY_PAYLOAD_SLOTS,
+  TELEMETRY_PAYLOAD_SLOTS_V1,
   TELEMETRY_SCHEMA,
   TELEMETRY_SLOT,
   TEL_FLAG,
@@ -49,6 +50,13 @@ const PULSE_TAU_BEATS = 0.25
 
 /** τ del pulso de impacto (constante absoluta — §3.4 no da tempo-relative). */
 const IMPACT_TAU_MS = 220
+
+/** 🧠 WAVE 8275 — τ del pulso de cresta CF>2 (evento de latencia cero:
+ *  más rápido que los pulsos musicales — no debe heredar el tempo). */
+const CREST_TAU_MS = 110
+
+/** 🧠 WAVE 8275 — τ del pulso Glass Break (ruptura soberana — visible). */
+const GLASS_BREAK_TAU_MS = 380
 
 /** Horizonte de anticipación de u_approach (beats — §3.4). */
 const APPROACH_HORIZON_BEATS = 8
@@ -76,8 +84,14 @@ function kindCode(k: TelSmoothKind): number {
 }
 
 export class TelemetrySmoother {
-  /** u_tel[60] — índice = slot − 4. Listo para `gl.uniform1fv`. */
+  /** u_tel[124] — índice = slot − 4. Listo para `gl.uniform1fv`/UBO. */
   readonly out = new Float32Array(TELEMETRY_PAYLOAD_SLOTS)
+  /**
+   * 🔮 WAVE 8278 · F1 — vista de la PÁGINA A (u_tel[60]) para el shader
+   * builtin WebGL1, que conserva `uniform float u_tel[60]`: subir `out`
+   * entero (124) sería INVALID_OPERATION. Precreada una vez — zero-alloc.
+   */
+  readonly outV1 = this.out.subarray(0, TELEMETRY_PAYLOAD_SLOTS_V1)
 
   // ── Derivados del oráculo (§3.4) — escalares, se suben como uniforms ──
   /** Beats acumulados continuos, re-anclados a BEAT_PHASE suavemente. */
@@ -97,6 +111,12 @@ export class TelemetrySmoother {
   approach = 0
   /** Pulso de impacto: ETA cruza 0 (o KICK_EDGE) con predicción activa. */
   impact = 0
+  /** 🧠 WAVE 8275 — u_crestPulse: exp(−t/110ms) desde el flanco CREST_EVENT. */
+  crestPulse = 0
+  /** 🧠 WAVE 8275 — u_strobeGate: nivel 0/1 del StrobeEngine de GodEar. */
+  strobeGate = 0
+  /** 🧠 WAVE 8275 — u_glassBreak: exp(−t/380ms) desde el flanco GLASS_BREAK. */
+  glassBreak = 0
 
   // ── Header del último frame ingerido ──
   flags = 0
@@ -116,6 +136,8 @@ export class TelemetrySmoother {
   private _kickEdgeMs = -1
   private _snareEdgeMs = -1
   private _impactMs = -1
+  private _crestEdgeMs = -1
+  private _glassBreakMs = -1
 
   constructor() {
     for (const d of TELEMETRY_SCHEMA) {
@@ -131,7 +153,7 @@ export class TelemetrySmoother {
    * haya o no datos nuevos — la extrapolación es lo que mantiene el
    * movimiento fluido a 60/144 Hz sobre datos publicados a 44 Hz.
    *
-   * @param raw    scratch del reader (64 slots); null = aún sin frame válido.
+   * @param raw    scratch del reader (128 slots); null = aún sin frame válido.
    * @param flags  bitfield del frame ingerido (válido solo si `fresh`).
    * @param enums  ENUMS empaquetados del frame ingerido.
    * @param fresh  `reader.read()` devolvió true este frame.
@@ -167,6 +189,14 @@ export class TelemetrySmoother {
       }
       if ((flags & snareBit) !== 0) {
         this._snareEdgeMs = nowMs
+      }
+      // 🧠 WAVE 8275 — flancos cognitivos: misma semántica de evento por
+      // publicación (un bit encendido = un flanco).
+      if ((flags & (1 << TEL_FLAG.CREST_EVENT)) !== 0) {
+        this._crestEdgeMs = nowMs
+      }
+      if ((flags & (1 << TEL_FLAG.GLASS_BREAK)) !== 0) {
+        this._glassBreakMs = nowMs
       }
       this.flags = flags
       this.enumsPacked = enums
@@ -281,6 +311,20 @@ export class TelemetrySmoother {
     this._prevEtaPositive = etaMs > 0.001
     this.impact =
       this._impactMs >= 0 ? Math.exp(-(nowMs - this._impactMs) / IMPACT_TAU_MS) : 0
+
+    // 🧠 WAVE 8275 — u_crestPulse: cresta CF>2 sin esperar la envolvente
+    // RMS (τ absoluto 110 ms — reacción inmediata, §WAVE-8274-RECON).
+    this.crestPulse =
+      this._crestEdgeMs >= 0 ? Math.exp(-(nowMs - this._crestEdgeMs) / CREST_TAU_MS) : 0
+
+    // 🧠 WAVE 8275 — u_glassBreak: ruptura soberana (τ 380 ms — el fog
+    // debe "romperse" de forma legible, no en un solo fotograma).
+    this.glassBreak =
+      this._glassBreakMs >= 0 ? Math.exp(-(nowMs - this._glassBreakMs) / GLASS_BREAK_TAU_MS) : 0
+
+    // 🧠 WAVE 8275 — u_strobeGate: nivel binario (persiste mientras el
+    // StrobeEngine esté activo — no es flanco, es un gate).
+    this.strobeGate = (this.flags & (1 << TEL_FLAG.STROBE_ACTIVE)) !== 0 ? 1 : 0
 
     // u_approach — rampa oráculo (§3.4):
     //   (1 − clamp(etaBeats/horizon,0,1)) · predProb · confidence, 8 beats.

@@ -4,7 +4,7 @@
  * Ensamblador runtime de fragment shaders de artistas (blueprint §4.1):
  *
  *   ┌ PREÁMBULO (generado) ─ #version 300 es · precision · uniforms
- *   │   estándar · u_tel[60] + macros schema · flags · derivados ·
+ *   │   estándar · u_tel[124] + macros schema · flags · derivados ·
  *   │   aliases Shadertoy · librería Euclid · MAX_STEPS
  *   ├ CUERPO (artista) ─ void mainImage(out vec4 c, in vec2 fragCoord)
  *   └ EPÍLOGO (generado) ─ main(): mainImage → masters → crossfade →
@@ -116,6 +116,10 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS) {
         'uniform float u_predictiveETA;',
         'uniform float u_approach;',
         'uniform float u_impact;',
+        '// 🧠 WAVE 8275 — eventos cognitivos/soberanos (pulso rápido + gates)',
+        'uniform float u_crestPulse;',
+        'uniform float u_strobeGate;',
+        'uniform float u_glassBreak;',
         '// Masters UI + seguridad (epílogo)',
         'uniform float u_brightness;',
         'uniform float u_contrast;',

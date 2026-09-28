@@ -59,13 +59,15 @@ export {
   createTelemetryRing,
   isTelemetryMessage,
   mirrorTelemetryIntoRing,
+  TelemetryMirror,
   THEIA_TELEMETRY_MSG,
   TELEMETRY_RING_BYTES,
+  TELEMETRY_RING_BYTES_V1,
   type TheiaTelemetryMessage,
   type TheiaTelemetryAck,
 } from './TheiaTelemetryRing'
 
-// 🔮 WAVE 8226 — Euclid Oracle · Fase E0: telemetry ring core (seqlock 256B).
+// 🔮 WAVE 8226 — Euclid Oracle · Fase E0: telemetry ring core (seqlock 512B · v2).
 // Namespaced: `createTelemetryRing`/`TELEMETRY_RING_BYTES` ya pertenecen al
 // contrato de transporte Glass Bridge de arriba.
 export * as EuclidTelemetry from './telemetry/TheiaTelemetryRing'

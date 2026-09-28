@@ -19,7 +19,7 @@
  *
  * ZERO-ALLOC: el relay no toca payloads — solo mueve el puntero del port.
  * Los `ArrayBuffer` de 8.3MB (Modo A) ping-ponguean por el port con
- * ownership transfer renderer↔renderer. En Modo B (256B) la pierna
+ * ownership transfer renderer↔renderer. En Modo B (512B) la pierna
  * main→renderer sale por clone —`MessagePortMain` no transfiere buffers
  * (WAVE 8216)— y el ack de vuelta SÍ transfiere (DOM MessagePort).
  */

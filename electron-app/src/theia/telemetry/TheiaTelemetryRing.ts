@@ -1,9 +1,17 @@
 /**
  * TheiaTelemetryRing.ts — Euclid Oracle · Fase E0 (Telemetry Ring Core)
  *
- * Anillo de telemetría CPU→GPU de 256 bytes exactos (64 slots × 4 B).
+ * Anillo de telemetría CPU→GPU de 512 bytes exactos (128 slots × 4 B).
  * Un único productor (TickEngine en main) escribe a 44 Hz; N lectores
  * (theta.worker, ventana de salida) pollean libremente.
+ *
+ * 🔮 WAVE 8278 · F1 — EXPANSIÓN A PÁGINA B (EUCLID_RING_EXPANSION_8276 §1):
+ *   slots 0..63  → PÁGINA A — schema v1, BYTE-IDÉNTICO al layout original.
+ *   slots 64..127 → PÁGINA B — física Liquid/GodEar (F3 la puebla; hoy
+ *                   RESERVED_64..127, `kind:'none'` → pasan verbatim).
+ *   SCHEMA_VERSION 1 → 2 (viaja en el byte 0 de ENUMS). Los lectores
+ *   toleran buffers legados de 256 B: la página B queda a 0 y se expone
+ *   `schemaVersion = 1` — un consumidor v2 nunca rompe con un productor v1.
  *
  * Sincronización: SEQLOCK sobre el slot 0.
  *   Escritor: SEQ→impar, escribe, SEQ→par.  Nunca espera.
@@ -12,18 +20,25 @@
  *
  * Zero-alloc en hot-path por contrato: el writer escribe directo sobre la
  * vista Float32 del SAB (fill callback, sin staging); el reader copia a un
- * scratch Float32Array(64) pre-asignado que `read()` devuelve SIEMPRE por
+ * scratch Float32Array(128) pre-asignado que `read()` devuelve SIEMPRE por
  * referencia — ningún objeto nace en ningún path.
  *
- * Fuente de verdad: EUCLID_ORACLE_BLUEPRINT §2.3 (layout) + §3.3 (schema).
+ * Fuente de verdad: EUCLID_ORACLE_BLUEPRINT §2.3 (layout) + §3.3 (schema)
+ * + EUCLID_RING_EXPANSION_8276 §1.1 (página B).
  */
 
 // ─────────────────────────── Dimensiones ───────────────────────────
 
-export const TELEMETRY_RING_BYTES = 256
-export const TELEMETRY_RING_SLOTS = 64
-export const TELEMETRY_PAYLOAD_SLOTS = 60 // slots 4..63
-export const SCHEMA_VERSION = 1
+/** Layout legado (schema v1) — los lectores lo toleran (página B = 0). */
+export const TELEMETRY_RING_SLOTS_V1 = 64
+export const TELEMETRY_RING_BYTES_V1 = TELEMETRY_RING_SLOTS_V1 * 4 // 256 B
+
+/** 🔮 WAVE 8278 · F1 — anillo v2: 128 slots = página A (0..63) + B (64..127). */
+export const TELEMETRY_RING_SLOTS = 128
+export const TELEMETRY_RING_BYTES = TELEMETRY_RING_SLOTS * 4 // 512 B
+/** Primer slot de la página B (frontera vec4 del payload: idx 60). */
+export const TELEMETRY_PAGE_B_BASE = 64
+export const SCHEMA_VERSION = 2
 
 // ───────────────────────── Header (Int32) ──────────────────────────
 
@@ -32,6 +47,10 @@ export const SLOT_TICK_ID = 1  // frameCount del TickEngine (correlación FrameC
 export const SLOT_FLAGS = 2    // bitfield booleano
 export const SLOT_ENUMS = 3    // schemaVersion | predictionType<<8 | huntState<<16 | energyZone<<24
 export const SLOT_PAYLOAD_BASE = 4
+
+/** Slots Float32 de payload: 4..127 en v2 (124), 4..63 en v1 (60). */
+export const TELEMETRY_PAYLOAD_SLOTS = TELEMETRY_RING_SLOTS - SLOT_PAYLOAD_BASE
+export const TELEMETRY_PAYLOAD_SLOTS_V1 = TELEMETRY_RING_SLOTS_V1 - SLOT_PAYLOAD_BASE
 
 /** FLAGS — bitfield booleano (blueprint §2.3). */
 export const TEL_FLAG = {
@@ -48,6 +67,11 @@ export const TEL_FLAG = {
   ACID: 10,
   COLOR_SNAP: 11,
   RHYTHMIC_VOID: 12,
+  // 🧠 WAVE 8275 — Cognitive payload coupling (Selene V3 / Iliquidcore)
+  CREST_EVENT: 13,       // cresta CF>2 — evento de latencia cero (FluidDescriptors)
+  STROBE_ACTIVE: 14,     // GodEar StrobeEngine disparando
+  SOVEREIGN_COUNTDOWN: 15, // pre-buffer Cassandra con predictedEventAt pendiente
+  GLASS_BREAK: 16,       // efecto soberano disparado antes del countdown (ruptura)
 } as const
 
 export type TelFlagBit = (typeof TEL_FLAG)[keyof typeof TEL_FLAG]
@@ -152,7 +176,8 @@ export const TELEMETRY_SCHEMA: readonly TelemetrySlotDescriptor[] = [
   { slot: 40, name: 'LQ_FLOOR',          uniform: 'u_lqFloor',          kind: 'linear' },
   { slot: 41, name: 'LQ_AMBIENT',        uniform: 'u_lqAmbient',        kind: 'linear' },
   { slot: 42, name: 'LQ_AIR',            uniform: 'u_lqAir',            kind: 'linear' },
-  { slot: 43, name: 'RESERVED_43',       uniform: '',                   kind: 'none' },
+  // 🧠 WAVE 8275 — presión acústica "épica" de Iliquidcore (autoridad Divine)
+  { slot: 43, name: 'EPICNESS',          uniform: 'u_epicness',        kind: 'linear', attack: 0.4, release: 0.1 },
   // CHROMAGRAMA — 12 bins C→B
   { slot: 44, name: 'CHROMA_0',          uniform: 'u_chroma0',          kind: 'linear' },
   { slot: 45, name: 'CHROMA_1',          uniform: 'u_chroma1',          kind: 'linear' },
@@ -167,7 +192,7 @@ export const TELEMETRY_SCHEMA: readonly TelemetrySlotDescriptor[] = [
   { slot: 54, name: 'CHROMA_10',         uniform: 'u_chroma10',         kind: 'linear' },
   { slot: 55, name: 'CHROMA_11',         uniform: 'u_chroma11',         kind: 'linear' },
   // WIRE — los slots 56/57 transportan FLAGS/ENUMS como BITS Int32 en el
-  // wire buffer del pump (ver snapshotTelemetryPayload). En el anillo
+  // wire buffer del pump (ver TelemetrySnapshotter). En el anillo
   // local de main quedan a 0 — el header Int32 es su casa real.
   { slot: 56, name: 'WIRE_FLAGS',        uniform: '',                   kind: 'none' },
   { slot: 57, name: 'WIRE_ENUMS',        uniform: '',                   kind: 'none' },
@@ -178,11 +203,22 @@ export const TELEMETRY_SCHEMA: readonly TelemetrySlotDescriptor[] = [
   // ambos son crudos — suavizar un integral/discreto los corrompería.
   { slot: 58, name: 'ENERGY_TIME',       uniform: 'u_energyTime',      kind: 'none' },
   { slot: 59, name: 'BAR_COUNT',         uniform: 'u_barCount',        kind: 'none' },
-  // RESERVA — stereo width/balance, futuros motores
-  { slot: 60, name: 'RESERVED_60',       uniform: '',                   kind: 'none' },
-  { slot: 61, name: 'RESERVED_61',       uniform: '',                   kind: 'none' },
-  { slot: 62, name: 'RESERVED_62',       uniform: '',                   kind: 'none' },
-  { slot: 63, name: 'RESERVED_63',       uniform: '',                   kind: 'none' },
+  // 🧠 WAVE 8275 — Iliquidcore / FluidDescriptors (Selene V3 cognition)
+  { slot: 60, name: 'VAPOR_PRESSURE',    uniform: 'u_vaporPressure',   kind: 'linear', attack: 0.3, release: 0.05 },
+  { slot: 61, name: 'PERCUSSIVENESS',    uniform: 'u_percussiveness',  kind: 'linear' },
+  { slot: 62, name: 'MELODICITY',        uniform: 'u_melodicity',      kind: 'linear' },
+  { slot: 63, name: 'CREST_RATE',        uniform: 'u_crestRate',       kind: 'linear', attack: 0.7, release: 0.2 },
+  // ── PÁGINA B (slots 64..127) — 🔮 WAVE 8278 · F1: ancho de banda nuevo.
+  // Todo RESERVED hasta F3 (LiquidEngineBase DSP mining, expansión §2.2).
+  // `kind:'none'` = el smoother copia el valor crudo verbatim a u_tel; los
+  // slots sin nombre no emiten macro. Generados, no escritos a mano.
+  ...Array.from(
+    { length: TELEMETRY_RING_SLOTS - TELEMETRY_PAGE_B_BASE },
+    (_, i): TelemetrySlotDescriptor => {
+      const slot = TELEMETRY_PAGE_B_BASE + i
+      return { slot, name: `RESERVED_${slot}`, uniform: '', kind: 'none' }
+    },
+  ),
 ]
 
 /** Lookup nombre → slot (para el writer del TickEngine sin literales). */
@@ -242,6 +278,17 @@ export function createTelemetryRing(): SharedArrayBuffer {
   return new SharedArrayBuffer(TELEMETRY_RING_BYTES)
 }
 
+/**
+ * 🔮 WAVE 8278 · F1 — tamaños válidos del anillo: v2 (512B/128 slots) o
+ * legado v1 (256B/64 slots). Devuelve los slots Int32 del buffer o 0 si el
+ * tamaño no es ninguno de los dos — los lectores toleran v1 (página B = 0).
+ */
+export function ringSlotsFor(byteLength: number): number {
+  if (byteLength === TELEMETRY_RING_BYTES) return TELEMETRY_RING_SLOTS
+  if (byteLength === TELEMETRY_RING_BYTES_V1) return TELEMETRY_RING_SLOTS_V1
+  return 0
+}
+
 function ringViews(sab: SharedArrayBuffer | ArrayBuffer): {
   i32: Int32Array
   f32: Float32Array
@@ -262,6 +309,8 @@ function ringViews(sab: SharedArrayBuffer | ArrayBuffer): {
 /**
  * Escritor seqlock — proceso MAIN (TickEngine), una invocación por tick.
  * Presupuesto < 1 µs: 3 Atomics.store de header + fill directo sobre el f32.
+ * STRICT v2: un anillo de 256 B haría las escrituras de página B OOB-silent
+ * (TypedArray no lanza fuera de rango) → fallo ruidoso en ctor.
  */
 export class TelemetryWriter {
   private readonly i32: Int32Array
@@ -307,7 +356,8 @@ const MAX_READ_ATTEMPTS = 3
  * (idéntico a FrameContextReader.readIfChanged).
  */
 export class TelemetryReader {
-  /** Buffer de lectura pre-asignado — identidad estable entre llamadas. */
+  /** Buffer de lectura pre-asignado (128 slots) — identidad estable entre
+   *  llamadas. Sobre un anillo v1 (256B) la página B queda a 0. */
   readonly scratch: Float32Array
 
   private readonly i32: Int32Array
@@ -316,9 +366,16 @@ export class TelemetryReader {
   private hasValid = false
 
   constructor(sab: SharedArrayBuffer | ArrayBuffer) {
-    const v = ringViews(sab)
-    this.i32 = v.i32
-    this.f32 = v.f32
+    // 🔮 WAVE 8278 · F1 — tolerante: acepta anillos v2 (512B) y legados v1
+    // (256B). `scratch.set(f32)` copia min(64,128) — la página B permanece
+    // a 0 con una fuente v1.
+    if (ringSlotsFor(sab.byteLength) === 0) {
+      throw new Error(
+        `[TelemetryReader] expected ${TELEMETRY_RING_BYTES}B or ${TELEMETRY_RING_BYTES_V1}B, got ${sab.byteLength}B`,
+      )
+    }
+    this.i32 = new Int32Array(sab, 0, SLOT_PAYLOAD_BASE)
+    this.f32 = new Float32Array(sab)
     this.scratch = new Float32Array(TELEMETRY_RING_SLOTS)
   }
 
@@ -356,23 +413,24 @@ export class TelemetryReader {
   }
 
   /**
-   * Copia los 64 slots al scratch. Seam `protected`: los tests la
-   * sobreescriben para simular un writer que interrumpe a mitad de copia.
+   * Copia los slots al scratch (128 v2 / 64 v1 — `set` copia el mínimo y la
+   * página B queda a 0 en v1). Seam `protected`: los tests la sobreescriben
+   * para simular un writer que interrumpe a mitad de copia.
    */
   protected copyPayload(): void {
     this.scratch.set(this.f32)
   }
 }
 
-// ─────────────────── Wire snapshot (pump → 256B buffer) ───────────────────
+// ─────────── Wire snapshot (pump → 512B buffer) · WAVE 8277 · F0 ───────────
 
 /**
- * Layout del wire buffer de 256B (`TheiaTelemetryPump` → consumidores):
- *   slots 0..3  → FrameContextRing verbatim (tickId, tsLo, tsHi, generation)
- *                 — el reloj maestro viaja en la cabecera (amendment 8215).
- *   slots 4..63 → payload Float32 del anillo Euclid, verbatim.
- *   slot  56    → FLAGS empaquetados como bits Int32 (WIRE_FLAGS).
- *   slot  57    → ENUMS empaquetados como bits Int32 (WIRE_ENUMS).
+ * Layout del wire buffer de 512B (`TheiaTelemetryPump` → consumidores):
+ *   slots 0..3   → FrameContextRing verbatim (tickId, tsLo, tsHi, generation)
+ *                  — el reloj maestro viaja en la cabecera (amendment 8215).
+ *   slots 4..127 → payload Float32 del anillo Euclid, verbatim (páginas A+B).
+ *   slot  56     → FLAGS empaquetados como bits Int32 (WIRE_FLAGS).
+ *   slot  57     → ENUMS empaquetados como bits Int32 (WIRE_ENUMS).
  * El SEQ/TICK_ID del header Euclid no cruza: tickId ya vive en el FC, y el
  * seqlock es una preocupación intra-proceso del lado del productor.
  * Los consumidores leen FLAGS/ENUMS con una vista Int32 sobre el espejo
@@ -382,41 +440,80 @@ export const WIRE_FLAGS_SLOT = 56
 export const WIRE_ENUMS_SLOT = 57
 
 /**
- * Copia seqlock-verificada del anillo al wire buffer. Escribe el payload
+ * 🔧 WAVE 8277 · Fase 0 (EUCLID_RING_EXPANSION_8276 §F0) — snapshotter con
+ * vistas PRE-ASIGNADAS. Las 4 TypedArray views (src Int32/Float32, dst
+ * Int32/Float32) nacen en el constructor y `snapshot()` no ejecuta NI UN
+ * `new`: la copia seqlock corre íntegra sobre vistas fijas.
+ *
+ * La instancia queda ligada a un par (src ring, dst wire). Si la fuente
+ * cambia de identidad (re-attach del SAB), el caller crea una nueva — en el
+ * steady-state jamás se asigna.
+ *
+ * Semántica idéntica a la antigua función libre: escribe el payload
  * (slots 4..63) y FLAGS/ENUMS como bits en 56/57. NO toca los slots 0..3
  * (la cabecera FrameContext la escribe el pump).
- *
- * @returns `true` si la copia fue consistente; `false` si los 3 intentos
- *          colisionaron con una escritura — el caller debe descartar el
- *          destino para este tick (contenido potencialmente rasgado).
  */
-export function snapshotTelemetryPayload(
-  src: SharedArrayBuffer | ArrayBuffer,
-  dst: ArrayBuffer | SharedArrayBuffer,
-): boolean {
-  if (src.byteLength !== TELEMETRY_RING_BYTES || dst.byteLength !== TELEMETRY_RING_BYTES) {
+export class TelemetrySnapshotter {
+  private readonly srcI32: Int32Array
+  private readonly srcF32: Float32Array
+  private readonly dstI32: Int32Array
+  private readonly dstF32: Float32Array
+  /** Slots reales del anillo fuente: 128 (v2) o 64 (legado v1) · 0 = inerte. */
+  private readonly srcSlots: number
+  /** Tamaños validados en ctor — un par inválido queda inerte (snapshot→false). */
+  private readonly valid: boolean
+
+  constructor(
+    src: SharedArrayBuffer | ArrayBuffer,
+    dst: ArrayBuffer | SharedArrayBuffer,
+  ) {
+    // 🔮 WAVE 8278 · F1 — tolerante en src: un anillo legado de 256B copia
+    // su página A (4..63) y la página B del wire queda a 0 (el pump la
+    // rellena con fill(0) antes de cada snapshot). El wire dst es siempre
+    // v2 — el pump crea su scratch con TELEMETRY_RING_BYTES.
+    this.srcSlots = ringSlotsFor(src.byteLength)
+    this.valid = this.srcSlots > 0 && dst.byteLength === TELEMETRY_RING_BYTES
+    if (!this.valid) {
+      this.srcI32 = new Int32Array(0)
+      this.srcF32 = new Float32Array(0)
+      this.dstI32 = new Int32Array(0)
+      this.dstF32 = new Float32Array(0)
+      return
+    }
+    this.srcI32 = new Int32Array(src, 0, SLOT_PAYLOAD_BASE)
+    this.srcF32 = new Float32Array(src)
+    this.dstI32 = new Int32Array(dst)
+    this.dstF32 = new Float32Array(dst)
+  }
+
+  /**
+   * Copia seqlock-verificada anillo → wire buffer. Cero asignaciones.
+   * @returns `true` si la copia fue consistente; `false` si los 3 intentos
+   *          colisionaron con una escritura (o el par src/dst era inválido)
+   *          — el caller descarta el destino para este tick.
+   */
+  snapshot(): boolean {
+    if (!this.valid) return false
+    const srcI32 = this.srcI32
+    const srcF32 = this.srcF32
+    const dstI32 = this.dstI32
+    const dstF32 = this.dstF32
+    for (let attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
+      const s1 = Atomics.load(srcI32, SLOT_SEQ)
+      if ((s1 & 1) !== 0) continue
+      const flags = Atomics.load(srcI32, SLOT_FLAGS)
+      const enums = Atomics.load(srcI32, SLOT_ENUMS)
+      for (let i = SLOT_PAYLOAD_BASE; i < this.srcSlots; i++) {
+        dstF32[i] = srcF32[i]
+      }
+      dstI32[WIRE_FLAGS_SLOT] = flags
+      dstI32[WIRE_ENUMS_SLOT] = enums
+      const s2 = Atomics.load(srcI32, SLOT_SEQ)
+      if (s1 === s2) return true
+      // s1 !== s2: escritura concurrente — destino rasgado; reintentar.
+    }
     return false
   }
-  const srcI32 = new Int32Array(src, 0, SLOT_PAYLOAD_BASE)
-  const srcF32 = new Float32Array(src)
-  const dstI32 = new Int32Array(dst)
-  const dstF32 = new Float32Array(dst)
-
-  for (let attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
-    const s1 = Atomics.load(srcI32, SLOT_SEQ)
-    if ((s1 & 1) !== 0) continue
-    const flags = Atomics.load(srcI32, SLOT_FLAGS)
-    const enums = Atomics.load(srcI32, SLOT_ENUMS)
-    for (let i = SLOT_PAYLOAD_BASE; i < TELEMETRY_RING_SLOTS; i++) {
-      dstF32[i] = srcF32[i]
-    }
-    dstI32[WIRE_FLAGS_SLOT] = flags
-    dstI32[WIRE_ENUMS_SLOT] = enums
-    const s2 = Atomics.load(srcI32, SLOT_SEQ)
-    if (s1 === s2) return true
-    // s1 !== s2: escritura concurrente — el destino puede estar rasgado; reintentar.
-  }
-  return false
 }
 
 // ───────────── TelemetryWireReader (worker, WAVE 8228 · E2) ─────────────
@@ -437,8 +534,9 @@ const WIRE_GEN_SLOT = 3
  * devuelve `true` solo cuando consumió un frame nuevo.
  */
 export class TelemetryWireReader {
-  /** Copia verbatim del ring (64 slots). Los slots 56/57 quedan a 0:
-   *  FLAGS/ENUMS llegan como bits Int32 y se exponen en `flags`/`enums`. */
+  /** Copia verbatim del ring (128 slots v2 · 64 en un espejo v1 — la página
+   *  B queda a 0). Los slots 56/57 quedan a 0: FLAGS/ENUMS llegan como bits
+   *  Int32 y se exponen en `flags`/`enums`. */
   readonly scratch = new Float32Array(TELEMETRY_RING_SLOTS)
   /** FLAGS del último frame consistente (bits — ver TEL_FLAG). */
   flags = 0
@@ -450,16 +548,25 @@ export class TelemetryWireReader {
   timestampMs = 0
   /** generation consumida (diagnóstico). */
   generation = 0
+  /** 🔮 WAVE 8278 · F1 — versión de schema detectada: el byte 0 de ENUMS en
+   *  v2; 1 forzado si el mirror es un frame legado de 256B (no transporta
+   *  página B — el tamaño es la verdad, no el byte declarado). */
+  schemaVersion = 0
 
   private readonly i32: Int32Array
   private readonly f32: Float32Array
+  /** Slots Int32 del buffer espejo (128 v2 · 64 v1). */
+  private readonly srcSlots: number
   private lastGen = -1
   private hasValid = false
 
   constructor(sab: SharedArrayBuffer | ArrayBuffer) {
-    if (sab.byteLength !== TELEMETRY_RING_BYTES) {
+    // 🔮 WAVE 8278 · F1 — tolerancia de versión: acepta el mirror v2 (512B)
+    // y el legado v1 (256B — el pump desplegado puede ser de un build previo).
+    this.srcSlots = ringSlotsFor(sab.byteLength)
+    if (this.srcSlots === 0) {
       throw new Error(
-        `[TelemetryWireReader] expected ${TELEMETRY_RING_BYTES}B, got ${sab.byteLength}B`,
+        `[TelemetryWireReader] expected ${TELEMETRY_RING_BYTES}B or ${TELEMETRY_RING_BYTES_V1}B, got ${sab.byteLength}B`,
       )
     }
     this.i32 = new Int32Array(sab)
@@ -482,8 +589,8 @@ export class TelemetryWireReader {
       const tickId = Atomics.load(i32, 0)
       const tsLo = Atomics.load(i32, 1) >>> 0
       const tsHi = Atomics.load(i32, 2)
-      // Payload verbatim (slots 4..63).
-      for (let i = SLOT_PAYLOAD_BASE; i < TELEMETRY_RING_SLOTS; i++) {
+      // Payload verbatim (slots 4..srcSlots — 63 en v1, 127 en v2).
+      for (let i = SLOT_PAYLOAD_BASE; i < this.srcSlots; i++) {
         out[i] = f32[i]
       }
       // 56/57 transportan bits Int32 — se leen como bits, no como float.
@@ -497,6 +604,8 @@ export class TelemetryWireReader {
         this.timestampMs = tsHi * 0x100000000 + tsLo
         this.flags = flags
         this.enums = enums
+        this.schemaVersion =
+          this.srcSlots < TELEMETRY_RING_SLOTS ? 1 : enums & 0xff
         this.generation = g1
         this.lastGen = g1
         this.hasValid = true

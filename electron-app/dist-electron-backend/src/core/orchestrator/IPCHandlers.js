@@ -118,19 +118,24 @@ function setupTheiaHandlers(deps) {
     // across the Main↔Renderer boundary ("An object could not be cloned").
     // Telemetry now flows as transferable ArrayBuffers in ping-pong (the
     // `glass:` contract): each consumer gets its own link with a fixed pool
-    // of 256B buffers, posted by ownership transfer at 44Hz and returned via
+    // of 512B buffers, posted by ownership transfer at 44Hz and returned via
     // `ack` — zero-copy, zero-alloc, no shared memory over IPC. Consumers:
     // the main window (ThetaOrchestrator ring mirror → theta.worker clock)
     // and the TheiaOutputView (Modo B, future shader ring). A re-request
     // (window reload / late mount) attaches a fresh link per sender.
-    // 🔮 WAVE 8227 · E1: el pump compone el wire buffer de 256B con DOS fuentes:
+    // 🔮 WAVE 8227 · E1: el pump compone el wire buffer de 512B con DOS fuentes:
     // FrameContextRing (reloj, cabecera 16B) + TheiaTelemetryRing Euclid
     // (payload Selene/GodEar/Omniliquid escrito por el TickEngine tras el
     // commit DMX). Ambas son null-tolerant.
-    const pump = new TheiaTelemetryPump(() => ({
-        fc: deps.titanOrchestrator?.getFrameContextSAB() ?? null,
-        tel: deps.titanOrchestrator?.getTelemetryRing() ?? null,
-    }));
+    // 🔧 WAVE 8277 · F0 — objeto `sources` estable mutado in-place: el pump
+    // lo consulta a 44Hz; devolver un literal por tick sería una asignación
+    // en el hot path. El pump detecta cambios por IDENTIDAD de SAB.
+    const telSources = { fc: null, tel: null };
+    const pump = new TheiaTelemetryPump(() => {
+        telSources.fc = deps.titanOrchestrator?.getFrameContextSAB() ?? null;
+        telSources.tel = deps.titanOrchestrator?.getTelemetryRing() ?? null;
+        return telSources;
+    });
     ipcMain.on('theia:request-telemetry', (event) => {
         // Re-request (window reload) → fresh port pair, pump re-attaches.
         try {

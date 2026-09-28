@@ -818,6 +818,11 @@ export class DreamEngineIntegrator {
     return effectDreamSimulator.getPreBufferStatus()
   }
 
+  /** @see EffectDreamSimulator.getPreBufferEtaMs — scalar, zero-alloc (WAVE 8275) */
+  public getPreBufferEtaMs(nowMs: number): number {
+    return effectDreamSimulator.getPreBufferEtaMs(nowMs)
+  }
+
   /** @see EffectDreamSimulator.getPreBufferedCandidate */
   public getPreBufferedCandidate(): { effect: string; effectName?: string; intensity: number; zones: string[]; confidence: number } | null {
     return effectDreamSimulator.getPreBufferedCandidate()

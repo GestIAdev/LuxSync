@@ -588,6 +588,15 @@ export class EffectDreamSimulator {
   }
 
   /**
+   * 🔮 WAVE 8275: scalar pre-buffer ETA — ms until `predictedEventAt` from `nowMs`,
+   * or -1 if no pre-buffer is armed. Zero-alloc alternative to getPreBufferStatus()
+   * for the 44Hz telemetry path (never instantiates the status object).
+   */
+  public getPreBufferEtaMs(nowMs: number): number {
+    return this.preBuffer ? Math.max(0, this.preBuffer.predictedEventAt - nowMs) : -1
+  }
+
+  /**
    * Returns the full pre-buffered effect candidate (needed to build the sovereign output).
    * null = no active pre-buffer.
    */

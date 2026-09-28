@@ -343,3 +343,97 @@ describe('TelemetrySmoother — derivados §3.4', () => {
     expect(sm2.approach).toBe(0)
   })
 })
+
+// ─────────────────── 🧠 WAVE 8275 — Cognitive payload (Selene V3) ───────────────────
+
+const EPICNESS = TELEMETRY_SLOT.EPICNESS
+const VAPOR = TELEMETRY_SLOT.VAPOR_PRESSURE
+const PERC = TELEMETRY_SLOT.PERCUSSIVENESS
+const MELO = TELEMETRY_SLOT.MELODICITY
+const CRATE = TELEMETRY_SLOT.CREST_RATE
+
+const CREST_BIT = 1 << TEL_FLAG.CREST_EVENT
+const STROBE_BIT = 1 << TEL_FLAG.STROBE_ACTIVE
+const SOVEREIGN_BIT = 1 << TEL_FLAG.SOVEREIGN_COUNTDOWN
+const GLASS_BIT = 1 << TEL_FLAG.GLASS_BREAK
+
+describe('TelemetrySmoother — WAVE 8275 cognitive payload', () => {
+  it('slots 43/60-63 se decodifican y suavizan como u_tel', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({
+      [EPICNESS]: 0.8, [VAPOR]: 0.6, [PERC]: 0.9, [MELO]: 0.4, [CRATE]: 3.2,
+    })
+    // EPICNESS attack=0.4 — primer paso sube parte del camino.
+    sm.step(raw, 0, 0, true, 16.7, 0)
+    expect(sm.out[EPICNESS - SLOT_PAYLOAD_BASE]).toBeGreaterThan(0.1)
+    expect(sm.out[EPICNESS - SLOT_PAYLOAD_BASE]).toBeLessThan(0.8)
+    // Convergencia tras ~2s de republicación.
+    for (let i = 1; i <= 120; i++) sm.step(raw, 0, 0, true, 1000 / 60, i * (1000 / 60))
+    expect(sm.out[EPICNESS - SLOT_PAYLOAD_BASE]).toBeCloseTo(0.8, 1)
+    expect(sm.out[VAPOR - SLOT_PAYLOAD_BASE]).toBeCloseTo(0.6, 1)
+    expect(sm.out[PERC - SLOT_PAYLOAD_BASE]).toBeCloseTo(0.9, 1)
+    expect(sm.out[MELO - SLOT_PAYLOAD_BASE]).toBeCloseTo(0.4, 1)
+    // crestRate es unidades/seg (>1 legal — no se clampa a [0,1]).
+    expect(sm.out[CRATE - SLOT_PAYLOAD_BASE]).toBeCloseTo(3.2, 1)
+  })
+
+  it('u_crestPulse — flanco CREST_EVENT con τ=110ms (rápido, no tempo-bound)', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({ [BPM]: 120 })
+    sm.step(raw, 0, 0, true, 16.7, 1000)
+    expect(sm.crestPulse).toBe(0)
+    sm.step(raw, CREST_BIT, 0, true, 16.7, 1017)
+    expect(sm.crestPulse).toBeCloseTo(1, 2)
+    // +110ms → e^-1 ≈ 0.368 (independiente del bpm — a 60BPM igual que a 174).
+    sm.step(raw, 0, 0, false, 110, 1127)
+    expect(sm.crestPulse).toBeCloseTo(Math.exp(-1), 2)
+  })
+
+  it('u_glassBreak — flanco GLASS_BREAK con τ=380ms (ruptura visible)', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({ [BPM]: 120 })
+    sm.step(raw, GLASS_BIT, 0, true, 16.7, 5000)
+    expect(sm.glassBreak).toBeCloseTo(1, 2)
+    sm.step(raw, 0, 0, false, 380, 5380)
+    expect(sm.glassBreak).toBeCloseTo(Math.exp(-1), 2)
+    // El writer sostiene el bit ~250ms → re-armar dentro de la ventana es legal.
+    sm.step(raw, GLASS_BIT, 0, true, 16.7, 5450)
+    expect(sm.glassBreak).toBeGreaterThan(0.9)
+  })
+
+  it('u_strobeGate — nivel binario persistente (gate, no pulso)', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({ [BPM]: 120 })
+    sm.step(raw, STROBE_BIT, 0, true, 16.7, 0)
+    expect(sm.strobeGate).toBe(1)
+    // Persiste entre publicaciones stale — es un estado, no un flanco.
+    for (let i = 1; i <= 30; i++) sm.step(raw, 0, 0, false, 16.7, i * 16.7)
+    expect(sm.strobeGate).toBe(1)
+    // El siguiente frame FRESCO sin el bit lo apaga.
+    sm.step(raw, 0, 0, true, 16.7, 1000)
+    expect(sm.strobeGate).toBe(0)
+  })
+
+  it('flags 13-16 viajan por el wire sin colisión con los bits existentes', () => {
+    const sab = new SharedArrayBuffer(TELEMETRY_RING_BYTES)
+    writeWireFrame(sab, 3, { [BPM]: 120 }, CREST_BIT | STROBE_BIT | SOVEREIGN_BIT | GLASS_BIT | KICK_EDGE_BIT)
+    const r = new TelemetryWireReader(sab)
+    expect(r.read()).toBe(true)
+    expect(r.flags & CREST_BIT).toBe(CREST_BIT)
+    expect(r.flags & STROBE_BIT).toBe(STROBE_BIT)
+    expect(r.flags & SOVEREIGN_BIT).toBe(SOVEREIGN_BIT)
+    expect(r.flags & GLASS_BIT).toBe(GLASS_BIT)
+    expect(r.flags & KICK_EDGE_BIT).toBe(KICK_EDGE_BIT)
+    // Bits 0-12 sin tocar → AUDIO_LIVE (bit 0) sigue apagado.
+    expect(r.flags & (1 << TEL_FLAG.AUDIO_LIVE)).toBe(0)
+  })
+
+  it('zero-alloc: out/buffer estables, sin objetos en step()', () => {
+    const sm = new TelemetrySmoother()
+    const raw = rawScratch({ [BPM]: 120, [EPICNESS]: 0.5 })
+    sm.step(raw, CREST_BIT | GLASS_BIT, 0, true, 16.7, 0)
+    const outRef = sm.out
+    for (let i = 1; i <= 10; i++) sm.step(raw, 0, 0, false, 16.7, i * 16.7)
+    expect(sm.out).toBe(outRef)
+  })
+})

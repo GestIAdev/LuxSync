@@ -1197,7 +1197,7 @@ export class TitanEngine extends EventEmitter {
      * out-param pre-asignado del caller. Zero-alloc: lee los getters
      * escalares de SeleneTitanConscious, nunca getConsciousnessTelemetry().
      */
-    fillEuclidSelene(out) {
+    fillEuclidSelene(out, nowMs) {
         const selene = this.selene;
         out.confidence = selene.getLastConfidence();
         const pred = selene.getActivePrediction();
@@ -1210,6 +1210,15 @@ export class TitanEngine extends EventEmitter {
         out.huntState = selene.getHuntPhase();
         out.energyZone = selene.getEnergyZone();
         out.energyZScore = selene.getEnergyZScore();
+        // 🧠 WAVE 8275 — Cognitive payload (Iliquidcore + soberanos)
+        out.epicness = selene.getLiquidEpicness();
+        out.vaporPressure = selene.getVaporPressure();
+        out.percussiveness = selene.getPercussiveness();
+        out.melodicity = selene.getMelodicity();
+        out.crestRate = selene.getCrestRate();
+        out.crestEvent = selene.getCrestEvent();
+        out.sovereignEtaMs = selene.getSovereignEtaMs(nowMs);
+        out.glassBreakAgeMs = selene.getGlassBreakAgeMs(nowMs);
     }
     /**
      * 🌊 WAVE 2432: HOT-SWAP — Profile change on vibe switch

@@ -1,7 +1,7 @@
 /**
  * 🌊 WAVE 8215 — THEIA TELEMETRY PUMP (Glass Bridge · Modo B)
  *
- * Corre en el MAIN process. Publica snapshots de telemetría (~256B) hacia
+ * Corre en el MAIN process. Publica snapshots de telemetría (~512B) hacia
  * CADA renderer suscrito a ~44Hz sobre `MessagePortMain`s dedicados:
  *
  *   pump ──postMessage({type,seq,buffer})──────────────▶ renderer
@@ -15,7 +15,7 @@
  * 🩹 WAVE 8216 — TRANSFER FIX: `MessagePortMain` (Node/mojo side) NO
  * acepta ArrayBuffers en su array `transfer` — solo `MessagePortMain`s
  * ("Port at index 0 is not a valid port"). La dirección main→renderer es
- * pues structured-clone: 256B × 44Hz ≈ 11KB/s, coste despreciable.
+ * pues structured-clone: 512B × 44Hz ≈ 22KB/s, coste despreciable.
  *
  * 🩹 WAVE 8253 — ACK FIX: la dirección renderer→main TAMPOCO transfiere
  * buffers — el `ArrayBuffer` en el transfer list llegaba como `undefined`
@@ -30,16 +30,17 @@
  * (ThetaOrchestrator, espeja el ring para theta.worker) y la futura
  * TheiaOutputView en Modo B (shader propio + mismo ring, blueprint §6).
  * Un solo setInterval sirve a todos los links: la escritura del snapshot es
- * una copia de ≤256B por link por tick.
+ * una copia de ≤512B por link por tick.
  *
  * Wire layout (blueprint amendment 8215 + 🔮 WAVE 8227 · E1):
  *   slots 0..3  → FrameContextRing verbatim (tickId, tsLo, tsHi, gen) —
  *                 el reloj maestro viaja en la cabecera del mismo buffer.
- *   slots 4..63 → payload Float32 del `TheiaTelemetryRing` Euclid (256B,
- *                 schema v1: Selene/Cassandra · GodEar V3 · Omniliquid).
+ *   slots 4..127 → payload Float32 del `TheiaTelemetryRing` Euclid (512B,
+ *                 schema v2: Selene/Cassandra · GodEar V3 · Omniliquid
+ *                 · página B Liquid DSP (reservada hasta F3).
  *   slot  56    → FLAGS Euclid como bits Int32 (WIRE_FLAGS).
  *   slot  57    → ENUMS Euclid como bits Int32 (WIRE_ENUMS).
- * La copia del payload usa `snapshotTelemetryPayload` — seqlock-verificada;
+ * La copia del payload usa `TelemetrySnapshotter` — seqlock-verificada;
  * si los 3 intentos colisionan con una escritura del TickEngine el link
  * omite el tick (contenido rasgado descartado, buffer devuelto al pool).
  *
@@ -47,9 +48,10 @@
  * FrameContextRing: el consumidor compara `generation` para descartar reads
  * intermedios (un read rasgado produce gen viejo → readIfChanged lo ignora).
  */
-import { snapshotTelemetryPayload } from './telemetry/TheiaTelemetryRing';
-/** Bytes por buffer de telemetría (Euclid ring size). */
-export const TELEMETRY_BUFFER_BYTES = 256;
+import { TelemetrySnapshotter, TELEMETRY_RING_BYTES, } from './telemetry/TheiaTelemetryRing';
+/** Bytes por buffer de telemetría — 🔮 WAVE 8278 · F1: unificado con el
+ *  tamaño del anillo Euclid (512B v2), sin constante local duplicada. */
+export const TELEMETRY_BUFFER_BYTES = TELEMETRY_RING_BYTES;
 /** Máximo de clones sin ack en vuelo por link — backpressure real. */
 const TELEMETRY_MAX_IN_FLIGHT = 3;
 /** Cadencia de publicación (ms) — espejo del TickEngine 44Hz. */
@@ -67,6 +69,19 @@ export class TheiaTelemetryPump {
          *  postMessage, reutilizable para el siguiente link/tick. */
         this.scratch = new ArrayBuffer(TELEMETRY_BUFFER_BYTES);
         this.scratchI32 = new Int32Array(this.scratch);
+        /**
+         * 🔧 WAVE 8277 · F0 — mensaje REUTILIZADO: postMessage serializa por
+         * structured-clone de forma síncrona — basta mutar `seq`.
+         */
+        this.msg = { type: THEIA_TELEMETRY_MSG, seq: 0, buffer: this.scratch };
+        /**
+         * 🔧 WAVE 8277 · F0 — vistas sobre las fuentes, cacheadas por
+         * IDENTIDAD de SAB: solo re-nacen si el buffer fuente cambia.
+         */
+        this.fcSrc = null;
+        this.fcView = null;
+        this.telSrc = null;
+        this.snapshotter = null;
         this.getSources = getSources;
     }
     /**
@@ -140,6 +155,23 @@ export class TheiaTelemetryPump {
             return;
         const sources = this.getSources();
         this.seq = (this.seq + 1) | 0;
+        // 🔧 WAVE 8277 · F0 — re-crear vistas SOLO si el SAB fuente cambió de
+        // identidad. En el camino estable esta rama no ejecuta ni un `new`.
+        if (sources.fc !== this.fcSrc) {
+            this.fcSrc = sources.fc;
+            this.fcView = sources.fc
+                ? new Int32Array(sources.fc, 0, FRAME_CONTEXT_BYTES / 4)
+                : null;
+        }
+        if (sources.tel !== this.telSrc) {
+            this.telSrc = sources.tel;
+            this.snapshotter = sources.tel
+                ? new TelemetrySnapshotter(sources.tel, this.scratch)
+                : null;
+        }
+        const dst = this.scratchI32;
+        const msg = this.msg;
+        msg.seq = this.seq;
         for (const link of this.links.values()) {
             // 🩹 WAVE 8253 — crédito de vuelo: si el consumidor no ha acusado aún
             // MAX_IN_FLIGHT mensajes → drop del tick (backpressure real, sin
@@ -153,25 +185,21 @@ export class TheiaTelemetryPump {
                 }
                 continue;
             }
-            // Cabecera: FrameContextRing (16B) verbatim — el reloj maestro viaja
-            // en la cabecera del wire buffer (amendment 8215).
-            const dst = this.scratchI32;
+            // Cabecera: FrameContextRing (16B) verbatim — `fcView` cubre
+            // exactamente los slots 0..3 → `set` los copia sin subarray.
             dst.fill(0);
-            if (sources.fc) {
-                const srcView = new Int32Array(sources.fc, 0, FRAME_CONTEXT_BYTES / 4);
-                dst.subarray(0, FRAME_CONTEXT_BYTES / 4).set(srcView);
-            }
-            // Payload: anillo Euclid (240B) + FLAGS/ENUMS en slots 56/57 — copia
-            // seqlock-verificada. Si colisiona con una escritura del TickEngine en
-            // los 3 intentos, el link omite el tick (nunca se envía data rasgada).
-            if (sources.tel && !snapshotTelemetryPayload(sources.tel, this.scratch)) {
+            if (this.fcView)
+                dst.set(this.fcView);
+            // Payload: anillo Euclid (496B) + FLAGS/ENUMS en slots 56/57 —
+            // copia seqlock-verificada sobre vistas fijas.
+            if (this.snapshotter && !this.snapshotter.snapshot()) {
                 link.dropped++;
                 continue;
             }
             try {
                 // structured-clone del scratch (síncrono) — el buffer nunca sale de
                 // main; `inFlight` descuenta hasta que el consumidor acuse recibo.
-                link.port.postMessage({ type: THEIA_TELEMETRY_MSG, seq: this.seq, buffer: this.scratch });
+                link.port.postMessage(msg);
                 link.inFlight++;
             }
             catch (err) {

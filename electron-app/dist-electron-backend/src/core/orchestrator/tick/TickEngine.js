@@ -162,6 +162,15 @@ export class TickEngine {
             spectralBuildupScore: 0,
             beautyScore: 0.5,
             energyZScore: 0,
+            // 🧠 WAVE 8275 — Cognitive payload
+            epicness: 0,
+            vaporPressure: 0,
+            percussiveness: 0,
+            melodicity: 0,
+            crestRate: 0,
+            crestEvent: false,
+            sovereignEtaMs: -1,
+            glassBreakAgeMs: Infinity,
         };
         // Stash por referencia para `_euclidFill` (closure pre-bound — el tick
         // no instancia lambdas ni objetos, §2.4 zero-alloc).
@@ -236,6 +245,12 @@ export class TickEngine {
             p[S.SEL_BEAUTY] = sel.beautyScore;
             p[S.SEL_ZSCORE_N] = Math.min(1, Math.max(0, sel.energyZScore / 4));
             p[S.SPECTRAL_BUILDUP] = sel.spectralBuildupScore;
+            // 🧠 WAVE 8275 — Iliquidcore cognition payload (escalares directos)
+            p[S.EPICNESS] = sel.epicness;
+            p[S.VAPOR_PRESSURE] = sel.vaporPressure;
+            p[S.PERCUSSIVENESS] = sel.percussiveness;
+            p[S.MELODICITY] = sel.melodicity;
+            p[S.CREST_RATE] = sel.crestRate;
             // OMNILIQUID
             p[S.MORPH_FACTOR] = lf?.morphFactor ?? 0;
             p[S.RECOVERY_FACTOR] = lf?.recoveryFactor ?? 0;
@@ -1688,7 +1703,7 @@ export class TickEngine {
                 if (uniList.length > 0) {
                     this.dmxWriter.commitFrame(this.frameCount, uniList, maskLo, maskHi);
                 }
-                // 🔮 WAVE 8227 — EUCLID ORACLE · E1: publicación de telemetría 256B
+                // 🔮 WAVE 8227 — EUCLID ORACLE · E1: publicación de telemetría 512B
                 // INMEDIATAMENTE después del commit DMX (la luz sale primero, §2.4).
                 // Seqlock write a 44Hz sobre la vista del anillo — cero asignaciones.
                 this.publishEuclidTelemetry(now, engineAudioMetrics, context, beatState, workerOnBeat);
@@ -2000,7 +2015,7 @@ export class TickEngine {
         }
     }
     /**
-     * 🔮 WAVE 8227 — EUCLID ORACLE · E1 (§2.4): publica la telemetría 256B en
+     * 🔮 WAVE 8227 — EUCLID ORACLE · E1 (§2.4): publica la telemetría 512B en
      * el anillo seqlock INMEDIATAMENTE después del commit DMX — la luz sale
      * primero, el shader un instante después.
      *
@@ -2021,7 +2036,7 @@ export class TickEngine {
         const photon = ad.photon;
         const rhythmic = ad.rhythmic;
         const sel = this._euclidSelene;
-        this.engine?.fillEuclidSelene(sel);
+        this.engine?.fillEuclidSelene(sel, now);
         // FLAGS — bitfield del header (§2.3)
         let flags = 0;
         if (this.audioPipeline.hasRealAudio)
@@ -2054,6 +2069,18 @@ export class TickEngine {
             flags |= 1 << TEL_FLAG.COLOR_SNAP;
         if ((rhythmic?.rhythmic_void ?? 0) >= 0.75)
             flags |= 1 << TEL_FLAG.RHYTHMIC_VOID;
+        // 🧠 WAVE 8275 — eventos soberanos / cognitivos (bits 13-16)
+        if (sel.crestEvent)
+            flags |= 1 << TEL_FLAG.CREST_EVENT;
+        if (photon?.strobe?.active)
+            flags |= 1 << TEL_FLAG.STROBE_ACTIVE;
+        if (sel.sovereignEtaMs >= 0)
+            flags |= 1 << TEL_FLAG.SOVEREIGN_COUNTDOWN;
+        // GLASS_BREAK: el stamp vive ~45s en memoria; el flag dura UN publish
+        // (ventana de 250 ms ≈ 11 ticks a 44 Hz — suficiente para que el
+        // smoother del worker dispare el pulso sin perderlo entre frames).
+        if (sel.glassBreakAgeMs <= 250)
+            flags |= 1 << TEL_FLAG.GLASS_BREAK;
         // ENUMS empaquetados inline (sin packEnums — evita el objeto arg por tick).
         const enumsPacked = (SCHEMA_VERSION & 0xff) |
             ((predType & 0xff) << 8) |

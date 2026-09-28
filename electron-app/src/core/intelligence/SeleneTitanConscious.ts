@@ -426,6 +426,8 @@ export class SeleneTitanConscious extends EventEmitter {
   private _lastFireDiagLog: number = 0
   private _lastHuntUpgradeLog: number = 0
   private _sovereignGuard: SovereignClockGuard = new SovereignClockGuard()
+  /** 🔮 WAVE 8275: timestamp (Date.now) del último Glass Break disparado. 0 = nunca. */
+  private _lastGlassBreakMs: number = 0
 
   // 🧬 WAVE 7535 → WAVE 7539: Candidate DNA resolution for s_DNA Context-Genome
   // Resonance. Semantic gating: only Cassandra pre-buffer DNA is used.
@@ -774,6 +776,9 @@ export class SeleneTitanConscious extends EventEmitter {
               : candidate.intensity
 
           if (verdict.trigger === 'glass_break') {
+            // 🔮 WAVE 8275: marcar la ruptura soberana — el TickEngine la
+            // publica como flag GLASS_BREAK durante el tick del evento.
+            this._lastGlassBreakMs = nowSovereign
             console.log(
               `[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${fireEffectName ?? fireEffectId}" ` +
               `| drop landed EARLY | ${verdict.reason ?? ''}`
@@ -2376,6 +2381,55 @@ export class SeleneTitanConscious extends EventEmitter {
   /** Fase del Hunt FSM. */
   getHuntPhase(): HuntPhase {
     return this.state.huntPhase
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 8275 — THEIA COGNITIVE PAYLOAD (Euclid Oracle §3.5 expansion)
+  // Escalares de Iliquidcore/Cassandra — mismas reglas que el bloque E1:
+  // lectura directa por referencia, cero objetos, cero alloc a 44 Hz.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** Epicness del último LiquidVerdict [0,1] — autoridad única Divine. */
+  getLiquidEpicness(): number {
+    return this._lastLiquidVerdict?.epicness ?? 0
+  }
+
+  /** V(t) — presión de vapor refractaria del fluido cognitivo [0,1]. */
+  getVaporPressure(): number {
+    return this._lastLiquidVerdict?.fluid.vaporPressure ?? 0
+  }
+
+  /** Π — perusividad: tasa Poisson de crestas CF>2 normalizada [0,1]. */
+  getPercussiveness(): number {
+    return this._liquidCore.descriptors.percussiveness
+  }
+
+  /** M — melodismo (presencia de banda media / consonancia) [0,1]. */
+  getMelodicity(): number {
+    return this._liquidCore.descriptors.melodicity
+  }
+
+  /** R(t) — tasa de crestas CF>2 por segundo, sin normalizar (>0). */
+  getCrestRate(): number {
+    return this._liquidCore.crestRate
+  }
+
+  /** Cresta CF>2 este frame — evento de latencia cero (borde, no nivel). */
+  getCrestEvent(): boolean {
+    return this._liquidCore.crestEvent
+  }
+
+  /**
+   * ETA de la ejecución soberana (pre-buffer Cassandra) en ms desde `nowMs`.
+   * -1 si no hay countdown activo. Escalar — nunca instancia el status object.
+   */
+  getSovereignEtaMs(nowMs: number): number {
+    return dreamEngineIntegrator.getPreBufferEtaMs(nowMs)
+  }
+
+  /** Edad del último Glass Break soberano (ms). Infinity si nunca ocurrió. */
+  getGlassBreakAgeMs(nowMs: number): number {
+    return this._lastGlassBreakMs > 0 ? nowMs - this._lastGlassBreakMs : Infinity
   }
   
   // ═══════════════════════════════════════════════════════════════════════

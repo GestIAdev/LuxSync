@@ -47,7 +47,8 @@ export const BUILTIN_SHADER_ID = 'builtin'
 const GEN_STD_UNIFORMS = new Set([
   'u_tel', 'u_flags', 'u_enums', 'u_time', 'u_dt', 'u_resolution',
   'u_beatTime', 'u_kickPulse', 'u_snarePulse', 'u_predictiveETA',
-  'u_approach', 'u_impact', 'u_brightness', 'u_contrast', 'u_blackout',
+  'u_approach', 'u_impact', 'u_crestPulse', 'u_strobeGate', 'u_glassBreak',
+  'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_flashBudgetRate',
   'u_gene', 'u_state', 'u_stateInit',
@@ -76,6 +77,10 @@ interface GenLocs {
   predictiveETA: WebGLUniformLocation | null
   approach: WebGLUniformLocation | null
   impact: WebGLUniformLocation | null
+  // 🧠 WAVE 8275 — cognitive payload
+  crestPulse: WebGLUniformLocation | null
+  strobeGate: WebGLUniformLocation | null
+  glassBreak: WebGLUniformLocation | null
   brightness: WebGLUniformLocation | null
   contrast: WebGLUniformLocation | null
   blackout: WebGLUniformLocation | null
@@ -108,6 +113,10 @@ interface SimLocs {
   predictiveETA: WebGLUniformLocation | null
   approach: WebGLUniformLocation | null
   impact: WebGLUniformLocation | null
+  // 🧠 WAVE 8275 — cognitive payload (sim pass)
+  crestPulse: WebGLUniformLocation | null
+  strobeGate: WebGLUniformLocation | null
+  glassBreak: WebGLUniformLocation | null
   gene: WebGLUniformLocation | null
   state: WebGLUniformLocation | null
   stateInit: WebGLUniformLocation | null
@@ -306,6 +315,9 @@ export class GenRuntime {
       predictiveETA: gl.getUniformLocation(prog, 'u_predictiveETA'),
       approach: gl.getUniformLocation(prog, 'u_approach'),
       impact: gl.getUniformLocation(prog, 'u_impact'),
+      crestPulse: gl.getUniformLocation(prog, 'u_crestPulse'),
+      strobeGate: gl.getUniformLocation(prog, 'u_strobeGate'),
+      glassBreak: gl.getUniformLocation(prog, 'u_glassBreak'),
       brightness: gl.getUniformLocation(prog, 'u_brightness'),
       contrast: gl.getUniformLocation(prog, 'u_contrast'),
       blackout: gl.getUniformLocation(prog, 'u_blackout'),
@@ -339,6 +351,9 @@ export class GenRuntime {
       predictiveETA: gl.getUniformLocation(prog, 'u_predictiveETA'),
       approach: gl.getUniformLocation(prog, 'u_approach'),
       impact: gl.getUniformLocation(prog, 'u_impact'),
+      crestPulse: gl.getUniformLocation(prog, 'u_crestPulse'),
+      strobeGate: gl.getUniformLocation(prog, 'u_strobeGate'),
+      glassBreak: gl.getUniformLocation(prog, 'u_glassBreak'),
       gene: gl.getUniformLocation(prog, 'u_gene[0]'),
       state: gl.getUniformLocation(prog, 'u_state'),
       stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
@@ -875,6 +890,9 @@ export class GenRuntime {
       gl.uniform1f(SL.predictiveETA, sm.predictiveEtaSec)
       gl.uniform1f(SL.approach, sm.approach)
       gl.uniform1f(SL.impact, sm.impact)
+      gl.uniform1f(SL.crestPulse, sm.crestPulse)
+      gl.uniform1f(SL.strobeGate, sm.strobeGate)
+      gl.uniform1f(SL.glassBreak, sm.glassBreak)
       if (SL.gene) gl.uniform1fv(SL.gene, this.geneValues)
       gl.uniform1i(SL.state, 0)
       gl.uniform1f(SL.stateInit, stateInitF)
@@ -932,6 +950,9 @@ export class GenRuntime {
     gl.uniform1f(L.predictiveETA, sm.predictiveEtaSec)
     gl.uniform1f(L.approach, sm.approach)
     gl.uniform1f(L.impact, sm.impact)
+    gl.uniform1f(L.crestPulse, sm.crestPulse)
+    gl.uniform1f(L.strobeGate, sm.strobeGate)
+    gl.uniform1f(L.glassBreak, sm.glassBreak)
     // 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo (§4.2 v2).
     if (L.gene) gl.uniform1fv(L.gene, this.geneValues)
     gl.uniform1f(L.brightness, uniforms.get('u_brightness') ?? 1.0)

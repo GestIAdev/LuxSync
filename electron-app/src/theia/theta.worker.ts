@@ -158,6 +158,9 @@ uniform float u_snarePulse;         // idem flanco SNARE
 uniform float u_predictiveETA;      // ETA fluido (s), extrapolado
 uniform float u_approach;           // rampa oráculo 0→1 antes del drop
 uniform float u_impact;             // pulso en el instante del evento
+uniform float u_crestPulse;         // 🧠 WAVE 8275 — cresta CF>2 (latencia cero)
+uniform float u_strobeGate;         // 🧠 WAVE 8275 — StrobeEngine activo (0/1)
+uniform float u_glassBreak;         // 🧠 WAVE 8275 — ruptura soberana (pulso)
 
 // Macros nombre→slot (índice = slot − 4). La numeración NUNCA se escribe a
 // mano fuera del schema — estas se derivan de TELEMETRY_SCHEMA (§3.5).
@@ -313,6 +316,10 @@ interface WorkerState {
   euPredictiveETA: WebGLUniformLocation | null
   euApproach: WebGLUniformLocation | null
   euImpact: WebGLUniformLocation | null
+  // 🧠 WAVE 8275 — cognitive payload (builtin path)
+  euCrestPulse: WebGLUniformLocation | null
+  euStrobeGate: WebGLUniformLocation | null
+  euGlassBreak: WebGLUniformLocation | null
   // 🔮 WAVE 8229 — EUCLID ORACLE · E3 (Shader Contract & Governor)
   /** El contexto GL es WebGL2 — requisito del camino generativo (§4.1). */
   glIsWebGL2: boolean
@@ -482,6 +489,9 @@ const state: WorkerState = {
   euPredictiveETA: null,
   euApproach: null,
   euImpact: null,
+  euCrestPulse: null,
+  euStrobeGate: null,
+  euGlassBreak: null,
   // 🔮 WAVE 8229 — EUCLID · E3
   glIsWebGL2: false,
   genPrograms: new Map(),
@@ -548,6 +558,10 @@ interface GenUniformLocs {
   predictiveETA: WebGLUniformLocation | null
   approach: WebGLUniformLocation | null
   impact: WebGLUniformLocation | null
+  // 🧠 WAVE 8275 — cognitive payload
+  crestPulse: WebGLUniformLocation | null
+  strobeGate: WebGLUniformLocation | null
+  glassBreak: WebGLUniformLocation | null
   brightness: WebGLUniformLocation | null
   contrast: WebGLUniformLocation | null
   blackout: WebGLUniformLocation | null
@@ -580,6 +594,11 @@ interface SimLocs {
   predictiveETA: WebGLUniformLocation | null
   approach: WebGLUniformLocation | null
   impact: WebGLUniformLocation | null
+  // 🧠 WAVE 8275 — cognitive payload (los átomos con mainState también
+  // leen la estructura musical, no solo los sobres RMS)
+  crestPulse: WebGLUniformLocation | null
+  strobeGate: WebGLUniformLocation | null
+  glassBreak: WebGLUniformLocation | null
   gene: WebGLUniformLocation | null
   state: WebGLUniformLocation | null
   stateInit: WebGLUniformLocation | null
@@ -901,6 +920,9 @@ function buildGLResources(): boolean {
   state.euPredictiveETA = gl.getUniformLocation(prog, 'u_predictiveETA')
   state.euApproach = gl.getUniformLocation(prog, 'u_approach')
   state.euImpact = gl.getUniformLocation(prog, 'u_impact')
+  state.euCrestPulse = gl.getUniformLocation(prog, 'u_crestPulse')
+  state.euStrobeGate = gl.getUniformLocation(prog, 'u_strobeGate')
+  state.euGlassBreak = gl.getUniformLocation(prog, 'u_glassBreak')
 
   // 🔮 WAVE 8229 · E3 — programa blit FBO→canvas (passthrough ES 3.00).
   // Solo bajo WebGL2; el camino generativo cae al plasma sin él.
@@ -1185,7 +1207,8 @@ const GEN_CACHE_MAX = 8
 const GEN_STD_UNIFORMS = new Set([
   'u_tel', 'u_flags', 'u_enums', 'u_time', 'u_dt', 'u_resolution',
   'u_beatTime', 'u_kickPulse', 'u_snarePulse', 'u_predictiveETA',
-  'u_approach', 'u_impact', 'u_brightness', 'u_contrast', 'u_blackout',
+  'u_approach', 'u_impact', 'u_crestPulse', 'u_strobeGate', 'u_glassBreak',
+  'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_gene',
   'u_state', 'u_stateInit',
@@ -1225,6 +1248,9 @@ function cacheGenLocs(prog: WebGLProgram): GenUniformLocs {
     predictiveETA: gl.getUniformLocation(prog, 'u_predictiveETA'),
     approach: gl.getUniformLocation(prog, 'u_approach'),
     impact: gl.getUniformLocation(prog, 'u_impact'),
+    crestPulse: gl.getUniformLocation(prog, 'u_crestPulse'),
+    strobeGate: gl.getUniformLocation(prog, 'u_strobeGate'),
+    glassBreak: gl.getUniformLocation(prog, 'u_glassBreak'),
     brightness: gl.getUniformLocation(prog, 'u_brightness'),
     contrast: gl.getUniformLocation(prog, 'u_contrast'),
     blackout: gl.getUniformLocation(prog, 'u_blackout'),
@@ -1260,6 +1286,9 @@ function cacheSimLocs(prog: WebGLProgram): SimLocs {
     predictiveETA: gl.getUniformLocation(prog, 'u_predictiveETA'),
     approach: gl.getUniformLocation(prog, 'u_approach'),
     impact: gl.getUniformLocation(prog, 'u_impact'),
+    crestPulse: gl.getUniformLocation(prog, 'u_crestPulse'),
+    strobeGate: gl.getUniformLocation(prog, 'u_strobeGate'),
+    glassBreak: gl.getUniformLocation(prog, 'u_glassBreak'),
     gene: gl.getUniformLocation(prog, 'u_gene[0]'),
     state: gl.getUniformLocation(prog, 'u_state'),
     stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
@@ -1835,6 +1864,9 @@ function renderGenerativeFrame(
     gl.uniform1f(SL.predictiveETA, sm.predictiveEtaSec)
     gl.uniform1f(SL.approach, sm.approach)
     gl.uniform1f(SL.impact, sm.impact)
+    gl.uniform1f(SL.crestPulse, sm.crestPulse)
+    gl.uniform1f(SL.strobeGate, sm.strobeGate)
+    gl.uniform1f(SL.glassBreak, sm.glassBreak)
     if (SL.gene) gl.uniform1fv(SL.gene, state.genGeneValues)
     gl.uniform1i(SL.state, 0)
     gl.uniform1f(SL.stateInit, stateInitF)
@@ -1887,6 +1919,9 @@ function renderGenerativeFrame(
   gl.uniform1f(L.predictiveETA, sm.predictiveEtaSec)
   gl.uniform1f(L.approach, sm.approach)
   gl.uniform1f(L.impact, sm.impact)
+  gl.uniform1f(L.crestPulse, sm.crestPulse)
+  gl.uniform1f(L.strobeGate, sm.strobeGate)
+  gl.uniform1f(L.glassBreak, sm.glassBreak)
   // 🧬 WAVE 8235 · G3 — genes `expr` del fenotipo activo (§4.2 v2).
   if (L.gene) gl.uniform1fv(L.gene, state.genGeneValues)
   gl.uniform1f(L.brightness, state.uniforms.get('u_brightness') ?? 1.0)
@@ -2275,7 +2310,10 @@ function renderCurrentFrame(timestampMs: number): void {
   // empaquetados; los derivados del oráculo como escalares. Locations
   // cacheadas en link → null-safe.
   const sm = state.smoother
-  if (state.euTel) gl.uniform1fv(state.euTel, sm.out)
+  // 🔮 WAVE 8278 · F1 — el builtin conserva u_tel[60] (WebGL1): se sube la
+  // vista de página A precreada del smoother — `out` entero sería
+  // INVALID_OPERATION (124 > 60).
+  if (state.euTel) gl.uniform1fv(state.euTel, sm.outV1)
   if (state.euFlags) gl.uniform1i(state.euFlags, sm.flags)
   if (state.euEnums) {
     gl.uniform4i(
@@ -2295,6 +2333,9 @@ function renderCurrentFrame(timestampMs: number): void {
   if (state.euPredictiveETA) gl.uniform1f(state.euPredictiveETA, sm.predictiveEtaSec)
   if (state.euApproach) gl.uniform1f(state.euApproach, sm.approach)
   if (state.euImpact) gl.uniform1f(state.euImpact, sm.impact)
+  if (state.euCrestPulse) gl.uniform1f(state.euCrestPulse, sm.crestPulse)
+  if (state.euStrobeGate) gl.uniform1f(state.euStrobeGate, sm.strobeGate)
+  if (state.euGlassBreak) gl.uniform1f(state.euGlassBreak, sm.glassBreak)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, state.glVbo)
   gl.enableVertexAttribArray(state.glAttribPos)

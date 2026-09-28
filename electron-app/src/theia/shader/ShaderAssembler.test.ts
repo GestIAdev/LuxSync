@@ -60,7 +60,7 @@ describe('E3 preamble — shader contract', () => {
 
   it('declara los uniforms del contrato §3.5/§4', () => {
     for (const needle of [
-      'uniform float u_tel[60];',
+      'uniform float u_tel[124];',
       'uniform int   u_flags;',
       'uniform ivec4 u_enums;',
       'uniform float u_time;',
@@ -878,7 +878,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     expect(simEpilogue).not.toContain('u_flashGuard')
     expect(simEpilogue).not.toContain('pow(')
     // …pero comparte preámbulo completo (telemetría + u_state + u_gene).
-    expect(sim.fragSource).toContain('uniform float u_tel[60];')
+    expect(sim.fragSource).toContain('uniform float u_tel[124];')
     expect(sim.fragSource).toContain('uniform sampler2D u_state;')
     expect(sim.fragSource).toContain(`uniform float u_gene[${EUCLID_GENE_SLOTS}];`)
     // Programas DISTINTOS: la sim nunca colisiona con el visual en la LRU.
@@ -931,5 +931,64 @@ describe('G6 — euChannels: biblioteca estándar de canales (§3.1)', () => {
     const asm = assembleFragmentShader(ORACLE_KIFS_SOURCE)
     expect(asm.fragSource).toContain('void euChannels(')
     expect(asm.fragSource).toContain('euChannels(g_tc, g_td, g_glitch, g_live, g_groove)')
+  })
+})
+
+// ─────────────────── 🧠 WAVE 8275 — Cognitive payload (Selene V3) ───────────────────
+
+describe('WAVE 8275 — cognitive payload contract', () => {
+  const pre = buildPreamble()
+
+  it('los 5 escalares de Iliquidcore salen del schema como macros u_tel[]', () => {
+    const S = (n: string) => TELEMETRY_SCHEMA.find((d) => d.name === n)!
+    expect(pre).toContain(`#define u_epicness`)
+    expect(pre).toContain(`u_tel[${S('EPICNESS').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(`#define u_vaporPressure`)
+    expect(pre).toContain(`u_tel[${S('VAPOR_PRESSURE').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(`#define u_percussiveness`)
+    expect(pre).toContain(`u_tel[${S('PERCUSSIVENESS').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(`#define u_melodicity`)
+    expect(pre).toContain(`u_tel[${S('MELODICITY').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(`#define u_crestRate`)
+    expect(pre).toContain(`u_tel[${S('CREST_RATE').slot - SLOT_PAYLOAD_BASE}]`)
+    // Slots exactos del blueprint 8275 (índices absolutos del anillo).
+    expect(S('EPICNESS').slot).toBe(43)
+    expect(S('VAPOR_PRESSURE').slot).toBe(60)
+    expect(S('PERCUSSIVENESS').slot).toBe(61)
+    expect(S('MELODICITY').slot).toBe(62)
+    expect(S('CREST_RATE').slot).toBe(63)
+  })
+
+  it('los derivados de eventos son uniforms reales (no macros u_tel)', () => {
+    expect(pre).toContain('uniform float u_crestPulse;')
+    expect(pre).toContain('uniform float u_strobeGate;')
+    expect(pre).toContain('uniform float u_glassBreak;')
+  })
+
+  it('los flags soberanos generan macros telFlag(bit)', () => {
+    expect(pre).toContain('CREST_EVENT')
+    expect(pre).toContain('telFlag(13)')
+    expect(pre).toContain('STROBE_ACTIVE')
+    expect(pre).toContain('telFlag(14)')
+    expect(pre).toContain('SOVEREIGN_COUNTDOWN')
+    expect(pre).toContain('telFlag(15)')
+    expect(pre).toContain('GLASS_BREAK')
+    expect(pre).toContain('telFlag(16)')
+  })
+
+  it('el contrato queda disponible en un shader de artista ensamblado', () => {
+    const asm = assembleFragmentShader(
+      `void mainImage(out vec4 c, in vec2 fragCoord) {
+        vec2 uv = fragCoord / u_resolution.xy;
+        float fog = u_vaporPressure * 0.5 + u_epicness * 0.3;
+        fog += u_crestPulse * 0.4 + u_glassBreak;
+        c = vec4(vec3(fog * u_strobeGate + u_crestRate * 0.01), 1.0);
+      }`,
+    )
+    expect(asm.fragSource).toContain('uniform float u_crestPulse;')
+    expect(asm.fragSource).toContain('#define u_vaporPressure')
+    // WAVE 8278 · F1 — el payload creció a 124 floats (página B); el
+    // preámbulo lo deriva de TELEMETRY_PAYLOAD_SLOTS.
+    expect(asm.fragSource).toContain('uniform float u_tel[124];')
   })
 })

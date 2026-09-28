@@ -46,7 +46,7 @@ import {
   ackTelemetryFrame,
   createLocalTelemetryRing,
   isTelemetryMessage,
-  mirrorTelemetryIntoRing,
+  TelemetryMirror,
 } from '../../../theia/TheiaTelemetryRing'
 import { TelemetryWireReader } from '../../../theia/telemetry/TheiaTelemetryRing'
 import { TelemetrySmoother } from '../../../theia/telemetry/TelemetrySmoother'
@@ -86,6 +86,8 @@ const TheiaOutputView: React.FC = () => {
     const telemetryRing: ArrayBuffer = createLocalTelemetryRing()
     // Vista Int32 fija para el watchdog (zero-alloc por barrido).
     const telRingI32 = new Int32Array(telemetryRing)
+    // 🔧 WAVE 8277 · F0 — mirror con dst cacheada: 1 alloc por mensaje.
+    const telMirror = new TelemetryMirror(telemetryRing)
 
     // ── 🔮 WAVE 8231 · E5 — MODO B: render nativo del shader ──────────
     // Su propio Uniform Bridge: wire reader sobre el ring local + smoother
@@ -304,7 +306,7 @@ const TheiaOutputView: React.FC = () => {
         const data = ev.data
         if (!isTelemetryMessage(data)) return
         // Modo B — espejo al ring local (ArrayBuffer), luego ackFrame.
-        mirrorTelemetryIntoRing(telemetryRing, data.buffer)
+        telMirror.mirror(data.buffer)
         ackTelemetryFrame(port, data)
       }
       // 🌊 WAVE 8250 — si el link muere, suelta la referencia: el watchdog

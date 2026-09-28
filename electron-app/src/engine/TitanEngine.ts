@@ -196,6 +196,18 @@ export interface EuclidSeleneFrame {
   spectralBuildupScore: number
   beautyScore: number
   energyZScore: number
+  // 🧠 WAVE 8275 — Cognitive payload (Iliquidcore + eventos soberanos).
+  // Escalares leídos de LiquidCognitionCore/LiquidVerdict — cero alloc.
+  epicness: number
+  vaporPressure: number
+  percussiveness: number
+  melodicity: number
+  crestRate: number
+  crestEvent: boolean
+  /** ETA del pre-buffer soberano en ms desde `nowMs`; -1 = sin countdown. */
+  sovereignEtaMs: number
+  /** Edad del último Glass Break en ms; Infinity = nunca. */
+  glassBreakAgeMs: number
 }
 
 export interface TitanEngineConfig {
@@ -1552,7 +1564,7 @@ export class TitanEngine extends EventEmitter {
    * out-param pre-asignado del caller. Zero-alloc: lee los getters
    * escalares de SeleneTitanConscious, nunca getConsciousnessTelemetry().
    */
-  public fillEuclidSelene(out: EuclidSeleneFrame): void {
+  public fillEuclidSelene(out: EuclidSeleneFrame, nowMs: number): void {
     const selene = this.selene
     out.confidence = selene.getLastConfidence()
     const pred = selene.getActivePrediction()
@@ -1565,6 +1577,15 @@ export class TitanEngine extends EventEmitter {
     out.huntState = selene.getHuntPhase()
     out.energyZone = selene.getEnergyZone()
     out.energyZScore = selene.getEnergyZScore()
+    // 🧠 WAVE 8275 — Cognitive payload (Iliquidcore + soberanos)
+    out.epicness = selene.getLiquidEpicness()
+    out.vaporPressure = selene.getVaporPressure()
+    out.percussiveness = selene.getPercussiveness()
+    out.melodicity = selene.getMelodicity()
+    out.crestRate = selene.getCrestRate()
+    out.crestEvent = selene.getCrestEvent()
+    out.sovereignEtaMs = selene.getSovereignEtaMs(nowMs)
+    out.glassBreakAgeMs = selene.getGlassBreakAgeMs(nowMs)
   }
 
   /**

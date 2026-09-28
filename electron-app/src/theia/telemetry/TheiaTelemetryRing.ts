@@ -77,7 +77,7 @@ export const TEL_FLAG = {
   GLASS_BREAK: 16,       // efecto soberano disparado antes del countdown (ruptura)
   // 🌊 WAVE 8279 · F3 — página B flags (EUCLID_RING_EXPANSION_8276 §2.3)
   REAL_SILENCE: 17,      // nivel — physicsTel.realSilence (rama silencio/AGC-trap)
-  VOCAL_ONSET: 18,       // flanco — vocalIsolation cruza 0.35 al alza (rearme <0.2)
+  VOCAL_ONSET: 18,       // flanco — vocalIsolation cruza 0.28 al alza (rearme <0.15) · WAVE 8282
   NOISE_MODE: 19,        // nivel — flatness > umbral del perfil
   GATE_DEAD: 20,         // nivel — gateHealth < 0.1 (caja sintética / AND-gate muerta)
   SNARE_TRUE: 21,        // flanco — onset MACD; fallback: edge de crack_flux > 0.25

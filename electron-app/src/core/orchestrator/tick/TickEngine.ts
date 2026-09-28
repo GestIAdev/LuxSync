@@ -1112,6 +1112,14 @@ export class TickEngine {
       this.engine.setDominantMountOrientation(dominantOrientation)
     }
 
+    // 🔮 WAVE 8282 — PRIORIDAD TELEMÉTRICA: el publish se adelanta a ANTES de
+    // los awaits pesados (engine.update + arbitraje + commit DMX). La GPU
+    // recibe datos frescos aunque el resto del ciclo tarde ms extra — los
+    // huecos de cadencia medidos en TELDIAG (telHz 19–48) nacían aquí.
+    // Coste: los campos engine-sourced (physicsTel, lastFrame, Selene) llevan
+    // ~1 tick de lag — el DSP publica el estado del frame ANTERIOR.
+    this.publishEuclidTelemetry(now, engineAudioMetrics, context, beatState, workerOnBeat)
+
     const intent = await this.engine.update(context, engineAudioMetrics)
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -2001,10 +2009,8 @@ export class TickEngine {
         this.dmxWriter.commitFrame(this.frameCount, uniList, maskLo, maskHi)
       }
 
-      // 🔮 WAVE 8227 — EUCLID ORACLE · E1: publicación de telemetría 512B
-      // INMEDIATAMENTE después del commit DMX (la luz sale primero, §2.4).
-      // Seqlock write a 44Hz sobre la vista del anillo — cero asignaciones.
-      this.publishEuclidTelemetry(now, engineAudioMetrics, context, beatState, workerOnBeat)
+      // 🔮 WAVE 8282 — el publish telemétrico ya no vive aquí: se adelantó a
+      // antes de engine.update (prioridad GPU sobre el resto del ciclo).
       _t_hal_end = performance.now()
 
       // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)
@@ -2373,15 +2379,17 @@ export class TickEngine {
       if (this._voidHoldSec >= 2.0) voidRelease = true
       this._voidHoldSec = 0
     }
-    // VOCAL_ONSET con histéresis (§2.3): flanco al cruzar 0.35 al alza,
-    // se rearma cuando vocalIsolation cae <0.2 — anti-chatter.
+    // VOCAL_ONSET con histéresis (§2.3): flanco al cruzar 0.28 al alza,
+    // se rearma cuando vocalIsolation cae <0.15 — anti-chatter.
+    // 🔬 WAVE 8282 — calibrado sobre mezclas masterizadas: con Adele el
+    // aislamiento vocal pico era 0.33 y el umbral 0.35 nunca disparaba.
     let vocalOnset = false
     if (this._vocalOnsetArmed) {
-      if (vocalIsoNow >= 0.35) {
+      if (vocalIsoNow >= 0.28) {
         vocalOnset = true
         this._vocalOnsetArmed = false
       }
-    } else if (vocalIsoNow < 0.2) {
+    } else if (vocalIsoNow < 0.15) {
       this._vocalOnsetArmed = true
     }
 

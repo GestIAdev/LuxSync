@@ -259,14 +259,16 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
   )
 
   // 🌊 WAVE 8279 · F4 — euTimbre (§2.3): pesos convexos (Σ=1) de las 4
-  // "texturas" físicas — voz · synth · percusión · grano/ruido. Los
-  // cuadrados exageran el dominante (w*=w); silencio total → calma
-  // viscosa (synth puro) en lugar de NaN.
+  // "texturas" físicas — voz · synth · percusión · grano/ruido.
+  // 🔬 WAVE 8282 — lineal (w/s): la versión cuadrática castigaba a las
+  // texturas minoritarias (voz 0.3 vs synth 0.7 → v²=0.09 vs s²=0.49, la
+  // mezcla colapsaba al dominante); en mezclas masterizadas la voz aislada
+  // rara vez supera ~0.35 → convivencia, no ganador-absoluto.
+  // Silencio total → calma viscosa (synth puro) en lugar de NaN.
   lines.push(
     'vec4 euTimbre() {',
     '  vec4 w = vec4(u_vocalIsolation, u_synthSustain, u_percussiveness,',
     '                max(u_whiteNoise, u_spectralDensity));',
-    '  w *= w;',
     '  float s = w.x + w.y + w.z + w.w;',
     '  return s > 1e-4 ? w / s : vec4(0.0, 1.0, 0.0, 0.0);',
     '}',

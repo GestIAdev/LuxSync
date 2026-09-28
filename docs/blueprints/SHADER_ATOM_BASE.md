@@ -240,8 +240,10 @@ en el audio en este instante:
 | `tb.z` | **Percusión** — densidad de golpes | `u_percussiveness` |
 | `tb.w` | **Grano/ruido** — textura estática | `max(u_whiteNoise, u_spectralDensity)` |
 
-Los pesos se elevan al cuadrado antes de normalizar (`w *= w`) → la textura
-dominante gana protagonismo, la mezcla nunca queda en gris a medio gas.
+Los pesos son **lineales** (`w / s` directo) — la textura dominante no
+aplasta a las minoritarias: una voz al 30% convive con un synth al 60%.
+*(WAVE 8282: antes se elevaban al cuadrado y la mezcla colapsaba al
+dominante en material masterizado.)*
 En silencio total devuelve `(0,1,0,0)` — calma viscosa (synth puro) en
 lugar de un NaN.
 

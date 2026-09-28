@@ -304,7 +304,7 @@ etc.), pero sin saltos.
 |---|---|---|---|
 | 14 | ~~STROBE_ACTIVE~~ | **DEPRECATED**, siempre 0 (§1.8) | — |
 | 17 | REAL_SILENCE | `physicsTel.realSilence` | nivel |
-| 18 | VOCAL_ONSET | `vocalIsolation` cruza 0,35 al alza (histéresis: rearme por debajo de 0,2) | flanco |
+| 18 | VOCAL_ONSET | `vocalIsolation` cruza 0,28 al alza (histéresis: rearme por debajo de 0,15) — recalibrado WAVE 8282 | flanco |
 | 19 | NOISE_MODE | `lf.noiseMode` (flatness > umbral del perfil) | nivel |
 | 20 | GATE_DEAD | `gateHealth < 0.1` (caja sintética / AND-gate muerta) | nivel |
 | 21 | SNARE_TRUE | onset del detector MACD; fallback: flanco de `snare_crack_flux` > 0,25 | flanco |

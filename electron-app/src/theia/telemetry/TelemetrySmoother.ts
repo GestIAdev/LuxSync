@@ -402,18 +402,15 @@ export class TelemetrySmoother {
     const btRate = ((this.beatTime - this._diagBTPrev) * 1000) / el
     this._diagBTPrev = this.beatTime
 
-    // Réplica EXACTA de euTimbre() del preámbulo GLSL (w², Σ=1, fallback).
-    const vIso = out[TELEMETRY_SLOT.VOCAL_ISOLATION - SLOT_PAYLOAD_BASE]
-    const syn = out[TELEMETRY_SLOT.SYNTH_SUSTAIN - SLOT_PAYLOAD_BASE]
-    const perc = out[TELEMETRY_SLOT.PERCUSSIVENESS - SLOT_PAYLOAD_BASE]
-    const grain = Math.max(
+    // Réplica EXACTA de euTimbre() del preámbulo GLSL (lineal w/s — WAVE
+    // 8282: los pesos ya no se elevan al cuadrado).
+    const wv = out[TELEMETRY_SLOT.VOCAL_ISOLATION - SLOT_PAYLOAD_BASE]
+    const ws = out[TELEMETRY_SLOT.SYNTH_SUSTAIN - SLOT_PAYLOAD_BASE]
+    const wp = out[TELEMETRY_SLOT.PERCUSSIVENESS - SLOT_PAYLOAD_BASE]
+    const wg = Math.max(
       out[TELEMETRY_SLOT.WHITE_NOISE - SLOT_PAYLOAD_BASE],
       out[TELEMETRY_SLOT.SPECTRAL_DENSITY - SLOT_PAYLOAD_BASE],
     )
-    const wv = vIso * vIso
-    const ws = syn * syn
-    const wp = perc * perc
-    const wg = grain * grain
     const wsum = wv + ws + wp + wg
     const timbre =
       wsum > 1e-4

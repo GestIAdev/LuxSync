@@ -1088,13 +1088,14 @@ describe('WAVE 8279 · F4 — pulsos líquidos + euTimbre (§2.3)', () => {
     expect(pre).toContain('uniform float u_voidRelease;')
   })
 
-  it('euTimbre() — pesos convexos (Σ=1), dominante exagerado, fallback calma', () => {
+  it('euTimbre() — pesos convexos (Σ=1) LINEALES (WAVE 8282), fallback calma', () => {
     expect(pre).toContain('vec4 euTimbre() {')
     // Las 4 texturas físicas: voz · synth · percusión · grano/ruido.
     expect(pre).toContain('vec4(u_vocalIsolation, u_synthSustain, u_percussiveness,')
     expect(pre).toContain('max(u_whiteNoise, u_spectralDensity)')
-    // w² exagera el dominante antes de normalizar (convexidad neta).
-    expect(pre).toContain('w *= w')
+    // 🔬 WAVE 8282 — lineal: el cuadrado castigaba minorías en mezclas
+    // masterizadas (voz aislada ~0.3 nunca ganaba al synth ~0.7).
+    expect(pre).not.toContain('w *= w')
     expect(pre).toContain('float s = w.x + w.y + w.z + w.w;')
     // Silencio → calma viscosa (synth puro), jamás NaN.
     expect(pre).toContain('return s > 1e-4 ? w / s : vec4(0.0, 1.0, 0.0, 0.0);')

@@ -4,7 +4,7 @@
  * Ensamblador runtime de fragment shaders de artistas (blueprint §4.1):
  *
  *   ┌ PREÁMBULO (generado) ─ #version 300 es · precision · uniforms
- *   │   estándar · u_tel[124] + macros schema · flags · derivados ·
+ *   │   estándar · EuclidTel UBO (u_tel4[31] vec4 std140) + macros schema ·
  *   │   aliases Shadertoy · librería Euclid · MAX_STEPS
  *   ├ CUERPO (artista) ─ void mainImage(out vec4 c, in vec2 fragCoord)
  *   └ EPÍLOGO (generado) ─ main(): mainImage → masters → crossfade →
@@ -38,6 +38,33 @@ export const FLASH_BUDGET = 0.3
 /** Recarga del presupuesto (luma/segundo): tasa sostenida ≤ ~2.5 subidas
  *  grandes por segundo — por debajo del límite de 3 flashes/s. */
 export const FLASH_BUDGET_RATE = 0.25
+
+// ─────────── 🔮 WAVE 8278 · F2 — EuclidTel UBO (std140) ───────────
+
+/** Nombre del bloque uniform — `getUniformBlockIndex(prog, …)` tras el link. */
+export const EUCLID_TEL_UBO_NAME = 'EuclidTel'
+/** Binding point único — todos los programas comparten el mismo buffer. */
+export const EUCLID_TEL_UBO_BINDING = 0
+/** Bytes del bloque: 124 floats payload = 31 vec4 × 16 B (std140). */
+export const EUCLID_TEL_UBO_BYTES = TELEMETRY_PAYLOAD_SLOTS * 4 // 496 B
+/** vec4 del bloque — `u_tel4[N]` (N = idx >> 2, componente = idx & 3). */
+export const EUCLID_TEL_UBO_VEC4 = TELEMETRY_PAYLOAD_SLOTS / 4 // 31
+
+/**
+ * 🔮 WAVE 8278 · F2 — vincula el bloque `EuclidTel` de un programa recién
+ * linkeado al binding point compartido. Llamar desde cacheLocs/post-link —
+ * un programa sin binding leería CEROS sin error de link (fallo silencioso).
+ * No-op si el programa no declara el bloque (p.ej. el builtin WebGL1).
+ */
+export function bindEuclidBlock(
+  gl: WebGL2RenderingContext,
+  prog: WebGLProgram,
+): void {
+  const idx = gl.getUniformBlockIndex(prog, EUCLID_TEL_UBO_NAME)
+  if (idx !== gl.INVALID_INDEX) {
+    gl.uniformBlockBinding(prog, idx, EUCLID_TEL_UBO_BINDING)
+  }
+}
 
 // ─────────────────────────── Vertex (compartido) ───────────────────────────
 
@@ -117,8 +144,10 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     'precision highp int;',
     '',
     `// ── Euclid Oracle · preámbulo generado (schema v${SCHEMA_VERSION}) ──`,
-    '// u_tel[i] = slot i+4 del anillo — una sola subida uniform1fv.',
-    `uniform float u_tel[${TELEMETRY_PAYLOAD_SLOTS}];`,
+    '// 🔮 WAVE 8278 · F2 — EuclidTel UBO: u_tel4[k].c = slot (k*4+c)+4 del',
+    '// anillo — UNA subida bufferSubData(496B) por contexto, compartida',
+    '// por todos los programas (fuera del default block → registros libres).',
+    `layout(std140) uniform EuclidTel { vec4 u_tel4[${EUCLID_TEL_UBO_VEC4}]; };`,
     'uniform int   u_flags;',
     'uniform ivec4 u_enums; // x=schema y=predictionType z=huntState w=energyZone',
     '',
@@ -176,13 +205,21 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
 
   for (const d of TELEMETRY_SCHEMA) {
     if (d.uniform.length === 0) continue // reservados/wire — sin macro
-    lines.push(`#define ${d.uniform.padEnd(20)} u_tel[${d.slot - SLOT_PAYLOAD_BASE}]`)
+    // 🔮 WAVE 8278 · F2 — vec4 addressing: idx → u_tel4[idx>>2].<xyzw>.
+    const idx = d.slot - SLOT_PAYLOAD_BASE
+    lines.push(
+      `#define ${d.uniform.padEnd(20)} u_tel4[${idx >> 2}].${'xyzw'[idx & 3]}`,
+    )
   }
   // Macro función del chromagrama (§3.5): 12 bins contiguos C→B.
+  // 🔮 WAVE 8278 · F2 — indexación dinámica de componente (legal en ES 3.00):
+  // el bin i vive en u_tel4[(base+i)>>2], componente (base+i)&3.
   const chromaBase =
     (TELEMETRY_SCHEMA.find((d) => d.name === 'CHROMA_0')?.slot ?? 44) -
     SLOT_PAYLOAD_BASE
-  lines.push(`#define u_chroma(i)          u_tel[${chromaBase} + int(i)]`)
+  lines.push(
+    `#define u_chroma(i)          u_tel4[(${chromaBase} + int(i)) >> 2][(${chromaBase} + int(i)) & 3]`,
+  )
   lines.push('')
 
   lines.push('// ── Flags (bitfield u_flags) ──')

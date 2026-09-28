@@ -39,6 +39,10 @@ import {
   FLASH_BUDGET_RATE,
   EUCLID_GLSL_VERSION,
   EUCLID_GENE_SLOTS,
+  bindEuclidBlock,
+  EUCLID_TEL_UBO_BINDING,
+  EUCLID_TEL_UBO_BYTES,
+  EUCLID_TEL_UBO_VEC4,
 } from './ShaderAssembler'
 import { TELEMETRY_SCHEMA, SLOT_PAYLOAD_BASE } from '../telemetry/TheiaTelemetryRing'
 
@@ -60,7 +64,8 @@ describe('E3 preamble — shader contract', () => {
 
   it('declara los uniforms del contrato §3.5/§4', () => {
     for (const needle of [
-      'uniform float u_tel[124];',
+      // 🔮 WAVE 8278 · F2 — el payload viaja por el UBO EuclidTel (std140).
+      'layout(std140) uniform EuclidTel { vec4 u_tel4[31]; };',
       'uniform int   u_flags;',
       'uniform ivec4 u_enums;',
       'uniform float u_time;',
@@ -90,10 +95,11 @@ describe('E3 preamble — shader contract', () => {
 
   it('genera TODAS las macros de telemetría desde TELEMETRY_SCHEMA', () => {
     // Cero índices escritos a mano — cada descriptor con uniform produce
-    // su `#define name u_tel[slot-4]`.
+    // su `#define name u_tel4[idx>>2].<xyzw>` (WAVE 8278 · F2 — UBO).
     for (const d of TELEMETRY_SCHEMA) {
       if (d.uniform.length === 0) continue
-      expect(pre).toContain(`u_tel[${d.slot - SLOT_PAYLOAD_BASE}]`)
+      const idx = d.slot - SLOT_PAYLOAD_BASE
+      expect(pre).toContain(`u_tel4[${idx >> 2}].${'xyzw'[idx & 3]}`)
       expect(pre).toContain(`#define ${d.uniform}`)
     }
   })
@@ -120,11 +126,17 @@ describe('E3 preamble — shader contract', () => {
     ]
     for (const [name, idx] of anchors) {
       expect(pre).toContain(`#define ${name}`)
-      expect(pre).toMatch(new RegExp(`#define ${name}\\s+u_tel\\[${idx}\\]`))
+      // F2 — el índice plano se traduce a vec4 + componente: idx→u_tel4[idx>>2].<xyzw>.
+      expect(pre).toMatch(
+        new RegExp(`#define ${name}\\s+u_tel4\\[${idx >> 2}\\][.]${'xyzw'[idx & 3]}`),
+      )
     }
-    // Chromagrama — 12 bins contiguos a partir del índice 40.
+    // Chromagrama — 12 bins contiguos a partir del índice 40: indexación
+    // dinámica de vec4+componente (legal en GLSL ES 3.00 — blueprint F2).
     expect(pre).toContain('#define u_chroma(i)')
-    expect(pre).toMatch(/u_chroma\(i\)\s+u_tel\[40 \+ int\(i\)\]/)
+    expect(pre).toMatch(
+      /u_chroma\(i\)\s+u_tel4\[\(40 \+ int\(i\)\) >> 2\]\[\(40 \+ int\(i\)\) & 3\]/,
+    )
   })
 
   it('expone las macros de flags y el helper telFlag()', () => {
@@ -741,8 +753,13 @@ describe('G1 — alias de relojes integrales en el preámbulo', () => {
     // Índice = slot − SLOT_PAYLOAD_BASE (58→54, 59→55), nunca a mano.
     const etSlot = TELEMETRY_SCHEMA.find((d) => d.name === 'ENERGY_TIME')!
     const bcSlot = TELEMETRY_SCHEMA.find((d) => d.name === 'BAR_COUNT')!
-    expect(pre).toContain(`u_tel[${etSlot.slot - SLOT_PAYLOAD_BASE}]`)
-    expect(pre).toContain(`u_tel[${bcSlot.slot - SLOT_PAYLOAD_BASE}]`)
+    // F2 — referencia vec4/componente derivada del índice plano.
+    const ref = (slot: number) => {
+      const i = slot - SLOT_PAYLOAD_BASE
+      return `u_tel4[${i >> 2}].${'xyzw'[i & 3]}`
+    }
+    expect(pre).toContain(ref(etSlot.slot))
+    expect(pre).toContain(ref(bcSlot.slot))
   })
 })
 
@@ -877,8 +894,10 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     expect(simEpilogue).not.toContain('u_blend')
     expect(simEpilogue).not.toContain('u_flashGuard')
     expect(simEpilogue).not.toContain('pow(')
-    // …pero comparte preámbulo completo (telemetría + u_state + u_gene).
-    expect(sim.fragSource).toContain('uniform float u_tel[124];')
+    // …pero comparte preámbulo completo (EuclidTel UBO + u_state + u_gene).
+    expect(sim.fragSource).toContain(
+      'layout(std140) uniform EuclidTel { vec4 u_tel4[31]; };',
+    )
     expect(sim.fragSource).toContain('uniform sampler2D u_state;')
     expect(sim.fragSource).toContain(`uniform float u_gene[${EUCLID_GENE_SLOTS}];`)
     // Programas DISTINTOS: la sim nunca colisiona con el visual en la LRU.
@@ -939,18 +958,22 @@ describe('G6 — euChannels: biblioteca estándar de canales (§3.1)', () => {
 describe('WAVE 8275 — cognitive payload contract', () => {
   const pre = buildPreamble()
 
-  it('los 5 escalares de Iliquidcore salen del schema como macros u_tel[]', () => {
+  it('los 5 escalares de Iliquidcore salen del schema como macros u_tel4', () => {
     const S = (n: string) => TELEMETRY_SCHEMA.find((d) => d.name === n)!
+    const ref = (n: string) => {
+      const i = S(n).slot - SLOT_PAYLOAD_BASE
+      return `u_tel4[${i >> 2}].${'xyzw'[i & 3]}`
+    }
     expect(pre).toContain(`#define u_epicness`)
-    expect(pre).toContain(`u_tel[${S('EPICNESS').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(ref('EPICNESS'))
     expect(pre).toContain(`#define u_vaporPressure`)
-    expect(pre).toContain(`u_tel[${S('VAPOR_PRESSURE').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(ref('VAPOR_PRESSURE'))
     expect(pre).toContain(`#define u_percussiveness`)
-    expect(pre).toContain(`u_tel[${S('PERCUSSIVENESS').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(ref('PERCUSSIVENESS'))
     expect(pre).toContain(`#define u_melodicity`)
-    expect(pre).toContain(`u_tel[${S('MELODICITY').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(ref('MELODICITY'))
     expect(pre).toContain(`#define u_crestRate`)
-    expect(pre).toContain(`u_tel[${S('CREST_RATE').slot - SLOT_PAYLOAD_BASE}]`)
+    expect(pre).toContain(ref('CREST_RATE'))
     // Slots exactos del blueprint 8275 (índices absolutos del anillo).
     expect(S('EPICNESS').slot).toBe(43)
     expect(S('VAPOR_PRESSURE').slot).toBe(60)
@@ -987,8 +1010,69 @@ describe('WAVE 8275 — cognitive payload contract', () => {
     )
     expect(asm.fragSource).toContain('uniform float u_crestPulse;')
     expect(asm.fragSource).toContain('#define u_vaporPressure')
-    // WAVE 8278 · F1 — el payload creció a 124 floats (página B); el
-    // preámbulo lo deriva de TELEMETRY_PAYLOAD_SLOTS.
-    expect(asm.fragSource).toContain('uniform float u_tel[124];')
+    // WAVE 8278 · F2 — el payload (124 floats = 31 vec4) viaja por el
+    // bloque std140 EuclidTel; el preámbulo deriva de TELEMETRY_PAYLOAD_SLOTS.
+    expect(asm.fragSource).toContain(
+      'layout(std140) uniform EuclidTel { vec4 u_tel4[31]; };',
+    )
+  })
+})
+
+// ─────────────────── 🔮 WAVE 8278 · F2 — EuclidTel UBO (std140) ───────────────────
+
+describe('WAVE 8278 · F2 — EuclidTel UBO contract', () => {
+  const pre = buildPreamble()
+
+  it('el payload vive en un bloque std140 de 31 vec4, no en un array suelto', () => {
+    expect(pre).toContain(
+      `layout(std140) uniform EuclidTel { vec4 u_tel4[${EUCLID_TEL_UBO_VEC4}]; };`,
+    )
+    expect(pre).not.toContain('uniform float u_tel[')
+    expect(EUCLID_TEL_UBO_VEC4).toBe(31)
+    // 124 floats × 4B = 496B — la subida bufferSubData de cada contexto.
+    expect(EUCLID_TEL_UBO_BYTES).toBe(496)
+  })
+
+  it('las macros escalares mapean idx → u_tel4[idx>>2].<xyzw>', () => {
+    // Ancla canónica del blueprint: u_bass = slot 11 → idx 7 → vec4[1].w.
+    expect(pre).toMatch(/#define u_bass\s+u_tel4\[1\][.]w/)
+    // Slots contiguos del mismo vec4 comparten base, distinta componente.
+    const S = (n: string) => TELEMETRY_SCHEMA.find((d) => d.name === n)!
+    const ref = (n: string) => {
+      const i = S(n).slot - SLOT_PAYLOAD_BASE
+      return `u_tel4[${i >> 2}].${'xyzw'[i & 3]}`
+    }
+    expect(pre).toMatch(new RegExp(`#define u_kickEnergy\\s+${ref('KICK_ENERGY').replace('[', '\\[').replace(']', '\\]').replace('.', '[.]')}`))
+  })
+
+  it('u_chroma(i) indexa vec4 y componente dinámicamente', () => {
+    expect(pre).toMatch(
+      /#define u_chroma\(i\)\s+u_tel4\[\(\d+ \+ int\(i\)\) >> 2\]\[\(\d+ \+ int\(i\)\) & 3\]/,
+    )
+  })
+
+  it('bindEuclidBlock vincula el bloque al binding point compartido', () => {
+    const calls: Array<[unknown, unknown, number]> = []
+    const gl = {
+      INVALID_INDEX: 0xffffffff,
+      getUniformBlockIndex: (_p: unknown, name: string) =>
+        name === 'EuclidTel' ? 3 : 0xffffffff,
+      uniformBlockBinding: (p: unknown, i: unknown, b: number) =>
+        calls.push([p, i, b]),
+    } as unknown as WebGL2RenderingContext
+    const prog = {} as WebGLProgram
+    bindEuclidBlock(gl, prog)
+    expect(calls).toEqual([[prog, 3, EUCLID_TEL_UBO_BINDING]])
+  })
+
+  it('bindEuclidBlock es no-op si el programa no declara el bloque', () => {
+    const calls: unknown[] = []
+    const gl = {
+      INVALID_INDEX: 0xffffffff,
+      getUniformBlockIndex: () => 0xffffffff,
+      uniformBlockBinding: (...a: unknown[]) => calls.push(a),
+    } as unknown as WebGL2RenderingContext
+    bindEuclidBlock(gl, {} as WebGLProgram)
+    expect(calls).toHaveLength(0)
   })
 })

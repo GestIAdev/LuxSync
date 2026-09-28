@@ -35,6 +35,10 @@ import {
   DEFAULT_FLASH_MAX_DELTA,
   FLASH_BUDGET,
   FLASH_BUDGET_RATE,
+  // 🔮 WAVE 8278 · F2 — EuclidTel UBO (std140).
+  bindEuclidBlock,
+  EUCLID_TEL_UBO_BYTES,
+  EUCLID_TEL_UBO_BINDING,
 } from './ShaderAssembler'
 // 🧬 WAVE 8237 · G5 — Materia Viva: ping-pong RGBA16F por programa.
 import { FloatStatePool } from './FloatStatePool'
@@ -45,7 +49,8 @@ export const BUILTIN_SHADER_ID = 'builtin'
 
 /** Uniforms del contrato §4 — nunca se resuelven como params de artista. */
 const GEN_STD_UNIFORMS = new Set([
-  'u_tel', 'u_flags', 'u_enums', 'u_time', 'u_dt', 'u_resolution',
+  'u_tel', 'u_tel4', 'EuclidTel', 'u_flags', 'u_enums', 'u_time', 'u_dt',
+  'u_resolution',
   'u_beatTime', 'u_kickPulse', 'u_snarePulse', 'u_predictiveETA',
   'u_approach', 'u_impact', 'u_crestPulse', 'u_strobeGate', 'u_glassBreak',
   'u_brightness', 'u_contrast', 'u_blackout',
@@ -64,8 +69,9 @@ export interface GenRuntimeStatus {
   unsupported?: boolean
 }
 
+/** 🔮 WAVE 8278 · F2 — sin `tel`: el payload viaja por el UBO EuclidTel
+ *  (binding point compartido — bindEuclidBlock tras el link). */
 interface GenLocs {
-  tel: WebGLUniformLocation | null
   flags: WebGLUniformLocation | null
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
@@ -101,7 +107,6 @@ interface GenLocs {
 
 /** Subconjunto de uniforms que consume el pase de simulación (G5). */
 interface SimLocs {
-  tel: WebGLUniformLocation | null
   flags: WebGLUniformLocation | null
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
@@ -238,6 +243,10 @@ export class GenRuntime {
   private shaderTimeSec = 0
   private timeScale = 0.5
 
+  /** 🔮 WAVE 8278 · F2 — UBO EuclidTel (496B, DYNAMIC_DRAW): una sola
+   *  subida `bufferSubData` por frame alimenta main + sim + todo el caché. */
+  private telUbo: WebGLBuffer | null = null
+
   private constructor(
     gl: WebGL2RenderingContext,
     canvas: HTMLCanvasElement | OffscreenCanvas,
@@ -302,8 +311,10 @@ export class GenRuntime {
 
   private cacheLocs(prog: WebGLProgram): GenLocs {
     const gl = this.gl
+    // 🔮 WAVE 8278 · F2 — binding del bloque EuclidTel UNA vez post-link
+    // (sin él el programa lee ceros sin error — fallo silencioso).
+    bindEuclidBlock(gl, prog)
     return {
-      tel: gl.getUniformLocation(prog, 'u_tel'),
       flags: gl.getUniformLocation(prog, 'u_flags'),
       enums: gl.getUniformLocation(prog, 'u_enums'),
       time: gl.getUniformLocation(prog, 'u_time'),
@@ -338,8 +349,9 @@ export class GenRuntime {
   /** Locations del pase de simulación (G5 — subconjunto sin epílogo). */
   private cacheSimLocs(prog: WebGLProgram): SimLocs {
     const gl = this.gl
+    // 🔮 WAVE 8278 · F2 — mismo binding EuclidTel que la escena visual.
+    bindEuclidBlock(gl, prog)
     return {
-      tel: gl.getUniformLocation(prog, 'u_tel'),
       flags: gl.getUniformLocation(prog, 'u_flags'),
       enums: gl.getUniformLocation(prog, 'u_enums'),
       time: gl.getUniformLocation(prog, 'u_time'),
@@ -669,6 +681,16 @@ export class GenRuntime {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo)
     gl.bufferData(gl.ARRAY_BUFFER, FULLSCREEN_TRI, gl.STATIC_DRAW)
 
+    // 🔮 WAVE 8278 · F2 — EuclidTel UBO: buffer único del contexto atado al
+    // binding point compartido; los programas se vinculan post-link vía
+    // bindEuclidBlock (cacheLocs/cacheSimLocs).
+    this.telUbo = gl.createBuffer()
+    if (this.telUbo) {
+      gl.bindBuffer(gl.UNIFORM_BUFFER, this.telUbo)
+      gl.bufferData(gl.UNIFORM_BUFFER, EUCLID_TEL_UBO_BYTES, gl.DYNAMIC_DRAW)
+      gl.bindBufferBase(gl.UNIFORM_BUFFER, EUCLID_TEL_UBO_BINDING, this.telUbo)
+    }
+
     this.dummyTex = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, this.dummyTex)
     gl.texImage2D(
@@ -806,7 +828,7 @@ export class GenRuntime {
   /**
    * Render de un frame generativo al framebuffer por defecto del canvas.
    * `sm` es el smoother local (Telemetría E2 alimentada por el ring de
-   * 256B); `uniforms` lleva masters + params de artista; `renderScale`
+   * 512B); `uniforms` lleva masters + params de artista; `renderScale`
    * escala el FBO de escena (governor externo — en la ventana puede ser
    * fijo 1.0 o adaptativo propio).
    */
@@ -836,6 +858,13 @@ export class GenRuntime {
       return
     }
     this.seq++
+
+    // 🔮 WAVE 8278 · F2 — EuclidTel UBO: UNA subida bufferSubData(496B) por
+    // frame — la comparten el pase sim, la escena y todo el caché LRU.
+    if (this.telUbo) {
+      gl.bindBuffer(gl.UNIFORM_BUFFER, this.telUbo)
+      gl.bufferSubData(gl.UNIFORM_BUFFER, 0, sm.out)
+    }
 
     // 🌊 WAVE 8250 — governor de tiempo: leer AUDIO_LIVE del smoother y
     // acumular el reloj gobernado UNA vez por frame (compartido por el
@@ -876,7 +905,6 @@ export class GenRuntime {
       gl.useProgram(ent.simProgram)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, pool.readTexture ?? this.dummyTex)
-      gl.uniform1fv(SL.tel, sm.out)
       gl.uniform1i(SL.flags, sm.flags)
       gl.uniform4i(
         SL.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone,
@@ -932,7 +960,6 @@ export class GenRuntime {
     )
 
     const L = ent.locs
-    gl.uniform1fv(L.tel, sm.out)
     gl.uniform1i(L.flags, sm.flags)
     gl.uniform4i(
       L.enums,
@@ -1070,6 +1097,8 @@ export class GenRuntime {
       if (p) try { gl.deleteProgram(p) } catch { /* noop */ }
     }
     if (this.vbo) try { gl.deleteBuffer(this.vbo) } catch { /* noop */ }
+    if (this.telUbo) try { gl.deleteBuffer(this.telUbo) } catch { /* noop */ }
+    this.telUbo = null
     this.active = null
     this.activeId = BUILTIN_SHADER_ID
   }

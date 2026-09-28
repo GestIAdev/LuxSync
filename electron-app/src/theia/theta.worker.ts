@@ -73,6 +73,10 @@ import {
   DEFAULT_FLASH_MAX_DELTA,
   FLASH_BUDGET,
   FLASH_BUDGET_RATE,
+  // 🔮 WAVE 8278 · F2 — EuclidTel UBO (std140) sobre el camino WebGL2.
+  bindEuclidBlock,
+  EUCLID_TEL_UBO_BYTES,
+  EUCLID_TEL_UBO_BINDING,
 } from './shader/ShaderAssembler'
 import { RenderGovernor } from './shader/RenderGovernor'
 // 🧬 WAVE 8237 · G5 — Materia Viva: ping-pong RGBA16F por programa.
@@ -305,6 +309,10 @@ interface WorkerState {
   lastRenderPerfMs: number
   /** Locations del bridge Euclid cacheadas en link (una vez por programa). */
   euTel: WebGLUniformLocation | null
+  /** 🔮 WAVE 8278 · F2 — UBO EuclidTel (496B, DYNAMIC_DRAW): una sola
+   *  subida `bufferSubData` por frame alimenta TODOS los programas del
+   *  camino generativo (main + sim + caché LRU). Solo bajo WebGL2. */
+  telUbo: WebGLBuffer | null
   euFlags: WebGLUniformLocation | null
   euEnums: WebGLUniformLocation | null
   euTime: WebGLUniformLocation | null
@@ -478,6 +486,7 @@ const state: WorkerState = {
   lastRafAt: 0,
   lastRenderPerfMs: 0,
   euTel: null,
+  telUbo: null,
   euFlags: null,
   euEnums: null,
   euTime: null,
@@ -544,9 +553,10 @@ const state: WorkerState = {
 // 🔮 WAVE 8229 — EUCLID · E3: tipos del pipeline generativo
 // ─────────────────────────────────────────────────────────────────────────
 
-/** Locations estándar del contrato §3.5/§4 — cacheadas en link (una vez). */
+/** Locations estándar del contrato §3.5/§4 — cacheadas en link (una vez).
+ *  🔮 WAVE 8278 · F2 — sin `tel`: el payload viaja por el UBO EuclidTel
+ *  (binding point compartido — bindEuclidBlock tras el link). */
 interface GenUniformLocs {
-  tel: WebGLUniformLocation | null
   flags: WebGLUniformLocation | null
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
@@ -582,7 +592,6 @@ interface GenUniformLocs {
 
 /** Subconjunto de uniforms que consume el pase de simulación (G5). */
 interface SimLocs {
-  tel: WebGLUniformLocation | null
   flags: WebGLUniformLocation | null
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
@@ -949,6 +958,20 @@ function buildGLResources(): boolean {
       gl.deleteShader(bvs)
       gl.deleteShader(bfs)
     }
+    // 🔮 WAVE 8278 · F2 — EuclidTel UBO (std140, 496B): buffer único por
+    // contexto, atado al binding point compartido. Los programas se
+    // vinculan en cacheGenLocs/cacheSimLocs vía bindEuclidBlock.
+    state.telUbo = null
+    {
+      const gl2 = gl as WebGL2RenderingContext
+      const ubo = gl2.createBuffer()
+      if (ubo) {
+        gl2.bindBuffer(gl2.UNIFORM_BUFFER, ubo)
+        gl2.bufferData(gl2.UNIFORM_BUFFER, EUCLID_TEL_UBO_BYTES, gl2.DYNAMIC_DRAW)
+        gl2.bindBufferBase(gl2.UNIFORM_BUFFER, EUCLID_TEL_UBO_BINDING, ubo)
+        state.telUbo = ubo
+      }
+    }
     // Pass de stats fotosensibles 1×1 (§4.6) — texel {mean,budgetNorm}
     // ping-pong; el epílogo lo lee como u_flashState.
     state.statsProgram = null
@@ -1079,6 +1102,7 @@ function teardownGL(): void {
       if (state.statsFboA) (gl as WebGL2RenderingContext).deleteFramebuffer?.(state.statsFboA)
       if (state.statsFboB) (gl as WebGL2RenderingContext).deleteFramebuffer?.(state.statsFboB)
       if (state.gpuQuery) (gl as WebGL2RenderingContext).deleteQuery?.(state.gpuQuery)
+      if (state.telUbo) (gl as WebGL2RenderingContext).deleteBuffer?.(state.telUbo)
       for (const p of state.genPending.values()) {
         gl.deleteProgram(p.program)
         gl.deleteShader(p.vs)
@@ -1118,6 +1142,7 @@ function teardownGL(): void {
   state.statsFboB = null
   state.statsFlip = false
   state.gpuQuery = null
+  state.telUbo = null
   state.glIsWebGL2 = false
   // 🔮 WAVE 8231 · E5 — PBOs + fences mueren con el contexto; los writers
   // retenidos vuelven al pool (el buffer nunca se transfirió).
@@ -1205,7 +1230,8 @@ const GEN_CACHE_MAX = 8
 
 /** Uniforms estándar del contrato — no se resuelven como params de artista. */
 const GEN_STD_UNIFORMS = new Set([
-  'u_tel', 'u_flags', 'u_enums', 'u_time', 'u_dt', 'u_resolution',
+  'u_tel', 'u_tel4', 'EuclidTel', 'u_flags', 'u_enums', 'u_time', 'u_dt',
+  'u_resolution',
   'u_beatTime', 'u_kickPulse', 'u_snarePulse', 'u_predictiveETA',
   'u_approach', 'u_impact', 'u_crestPulse', 'u_strobeGate', 'u_glassBreak',
   'u_brightness', 'u_contrast', 'u_blackout',
@@ -1235,8 +1261,10 @@ function compileShaderEx(
 
 function cacheGenLocs(prog: WebGLProgram): GenUniformLocs {
   const gl = state.gl!
+  // 🔮 WAVE 8278 · F2 — binding del bloque EuclidTel UNA vez post-link.
+  // Sin él el programa lee ceros sin error (fallo silencioso).
+  bindEuclidBlock(gl as WebGL2RenderingContext, prog)
   return {
-    tel: gl.getUniformLocation(prog, 'u_tel'),
     flags: gl.getUniformLocation(prog, 'u_flags'),
     enums: gl.getUniformLocation(prog, 'u_enums'),
     time: gl.getUniformLocation(prog, 'u_time'),
@@ -1273,8 +1301,9 @@ function cacheGenLocs(prog: WebGLProgram): GenUniformLocs {
 /** Locations del pase de simulación (G5 — subconjunto sin epílogo). */
 function cacheSimLocs(prog: WebGLProgram): SimLocs {
   const gl = state.gl!
+  // 🔮 WAVE 8278 · F2 — mismo binding EuclidTel que la escena visual.
+  bindEuclidBlock(gl as WebGL2RenderingContext, prog)
   return {
-    tel: gl.getUniformLocation(prog, 'u_tel'),
     flags: gl.getUniformLocation(prog, 'u_flags'),
     enums: gl.getUniformLocation(prog, 'u_enums'),
     time: gl.getUniformLocation(prog, 'u_time'),
@@ -1823,6 +1852,14 @@ function renderGenerativeFrame(
   }
   const sm = state.smoother
 
+  // 🔮 WAVE 8278 · F2 — EuclidTel UBO: UNA subida bufferSubData(496B) por
+  // contexto y frame — la comparten el pase sim, la escena y todos los
+  // programas del caché LRU (binding point único, ya no hay uniform1fv).
+  if (state.telUbo) {
+    gl.bindBuffer(gl.UNIFORM_BUFFER, state.telUbo)
+    gl.bufferSubData(gl.UNIFORM_BUFFER, 0, sm.out)
+  }
+
   // 🌊 WAVE 8250 — gobernador de tiempo acumulativo (paridad con
   // GenRuntime): `u_time` crece a la velocidad del audio — AUDIO_LIVE →
   // 1.0, sordo → 0.5 — suavizado exponencial independiente del frame-rate
@@ -1852,7 +1889,6 @@ function renderGenerativeFrame(
     gl.useProgram(ent.simProgram)
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, pool.readTexture ?? state.dummyTex)
-    gl.uniform1fv(SL.tel, sm.out)
     gl.uniform1i(SL.flags, sm.flags)
     gl.uniform4i(SL.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone)
     gl.uniform1f(SL.time, shaderTimeSec)
@@ -1907,7 +1943,6 @@ function renderGenerativeFrame(
   )
 
   const L = ent.locs
-  gl.uniform1fv(L.tel, sm.out)
   gl.uniform1i(L.flags, sm.flags)
   gl.uniform4i(L.enums, sm.schemaVersion, sm.predictionType, sm.huntState, sm.energyZone)
   gl.uniform1f(L.time, shaderTimeSec)

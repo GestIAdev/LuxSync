@@ -431,11 +431,13 @@ export class TelemetrySmoother {
     if ((flags & (1 << TEL_FLAG.PREDICTION_ACTIVE)) !== 0) fl += ' PRD'
 
     console.info(
-      `[TELDIAG] vIso ${ro(TELEMETRY_SLOT.VOCAL_ISOLATION)}` +
+      `[TELDIAG] bpm ${f(raw[TELEMETRY_SLOT.BPM])}` +
+        ` | vIso ${ro(TELEMETRY_SLOT.VOCAL_ISOLATION)}` +
         ` | vSus ${ro(TELEMETRY_SLOT.VOCAL_SUSTAIN)}` +
         ` | syn ${ro(TELEMETRY_SLOT.SYNTH_SUSTAIN)}` +
         ` | perc ${ro(TELEMETRY_SLOT.PERCUSSIVENESS)}` +
         ` | mel ${ro(TELEMETRY_SLOT.MELODICITY)}` +
+        ` | bnd ${f(raw[TELEMETRY_SLOT.BASS])}/${f(raw[TELEMETRY_SLOT.MID])}/${f(raw[TELEMETRY_SLOT.TREBLE])}` +
         ` | wn ${f(raw[TELEMETRY_SLOT.WHITE_NOISE])} sd ${f(raw[TELEMETRY_SLOT.SPECTRAL_DENSITY])}` +
         ` | vT ${f(vt)}s (${vtRate >= 0 ? '+' : ''}${vtRate.toFixed(2)}/s)` +
         ` bt ${btRate >= 0 ? '+' : ''}${btRate.toFixed(2)}/s` +

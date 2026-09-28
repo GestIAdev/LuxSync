@@ -17,6 +17,7 @@ const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const { execSync } = require('child_process')
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLAVE PÚBLICA RSA — EMBEBIDA EN BYTECODE
@@ -80,6 +81,12 @@ const VALID_TIERS = ['DJ_FOUNDER', 'FULL_SUITE']
 const IFACE_BLACKLIST = [
   'virtual', 'vmware', 'vethernet', 'hyper-v',
   'bluetooth', 'rndis', 'tap', 'vpn', 'loopback',
+  // WAVE 8273: adaptadores virtuales Windows no cubiertos antes —
+  // Wi-Fi Direct ("Local Area Connection* N", MAC randomizada por sesión),
+  // túneles y stacks de contenedor.
+  'local area connection', 'wintun', 'wireguard', 'tailscale',
+  'zerotier', 'npcap', 'isatap', 'teredo', '6to4', 'wan miniport',
+  'docker', 'wsl', 'podman', 'hosted network', 'satellite',
 ]
 
 /**
@@ -96,18 +103,94 @@ function ifacePriority(lname) {
   return 0
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔒 WAVE 8273: IMMUTABLE OFFLINE ANCHORS — WMI/CIM HARDWARE IDENTITY
+//
+// os.networkInterfaces() enumera ENTRADAS DE DIRECCIÓN, no adaptadores físicos:
+// un NIC sin direcciones unicast (Wi-Fi apagado, cable desconectado, NIC en
+// power-down) desaparece del mapa → el HWID muta → Gate 1 expulsa al usuario
+// legítimo al arrancar offline (WAVE 8272-RECON).
+//
+// WMI/CIM enumera hardware físico INDEPENDIENTE del estado de la pila de red:
+// Win32_ComputerSystemProduct.UUID (placa base) y Win32_NetworkAdapter
+// PhysicalAdapter=TRUE incluyen adaptadores media-disconnected.
+//
+// Todo va envuelto en try/catch + timeout — un fallo nativo degrada al
+// fallback V-06, nunca rompe el boot.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const HWID_EXEC_TIMEOUT_MS = 3000
+
+function psExePath() {
+  const root = process.env.SystemRoot || 'C:\\Windows'
+  return `"${root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"`
+}
+
+function tryExecSync(cmd) {
+  try {
+    const out = execSync(cmd, {
+      timeout: HWID_EXEC_TIMEOUT_MS,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    return String(out).trim()
+  } catch {
+    return null
+  }
+}
+
 /**
- * 🔒 V-04 FIX: Multi-metric hardware fingerprint.
- *
- * ANTES: Solo MAC address (trivialmente spoofeable con un comando del SO).
- * AHORA: SHA-256(MAC + hostname + CPU model + platform) — requiere spoofear
- *        4 métricas simultáneamente para clonar el fingerprint.
- *
- * @returns {string} SHA-256 hex hash del fingerprint compuesto
+ * UUID de placa base vía CIM (PowerShell). Inmutable ante estado de red.
+ * Fallback a wmic para Windows antiguo sin PowerShell 3+.
+ * Rechaza UUIDs sentinela de VM (all-zeros / all-Fs).
  */
-function getHardwareId() {
-  // 1. Primary MAC — deterministic physical-adapter anchor (V-06).
-  let mac = 'UNKNOWN_MAC'
+function getWindowsBoardUuid() {
+  const ps = tryExecSync(
+    `${psExePath()} -NoProfile -NonInteractive -Command ` +
+    `"(Get-CimInstance Win32_ComputerSystemProduct).UUID"`
+  )
+  if (ps) {
+    const uuid = ps.split(/\r?\n/)[0].trim()
+    if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uuid)
+        && !/^[f0-]+$/i.test(uuid.replace(/-/g, ''))) {
+      return uuid.toLowerCase()
+    }
+  }
+
+  const wmic = tryExecSync('wmic csproduct get uuid /value')
+  if (wmic) {
+    const m = wmic.match(/UUID=([0-9a-fA-F-]{36})/)
+    if (m && !/^[f0-]+$/i.test(m[1].replace(/-/g, ''))) {
+      return m[1].toLowerCase()
+    }
+  }
+  return null
+}
+
+/**
+ * MAC del NIC físico primario vía WMI — incluye adaptadores media-disconnected
+ * (esa es la diferencia frente a os.networkInterfaces). Excluye PNPDeviceID
+ * ROOT\ y SW\ (virtuales). Orden Index = orden de hardware del bus, no de red.
+ */
+function getWindowsPrimaryPhysicalMac() {
+  const ps = tryExecSync(
+    `${psExePath()} -NoProfile -NonInteractive -Command ` +
+    `"Get-CimInstance Win32_NetworkAdapter | ` +
+    `Where-Object { $_.PhysicalAdapter -eq $true -and $_.MACAddress -and ` +
+    `$_.PNPDeviceID -notmatch '^(ROOT|SW)\\\\' } | ` +
+    `Sort-Object Index | Select-Object -First 1 -ExpandProperty MACAddress"`
+  )
+  if (!ps) return null
+  const mac = ps.split(/\r?\n/)[0].trim().toLowerCase()
+  return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(mac) ? mac : null
+}
+
+/**
+ * 🔒 V-06 (fallback): MAC del mejor adaptador según os.networkInterfaces().
+ * Depende del estado de la red — SOLO último recurso cuando las anclas
+ * inmutables no están disponibles (no-Windows o WMI inalcanzable).
+ */
+function getNetworkMacAnchor() {
   const interfaces = os.networkInterfaces()
   const candidates = []
 
@@ -138,20 +221,45 @@ function getHardwareId() {
     // de enumeración del SO y de qué adaptador tenga IP activa.
     candidates.sort((a, b) =>
       (b.score - a.score) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-    mac = candidates[0].mac
+    return candidates[0].mac
+  }
+  return 'UNKNOWN_MAC'
+}
+
+/**
+ * 🔒 V-04 + WAVE 8273: Multi-metric hardware fingerprint.
+ *
+ * Anclas (en orden): boardUUID (placa base) → MAC física primaria vía WMI →
+ * fallback MAC por networkInterfaces. Más hostname + CPU model + platform.
+ *
+ * Determinista online Y offline: ningún componente depende del estado de red.
+ *
+ * @returns {string} SHA-256 hex hash del fingerprint compuesto
+ */
+function getHardwareId() {
+  const anchors = []
+
+  // Anclas inmutables (Windows). boardUUID es suficiente por sí solo;
+  // physMac añade una segunda prueba física sin depender de la red.
+  if (os.platform() === 'win32') {
+    const boardUuid = getWindowsBoardUuid()
+    if (boardUuid) anchors.push(boardUuid)
+    const physMac = getWindowsPrimaryPhysicalMac()
+    if (physMac) anchors.push(physMac)
   }
 
-  // 2. Hostname
+  // Último recurso: la lógica V-06 de networkInterfaces (no-Windows, o WMI caído)
+  if (anchors.length === 0) {
+    anchors.push(getNetworkMacAnchor())
+  }
+
+  // Componentes estáticos
   const hostname = os.hostname() || 'UNKNOWN_HOST'
-
-  // 3. CPU model
   const cpuModel = (os.cpus()[0] && os.cpus()[0].model) || 'UNKNOWN_CPU'
-
-  // 4. Platform
   const platform = os.platform() || 'UNKNOWN_PLATFORM'
 
   // Concatenar y hashear — el orden es fijo y determinista
-  const combined = `${mac}|${hostname}|${cpuModel}|${platform}`
+  const combined = `${anchors.join('|')}|${hostname}|${cpuModel}|${platform}`
   return crypto.createHash('sha256').update(combined).digest('hex')
 }
 

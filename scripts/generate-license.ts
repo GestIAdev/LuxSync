@@ -12,17 +12,26 @@
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Reutilizamos tipos y funciones del motor RSA
 // (en ejecución directa con tsx/ts-node, el import funciona)
-import {
-  type LicenseTier,
-  type LuxLicensePayload,
-  type LuxLicense,
-  serializePayload,
-  hashPayload,
-  rsaSign
-} from '../electron-app/electron/license/VeritasRSA'
+import type { LicenseTier, LuxLicensePayload, LuxLicense } from '../electron-app/electron/license/VeritasRSA.js'
+// 🔒 WAVE 8273: VeritasRSA.ts vive en electron-app (scope CommonJS) — con
+// tsx/ESM solo expone default. Destructurar de module.exports.
+import VeritasRSA from '../electron-app/electron/license/VeritasRSA.js'
+// Misma regla: LicenseValidator.js es CJS standalone — default import =
+// module.exports. Es LA MISMA función getHardwareId que corre en el .jsc.
+import LicenseValidator from '../electron-app/electron/license/LicenseValidator.js'
+
+const { serializePayload, hashPayload, rsaSign } = VeritasRSA as {
+  serializePayload: (p: LuxLicensePayload) => string
+  hashPayload: (p: LuxLicensePayload) => string
+  rsaSign: (dataHash: string, privateKeyPem: string) => string
+}
+const { getHardwareId } = LicenseValidator as { getHardwareId: () => string }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLI ARGUMENT PARSER — Zero dependencias
@@ -51,15 +60,23 @@ function parseArgs(): CLIArgs {
   }
 
   const client = map.get('client')
-  const hwid = map.get('hwid')
+  let hwid = map.get('hwid')
   const tier = map.get('tier')
   const out = map.get('out')
   const expiresAt = map.get('expiresAt')  // 🔒 V-03: Optional
 
+  // 🔒 WAVE 8273: "--hwid self" computa el fingerprint con la MISMA función
+  // que el validador compilado — anclas inmutables WMI (boardUUID + physMAC),
+  // garantizando paridad exacta entre la licencia emitida y el hash offline.
+  if (hwid === 'self') {
+    hwid = getHardwareId()
+    console.log(`  🔑 HWID auto-detectado (esta máquina): ${hwid}`)
+  }
+
   if (!client || !hwid || !tier || !out) {
-    console.error('❌ Uso: npx tsx scripts/generate-license.ts --client "nombre" --hwid "fingerprint-hash" --tier DJ_FOUNDER --out ./ruta.luxlicense [--expiresAt 2026-12-31T23:59:59Z]')
+    console.error('❌ Uso: npx tsx scripts/generate-license.ts --client "nombre" --hwid "fingerprint-hash|self" --tier DJ_FOUNDER --out ./ruta.luxlicense [--expiresAt 2026-12-31T23:59:59Z]')
     console.error('   --client     Nombre/alias del DJ')
-    console.error('   --hwid       Hardware ID (SHA-256 fingerprint hash from getHardwareId())')
+    console.error('   --hwid       Hardware ID (SHA-256 fingerprint), o "self" para usar la máquina local')
     console.error('   --tier       DJ_FOUNDER | FULL_SUITE')
     console.error('   --out        Ruta del archivo .luxlicense a generar')
     console.error('   --expiresAt  (Opcional) Fecha de expiración ISO. Sin este flag = licencia vitalicia')

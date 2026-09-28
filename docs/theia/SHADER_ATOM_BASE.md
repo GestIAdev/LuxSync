@@ -4,6 +4,10 @@ Documento **autocontenido** para generar nuevos átomos `.glsl` para el motor
 Theia/Euclid de LuxSync. Todo lo que un generador necesita está aquí — no hace
 falta más contexto del repositorio.
 
+> *Contrato al día: WAVE 8279 — incluye la página B física de Liquid
+> (§6.2), los pulsos `u_vocalOnset`/`u_snareTruePulse`/`u_voidRelease`,
+> `euTimbre()` (§8.2) y la deprecación del estrobo (Fase 5).*
+
 Los átomos viven en `electron-app/assets/shaders/*.glsl`. El motor compila cada
 archivo como: **preámbulo generado → tus defines/meta → tu cuerpo → epílogo
 generado**. El artista escribe `mainImage()`; el motor posee la salida.
@@ -98,6 +102,11 @@ temblores; usa los relojes para movimiento continuo.
 | `u_glassBreak` | Pulso de ruptura soberana (τ=380ms) — el drop llegó ANTES de agotar el countdown | GLASS_BREAK |
 | `u_approach` | Rampa 0→1 tensando el espacio antes del drop | Predicción + confianza, horizonte 8 beats |
 | `u_predictiveETA` | Cuenta atrás al evento (s) | Selene |
+| `u_vocalOnset` 🌊 | `exp(-t/600ms)` — la voz APARECE: respiración lenta, no un golpe | VOCAL_ONSET (pág. B) |
+| `u_snareTruePulse` 🌊 | `exp(-t/¼beat)` — caja confirmada por el detector MACD (cero falsos positivos vocales) | SNARE_TRUE (pág. B) |
+| `u_voidRelease` 🌊 | `A·exp(-t/450ms)` — rebote al salir del vacío rítmico; **A ∝ lo que duró** (0.25 → hold≥2s, 1.0 → hold≥8s) | VOID_RELEASE (pág. B) |
+
+🌊 *WAVE 8279 · Página B — pulsos físicos del DSP Liquid (ver §6.2).*
 
 ## 5. Bandas de audio (suavizadas por frame, ~0..1)
 
@@ -120,6 +129,38 @@ Tonalidad: `u_chromaHue` (circular, usar en `palette()`) · `u_chromaFlux` ·
 Omniliquid (capas de fondo): `u_morphFactor` (muy suave) · `u_recoveryFactor` ·
 `u_lqFloor` · `u_lqAmbient` · `u_lqAir`
 
+### 6.2 Liquid DSP — física acústica en vivo (Página B, WAVE 8279)
+
+Lo que el motor Liquid **mide en el audio**, no lo que predice. Todo ~0..1
+salvo los relojes (segundos) y los deltas crudos. *Suavizados* = attack/release
+por frame; *crudo* = valor del instante, sin suavizar (rápido, usable tal cual).
+
+**Voz y mezcla** (suavizadas): `u_vocalSustain` (sostén vocal, decae honesto
+en silencio) · `u_vocalIsolation` (cuánta voz aislada hay — sustenta `VOCAL_ONSET`)
+· `u_cleanMid` (medios limpios de percusión) · `u_synthSustain` (sostén sintético
+continuo — la "calma viscosa" del synth)
+
+**Vacío rítmico**: `u_rhythmicVoid` (nivel de vacío percusivo — la sequía que
+alimenta `u_voidRelease`) · `u_percAbsence` · `u_voidHold` (**reloj crudo** —
+segundos continuos de vacío ≥0.75; se resetea en el release) ·
+`u_vocalTime` (**reloj** — ∫vocalIsolation·dt, fase lenta de presencia vocal)
+
+**Caja verdadera** (detector MACD — inmune a falsos positivos vocales):
+`u_snareDrive` · `u_snareMomentum` (crudos) · `u_gateHealth` (salud de la
+compuerta — cae a 0 con caja sintética) · `u_snareCrack` (leading edge del
+golpe)
+
+**Zonas espaciales del rig** (intensidad 0..1 por parlante):
+`u_zFrontL/R` · `u_zBackL/R` · `u_zMoverL/R` · `u_zSnareAttack`
+
+**Naturaleza del material**: `u_whiteNoise` (score de ruido blanco) ·
+`u_wallIntensity` (wall-of-sound del photon) · `u_spectralDensity` (densidad
+de contenido) · `u_fluxBaseline` (baseline de flux normalizado) ·
+`u_agcStress` (estrés del AGC — señal llegando aplastada, ~0..1)
+
+**Deltas crudos** (cambio frame a frame, sin rectificar ni suavizar):
+`u_midDelta` · `u_highMidDelta` · `u_trebleDelta` · `u_hhDelta`
+
 **Iliquidcore — cognición estructural (Selene V3, WAVE 8275):**
 
 | Uniform | Semántica | Uso canónico |
@@ -129,7 +170,7 @@ Omniliquid (capas de fondo): `u_morphFactor` (muy suave) · `u_recoveryFactor` �
 | `u_percussiveness` | Π — densidad Poisson de crestas [0,1] | Densidad geométrica: más crestas → más filos, más partículas |
 | `u_melodicity` | M — contenido armónico/melódico [0,1] | Tinte armónico: curvas suaves vs. angulosas |
 | `u_crestRate` | Crestas CF>2 por segundo — **sin clamp** (>1 legal) | Excitación por tasa: `min(1.0, u_crestRate * 0.2)` |
-| `u_strobeGate` | Nivel 0/1 — StrobeEngine de GodEar activo | Compuerta de estrobo local (respeta el limitador del epílogo) |
+| ~~`u_strobeGate`~~ | ⚠️ **DEPRECADO (Fase 5)** — siempre 0.0; el StrobeEngine está desactivado | No usar — se conserva solo para que shaders viejos sigan compilando |
 
 `ivec4 u_enums`: `x`=schema `y`=predictionType
 (0 none · 1 drop_incoming · 2 buildup_starting · 3 breakdown_imminent ·
@@ -142,6 +183,7 @@ Omniliquid (capas de fondo): `u_morphFactor` (muy suave) · `u_recoveryFactor` �
 AUDIO_LIVE  PLL_LOCKED  ON_BEAT  KICK  KICK_EDGE  SNARE  HIHAT
 PREDICTION_ACTIVE  BREAKDOWN  APOCALYPSE  ACID  COLOR_SNAP  RHYTHMIC_VOID
 CREST_EVENT  STROBE_ACTIVE  SOVEREIGN_COUNTDOWN  GLASS_BREAK   // 🧠 WAVE 8275
+REAL_SILENCE  VOCAL_ONSET  NOISE_MODE  GATE_DEAD  SNARE_TRUE  VOID_RELEASE  // 🌊 WAVE 8279
 ```
 
 Uso: `if (glitch > 0.01) {...}`, `if (ACID) col *= ...`,
@@ -151,9 +193,21 @@ WAVE 8275 (soberanos): `CREST_EVENT` es **flanco** (está encendido el tick
 de la cresta — para pulsos usa `u_crestPulse`, ya suavizado).
 `SOVEREIGN_COUNTDOWN` es **nivel**: pre-buffer de Cassandra armado con
 `predictedEventAt` pendiente — abre el portal/anticipación visual antes del
-drop. `STROBE_ACTIVE` es nivel (StrobeEngine disparando). `GLASS_BREAK`
-es ventana ~250ms tras la ruptura — para el efecto sostenido usa
-`u_glassBreak` (pulso).
+drop. ~~`STROBE_ACTIVE`~~ es ⚠️ **DEPRECADO — siempre apagado** (Fase 5:
+el StrobeEngine está desactivado; conservado solo para que shaders viejos
+compilen — los flashes reales usan `u_*Pulse` + el limitador del epílogo).
+`GLASS_BREAK` es ventana ~250ms tras la ruptura — para el efecto sostenido
+usa `u_glassBreak` (pulso).
+
+WAVE 8279 (página B — física Liquid): **niveles** — `REAL_SILENCE` (silencio
+físico real: el DSP está en rama silencio/AGC-trap — apaga efectos de
+audio, no el latido libre), `NOISE_MODE` (el espectro es ruido, flatness
+alto), `GATE_DEAD` (compuerta de caja muerta — caja sintética o
+indetectable). **Flancos** — `VOCAL_ONSET` (la voz entra), `SNARE_TRUE`
+(caja confirmada por MACD), `VOID_RELEASE` (el vacío rítmico termina tras
+≥2s de hold). Para los tres hay pulso suavizado ya calculado:
+`u_vocalOnset` · `u_snareTruePulse` · `u_voidRelease` — **usa siempre el
+pulso**, el bit es solo el tick del evento.
 
 ## 8. `euChannels` — los 5 canales derivados (evaluar UNA vez por píxel)
 
@@ -170,6 +224,44 @@ euChannels(tc, td, glitch, live, groove);
 | `live` | 1.0 si `AUDIO_LIVE`, si no 0.3 | Factor de vida global — sin audio el átomo respira suave |
 | `groove` | `u_beatConfidence` si `PLL_LOCKED`, si no 0.25 | Swing solo con pulso fiable |
 
+### 8.2 `euTimbre()` — mezcla de texturas físicas (WAVE 8279 · F4)
+
+```glsl
+vec4 euTimbre()   // ya inyectada — llámala directo, una vez por píxel
+```
+
+Devuelve **pesos convexos (Σ=1)** de las 4 "texturas" que el DSP Liquid mide
+en el audio en este instante:
+
+| Componente | Textura | Fuente |
+|---|---|---|
+| `tb.x` | **Voz** — presencia humana | `u_vocalIsolation` |
+| `tb.y` | **Synth** — sostén sintético viscoso | `u_synthSustain` |
+| `tb.z` | **Percusión** — densidad de golpes | `u_percussiveness` |
+| `tb.w` | **Grano/ruido** — textura estática | `max(u_whiteNoise, u_spectralDensity)` |
+
+Los pesos se elevan al cuadrado antes de normalizar (`w *= w`) → la textura
+dominante gana protagonismo, la mezcla nunca queda en gris a medio gas.
+En silencio total devuelve `(0,1,0,0)` — calma viscosa (synth puro) en
+lugar de un NaN.
+
+Uso canónico — **morphing entre materiales/geometrías por naturaleza del
+sonido**:
+
+```glsl
+vec4 tb = euTimbre();
+
+// Mezcla cromática por textura (voz cálida, synth frío, percusión dura):
+vec3 col = tb.x * colVoice + tb.y * colSynth + tb.z * colPerc + tb.w * colGrain;
+
+// Morfología: percusión dominante → filos; synth → superficie lisa
+float edges  = mix(3.0, 9.0, tb.z + tb.w * 0.5);
+float viscos = tb.y;   // más synth → más lodo/menos detalle
+
+// La voz respira con su onset (τ=600ms) — no necesitas el flag:
+col += u_vocalOnset * tb.x * vec3(0.9, 0.7, 0.4);
+```
+
 ## 9. Biblioteca inyectada (gratis — no redefinir)
 
 ```glsl
@@ -180,6 +272,9 @@ float noise3(vec3 p);                                   // value noise trilineal
 float sdSphere(vec3 p, float r);  float sdBox(vec3 p, vec3 b);
 float sdTorus(vec3 p, vec2 t);    float smin(float a, float b, float k);
 vec3 opRep(vec3 p, vec3 c);                             // repetición de dominio
+vec4 euTimbre();                                        // §8.2 — 4 texturas Σ=1
+void euChannels(out float tc, out float td, out float glitch,
+                out float live, out float groove);      // §8 — canales §3.1
 #define MAX_STEPS N    // del hint @euclid steps (def. 64)
 #define iTime iResolution iFrameRate                    // compat Shadertoy
 ```
@@ -286,6 +381,11 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 - [ ] Movimiento continuo sobre `u_beatTime`/`u_time` (obedece SPEED);
       impactos sobre `u_kickPulse`/`u_impact`/`u_*Energy` (tiempo real).
 - [ ] `euChannels` evaluado una vez; `live` multiplica la vida del átomo.
+- [ ] Texturas/morphs por naturaleza del audio via `euTimbre()` (§8.2) —
+      pulsos físicos con `u_vocalOnset`/`u_snareTruePulse`/`u_voidRelease`,
+      no con los flags crudos.
+- [ ] ⚠️ `u_strobeGate`/`STROBE_ACTIVE` DEPRECADOS (Fase 5, siempre 0) —
+      no los uses; flashes → pulsos + el limitador fotosensible del epílogo.
 - [ ] Salida LINEAL — sin `pow(`, `exp(-` tonemap ni `clamp` final propios.
 - [ ] Bucles de marcha acotados por `MAX_STEPS` y early-out (`if (trans < eps) break`).
 - [ ] Nada de `textureLod`/cubemaps externos — solo `u_prevFrame`, `u_state`,

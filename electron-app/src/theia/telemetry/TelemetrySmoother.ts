@@ -77,6 +77,22 @@ const APPROACH_K = 0.3
 /** Fuerza de la corrección suave de u_beatTime hacia BEAT_PHASE (§3.4). */
 const BEATTIME_CORRECT_K = 0.15
 
+// ─────────────────────────── 🔬 WAVE 8281-RECON — diag ─────────────────────────
+//
+// Monitor de diagnóstico en vivo (~10 Hz). Se activa en runtime — sin build:
+//   · worker (pipeline principal): devtools → contexto worker →
+//     `self.__EUCLID_TEL_DIAG__ = true`
+//   · página (TheiaOutputView, modo B): `window.__EUCLID_TEL_DIAG__ = true`
+// Apagado cuesta una lectura de propiedad por frame. Encendido imprime los
+// valores EXACTOS que entran a la UBO (out suavizado + raw entre paréntesis).
+const TEL_DIAG_INTERVAL_MS = 100
+
+function telDiagOn(): boolean {
+  return Boolean(
+    (globalThis as { __EUCLID_TEL_DIAG__?: unknown }).__EUCLID_TEL_DIAG__,
+  )
+}
+
 // Kind codes internos (Uint8 — cero alloc, lookups planos).
 const KIND_NONE = 0
 const KIND_LINEAR = 1
@@ -171,6 +187,14 @@ export class TelemetrySmoother {
   private _voidReleaseMs = -1
   private _voidReleaseAmp = 0
   private _lastVoidHold = 0
+
+  // 🔬 WAVE 8281-RECON — estado del monitor de diagnóstico (~10 Hz).
+  private _diagLastMs = -1
+  private _diagVTPrev = 0
+  private _diagVTPrevMs = -1
+  private _diagBTPrev = 0
+  private _diagFresh = 0
+  private _diagFrames = 0
 
   constructor() {
     let nLin = 0
@@ -315,6 +339,112 @@ export class TelemetrySmoother {
       this._stepExtrapolated(raw, fresh, dtMs, dtS, bps)
       this._stepDerived(raw, dtF, dtS, bps, nowMs)
     }
+
+    // 🔬 WAVE 8281-RECON — monitor de diagnóstico (off = 1 lectura de prop).
+    if (telDiagOn()) this._diagTick(raw, flags, fresh, nowMs)
+  }
+
+  // ───────────────── 🔬 WAVE 8281-RECON — monitor ~10 Hz ─────────────────
+
+  /**
+   * Imprime los valores EXACTOS que entran a la UBO (columna `out`) junto al
+   * raw publicado por el DSP (columna `raw`), más los relojes derivados y la
+   * réplica matemática de `euTimbre()`. Solo corre con `__EUCLID_TEL_DIAG__`
+   * truthy — las asignaciones de strings a 10 Hz son aceptables en modo diag.
+   */
+  private _diagTick(
+    raw: Float32Array | null,
+    flags: number,
+    fresh: boolean,
+    nowMs: number,
+  ): void {
+    this._diagFrames++
+    if (fresh) this._diagFresh++
+    if (this._diagLastMs < 0) {
+      this._diagLastMs = nowMs
+      console.info(
+        '[TELDIAG] WAVE 8281-RECON — monitor ~10Hz ON. ' +
+          'Apagar: __EUCLID_TEL_DIAG__ = 0',
+      )
+      return
+    }
+    const el = nowMs - this._diagLastMs
+    if (el < TEL_DIAG_INTERVAL_MS) return
+
+    const telHz = (this._diagFresh * 1000) / el
+    const fps = (this._diagFrames * 1000) / el
+    this._diagLastMs = nowMs
+    this._diagFrames = 0
+    this._diagFresh = 0
+
+    if (raw === null) {
+      console.info(
+        `[TELDIAG] sin frames de telemetría (render ${fps.toFixed(0)}fps) — ` +
+          'ring vacío o pump apagado',
+      )
+      return
+    }
+
+    const out = this.out
+    const f = (x: number): string => x.toFixed(2)
+    const ro = (slot: number): string =>
+      `${f(raw[slot])}→${f(out[slot - SLOT_PAYLOAD_BASE])}`
+
+    // Tasa de u_vocalTime — el host integra vocalIsolation·dt, así que la
+    // tasa esperada ≈ vIso. Si vT va a tirones o se clava → reloj roto.
+    const vt = out[TELEMETRY_SLOT.VOCAL_TIME - SLOT_PAYLOAD_BASE]
+    const vtRate =
+      this._diagVTPrevMs >= 0
+        ? ((vt - this._diagVTPrev) * 1000) / (nowMs - this._diagVTPrevMs)
+        : 0
+    this._diagVTPrev = vt
+    this._diagVTPrevMs = nowMs
+    const btRate = ((this.beatTime - this._diagBTPrev) * 1000) / el
+    this._diagBTPrev = this.beatTime
+
+    // Réplica EXACTA de euTimbre() del preámbulo GLSL (w², Σ=1, fallback).
+    const vIso = out[TELEMETRY_SLOT.VOCAL_ISOLATION - SLOT_PAYLOAD_BASE]
+    const syn = out[TELEMETRY_SLOT.SYNTH_SUSTAIN - SLOT_PAYLOAD_BASE]
+    const perc = out[TELEMETRY_SLOT.PERCUSSIVENESS - SLOT_PAYLOAD_BASE]
+    const grain = Math.max(
+      out[TELEMETRY_SLOT.WHITE_NOISE - SLOT_PAYLOAD_BASE],
+      out[TELEMETRY_SLOT.SPECTRAL_DENSITY - SLOT_PAYLOAD_BASE],
+    )
+    const wv = vIso * vIso
+    const ws = syn * syn
+    const wp = perc * perc
+    const wg = grain * grain
+    const wsum = wv + ws + wp + wg
+    const timbre =
+      wsum > 1e-4
+        ? `v${f(wv / wsum)} s${f(ws / wsum)} p${f(wp / wsum)} g${f(wg / wsum)}`
+        : 'v0.00 s1.00 p0.00 g0.00 (fallback)'
+
+    let fl = ''
+    if ((flags & (1 << TEL_FLAG.VOCAL_ONSET)) !== 0) fl += ' VON'
+    if ((flags & (1 << TEL_FLAG.SNARE_TRUE)) !== 0) fl += ' SNT'
+    if ((flags & (1 << TEL_FLAG.VOID_RELEASE)) !== 0) fl += ' VRL'
+    if ((flags & (1 << TEL_FLAG.REAL_SILENCE)) !== 0) fl += ' SIL'
+    if ((flags & (1 << TEL_FLAG.GATE_DEAD)) !== 0) fl += ' GDE'
+    if ((flags & (1 << TEL_FLAG.NOISE_MODE)) !== 0) fl += ' NZM'
+    if ((flags & (1 << TEL_FLAG.KICK_EDGE)) !== 0) fl += ' KCK'
+    if ((flags & (1 << TEL_FLAG.PREDICTION_ACTIVE)) !== 0) fl += ' PRD'
+
+    console.info(
+      `[TELDIAG] vIso ${ro(TELEMETRY_SLOT.VOCAL_ISOLATION)}` +
+        ` | vSus ${ro(TELEMETRY_SLOT.VOCAL_SUSTAIN)}` +
+        ` | syn ${ro(TELEMETRY_SLOT.SYNTH_SUSTAIN)}` +
+        ` | perc ${ro(TELEMETRY_SLOT.PERCUSSIVENESS)}` +
+        ` | mel ${ro(TELEMETRY_SLOT.MELODICITY)}` +
+        ` | wn ${f(raw[TELEMETRY_SLOT.WHITE_NOISE])} sd ${f(raw[TELEMETRY_SLOT.SPECTRAL_DENSITY])}` +
+        ` | vT ${f(vt)}s (${vtRate >= 0 ? '+' : ''}${vtRate.toFixed(2)}/s)` +
+        ` bt ${btRate >= 0 ? '+' : ''}${btRate.toFixed(2)}/s` +
+        ` | void ${f(out[TELEMETRY_SLOT.RHYTHMIC_VOID - SLOT_PAYLOAD_BASE])}` +
+        ` hold ${f(raw[TELEMETRY_SLOT.VOID_HOLD])}` +
+        ` | timbre ${timbre}` +
+        ` | flg${fl === '' ? ' -' : fl}` +
+        ` | tel ${telHz.toFixed(0)}Hz ${fps.toFixed(0)}fps v${this.schemaVersion}`,
+    )
   }
 
   // ─────────────────────────── Extrapolate (§3.3) ─────────────────────────

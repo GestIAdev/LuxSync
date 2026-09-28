@@ -10,7 +10,7 @@
  *    approach, impact — zero-alloc, escalares pre-asignados.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   SLOT_PAYLOAD_BASE,
   TELEMETRY_RING_BYTES,
@@ -539,5 +539,73 @@ describe('TelemetrySmoother — WAVE 8279 F4 liquid pulses', () => {
       sm.step(rawScratch({ [VOCAL_SUSTAIN]: 0.9 }), 0, 0, true, 1000 / 60, i * (1000 / 60))
     }
     expect(sm.out[idx]).toBeCloseTo(0.9, 1)
+  })
+})
+
+// ─────────── 🔬 WAVE 8281-RECON — monitor de diagnóstico (~10 Hz) ───────────
+
+describe('TelemetrySmoother — WAVE 8281 TELDIAG monitor', () => {
+  it('off por defecto: step() no logea sin __EUCLID_TEL_DIAG__', () => {
+    const sm = new TelemetrySmoother()
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      for (let i = 0; i <= 30; i++) {
+        sm.step(rawScratch({ [BPM]: 120 }), 0, 0, true, 16.7, i * 16.7)
+      }
+      expect(spy).not.toHaveBeenCalled()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('on: imprime ~10 Hz los valores UBO + réplica euTimbre + relojes', () => {
+    const g = globalThis as { __EUCLID_TEL_DIAG__?: unknown }
+    g.__EUCLID_TEL_DIAG__ = true
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const sm = new TelemetrySmoother()
+      const raw = rawScratch({
+        [BPM]: 120,
+        [TELEMETRY_SLOT.VOCAL_ISOLATION]: 0.6,
+        [TELEMETRY_SLOT.VOCAL_SUSTAIN]: 0.4,
+        [TELEMETRY_SLOT.SYNTH_SUSTAIN]: 0.3,
+        [TELEMETRY_SLOT.VOCAL_TIME]: 2.5,
+        [VOID_HOLD]: 0,
+      })
+      // 1s a 60Hz → ~10 líneas (1 banner + ~10 data).
+      for (let i = 0; i <= 60; i++) {
+        sm.step(raw, VOCAL_ONSET_BIT, 0, true, 1000 / 60, i * (1000 / 60))
+      }
+      const lines = spy.mock.calls.map(c => String(c[0]))
+      expect(lines[0]).toContain('8281-RECON')
+      const data = lines.filter(l => l.includes('vIso'))
+      expect(data.length).toBeGreaterThanOrEqual(8)
+      expect(data.length).toBeLessThanOrEqual(12)
+      // Columnas clave: raw→out vocal, euTimbre, reloj vocal, cadencia.
+      expect(data[data.length - 1]).toContain('vIso 0.60→')
+      expect(data[data.length - 1]).toContain('timbre v')
+      expect(data[data.length - 1]).toContain('vT 2.50s')
+      expect(data[data.length - 1]).toContain('VON')
+      expect(data[data.length - 1]).toContain('tel ')
+    } finally {
+      spy.mockRestore()
+      delete g.__EUCLID_TEL_DIAG__
+    }
+  })
+
+  it('sin telemetría: reporta "sin frames" en vez de quedarse mudo', () => {
+    const g = globalThis as { __EUCLID_TEL_DIAG__?: unknown }
+    g.__EUCLID_TEL_DIAG__ = true
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const sm = new TelemetrySmoother()
+      sm.step(null, 0, 0, false, 16.7, 0) // banner
+      sm.step(null, 0, 0, false, 16.7, 200) // primera ventana de 100ms
+      const lines = spy.mock.calls.map(c => String(c[0]))
+      expect(lines.some(l => l.includes('sin frames'))).toBe(true)
+    } finally {
+      spy.mockRestore()
+      delete g.__EUCLID_TEL_DIAG__
+    }
   })
 })

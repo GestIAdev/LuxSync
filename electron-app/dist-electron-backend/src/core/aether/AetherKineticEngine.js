@@ -272,12 +272,22 @@ export class AetherKineticEngine {
         /** WAVE 4938: Referencia al último NodeArbiter pasado en tick() */
         this._arbiter = null;
         /**
+         * 🧠 WAVE 8271: espejo persistente de las pistas por deviceId.
+         * Las cfgs se comparten por referencia — updateScalars() las muta in-place
+         * y el store queda siempre fresco. Solo escrituras en gesture/patch time.
+         */
+        this._kineticStore = null;
+        /**
          * 🔥 WAVE 4731 PASO 3: Grand Master Speed multiplicador para L2.
          * Escala la frecuencia del motor L2 igual que globalSpeedMultiplier escala L0.
          * Default 1.0 = sin escala. Rango [0.1, 2.0].
          * Seteado desde AetherIPCHandlers vía setGrandMasterSpeed.
          */
         this._gmSpeed = 1.0;
+    }
+    /** WAVE 8271: Inyecta el store persistente de estado cinético. */
+    setKineticStateStore(store) {
+        this._kineticStore = store;
     }
     // ── API pública ──────────────────────────────────────────────────────────
     /**
@@ -334,6 +344,8 @@ export class AetherKineticEngine {
                 fanTotal: total,
                 mountOrientation: (mountOrientations && mountOrientations[i]) ? mountOrientations[i].toLowerCase().trim() : 'floor',
             });
+            // 🧠 WAVE 8271: mirror — referencia viva, updateScalars() la muta in-place.
+            this._kineticStore?.notePattern(nodeId, this._nodeConfigs.get(nodeId));
         }
     }
     /**
@@ -345,6 +357,7 @@ export class AetherKineticEngine {
         for (const nodeId of nodeIds) {
             if (this._nodeConfigs.delete(nodeId)) {
                 arbiter.clearMotorKineticOverride(nodeId);
+                this._kineticStore?.dropPattern(nodeId);
                 this._phaseMap.delete(nodeId);
                 // WAVE 4982 Paso 3: Purgar posición anterior del Filtro Glaciar.
                 // Sin esto, _prevPositionMap retiene el último frame activo. Al reactivar,
@@ -370,6 +383,63 @@ export class AetherKineticEngine {
         }
         this._nodeConfigs.clear();
         this._phaseMap.clear();
+        this._kineticStore?.dropAllPatterns();
+    }
+    /**
+     * 🧠 WAVE 8271 — REHYDRATE: reinstala una pista guardada en el store.
+     *
+     * Idéntico efecto a setManualKinetics() pero para UN solo nodo, reutilizando
+     * la cfg persistida (referencia viva → updateScalars sigue funcionando
+     * si el operador retoca sliders tras un repatch).
+     * PATCH TIME — llamado por FixtureHydrationEngine antes del primer tick.
+     */
+    restoreNodeConfig(nodeId, cfg, _arbiter) {
+        if (this._nodeConfigs.has(nodeId))
+            return; // el nodo vivo ya tiene pista — no pisar
+        this._phaseMap.set(nodeId, 0);
+        if (!this._smoothOffsetX.has(nodeId))
+            this._smoothOffsetX.set(nodeId, 0);
+        if (!this._smoothOffsetY.has(nodeId))
+            this._smoothOffsetY.set(nodeId, 0);
+        if (!this._overridePool.has(nodeId)) {
+            this._overridePool.set(nodeId, { pan_base: 0.5, tilt_base: 0.5 });
+        }
+        this._nodeConfigs.set(nodeId, {
+            pattern: cfg.pattern,
+            speed: cfg.speed,
+            amplitude: cfg.amplitude,
+            fan: cfg.fan,
+            fanIndex: cfg.fanIndex,
+            fanTotal: cfg.fanTotal,
+            mountOrientation: cfg.mountOrientation,
+        });
+        this._kineticStore?.notePattern(nodeId, this._nodeConfigs.get(nodeId));
+    }
+    /**
+     * 🧹 WAVE 8271 — UNREGISTER DEVICE: purga TODAS las pistas y cachés
+     * pertenecientes a un deviceId eliminado del patch (leak detectado en
+     * WAVE 8270-RECON: _nodeConfigs/_phaseMap/_prevPositionMap/_smoothOffsets
+     * y _overridePool crecían sin eviction para nodeIds muertos).
+     * PATCH TIME — nunca en hot path.
+     */
+    unregisterDevice(deviceId, arbiter) {
+        const prefix = `${deviceId}:`;
+        for (const nodeId of Array.from(this._nodeConfigs.keys())) {
+            if (!nodeId.startsWith(prefix) && nodeId !== deviceId)
+                continue;
+            this._nodeConfigs.delete(nodeId);
+            arbiter.clearMotorKineticOverride(nodeId);
+            this._kineticStore?.dropPattern(nodeId);
+            this._phaseMap.delete(nodeId);
+            this._prevPositionMap.delete(nodeId);
+            this._smoothOffsetX.delete(nodeId);
+            this._smoothOffsetY.delete(nodeId);
+            this._overridePool.delete(nodeId);
+        }
+    }
+    /** PATCH TIME: nodeIds actualmente configurados (para diff de dispositivos). */
+    getConfiguredNodeIds() {
+        return Array.from(this._nodeConfigs.keys());
     }
     /**
      * WAVE 4712: Actualiza scalars (speed/amplitude/fan) SOLO para los nodeIds

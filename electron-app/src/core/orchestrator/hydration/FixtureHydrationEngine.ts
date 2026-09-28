@@ -28,6 +28,9 @@ import { AtmosphereCueDriver } from '../../aether/atmosphere/AtmosphereCueDriver
 import { LiquidAetherAdapter } from '../../aether/adapters/LiquidAetherAdapter'
 import { ChronosAetherAdapter } from '../../aether/adapters/ChronosAetherAdapter'
 import { AetherSafetyMiddleware } from '../../aether/egress/AetherSafetyMiddleware'
+import { KineticStateStore } from '../../aether/KineticStateStore'
+import { aetherKineticEngine } from '../../aether/AetherKineticEngine'
+import type { NodeId } from '../../aether/types'
 import type { HardwareAbstraction } from '../../../hal/HardwareAbstraction'
 import type { TacticalLogManager } from '../logging/TacticalLogManager'
 import type { StateManager } from '../lifecycle/StateManager'
@@ -106,8 +109,29 @@ export interface HydrationContext {
 export class FixtureHydrationEngine {
   private readonly ctx: HydrationContext
 
+  /**
+   * 🧠 WAVE 8271: store persistente del estado cinético explícito del operador,
+   * indexado por deviceId. Sobrevive a los repatches en caliente — los maps
+   * del arbiter/engine lo espejan por referencia (gesture time only).
+   * Ver docs/technical_audits/KINETIC_STATE_DEHYDRATION_AUDIT.md.
+   */
+  private readonly _kineticStore = new KineticStateStore()
+
   constructor(ctx: HydrationContext) {
     this.ctx = ctx
+  }
+
+  /** WAVE 8271: exposición del store para tests/IPC (read-only view). */
+  public get kineticStateStore(): KineticStateStore {
+    return this._kineticStore
+  }
+
+  /** Cableado idempotente del store a los subsystems L2 (patch-time only). */
+  private _ensureStoreWired(): void {
+    if (this.ctx.aetherArbiter) {
+      this.ctx.aetherArbiter.setKineticStateStore(this._kineticStore)
+    }
+    aetherKineticEngine.setKineticStateStore(this._kineticStore)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -116,10 +140,23 @@ export class FixtureHydrationEngine {
 
   /**
    * WAVE 252: Set fixtures from ConfigManager (real data, no mocks)
+   * WAVE 8271: `options.isShowLoad` distingue carga de show (wipe total)
+   * de patch delta en caliente (estado cinético preservado por deviceId).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setFixtures(fixtures: any[], stageBounds?: StageBoundsInput): '4.1' | '7.1' {
+  setFixtures(
+    fixtures: any[],
+    stageBounds?: StageBoundsInput,
+    options?: { isShowLoad?: boolean },
+  ): '4.1' | '7.1' {
     const ctx = this.ctx
+
+    this._ensureStoreWired()
+    if (options?.isShowLoad) {
+      // Carga de show real — wipe del store persistente además de la
+      // purga L2 que TitanOrchestrator ejecuta vía purgeForShow().
+      this._kineticStore.clear()
+    }
 
     ctx.fixtures = fixtures.map(f => ({
       ...f,
@@ -196,6 +233,12 @@ export class FixtureHydrationEngine {
       definition.deviceId, definition.universe, definition.isVirtual ?? false,
     )
 
+    // 🧠 WAVE 8271 — KINETIC REHYDRATION: antes de que el device entre al
+    // tick pipeline, re-inyectar cualquier estado mecánico guardado
+    // (overrides manuales, target espacial, patrón L2, inhibit limit, locks,
+    // posición física capturada pre-unregister). No-op para devices nuevos.
+    this._rehydrateKineticState(definition.deviceId, nodeIds)
+
     if (forgeGraph && forgeGraph.nodes.length > 0) {
       try {
         const compiled = ForgeGraphCompiler.compile(forgeGraph, definition.deviceId)
@@ -212,11 +255,129 @@ export class FixtureHydrationEngine {
 
   /**
    * Retira un dispositivo del Motor Agnostico Aether.
+   * WAVE 8271: exorcismo completo — el device desaparece del grafo Y de
+   * todos los subsistemas que cacheaban su estado (leak de WAVE 8270-RECON).
    */
   public unregisterAetherDevice(deviceId: string): void {
-    this.ctx.aetherGraph.unregisterDevice(deviceId as import('../../aether/types').DeviceId)
+    this._exorcizeDevice(deviceId as import('../../aether/types').DeviceId)
     this._refreshAetherMoverShieldMap()
     this._refreshAetherNodeFixtureMap()
+  }
+
+  /**
+   * 🧹 WAVE 8271 — EXORCISMO POR DEVICE: purga el estado de un deviceId que
+   * fue REALMENTE eliminado del patch (no presente en el staged set).
+   *
+   * Orden: capturar nodeIds antes de unregisterDevice (el grafo los olvida
+   * permanentemente), luego limpiar grafo → arbiter → PPP → safety →
+   * resolver → kinetic engine → store.
+   *
+   * PATCH TIME — nunca en hot path.
+   */
+  private _exorcizeDevice(deviceId: import('../../aether/types').DeviceId): void {
+    const ctx = this.ctx
+    const nodeIds = ctx.aetherGraph.getDeviceNodes(deviceId)
+
+    ctx.aetherGraph.unregisterDevice(deviceId)
+    ctx.aetherArbiter?.purgeForDevice(deviceId as unknown as string)
+    for (const nodeId of nodeIds) {
+      ctx.physicsPostProcessor.unregisterNode(nodeId)
+    }
+    ctx.aetherSafety.unregisterDevice(deviceId, nodeIds)
+    ctx.aetherResolver?.unregisterDevice(deviceId, nodeIds)
+    if (ctx.aetherArbiter) {
+      aetherKineticEngine.unregisterDevice(deviceId as unknown as string, ctx.aetherArbiter)
+    }
+    this._kineticStore.deleteDevice(deviceId)
+  }
+
+  /**
+   * 🧠 WAVE 8271 — SNAPSHOT PRE-UNREGISTER: captura la posición física clásica
+   * (pan/tilt) de los nodos KINETIC de un device SUPERVIVIENTE justo antes de
+   * que sus nodeIds mueran en el swap. El store los devuelve en rehydrate
+   * para sembrar el PhysicsPostProcessor del nodo renombrado/reconstruido.
+   */
+  private _captureDeviceKineticSnapshot(deviceId: import('../../aether/types').DeviceId): void {
+    const ctx = this.ctx
+    for (const nodeId of ctx.aetherGraph.getDeviceNodes(deviceId)) {
+      const nodeData = ctx.aetherGraph.getNodeData(nodeId)
+      if (nodeData?.family !== NodeFamily.KINETIC) continue
+      const pos = ctx.physicsPostProcessor.getClassicPosition(nodeId)
+      if (pos) this._kineticStore.capturePosition(nodeId, pos.pan, pos.tilt)
+    }
+  }
+
+  /**
+   * 🧠 WAVE 8271 — KINETIC REHYDRATION.
+   *
+   * Consulta el KineticStateStore por deviceId y re-inyecta el estado guardado
+   * en los subsistemas vivos del device recién registrado:
+   *   - manualChannels → NodeArbiter.setManualOverride (gobos, prismas, focus,
+   *     anchors radar, rotación continua).
+   *   - motorOverride  → NodeArbiter.setMotorKineticOverride (targetX/Y/Z IK).
+   *   - spatialCoupled/distanceScale → locks espaciales del apuntado radar.
+   *   - inhibitLimit   → cap L2.5 de intensidad.
+   *   - pattern        → AetherKineticEngine.restoreNodeConfig (pista L2 viva).
+   *   - lastPan/lastTilt → PhysicsPostProcessor.seedClassicState (continuidad
+   *     mecánica — el primer frame NO teleporta a home).
+   *
+   * GUARDAS: solo se inyecta si el subsistema NO tiene ya un estado vivo
+   * (el estado en vivo siempre gana — el store es solo el respaldo de
+   * reconstrucción, nunca pisa una escritura más reciente del operador).
+   * NodeIds guardados que ya no existen en la nueva definición se descartan
+   * del store (fixture re-configurado — no resucitar canales zombis).
+   */
+  private _rehydrateKineticState(deviceId: string, nodeIds: readonly NodeId[]): void {
+    const ctx = this.ctx
+    const arbiter = ctx.aetherArbiter
+    if (!arbiter) return
+
+    const saved = this._kineticStore.getDevice(deviceId)
+    if (!saved || saved.size === 0) return
+
+    const liveNodeSet = new Set<NodeId>(nodeIds)
+    for (const [nodeId, st] of saved) {
+      if (!liveNodeSet.has(nodeId)) {
+        // Nodo que desapareció en la nueva definición — limpiar el store y
+        // cualquier resto vivo que pudiera quedar en el arbiter.
+        this._kineticStore.deleteNode(nodeId)
+        arbiter.clearManualOverride(nodeId)
+        arbiter.clearMotorKineticOverride(nodeId)
+        continue
+      }
+
+      // ── L2 manual channels (gobos, prism, focus, radar anchors, rotation) ──
+      if (st.manualChannels && !arbiter.getManualOverride(nodeId)) {
+        arbiter.setManualOverride(nodeId, st.manualChannels)
+      }
+      // ── Motor kinetic override (spatial targetX/Y/Z, pan_base/tilt_base) ──
+      if (st.motorOverride && !arbiter.getMotorKineticOverride(nodeId)) {
+        arbiter.setMotorKineticOverride(nodeId, st.motorOverride)
+      }
+      // ── Locks espaciales (protección del apuntado radar contra L0/L2 clásico)
+      if (st.spatialCoupled && !arbiter.isSpatialCoupledLocked(nodeId)) {
+        arbiter.setSpatialCoupledLock([nodeId])
+      }
+      if (st.distanceScale !== null && st.distanceScale !== undefined) {
+        arbiter.setSpatialDistanceScale(nodeId, st.distanceScale)
+      }
+      // ── Inhibit limit (cap de intensidad por nodo)
+      if (st.inhibitLimit !== null && st.inhibitLimit !== undefined) {
+        arbiter.setInhibitLimit(nodeId, st.inhibitLimit)
+      }
+      // ── Manual pattern lock
+      if (st.patternLock) {
+        arbiter.setManualPatternLock([nodeId])
+      }
+      // ── Pista L2 del motor cinético (rotación continua, círculos, fans)
+      if (st.pattern) {
+        aetherKineticEngine.restoreNodeConfig(nodeId, st.pattern, arbiter)
+      }
+      // ── Semilla de posición física (continuidad mecánica, cero teleport)
+      if (Number.isFinite(st.lastPan) && Number.isFinite(st.lastTilt)) {
+        ctx.physicsPostProcessor.seedClassicState(nodeId, st.lastPan, st.lastTilt)
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -413,13 +574,35 @@ export class FixtureHydrationEngine {
       }
     }
 
-    // Phase 2 — Atomic swap: unregister ALL old devices then immediately register
-    // ALL new ones. The window where the graph is empty is now as short as possible
-    // (two tight synchronous loops). TickEngine cannot observe this gap because the
-    // _isHydrating flag from F2 blocks tick() for the entire setFixtures call.
+    // Phase 2 — WAVE 8271: DEVICE-SCOPED RECONCILIATION (reemplaza el swap nuclear).
+    //
+    // Antes: unregisterDevice() para TODOS + purgeForShow() global → la
+    // "deshidratación cinética" (WAVE 8270-RECON) borraba el estado L2 de
+    // devices que ni siquiera cambiaron.
+    //
+    // Ahora, por cada device existente:
+    //   • Si sigue en el patch (deviceId estable) → SUPERVIVIENTE: capturamos
+    //     su posición física en el KineticStateStore, desregistramos y
+    //     re-registramos (def puede haber cambiado). Sus nodeIds se regeneran
+    //     determinísticamente → los maps L2 del arbiter/engine siguen
+    //     apuntando a los mismos ids → el estado mecánico NUNCA se pierde.
+    //   • Si desapareció → REMOVIDO: exorcismo completo (grafo, arbiter,
+    //     PPP, safety, resolver, kinetic engine y store).
+    //
+    // TickEngine no puede observar el gap — _isHydrating bloquea tick()
+    // durante todo el setFixtures.
     const existingIds = [...ctx.aetherGraph.getDeviceIds()]
+    const stagedIds = new Set<string>(staged.map(s => s.deviceDef.deviceId as unknown as string))
+
     for (const deviceId of existingIds) {
-      ctx.aetherGraph.unregisterDevice(deviceId)
+      if (stagedIds.has(deviceId as unknown as string)) {
+        // SUPERVIVIENTE — snapshot de posición + unregister (sin purgar estado L2)
+        this._captureDeviceKineticSnapshot(deviceId)
+        ctx.aetherGraph.unregisterDevice(deviceId)
+      } else {
+        // REMOVIDO — exorcismo completo con scope de device
+        this._exorcizeDevice(deviceId)
+      }
     }
     ctx.aetherHasDevices = false
 

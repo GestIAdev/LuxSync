@@ -310,6 +310,21 @@ export class NodeArbiter {
         this._spatialDistanceScales = new Map();
         /** WAVE 4914: contador throttled de logs de fusión. */
         this._fusionLogCounter = 0;
+        /**
+         * 🧠 WAVE 8271 — KINETIC STATE STORE (mirror de estado L2 por deviceId).
+         * Referencia opcional inyectada en patch-time por FixtureHydrationEngine.
+         * Todos los mutadores L2 espejan su post-state aquí para que el estado
+         * mecánico explícito sobreviva repatches (ver WAVE 8270-RECON).
+         */
+        this._kineticStore = null;
+    }
+    /** WAVE 8271: Inyecta el store persistente de estado cinético. */
+    setKineticStateStore(store) {
+        this._kineticStore = store;
+    }
+    /** Extrae el deviceId de un nodeId (legacy `${id}:${family}` o via _nodeFixtureMap). */
+    _deviceIdOfNode(nodeId) {
+        return this._nodeFixtureMap.get(nodeId) ?? nodeId.split(':')[0];
     }
     // ── INodeArbiter API ──────────────────────────────────────────────────
     setSystemIntents(bus) {
@@ -375,6 +390,10 @@ export class NodeArbiter {
         if (nodeId.includes(':kinetic') && (incomingKeys.some(k => k === 'pan' || k === 'tilt' || k === 'pan_base' || k === 'tilt_base'))) {
             console.log(`[ZOMBIE-DIAG] setManualOverride KINETIC ${nodeId}: keys=[${incomingKeys.join(',')}] existing=${existing ? 'YES' : 'NO'}`);
         }
+        // 🧠 WAVE 8271: espejo persistente del post-state en KineticStateStore.
+        // El mirror comparte la referencia del Record del arbiter — cualquier
+        // merge posterior muta el mismo objeto y el store queda siempre fresco.
+        this._kineticStore?.mirrorManual(nodeId, this._manualOverrides.get(nodeId));
     }
     /**
      * WAVE 4670: Inyecta el set de nodos COLOR de movers con rueda física.
@@ -513,6 +532,7 @@ export class NodeArbiter {
             }
         }
         this._manualOverrides.delete(nodeId);
+        this._kineticStore?.dropManual(nodeId);
         // WAVE 4984 Paso 2: NO borrar _motorKineticOverrides aquí.
         // WAVE 4935 M2 lo hacía como "Ghost Anchor fix", pero causa amnesia IK:
         // apagar un patrón (clearManualOverride) borraba el target espacial IK,
@@ -529,9 +549,12 @@ export class NodeArbiter {
      */
     setMotorKineticOverride(nodeId, channels) {
         this._motorKineticOverrides.set(nodeId, channels);
+        // 🧠 WAVE 8271: mirror — el rec contiene targetX/Y/Z cuando el nodo está en modo IK.
+        this._kineticStore?.mirrorMotor(nodeId, channels);
     }
     clearMotorKineticOverride(nodeId) {
         this._motorKineticOverrides.delete(nodeId);
+        this._kineticStore?.dropMotor(nodeId);
     }
     /**
      * MANUAL PATTERN LOCK API.
@@ -542,10 +565,12 @@ export class NodeArbiter {
     setManualPatternLock(nodeIds) {
         for (let i = 0; i < nodeIds.length; i++) {
             this._manualPatternLocks.add(nodeIds[i]);
+            this._kineticStore?.notePatternLock(nodeIds[i], true);
         }
     }
     clearManualPatternLock(nodeId) {
         this._manualPatternLocks.delete(nodeId);
+        this._kineticStore?.notePatternLock(nodeId, false);
     }
     /**
      * WAVE 7734: COUPLED-AXIS IK GATE API.
@@ -556,11 +581,13 @@ export class NodeArbiter {
     setSpatialCoupledLock(nodeIds) {
         for (let i = 0; i < nodeIds.length; i++) {
             this._spatialCoupledLock.add(nodeIds[i]);
+            this._kineticStore?.noteSpatialCoupled(nodeIds[i], true);
         }
     }
     /** WAVE 7734: Elimina un nodeId del coupled-axis lock (salida de modo spatial). */
     clearSpatialCoupledLock(nodeId) {
         this._spatialCoupledLock.delete(nodeId);
+        this._kineticStore?.noteSpatialCoupled(nodeId, false);
     }
     /** WAVE 7734: Query — ¿está este nodo en modo Spatial/IK acoplado? */
     isSpatialCoupledLocked(nodeId) {
@@ -568,6 +595,7 @@ export class NodeArbiter {
     }
     clearAllManualPatternLocks() {
         this._manualPatternLocks.clear();
+        this._kineticStore?.dropAllPatternLocks();
     }
     hasManualPatternLock(nodeId) {
         return this._manualPatternLocks.has(nodeId);
@@ -584,6 +612,7 @@ export class NodeArbiter {
     }
     clearAllMotorKineticOverrides() {
         this._motorKineticOverrides.clear();
+        this._kineticStore?.dropAllMotor();
     }
     /** WAVE 7172: Registra nodos cuya base IK debe ser suprimida este frame. */
     setSpatialSuppression(nodeIds) {
@@ -1191,14 +1220,17 @@ export class NodeArbiter {
             return;
         const clamped = scale < 0.25 ? 0.25 : scale > 2 ? 2 : scale;
         this._spatialDistanceScales.set(nodeId, clamped);
+        this._kineticStore?.noteDistanceScale(nodeId, clamped);
     }
     /** WAVE 4914: limpia la escala de distancia de un nodo. */
     clearSpatialDistanceScale(nodeId) {
         this._spatialDistanceScales.delete(nodeId);
+        this._kineticStore?.noteDistanceScale(nodeId, null);
     }
     /** WAVE 4914: limpia todas las escalas de distancia (release total). */
     clearAllSpatialDistanceScales() {
         this._spatialDistanceScales.clear();
+        this._kineticStore?.dropAllDistanceScales();
     }
     // ── Métodos internos ──────────────────────────────────────────────────
     /**
@@ -1438,6 +1470,7 @@ export class NodeArbiter {
         this._motorKineticOverrides.clear();
         this._releaseStates.clear();
         this._manualPatternLocks.clear();
+        this._kineticStore?.dropAllManualAndMotor();
     }
     /**
      * PARCHE 4 — ARMED LOCK: Purga completa de estado obsoleto al cargar un show.
@@ -1460,11 +1493,81 @@ export class NodeArbiter {
         this._moverShieldNodeIds.clear();
         this._inhibitLimits.clear();
         this._calibrationIntents = [];
+        // 🧹 WAVE 8271: sellar los leaks detectados en la auditoría — estos sets
+        // sobrevivían huérfanos tras un show-load (locks/canales de nodos muertos).
+        this._spatialCoupledLock.clear();
+        this._spatialSuppressedNodes.clear();
+        this._spatialDistanceScales.clear();
+        this._manualDimmerFixtureIds.clear();
+        this._manualDimmerLocks.clear();
+        this._manualChannelLocks.clear();
+        this._kineticStore?.clear();
         if (this._calibrationWatchdog) {
             clearTimeout(this._calibrationWatchdog);
             this._calibrationWatchdog = null;
         }
         // purgeForShow log silenced
+    }
+    /**
+     * 🧠 WAVE 8271 — PURGE FOR DEVICE: purga con scope, no nuclear.
+     *
+     * Elimina únicamente las entradas de los mapas L2 que pertenecen al
+     * deviceId indicado (fixture realmente eliminado del patch). Los demás
+     * devices conservan su estado mecánico explícito — esto sustituye al
+     * purgeForShow() indiscriminado que causaba la "deshidratación cinética"
+     * en cada repatch (ver docs/technical_audits/KINETIC_STATE_DEHYDRATION_AUDIT.md).
+     *
+     * También elimina la entrada del device en el KineticStateStore — un
+     * fixture borrado olvida su estado; un fixture re-parchado (que nunca
+     * pasa por aquí) lo conserva íntegro.
+     *
+     * PATCH TIME — nunca llamar desde el hot path.
+     */
+    purgeForDevice(deviceId) {
+        const belongsToDevice = (nodeId) => this._deviceIdOfNode(nodeId) === deviceId;
+        for (const nodeId of this._manualOverrides.keys()) {
+            if (belongsToDevice(nodeId))
+                this._manualOverrides.delete(nodeId);
+        }
+        for (const nodeId of this._motorKineticOverrides.keys()) {
+            if (belongsToDevice(nodeId))
+                this._motorKineticOverrides.delete(nodeId);
+        }
+        for (const nodeId of this._releaseStates.keys()) {
+            if (belongsToDevice(nodeId))
+                this._releaseStates.delete(nodeId);
+        }
+        for (const nodeId of this._manualPatternLocks) {
+            if (belongsToDevice(nodeId))
+                this._manualPatternLocks.delete(nodeId);
+        }
+        // Locks/canales espaciales — antes de WAVE 8271 quedaban huérfanos.
+        for (const nodeId of this._spatialCoupledLock) {
+            if (belongsToDevice(nodeId))
+                this._spatialCoupledLock.delete(nodeId);
+        }
+        for (const nodeId of this._spatialSuppressedNodes) {
+            if (belongsToDevice(nodeId))
+                this._spatialSuppressedNodes.delete(nodeId);
+        }
+        for (const nodeId of this._spatialDistanceScales.keys()) {
+            if (belongsToDevice(nodeId))
+                this._spatialDistanceScales.delete(nodeId);
+        }
+        for (const nodeId of this._inhibitLimits.keys()) {
+            if (belongsToDevice(nodeId))
+                this._inhibitLimits.delete(nodeId);
+        }
+        for (const nodeId of this._manualDimmerLocks.keys()) {
+            if (belongsToDevice(nodeId))
+                this._manualDimmerLocks.delete(nodeId);
+        }
+        for (const nodeId of this._manualChannelLocks.keys()) {
+            if (belongsToDevice(nodeId))
+                this._manualChannelLocks.delete(nodeId);
+        }
+        this._manualDimmerFixtureIds.delete(deviceId);
+        this._kineticStore?.deleteDevice(deviceId);
     }
     /**
      * WAVE 4529: Lista los nodeIds que tienen overrides manuales activos.
@@ -1490,18 +1593,21 @@ export class NodeArbiter {
     setInhibitLimit(nodeId, limit) {
         const clamped = limit < 0 ? 0 : limit > 1 ? 1 : limit;
         this._inhibitLimits.set(nodeId, clamped);
+        this._kineticStore?.noteInhibitLimit(nodeId, clamped);
     }
     /**
      * WAVE 4531: Elimina el inhibit limit de un nodo concreto.
      */
     clearInhibitLimit(nodeId) {
         this._inhibitLimits.delete(nodeId);
+        this._kineticStore?.noteInhibitLimit(nodeId, null);
     }
     /**
      * WAVE 4531: Elimina TODOS los inhibit limits.
      */
     clearAllInhibitLimits() {
         this._inhibitLimits.clear();
+        this._kineticStore?.dropAllInhibitLimits();
     }
     // ── L2 Read API (WAVE 4653) ───────────────────────────────────────────
     /**

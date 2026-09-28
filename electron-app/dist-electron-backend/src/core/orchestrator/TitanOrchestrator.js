@@ -864,7 +864,7 @@ export class TitanOrchestrator {
      * WAVE 686.11: Normalize address field (ShowFileV2 uses "address", legacy uses "dmxAddress")
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setFixtures(fixtures, stageBounds) {
+    setFixtures(fixtures, stageBounds, options) {
         // F2: HYDRATION LOCK — pause TickEngine while rebuilding Aether graph
         this._isHydrating = true;
         // PARCHE 4: Marcar nueva generación ANTES de reconstruir el grafo.
@@ -888,11 +888,16 @@ export class TitanOrchestrator {
                 isVirtual: f.isVirtual ?? false,
             }));
             // setFixtures log silenced — fires 3× on startup
-            const layout = this.hydrationEngine.setFixtures(this.fixtures, stageBounds);
-            // PARCHE 4: Purgar todos los node refs obsoletos del Arbiter ahora que el
-            // grafo está reconstruido. Elimina _manualOverrides, _moverShieldNodeIds,
-            // _inhibitLimits y overrides cinemáticos de la generación anterior.
-            this._aetherArbiter?.purgeForShow();
+            const layout = this.hydrationEngine.setFixtures(this.fixtures, stageBounds, options);
+            // 🧠 WAVE 8271: purgeForShow SOLO en carga de show real.
+            // Antes corría en CADA setFixtures — incluidos los patch deltas en
+            // caliente — y destruía el estado cinético L2 de todos los devices
+            // ("deshidratación cinética", WAVE 8270-RECON). En patch delta los
+            // devices eliminados se purgan con scope en FixtureHydrationEngine
+            // (_exorcizeDevice) y los supervivientes conservan su estado.
+            if (options?.isShowLoad) {
+                this._aetherArbiter?.purgeForShow();
+            }
             return layout;
         }
         finally {

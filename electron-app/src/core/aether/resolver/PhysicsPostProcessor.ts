@@ -159,6 +159,22 @@ export interface IPhysicsPostProcessor {
   registerNode(nodeId: NodeId): void
 
   /**
+   * WAVE 8271: Elimina TODO el estado de física asociado a un nodeId muerto
+   * (fixture eliminado del patch — el device nunca vuelve).
+   * Sella el leak detectado en WAVE 8270-RECON: _states/_3dInitialized/
+   * _prevKineticPos/_handoffPassThrough crecían sin eviction.
+   * PATCH TIME — nunca en hot path.
+   */
+  unregisterNode(nodeId: NodeId): void
+
+  /**
+   * WAVE 8271: Lectura de la posición física clásica actual (patch time).
+   * Devuelve {pan, tilt} del estado interno o null si el nodo no tiene estado.
+   * Usado para capturar la posición al morir el nodo (KineticStateStore).
+   */
+  getClassicPosition(nodeId: NodeId): { pan: number; tilt: number } | null
+
+  /**
    * Limpia la velocidad residual cuando cambia el vibe activo.
    * Evita que la inercia acumulada de un vibe rápido (Techno)
    * persista al cambiar a uno lento (Ambient), causando overshoots.
@@ -594,6 +610,30 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
     state[SLOT_Y3D_VEL]  = 0
     state[SLOT_Z3D_VEL]  = 0
     this._states.set(nodeId, state)
+  }
+
+  /**
+   * WAVE 8271: purga el estado de física de un nodeId muerto.
+   * Fixture realmente eliminado → su buffer, flags 3D, historial de
+   * posición y entradas handoff quedan exorcizados (evita leaks y que un
+   * device NUEVO que reutilice accidentalmente el mismo nodeId herede
+   * posición/velocidad zombie).
+   */
+  unregisterNode(nodeId: NodeId): void {
+    this._states.delete(nodeId)
+    this._3dInitialized.delete(nodeId)
+    this._prevKineticPos.delete(nodeId)
+    this._handoffPassThrough.delete(nodeId)
+  }
+
+  /**
+   * WAVE 8271: posición clásica actual del estado interno (para captura
+   * en el store justo antes de unregisterDevice en un repatch).
+   */
+  getClassicPosition(nodeId: NodeId): { pan: number; tilt: number } | null {
+    const state = this._states.get(nodeId)
+    if (!state) return null
+    return { pan: state[SLOT_PAN_POS], tilt: state[SLOT_TILT_POS] }
   }
 
   onVibeChange(_newVibeId: string): void {

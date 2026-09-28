@@ -444,6 +444,7 @@ export class NodeResolver {
      */
     registerDevice(deviceId) {
         this._ignitionMap.delete(deviceId); // limpiar si re-patch
+        this._purgeDeviceCaches(deviceId);
         this._precomputeIgnitionMap(deviceId);
         this._precomputeWheelDeviceEntry(deviceId);
         this._precomputeGovernorMap(deviceId);
@@ -452,6 +453,72 @@ export class NodeResolver {
         const dev = this._graph.getDevice(deviceId);
         if (dev)
             this._softBlackoutMasks.delete(dev.universe);
+    }
+    /**
+     * 🧹 WAVE 8271 — UNREGISTER DEVICE: exorciza las cachés de un deviceId
+     * eliminado del patch (leaks detectados en WAVE 8270-RECON).
+     *
+     * Per-device: _forgeGraphs/_forgeAccumValues/_forgeManualDevices/
+     * _ignitionMap/_governorMaps.
+     * Per-node (prefijo `${deviceId}:` o lista explícita de nodeIds):
+     * _ikProfiles/_ikPurePanMemory/_chillWheelFreeze/_spatialDistanceScales/
+     * _ditherError/_prev8bitNorm/_prev8bitDmx/_prev16bitNorm/_prev16bitRaw.
+     *
+     * PATCH TIME — nunca en hot path.
+     */
+    unregisterDevice(deviceId, nodeIds) {
+        this._forgeGraphs.delete(deviceId);
+        this._forgeAccumValues.delete(deviceId);
+        this._forgeManualDevices.delete(deviceId);
+        this._purgeDeviceCaches(deviceId, nodeIds);
+    }
+    /** Limpieza compartida de cachés per-node/per-device (register = re-patch limpio). */
+    _purgeDeviceCaches(deviceId, nodeIds) {
+        this._ignitionMap.delete(deviceId);
+        this._governorMaps.delete(deviceId);
+        const prefix = `${deviceId}:`;
+        const belongs = nodeIds
+            ? (id) => nodeIds.indexOf(id) >= 0 || id === deviceId
+            : (id) => id === deviceId || id.startsWith(prefix);
+        // Las cache keys son `${nodeId}:${extra}` — el primer segmento identifica
+        // al device (o al nodeId raíz para Cell IDs legacy sin ':').
+        const keyOwner = (key) => key.slice(0, key.indexOf(':'));
+        for (const nodeId of Array.from(this._ikProfiles.keys())) {
+            if (belongs(nodeId))
+                this._ikProfiles.delete(nodeId);
+        }
+        for (const nodeId of Array.from(this._ikPurePanMemory.keys())) {
+            if (belongs(nodeId))
+                this._ikPurePanMemory.delete(nodeId);
+        }
+        for (const nodeId of Array.from(this._chillWheelFreeze.keys())) {
+            if (belongs(nodeId))
+                this._chillWheelFreeze.delete(nodeId);
+        }
+        for (const nodeId of Array.from(this._spatialDistanceScales.keys())) {
+            if (belongs(nodeId))
+                this._spatialDistanceScales.delete(nodeId);
+        }
+        for (const key of Array.from(this._ditherError.keys())) {
+            if (belongs(keyOwner(key)))
+                this._ditherError.delete(key);
+        }
+        for (const key of Array.from(this._prev8bitNorm.keys())) {
+            if (belongs(keyOwner(key)))
+                this._prev8bitNorm.delete(key);
+        }
+        for (const key of Array.from(this._prev8bitDmx.keys())) {
+            if (belongs(keyOwner(key)))
+                this._prev8bitDmx.delete(key);
+        }
+        for (const key of Array.from(this._prev16bitNorm.keys())) {
+            if (belongs(keyOwner(key)))
+                this._prev16bitNorm.delete(key);
+        }
+        for (const key of Array.from(this._prev16bitRaw.keys())) {
+            if (belongs(keyOwner(key)))
+                this._prev16bitRaw.delete(key);
+        }
     }
     /**
      * WAVE 4522.4 + WAVE 7693: Inyectar contexto musical antes de cada resolve().

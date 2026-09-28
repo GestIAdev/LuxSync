@@ -1231,7 +1231,7 @@ export function registerAetherIPCHandlers() {
      *   - Llama _syncFixturesToAether (NodeGraph full-resync)
      * Devuelve: { success, fixtureCount, liquidLayout }
      */
-    ipcMain.handle('lux:aether:setFixtures', (_event, { fixtures, stageBounds }) => {
+    ipcMain.handle('lux:aether:setFixtures', (_event, { fixtures, stageBounds, isShowLoad }) => {
         try {
             // WAVE TYPECAST: El store puede serializar fixtures como Record<id, Fixture>
             // en lugar de Array. Normalizamos aquí antes de tocar el Orchestrator.
@@ -1239,7 +1239,10 @@ export function registerAetherIPCHandlers() {
                 ? fixtures
                 : Object.values(fixtures);
             const orchestrator = getTitanOrchestrator();
-            const liquidLayout = orchestrator.setFixtures(fixtureArray, stageBounds);
+            // WAVE 8271: este canal es PATCH DELTA en caliente por defecto —
+            // el estado cinético L2 de los devices supervivientes se preserva.
+            // Solo StageIPCHandlers (carga de show real) pasa isShowLoad=true.
+            const liquidLayout = orchestrator.setFixtures(fixtureArray, stageBounds, { isShowLoad });
             // 🜨 WAVE 8000 (ASTERIA): la topología del NodeGraph acaba de cambiar
             // (posiciones, altas/bajas, resync completo) — avisar al renderer para
             // que recargue el Node Atlas. Este handler es el CAMINO REAL de

@@ -157,6 +157,72 @@ export class AetherSafetyMiddleware {
             state[KS_INIT] = 0;
         }
     }
+    /**
+     * 🧹 WAVE 8271 — UNREGISTER NODE: exorciza el estado de un nodeId muerto.
+     * Sella el leak de WAVE 8270-RECON (_kineticState/_darkSpinState/_pending*
+     * crecían sin eviction para fixtures eliminados del patch).
+     * PATCH TIME — nunca en hot path.
+     */
+    unregisterKineticNode(nodeId) {
+        this._kineticState.delete(nodeId);
+        this._darkSpinState.delete(nodeId);
+        this._pendingColorChangeNodes.delete(nodeId);
+        this._pendingSinceMs.delete(nodeId);
+        this._manualNodeIds.delete(nodeId);
+    }
+    /**
+     * 🧹 WAVE 8271 — UNREGISTER DEVICE: elimina un deviceId eliminado del patch.
+     * Purga el estado cinético de TODOS sus nodeIds y lo retira de los mapas
+     * de universo/visibilidad — un dispositivo muerto ya no puede afectar al
+     * throttling ni a la detección de universos virtuales.
+     * PATCH TIME — nunca en hot path.
+     */
+    unregisterDevice(deviceId, nodeIds) {
+        const prefix = `${deviceId}:`;
+        const belongs = (id) => id === deviceId || id.startsWith(prefix);
+        if (nodeIds) {
+            for (let i = 0; i < nodeIds.length; i++)
+                this.unregisterKineticNode(nodeIds[i]);
+        }
+        else {
+            for (const nodeId of Array.from(this._kineticState.keys())) {
+                if (belongs(nodeId))
+                    this.unregisterKineticNode(nodeId);
+            }
+            // darkSpin/pending/manual pueden contener nodeIds no cinéticos
+            for (const nodeId of Array.from(this._darkSpinState.keys())) {
+                if (belongs(nodeId))
+                    this._darkSpinState.delete(nodeId);
+            }
+            for (const nodeId of Array.from(this._pendingSinceMs.keys())) {
+                if (belongs(nodeId))
+                    this._pendingSinceMs.delete(nodeId);
+            }
+            for (const nodeId of Array.from(this._pendingColorChangeNodes)) {
+                if (belongs(nodeId))
+                    this._pendingColorChangeNodes.delete(nodeId);
+            }
+            for (const nodeId of Array.from(this._manualNodeIds)) {
+                if (belongs(nodeId))
+                    this._manualNodeIds.delete(nodeId);
+            }
+        }
+        // Universe maps — retirar el device y colapsar entradas vacías.
+        const universe = this._deviceUniverseMap.get(deviceId);
+        if (universe !== undefined) {
+            const devs = this._universeDeviceMap.get(universe);
+            if (devs) {
+                devs.delete(deviceId);
+                if (devs.size === 0) {
+                    this._universeDeviceMap.delete(universe);
+                    this._lastSendTime.delete(universe);
+                }
+            }
+            this._deviceUniverseMap.delete(deviceId);
+        }
+        this._virtualDeviceIds.delete(deviceId);
+        this._recalcVirtualOnlyUniverses();
+    }
     // ═════════════════════════════════════════════════════════════════════════
     // FASE 0: PRE-RESOLVE — Aduana Output Gate
     // ═════════════════════════════════════════════════════════════════════════
@@ -472,6 +538,8 @@ export class AetherSafetyMiddleware {
     _recalcVirtualOnlyUniverses() {
         this._virtualOnlyUniverses.clear();
         for (const [universe, deviceIds] of this._universeDeviceMap) {
+            if (deviceIds.size === 0)
+                continue; // WAVE 8271: universo vacío — ni virtual ni real
             let allVirtual = true;
             for (const did of deviceIds) {
                 if (!this._virtualDeviceIds.has(did)) {

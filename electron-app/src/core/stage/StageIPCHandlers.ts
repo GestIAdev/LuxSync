@@ -42,7 +42,9 @@ function hydrateBackendFromShow(showFile: ShowFileV2): void {
     const stageBounds = showFile.stage
       ? { width: showFile.stage.width, height: showFile.stage.height, depth: showFile.stage.depth }
       : undefined
-    orchestrator.setFixtures(fixtures, stageBounds)
+    // WAVE 8271: carga de show real → purgeForShow completo (nuclear, correcto aquí).
+    // Los patch deltas en caliente viajan por lux:aether:setFixtures sin este flag.
+    orchestrator.setFixtures(fixtures, stageBounds, { isShowLoad: true })
     // F1 HYDRATION log silenced — fires on every show load
   } catch (err) {
     console.error('[StageIPC] ❌ F1 HYDRATION FAILED:', err)

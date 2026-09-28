@@ -426,6 +426,29 @@ export class PhysicsPostProcessor {
         state[SLOT_Z3D_VEL] = 0;
         this._states.set(nodeId, state);
     }
+    /**
+     * WAVE 8271: purga el estado de física de un nodeId muerto.
+     * Fixture realmente eliminado → su buffer, flags 3D, historial de
+     * posición y entradas handoff quedan exorcizados (evita leaks y que un
+     * device NUEVO que reutilice accidentalmente el mismo nodeId herede
+     * posición/velocidad zombie).
+     */
+    unregisterNode(nodeId) {
+        this._states.delete(nodeId);
+        this._3dInitialized.delete(nodeId);
+        this._prevKineticPos.delete(nodeId);
+        this._handoffPassThrough.delete(nodeId);
+    }
+    /**
+     * WAVE 8271: posición clásica actual del estado interno (para captura
+     * en el store justo antes de unregisterDevice en un repatch).
+     */
+    getClassicPosition(nodeId) {
+        const state = this._states.get(nodeId);
+        if (!state)
+            return null;
+        return { pan: state[SLOT_PAN_POS], tilt: state[SLOT_TILT_POS] };
+    }
     onVibeChange(_newVibeId) {
         // Zerear velocidades en todos los nodos para evitar overshoot residual
         // entre vibes de distinto tempo. La posición se mantiene (no teleport).

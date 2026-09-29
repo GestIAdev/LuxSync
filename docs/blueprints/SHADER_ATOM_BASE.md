@@ -4,9 +4,12 @@ Documento **autocontenido** para generar nuevos átomos `.glsl` para el motor
 Theia/Euclid de LuxSync. Todo lo que un generador necesita está aquí — no hace
 falta más contexto del repositorio.
 
-> *Contrato al día: WAVE 8279 — incluye la página B física de Liquid
-> (§6.2), los pulsos `u_vocalOnset`/`u_snareTruePulse`/`u_voidRelease`,
-> `euTimbre()` (§8.2) y la deprecación del estrobo (Fase 5).*
+> *Contrato al día: WAVE 8287 · **Clean Shot** — la aproximación cognitiva
+> (`u_approach`/`u_impact`/`tc`/`td`) está extirpada de la geometría: el
+> movimiento base es el reloj BPM y los bursts solo detonan con
+> `u_activeEffectEnergy` (paridad video↔DMX, §8.1). Incluye la página B
+> física de Liquid (§6.2), `euTimbre()` (§8.2) y la deprecación del
+> estrobo (Fase 5).*
 
 Los átomos viven en `electron-app/assets/shaders/*.glsl`. El motor compila cada
 archivo como: **preámbulo generado → tus defines/meta → tu cuerpo → epílogo
@@ -130,6 +133,12 @@ Tonalidad: `u_chromaHue` (circular, usar en `palette()`) · `u_chromaFlux` ·
 `u_seleneConfidence` · `u_predictionProb` · `u_selEtaMs` · `u_selEtaBeats` ·
 `u_tension` · `u_beauty` · `u_zScoreN` · `u_spectralBuildup`
 
+> ⛔ **WAVE 8287 · Clean Shot — diagnóstico, no geometría.** Estas variables
+> describen *intención* (post-gate de Selene: se publican a 0 con la IA
+> apagada — WAVE 8286). En átomos están **prohibidas** — el migrador las
+> rechaza en `--check`. Para bursts cognitivos usa `u_activeEffectEnergy`
+> (§4/§8.1): es el hecho físico — una luz ejecutándose — no la intención.
+
 Omniliquid (capas de fondo): `u_morphFactor` (muy suave) · `u_recoveryFactor` ·
 `u_lqFloor` · `u_lqAmbient` · `u_lqAir`
 
@@ -165,6 +174,14 @@ de contenido) · `u_fluxBaseline` (baseline de flux normalizado) ·
 **Deltas crudos** (cambio frame a frame, sin rectificar ni suavizar):
 `u_midDelta` · `u_highMidDelta` · `u_trebleDelta` · `u_hhDelta`
 
+**Disparo de efecto** (slots 96-99, WAVE 8287): `u_activeEffectEnergy`
+(envolvente del clip físico vivo — hold a `intensity` durante `durationMs`
+reales + release ~250ms) · `u_activeEffectAge` (progreso 0→1 del clip) ·
+`u_activeEffectId` (hash del arquetipo) · `u_activeEffectCount` (clips
+concurrentes). Gate barato: `EFFECT_ACTIVE`. **El único canal cognitivo
+permitido en geometría** — describe el hecho físico (luces ejecutándose),
+no la intención.
+
 **Iliquidcore — cognición estructural (Selene V3, WAVE 8275):**
 
 | Uniform | Semántica | Uso canónico |
@@ -180,6 +197,8 @@ de contenido) · `u_fluxBaseline` (baseline de flux normalizado) ·
 (0 none · 1 drop_incoming · 2 buildup_starting · 3 breakdown_imminent ·
 4 transition_beat) `z`=huntState (0 sleeping·1 stalking·2 evaluating·
 3 striking·4 learning) `w`=energyZone (0 calm·1 rising·2 peak·3 falling).
+*Clean Shot: `y`/`z`/`w` son post-gate — solo para diagnóstico/TELDIAG,
+no para geometría.*
 
 ## 7. Flags — `telFlag(bit)` y defines booleanos
 
@@ -188,7 +207,12 @@ AUDIO_LIVE  PLL_LOCKED  ON_BEAT  KICK  KICK_EDGE  SNARE  HIHAT
 PREDICTION_ACTIVE  BREAKDOWN  APOCALYPSE  ACID  COLOR_SNAP  RHYTHMIC_VOID
 CREST_EVENT  STROBE_ACTIVE  SOVEREIGN_COUNTDOWN  GLASS_BREAK   // 🧠 WAVE 8275
 REAL_SILENCE  VOCAL_ONSET  NOISE_MODE  GATE_DEAD  SNARE_TRUE  VOID_RELEASE  // 🌊 WAVE 8279
+EFFECT_ACTIVE                                                     // 🔫 WAVE 8287
 ```
+
+🔫 `EFFECT_ACTIVE` (bit 23): nivel — hay ≥1 clip físico ejecutándose en
+Hephaestus (`u_activeEffectCount > 0`). Gate barato para early-outs:
+`if (EFFECT_ACTIVE) { /* burst */ }`.
 
 Uso: `if (glitch > 0.01) {...}`, `if (ACID) col *= ...`,
 `if (RHYTHMIC_VOID) col *= 0.4;` (el silencio rítmico deja eco).

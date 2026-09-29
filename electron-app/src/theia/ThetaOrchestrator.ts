@@ -632,6 +632,9 @@ export class ThetaOrchestrator {
       manual?: boolean
     } = {},
   ): void {
+    // 🎬 WAVE 8307 — el Director arbitra: un forceState AUTÓNOMO (Selene
+    // legacy, manual:false) calla si hay otro director activo o un HOLD.
+    if (opts.manual === false && !this.isAutomationAllowed()) return
     if (!this.worker || !this.isReady) {
       // eslint-disable-next-line no-console
       console.warn('[THETA] forceState called before worker is ready — ignored')
@@ -650,6 +653,21 @@ export class ThetaOrchestrator {
       // eslint-disable-next-line no-console
       console.error('[THETA] forceState postMessage failed:', err)
     }
+  }
+
+  private _automationGate: (() => boolean) | null = null
+
+  /**
+   * 🎬 WAVE 8307 — gate del Director: `true` = la IA legacy (Selene→
+   * forceState / bus play-atom) puede actuar. El Auto-Pilot lo instala en
+   * `init()` (allowed ⇔ director MANUAL). Sin gate = permitido (compat).
+   */
+  setAutomationGate(gate: (() => boolean) | null): void {
+    this._automationGate = gate
+  }
+
+  isAutomationAllowed(): boolean {
+    return this._automationGate ? this._automationGate() : true
   }
 
   /** Último reporte de la AssetStateMachine recibido del worker. */

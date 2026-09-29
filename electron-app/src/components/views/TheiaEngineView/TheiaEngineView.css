@@ -721,6 +721,75 @@
   box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
 }
 
+.theia-autopilot__modes.is-muted {
+  opacity: 0.4;
+}
+
+/* 🎬 WAVE 8307 — DIRECTOR (header PERFORM): MANUAL / PLAYLIST / SELENE + HOLD */
+.theia-director {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+
+.theia-director__seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(57, 255, 20, 0.22);
+  border-radius: 4px;
+  background: rgba(4, 7, 12, 0.6);
+}
+
+.theia-director__btn {
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 4px 9px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.theia-director__btn:hover {
+  color: var(--theia-primary);
+}
+.theia-director__btn.is-active {
+  color: #04140a;
+  background: var(--theia-primary);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.4);
+}
+/* Director original en espera mientras dura el HOLD. */
+.theia-director__btn.is-paused {
+  background: rgba(57, 255, 20, 0.18);
+  color: var(--theia-primary);
+  box-shadow: none;
+}
+
+.theia-director__hold {
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  padding: 4px 10px;
+  color: var(--theia-primary);
+  background: rgba(57, 255, 20, 0.08);
+  border: 1px solid var(--theia-primary);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  animation: theia-ap-sync 0.9s ease-in-out infinite alternate;
+}
+.theia-director__hold:hover {
+  background: rgba(57, 255, 20, 0.2);
+}
+
 /* Cuenta atrás: reloj + mini-barra de progreso del dwell. */
 .theia-autopilot__countdown {
   margin-left: auto;

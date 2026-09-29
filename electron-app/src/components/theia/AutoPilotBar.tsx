@@ -18,6 +18,7 @@ import React, { useCallback } from 'react'
 import {
   DWELL_PRESETS_BARS,
   DWELL_PRESETS_SEC,
+  HOLD_PRESETS_BARS,
   useTheiaAutopilotStore,
   type AutopilotMode,
   type AutopilotQuant,
@@ -49,6 +50,9 @@ const AutoPilotBar: React.FC = () => {
   const syncWaiting = useTheiaAutopilotStore((s) => s.syncWaiting)
   const engineRunning = useTheiaAutopilotStore((s) => s.engineRunning)
   const hasItems = useTheiaPlaylistStore((s) => s.items.length > 0)
+  const director = useTheiaAutopilotStore((s) => s.director)
+  const holdBars = useTheiaAutopilotStore((s) => s.holdBars)
+  const setHoldBars = useTheiaAutopilotStore((s) => s.setHoldBars)
 
   const setMode = useTheiaAutopilotStore((s) => s.setMode)
   const setDwell = useTheiaAutopilotStore((s) => s.setDwell)
@@ -80,7 +84,11 @@ const AutoPilotBar: React.FC = () => {
       </span>
 
       {/* ── Modo ── */}
-      <div className="theia-autopilot__modes" role="tablist">
+      <div
+        className={`theia-autopilot__modes${director === 'selene' ? ' is-muted' : ''}`}
+        role="tablist"
+        title={director === 'selene' ? 'Selene elige — el modo secuencial no aplica' : undefined}
+      >
         {MODES.map((m) => (
           <button
             key={m.id}
@@ -157,6 +165,30 @@ const AutoPilotBar: React.FC = () => {
           data-midi-bind="theia.pilot.xfade"
         />
         <span className="theia-autopilot__val">{xFadeSec.toFixed(1)}s</span>
+      </label>
+
+      {/* ── HOLD — ventana de silencio tras un disparo manual (Director) ── */}
+      <label
+        className="theia-autopilot__ctl"
+        title="HOLD — compases que la automatización calla tras tu disparo manual"
+      >
+        <span className="theia-autopilot__key">HOLD</span>
+        <select
+          className="theia-autopilot__select"
+          value={holdBars}
+          onChange={(e) => setHoldBars(Number(e.target.value))}
+          data-midi-bind="theia.pilot.hold"
+        >
+          {(HOLD_PRESETS_BARS as readonly number[]).includes(holdBars)
+            ? null
+            : <option value={holdBars}>{holdBars}</option>}
+          {HOLD_PRESETS_BARS.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <span className="theia-autopilot__val">bars</span>
       </label>
 
       {/* ── DROP SNAP ── */}

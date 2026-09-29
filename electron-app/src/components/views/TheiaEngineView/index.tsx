@@ -56,6 +56,8 @@ import LiveDeck from '../../theia/LiveDeck'
 import ContextStrip from '../../theia/ContextStrip'
 import PlaylistLane from '../../theia/PlaylistLane'
 import AutoPilotBar from '../../theia/AutoPilotBar'
+import DirectorControl from '../../theia/DirectorControl'
+import { useTheiaPlaylistStore } from '../../../stores/useTheiaPlaylistStore'
 import { LuxIcon } from '../../icons'
 // 🎛️ WAVE 8240 · U2 — lectura zero-alloc del ring 256B (Glass Bridge mirror)
 import {
@@ -297,6 +299,25 @@ const TheiaEngineView: React.FC = () => {
   // vista Theia está montada (rAF propio + SAB de telemetría, fuera de React).
   useEffect(() => getTheiaAutopilot().init(), [])
 
+  // 🎬 WAVE 8307 — atajos 1–9: disparo manual del slot N de la playlist
+  // (solo PERFORM). `playAt` sin `auto` ⇒ take-over: el Director pasa a HOLD.
+  useEffect(() => {
+    if (workspaceMode !== 'perform') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return
+      if (!/^[1-9]$/.test(e.key)) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return
+      const st = useTheiaPlaylistStore.getState()
+      const idx = Number(e.key) - 1
+      if (idx >= st.items.length) return
+      e.preventDefault()
+      st.playAt(idx)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [workspaceMode])
+
 
   // ── File Picker ──────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -442,6 +463,8 @@ const TheiaEngineView: React.FC = () => {
               DESIGN
             </button>
           </div>
+          {/* 🎬 WAVE 8307 — Director (MANUAL / PLAYLIST / SELENE + ⏸ HOLD) */}
+          {workspaceMode === 'perform' && <DirectorControl />}
         </div>
 
         {/* 🎛️ WAVE 8240 · U2 — header limpio: logo + OUTPUT + ingestión.

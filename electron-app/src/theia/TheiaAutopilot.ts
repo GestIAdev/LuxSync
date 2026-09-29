@@ -41,8 +41,16 @@ import {
   TelemetryWireReader,
   type TelemetryEnums,
 } from './telemetry/TheiaTelemetryRing'
-import { useTheiaPlaylistStore } from '../stores/useTheiaPlaylistStore'
+import {
+  resolvePlaylistAtom,
+  useTheiaPlaylistStore,
+} from '../stores/useTheiaPlaylistStore'
 import { useTheiaAutopilotStore } from '../stores/useTheiaAutopilotStore'
+import { useTheiaTransportStore } from '../stores/useTheiaTransportStore'
+import useVibeStore from '../stores/vibeStore'
+import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
+import type { ITheiaAtom } from '../types/theiaTypes'
+import { AcoTracker, seleneChoose, type SeleneCandidate, type SelenePick } from './SeleneDirector'
 
 /** Frase musical = 4 compases (convención VJ del blueprint §6.2). */
 const PHRASE_BARS = 4
@@ -62,6 +70,12 @@ export interface AutopilotTelemetry {
   readonly onBeat: boolean
   readonly dropIncoming: boolean
   readonly crestEvent: boolean
+  // 🧠 WAVE 8307 — features del proxy ACO de Selene (0..1).
+  readonly energy: number
+  readonly harshness: number
+  readonly flatness: number
+  readonly transientDensity: number
+  readonly spectralFlux: number
 }
 
 export interface AutopilotDeps {
@@ -72,6 +86,15 @@ export interface AutopilotDeps {
   readonly fire?: (index: number, crossfadeMs: number) => boolean
   /** Reloj de pared — default: performance.now. */
   readonly now?: () => number
+  /** 🧠 Disparo de un átomo del catálogo (fallback de Selene con playlist
+   *  vacía). Default: `theta.playAtom`. */
+  readonly fireCatalog?: (atomId: string, crossfadeMs: number) => boolean
+  /** Vibe activo — default: `useVibeStore.currentVibe`. */
+  readonly vibe?: () => string
+  /** Catálogo completo — default: `TheiaRegistry.getAllAtoms()`. */
+  readonly catalog?: () => readonly ITheiaAtom[]
+  /** ¿Hay algo en LIVE? (Selene no corta lo que suena al arrancar). */
+  readonly hasLive?: () => boolean
 }
 
 interface SeqState {
@@ -86,6 +109,12 @@ interface SeqState {
   bag: number[]
   exhausted: boolean
   started: boolean
+  // ── Director HOLD / Selene ──
+  holdEpochSeen: number
+  holdAnchorBar: number
+  holdAnchorMs: number
+  lastPeekMs: number
+  lastSeleneAtomId: string
 }
 
 function freshSeq(): SeqState {
@@ -101,6 +130,11 @@ function freshSeq(): SeqState {
     bag: [],
     exhausted: false,
     started: false,
+    holdEpochSeen: -1,
+    holdAnchorBar: 0,
+    holdAnchorMs: 0,
+    lastPeekMs: -Infinity,
+    lastSeleneAtomId: '',
   }
 }
 
@@ -123,6 +157,9 @@ export function shuffleBag(candidates: number[], avoid: number, rand = Math.rand
 export class TheiaAutopilot {
   private readonly deps: Required<AutopilotDeps>
   private seq: SeqState = freshSeq()
+  private readonly aco = new AcoTracker()
+  private lastTickMs = 0
+  private prevDirector: string = 'manual'
   private rafHandle: number | null = null
   private timerHandle: ReturnType<typeof setInterval> | null = null
   private ticking = false
@@ -154,6 +191,11 @@ export class TheiaAutopilot {
           onBeat: telFlag(reader.flags, TEL_FLAG.ON_BEAT),
           dropIncoming: enums.predictionType === 1,
           crestEvent: telFlag(reader.flags, TEL_FLAG.CREST_EVENT),
+          energy: s[TELEMETRY_SLOT.ENERGY] || 0,
+          harshness: s[TELEMETRY_SLOT.HARSHNESS] || 0,
+          flatness: s[TELEMETRY_SLOT.FLATNESS] || 0,
+          transientDensity: s[TELEMETRY_SLOT.TRANSIENT_DENSITY] || 0,
+          spectralFlux: s[TELEMETRY_SLOT.SPECTRAL_FLUX] || 0,
         }
       } catch {
         return null
@@ -164,8 +206,39 @@ export class TheiaAutopilot {
       fire:
         deps.fire ??
         ((index, crossfadeMs) =>
-          useTheiaPlaylistStore.getState().playAt(index, crossfadeMs)),
+          useTheiaPlaylistStore.getState().playAt(index, crossfadeMs, { auto: true })),
       now: deps.now ?? (() => performance.now()),
+      fireCatalog:
+        deps.fireCatalog ??
+        ((atomId, crossfadeMs) => {
+          const atom = getTheiaRegistry().getAtom(atomId)
+          if (!atom) return false
+          void getThetaOrchestrator()
+            .playAtom({
+              atomId,
+              startMs: atom.trim.startMs,
+              crossfadeMs,
+              reason: 'selene:director|catalog',
+            })
+            .catch((err) => {
+              // eslint-disable-next-line no-console
+              console.error(`[AUTOPILOT] catalog playAtom '${atomId}' failed:`, err)
+            })
+          return true
+        }),
+      vibe: deps.vibe ?? (() => useVibeStore.getState().currentVibe),
+      catalog: deps.catalog ?? (() => getTheiaRegistry().getAllAtoms()),
+      hasLive:
+        deps.hasLive ??
+        (() => {
+          if (useTheiaPlaylistStore.getState().activeIndex >= 0) return true
+          if (useTheiaTransportStore.getState().hasVideo) return true
+          try {
+            return getThetaOrchestrator().getActiveShaderId() !== 'builtin'
+          } catch {
+            return false
+          }
+        }),
     }
   }
 
@@ -185,6 +258,12 @@ export class TheiaAutopilot {
         }
       }),
     )
+    // 🎬 El Director arbitra la IA legacy: solo con MANUAL puede actuar.
+    try {
+      getThetaOrchestrator().setAutomationGate(
+        () => useTheiaAutopilotStore.getState().director === 'manual',
+      )
+    } catch { /* orquestador no disponible (tests) */ }
     this.syncClock()
     return () => this.dispose()
   }
@@ -193,16 +272,28 @@ export class TheiaAutopilot {
     for (const off of this.unsubscribe) off()
     this.unsubscribe = []
     this.stopClock()
+    try {
+      getThetaOrchestrator().setAutomationGate(null)
+    } catch { /* noop */ }
   }
 
   /** Arranca/detiene el tick según modo + contenido de la playlist. */
   private syncClock(): void {
-    const { mode } = useTheiaAutopilotStore.getState()
+    const { mode, director } = useTheiaAutopilotStore.getState()
     const hasItems = useTheiaPlaylistStore.getState().items.length > 0
-    if (mode !== 'off' && hasItems && !this.ticking) {
+    // SELENE opera aun con playlist vacía (fallback catálogo) y HOLD debe
+    // seguir contando; PLAYLIST necesita modo ≠ OFF y algo que reproducir.
+    const active =
+      director === 'hold' ||
+      director === 'selene' ||
+      (director === 'playlist' && mode !== 'off' && hasItems)
+    if (active && !this.ticking) {
       this.seq = freshSeq()
+      this.prevDirector = director
+      this.aco.reset()
+      this.lastTickMs = 0
       this.startClock()
-    } else if ((mode === 'off' || !hasItems) && this.ticking) {
+    } else if (!active && this.ticking) {
       this.stopClock()
       useTheiaAutopilotStore.getState().__engineReport({
         countdownLabel: '—',
@@ -248,7 +339,8 @@ export class TheiaAutopilot {
    *  modo del piloto, no el clock — el método también es llamable en tests
    *  sin init(). */
   onExternalFire(activeIndex: number): void {
-    if (useTheiaAutopilotStore.getState().mode === 'off') return
+    const dir = useTheiaAutopilotStore.getState().director
+    if (dir !== 'playlist' && dir !== 'selene') return
     if (activeIndex === this.seq.firedItemIndex) return
     this.seq.firedItemIndex = activeIndex
     this.seq.firedAtMs = this.deps.now()
@@ -268,7 +360,10 @@ export class TheiaAutopilot {
     const now = this.deps.now()
     const tel = this.deps.telemetry()
 
-    if (pl.items.length === 0) return
+    // 🧠 Proxy ACO de Selene: EMA continuo (también durante HOLD/otros
+    // directores — al mandar SELENE el target ya viene caliente).
+    if (tel) this.aco.update(tel, this.lastTickMs !== 0 ? now - this.lastTickMs : 0)
+    this.lastTickMs = now
 
     const bpm = tel && tel.bpm > 0 ? tel.bpm : FALLBACK_BPM
     const audioAlive = !!tel && tel.audioLive
@@ -286,19 +381,36 @@ export class TheiaAutopilot {
       this.seq.prevBarCount = tel.barCount
     }
 
-    // ── Arranque: sin LIVE → dispara el primer ítem no-skip de inmediato ──
+    // ── 🎬 Director: transiciones, HOLD y directores inertes ──
+    if (ap.director !== this.prevDirector) {
+      this.onDirectorChange(this.prevDirector, ap.director, now)
+      this.prevDirector = ap.director
+    }
+    if (ap.director === 'hold') {
+      return this.tickHold(ap.holdEpoch, ap.holdBars, now, barFloat, barSec, audioAlive)
+    }
+    if (ap.director === 'manual') return
+    const isSelene = ap.director === 'selene'
+    if (!isSelene && pl.items.length === 0) return
+
+    // ── Arranque: sin LIVE → dispara el primero (playlist) / Selene elige ──
     if (!this.seq.started) {
       this.seq.started = true
-      if (pl.activeIndex < 0) {
+      const nothingLive = isSelene ? !this.deps.hasLive() : pl.activeIndex < 0
+      // El dwell arranca anclado (sobre lo que suene, o sobre el intento).
+      this.seq.firedItemIndex = pl.activeIndex
+      this.seq.firedAtMs = now
+      this.seq.firedBarFloat = barFloat
+      if (nothingLive) {
+        if (isSelene) {
+          if (!this.fireSelene(tel, now)) this.report('—', 0, false, true)
+          return
+        }
         const first = pl.items.findIndex((it) => !it.flags.skip)
         if (first < 0) return this.report('—', 0, false, false)
         this.fireAt(first, tel)
         return
       }
-      // Ya hay algo en LIVE: el dwell arranca sobre él.
-      this.seq.firedItemIndex = pl.activeIndex
-      this.seq.firedAtMs = now
-      this.seq.firedBarFloat = barFloat
     }
     if (this.seq.firedBarFloat < 0) this.seq.firedBarFloat = barFloat
     if (this.seq.exhausted) {
@@ -344,6 +456,16 @@ export class TheiaAutopilot {
     if (dwellDone && !this.seq.syncWaiting) this.seq.syncWaiting = true
 
     if (wantFire) {
+      if (isSelene) {
+        // Selene elige (nunca secuencial/aleatorio). Sin candidatos: re-ancla.
+        if (!this.fireSelene(tel, now)) {
+          this.seq.firedAtMs = now
+          this.seq.firedBarFloat = barFloat
+          this.seq.syncWaiting = false
+          this.seq.dropArmed = false
+        }
+        return
+      }
       const target = this.nextTarget(ap.mode)
       if (target < 0) {
         // SEQ llegó al final — motor exhausto hasta nueva acción.
@@ -353,6 +475,8 @@ export class TheiaAutopilot {
       this.fireAt(target, tel)
       return
     }
+
+    if (isSelene) this.peekSelene(now)
 
     // ── Readout ──
     const remain = Math.max(0, dwellBars - elapsedBars)
@@ -366,6 +490,131 @@ export class TheiaAutopilot {
       const remainSec = Math.max(0, remain * barSec)
       this.report(`${remainSec.toFixed(0)}s`, elapsedBars / dwellBars, false, true)
     }
+  }
+
+  // ── 🎬 Director: HOLD ────────────────────────────────────────────────
+
+  private onDirectorChange(prev: string, next: string, now: number): void {
+    if (next === 'hold') {
+      this.seq.holdEpochSeen = -1 // fuerza re-anclaje de la ventana
+      return
+    }
+    if (next === 'manual') return
+    // Desde MANUAL el engine estaba parado: es un arranque en frío (lo
+    // gestiona el bloque `started`), no una reanudación.
+    if (prev === 'manual') return
+    // Reanudación (o cambio playlist⇄selene): el dwell arranca de cero
+    // sobre lo que esté en LIVE — el humano acaba de tocar / decidir.
+    const pl = useTheiaPlaylistStore.getState()
+    this.seq.firedItemIndex = pl.activeIndex
+    this.seq.firedAtMs = now
+    this.seq.firedBarFloat = -1 // se re-ancla en el próximo tick con fase real
+    this.seq.syncWaiting = false
+    this.seq.dropArmed = false
+    this.seq.exhausted = false
+    this.seq.started = true
+  }
+
+  /** Cuenta atrás del HOLD; al expirar reanuda el director original. */
+  private tickHold(
+    epoch: number,
+    holdBars: number,
+    now: number,
+    barFloat: number,
+    barSec: number,
+    audioAlive: boolean,
+  ): void {
+    if (this.seq.holdEpochSeen !== epoch) {
+      this.seq.holdEpochSeen = epoch
+      this.seq.holdAnchorBar = barFloat
+      this.seq.holdAnchorMs = now
+    }
+    let elapsedBars = audioAlive
+      ? barFloat - this.seq.holdAnchorBar
+      : (now - this.seq.holdAnchorMs) / 1000 / barSec
+    if (elapsedBars < 0) {
+      // El contador de compases retrocedió (cambio de tema) — re-ancla.
+      this.seq.holdAnchorBar = barFloat
+      elapsedBars = 0
+    }
+    const remain = holdBars - elapsedBars
+    if (remain <= 0) {
+      useTheiaAutopilotStore.getState().cancelHold()
+      return
+    }
+    useTheiaAutopilotStore.getState().__engineReport({
+      holdLabel: audioAlive ? `${remain.toFixed(1)} bars` : `${Math.ceil(remain * barSec)}s`,
+      countdownLabel: 'HOLD',
+      dwellFrac: 0,
+      syncWaiting: false,
+      engineRunning: true,
+    })
+  }
+
+  // ── 🧠 Director SELENE ───────────────────────────────────────────────
+
+  /** Candidatos: ítems no-skip de la playlist con átomo resoluble; si no
+   *  hay ninguno, el catálogo completo (fallback de seguridad). */
+  private seleneCandidates(): SeleneCandidate[] {
+    const pl = useTheiaPlaylistStore.getState()
+    const out: SeleneCandidate[] = []
+    pl.items.forEach((item, index) => {
+      if (item.flags.skip) return
+      const { atom } = resolvePlaylistAtom(item)
+      if (atom) out.push({ index, atom })
+    })
+    if (out.length > 0) return out
+    return this.deps.catalog().map((atom) => ({ index: -1, atom }))
+  }
+
+  private chooseSelene(): SelenePick | null {
+    const pl = useTheiaPlaylistStore.getState()
+    const live = pl.activeIndex >= 0 ? pl.items[pl.activeIndex] : undefined
+    const avoidAtomId =
+      (live ? resolvePlaylistAtom(live).atomId ?? undefined : undefined) ??
+      (this.seq.lastSeleneAtomId || undefined)
+    return seleneChoose(this.seleneCandidates(), {
+      target: this.aco.target(),
+      energy: this.aco.energy,
+      vibe: this.deps.vibe(),
+      avoidAtomId,
+    })
+  }
+
+  /** Selene decide y dispara. false = no había nada que elegir/disparar. */
+  private fireSelene(tel: AutopilotTelemetry | null, now: number): boolean {
+    const pick = this.chooseSelene()
+    if (!pick) return false
+    const xfadeMs = Math.round(useTheiaAutopilotStore.getState().xFadeSec * 1000)
+    // Marcar ANTES: el cambio de activeIndex que provoca el disparo no es
+    // un override humano (onExternalFire lo ignora).
+    this.seq.firedItemIndex = pick.index
+    let ok: boolean
+    if (pick.index >= 0) {
+      ok = this.deps.fire(pick.index, xfadeMs)
+    } else {
+      ok = this.deps.fireCatalog(pick.atomId, xfadeMs)
+      const pl = useTheiaPlaylistStore.getState()
+      if (ok && pl.activeIndex !== -1) useTheiaPlaylistStore.setState({ activeIndex: -1 })
+    }
+    if (!ok) return false
+    this.seq.firedAtMs = now
+    this.seq.firedBarFloat = tel ? tel.barCount + tel.barPhase : -1
+    this.seq.syncWaiting = false
+    this.seq.dropArmed = false
+    this.seq.lastSeleneAtomId = pick.atomId
+    this.seq.lastPeekMs = -Infinity
+    return true
+  }
+
+  /** ≤2 Hz: el CUE del lane muestra a quién elegiría Selene ahora mismo. */
+  private peekSelene(now: number): void {
+    if (now - this.seq.lastPeekMs < 500) return
+    this.seq.lastPeekMs = now
+    const pick = this.chooseSelene()
+    const idx = pick ? pick.index : -1
+    const pl = useTheiaPlaylistStore.getState()
+    if (pl.cueIndex !== idx) pl.setCueIndex(idx)
   }
 
   private report(label: string, frac: number, sync: boolean, running: boolean): void {

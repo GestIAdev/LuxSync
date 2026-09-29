@@ -107,6 +107,9 @@ const CROSSFADE_DRAMATIC_MS = 50
 const CROSSFADE_BUILDUP_MS = 300
 const CROSSFADE_AMBIENT_MS = 500
 
+/** 🎬 WAVE 8307 — bonus (en unidades de distancia ACO) por vibe compatible. */
+const VIBE_MATCH_BONUS = 0.15
+
 // ─── ADAPTER ─────────────────────────────────────────────────────────────────
 
 interface LastEmitted {
@@ -196,19 +199,72 @@ export class SeleneTheiaAdapter {
     atoms: readonly ITheiaAtom[],
     input: ISeleneTheiaInput,
   ): ITheiaMatch | null {
-    // Filtrar por solapamiento de energyZone
+    return this._closestAtom(this._zoneCompatible(atoms, input.energyZone), input.targetDNA)
+  }
+
+  /** Filtra por solapamiento de energyZone; si nada encaja devuelve todos. */
+  private _zoneCompatible(
+    atoms: readonly ITheiaAtom[],
+    zone: EnergyZone,
+  ): readonly ITheiaAtom[] {
     const ZONES: readonly EnergyZone[] = [
       'silence', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
     ]
-    const targetIdx = ZONES.indexOf(input.energyZone)
+    const targetIdx = ZONES.indexOf(zone)
     const compatible = atoms.filter((a) => {
       const minIdx = ZONES.indexOf(a.energyZone.min)
       const maxIdx = ZONES.indexOf(a.energyZone.max)
       return targetIdx >= minIdx && targetIdx <= maxIdx
     })
+    return compatible.length > 0 ? compatible : atoms
+  }
 
-    const candidates = compatible.length > 0 ? compatible : atoms
-    return this._closestAtom(candidates, input.targetDNA)
+  /**
+   * 🎬 WAVE 8307 — Director SELENE: elige el ganador entre un conjunto
+   * ARBITRARIO de candidatos (la playlist, o el catálogo como fallback).
+   * Sin throttle ni gating de pack — el Auto-Pilot ya controla el cuándo.
+   *
+   * Puntuación = distancia euclídea ACO al target, reducida en
+   * `VIBE_MATCH_BONUS` si el átomo declara el vibe activo en
+   * `compatibleVibes`. `avoidAtomId` (el que está en LIVE) se excluye
+   * salvo que sea el único candidato.
+   */
+  public rankCandidates(
+    atoms: readonly ITheiaAtom[],
+    target: ITheiaGenome,
+    zone: EnergyZone,
+    vibe: string,
+    avoidAtomId?: string,
+  ): (ITheiaMatch & { readonly vibeMatch: boolean }) | null {
+    let pool = this._zoneCompatible(atoms, zone)
+    if (avoidAtomId && pool.length > 1) {
+      const rest = pool.filter((a) => a.id !== avoidAtomId)
+      if (rest.length > 0) pool = rest
+    }
+    if (pool.length === 0) return null
+
+    let best: ITheiaAtom = pool[0]
+    let bestDist = Infinity
+    let bestVibe = false
+    for (const atom of pool) {
+      const da = atom.aggression - target.aggression
+      const dc = atom.chaos - target.chaos
+      const do_ = atom.organicity - target.organicity
+      const raw = Math.sqrt(da * da + dc * dc + do_ * do_)
+      const vibeMatch = atom.compatibleVibes.includes(vibe)
+      const dist = Math.max(0, raw - (vibeMatch ? VIBE_MATCH_BONUS : 0))
+      if (dist < bestDist) {
+        bestDist = dist
+        best = atom
+        bestVibe = vibeMatch
+      }
+    }
+    return {
+      atomId: best.id,
+      distance: bestDist,
+      score: Math.max(0, 1 - bestDist / Math.sqrt(3)),
+      vibeMatch: bestVibe,
+    }
   }
 
   /**

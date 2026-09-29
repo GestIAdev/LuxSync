@@ -33,6 +33,11 @@ const baseTel = (): AutopilotTelemetry => ({
   onBeat: false,
   dropIncoming: false,
   crestEvent: false,
+  energy: 0.5,
+  harshness: 0.3,
+  flatness: 0.3,
+  transientDensity: 0.3,
+  spectralFlux: 0.3,
 })
 
 interface Rig {
@@ -84,6 +89,11 @@ function resetStores() {
     quant: 'bar',
     xFadeSec: 2,
     dropSnap: true,
+    director: 'manual',
+    resumeDirector: null,
+    holdBars: 16,
+    holdEpoch: 0,
+    holdLabel: '',
     countdownLabel: '—',
     dwellFrac: 0,
     syncWaiting: false,

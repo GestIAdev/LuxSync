@@ -36,6 +36,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isSupportedMediaFile, useTheiaPackStore } from '../../stores/useTheiaPackStore'
 import { THEIA_ATOM_MIME } from '../../stores/useTheiaPlaylistStore'
+import { useTheiaAutopilotStore } from '../../stores/useTheiaAutopilotStore'
 import { getThetaOrchestrator } from '../../theia'
 import type { ITheiaAtom, ITheiaPack } from '../../types/theiaTypes'
 import { LuxIcon } from '../icons'
@@ -135,6 +136,8 @@ const LiveDeck: React.FC = () => {
   }, [])
 
   const handleAtomTrigger = useCallback(async (atom: ITheiaAtom) => {
+    // 🖐 WAVE 8307 — regla de oro: el click humano manda; el Director calla.
+    useTheiaAutopilotStore.getState().takeOver()
     const theta = getThetaOrchestrator()
     try {
       await theta.playAtom({

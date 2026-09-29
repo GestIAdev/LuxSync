@@ -203,6 +203,7 @@ export class ThetaOrchestrator {
         // transfer (0×0 o el intrínseco 300×150) para siempre. Se reenvían al
         // worker en el handler de 'theia:ready'.
         this.pendingPreviewDims = null;
+        this._automationGate = null;
         this._clipUrlResolver = null;
         // ───────────────────────────────────────────────────────────────────────
         // 🎛️ WAVE 8239 · U1 — Transport sync (HTMLVideoElement → Zustand)
@@ -508,6 +509,10 @@ export class ThetaOrchestrator {
      * y, en futuras fases, por el BrainTheiaBridge derivando de MusicalContext.
      */
     forceState(state, opts = {}) {
+        // 🎬 WAVE 8307 — el Director arbitra: un forceState AUTÓNOMO (Selene
+        // legacy, manual:false) calla si hay otro director activo o un HOLD.
+        if (opts.manual === false && !this.isAutomationAllowed())
+            return;
         if (!this.worker || !this.isReady) {
             // eslint-disable-next-line no-console
             console.warn('[THETA] forceState called before worker is ready — ignored');
@@ -527,6 +532,17 @@ export class ThetaOrchestrator {
             // eslint-disable-next-line no-console
             console.error('[THETA] forceState postMessage failed:', err);
         }
+    }
+    /**
+     * 🎬 WAVE 8307 — gate del Director: `true` = la IA legacy (Selene→
+     * forceState / bus play-atom) puede actuar. El Auto-Pilot lo instala en
+     * `init()` (allowed ⇔ director MANUAL). Sin gate = permitido (compat).
+     */
+    setAutomationGate(gate) {
+        this._automationGate = gate;
+    }
+    isAutomationAllowed() {
+        return this._automationGate ? this._automationGate() : true;
     }
     /** Último reporte de la AssetStateMachine recibido del worker. */
     getAssetState() {

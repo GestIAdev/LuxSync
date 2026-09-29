@@ -103,6 +103,10 @@ export function attachSeleneTheia(opts) {
     evolver.attach(orchestrator);
     // 2) Listener: Selene cognitive output → adapter → bus.
     const onCognitive = (input) => {
+        // 🎬 WAVE 8307 — árbitro: con Director PLAYLIST/SELENE/HOLD la ruta
+        // cognitiva autónoma legacy queda silenciada (un solo operador activo).
+        if (!orchestrator.isAutomationAllowed())
+            return;
         let intent;
         try {
             intent = adapter.process(input);

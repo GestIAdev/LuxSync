@@ -35,6 +35,8 @@ import { create } from 'zustand'
 import { getThetaOrchestrator } from '../theia/ThetaOrchestrator'
 import { spawnGenomeVariant } from '../theia/genome/GenomePool'
 import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
+import { useTheiaAutopilotStore } from './useTheiaAutopilotStore'
+import type { ITheiaAtom } from '../types/theiaTypes'
 
 /** MIME propio del payload interno de átomos (DnD deck → playlist). */
 export const THEIA_ATOM_MIME = 'application/x-theia-atom'
@@ -81,11 +83,9 @@ function uid(): string {
  * `core#seed` caídas (inmortalidad del blueprint). Devuelve false si el
  * ítem no tiene medio resoluble.
  */
-function triggerPlaylistItem(
+export function resolvePlaylistAtom(
   item: TheiaPlaylistItem,
-  crossfadeMs = PLAYLIST_CROSSFADE_MS,
-): boolean {
-  const theta = getThetaOrchestrator()
+): { atomId: string | null; atom: ITheiaAtom | undefined } {
   const registry = getTheiaRegistry()
 
   let atomId = item.atomId
@@ -107,7 +107,16 @@ function triggerPlaylistItem(
     }
   }
 
-  const atom = atomId ? registry.getAtom(atomId) : undefined
+  return { atomId, atom: atomId ? registry.getAtom(atomId) : undefined }
+}
+
+function triggerPlaylistItem(
+  item: TheiaPlaylistItem,
+  crossfadeMs = PLAYLIST_CROSSFADE_MS,
+  reasonKind: 'manual' | 'auto' = 'manual',
+): boolean {
+  const theta = getThetaOrchestrator()
+  const { atomId, atom } = resolvePlaylistAtom(item)
   if (!atom && !item.filePath) {
     // eslint-disable-next-line no-console
     console.warn(`[PLAYLIST] item '${item.id}' sin medio resoluble — skip`)
@@ -119,7 +128,7 @@ function triggerPlaylistItem(
       atomId: atomId ?? `playlist-item:${item.id}`,
       startMs: atom?.trim.startMs ?? 0,
       crossfadeMs,
-      reason: `playlist:manual|item=${item.id}`,
+      reason: `playlist:${reasonKind}|item=${item.id}`,
       // Medio `file` puro: su filePath ES la URL (mismo contrato que el
       // defaultResolver de SeleneTheiaWiring).
       urlResolver:
@@ -174,7 +183,11 @@ export interface TheiaPlaylistState {
 
   /** Dispara el ítem en `index` (manual override — ignora `skip`).
    *  `crossfadeMs` opcional — el Auto-Pilot pasa su X-FADE propio. */
-  playAt: (index: number, crossfadeMs?: number) => boolean
+  playAt: (
+    index: number,
+    crossfadeMs?: number,
+    opts?: { auto?: boolean },
+  ) => boolean
   /** NEXT: dispara el cue (o el siguiente al activo), saltando `skip`. */
   playNext: () => boolean
   /** PREV: dispara el anterior al activo, saltando `skip`. */
@@ -271,11 +284,14 @@ export const useTheiaPlaylistStore = create<TheiaPlaylistState>((set, get) => ({
 
   clearPlaylist: () => set({ items: [], activeIndex: -1, cueIndex: -1 }),
 
-  playAt: (index, crossfadeMs) => {
+  playAt: (index, crossfadeMs, opts) => {
     const { items } = get()
     const item = items[index]
     if (!item) return false
-    if (!triggerPlaylistItem(item, crossfadeMs)) return false
+    const auto = opts?.auto === true
+    if (!triggerPlaylistItem(item, crossfadeMs, auto ? 'auto' : 'manual')) return false
+    // 🖐 WAVE 8307 — regla de oro: disparo humano ⇒ el Director calla (HOLD).
+    if (!auto) useTheiaAutopilotStore.getState().takeOver()
     set({
       activeIndex: index,
       cueIndex: findPlayable(items, index + 1, 1, index),
@@ -290,6 +306,7 @@ export const useTheiaPlaylistStore = create<TheiaPlaylistState>((set, get) => ({
     const target = findPlayable(items, start, 1, activeIndex)
     if (target < 0) return false
     if (!triggerPlaylistItem(items[target])) return false
+    useTheiaAutopilotStore.getState().takeOver()
     set({
       activeIndex: target,
       cueIndex: findPlayable(items, target + 1, 1, target),
@@ -302,6 +319,7 @@ export const useTheiaPlaylistStore = create<TheiaPlaylistState>((set, get) => ({
     const target = findPlayable(items, activeIndex - 1, -1, activeIndex)
     if (target < 0) return false
     if (!triggerPlaylistItem(items[target])) return false
+    useTheiaAutopilotStore.getState().takeOver()
     set({
       activeIndex: target,
       cueIndex: findPlayable(items, target + 1, 1, target),

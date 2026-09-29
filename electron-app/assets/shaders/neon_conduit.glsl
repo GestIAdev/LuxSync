@@ -3,11 +3,12 @@
 // @euclid family  tunnel+lattice
 // @euclid genome  aggression=0.85 chaos=0.45 organicity=0.15
 // @euclid zone    active..peak
+// @euclid vibes   techno-club+rave
 // @euclid param   u_glow  float -1.0 1.0 0.0 "Glow"
 // @euclid param   u_twist float -1.0 1.0 0.0 "Twist"
 // @euclid gene    G_SIDES struct int   4    8     6    a:+0.3 c:+0.2 o:-0.3
 // @euclid gene    G_RIB   expr   float 0.6  3.0   1.4  a:+0.4 o:-0.2
-// @euclid gene    G_VEL   expr   float 0.5  3.0   1.6  a:+0.6
+// @euclid gene    G_VEL   expr   float 0.5  2.0   1.6  a:+0.6
 // @euclid gene    G_HUE   expr   float 0.0  1.0   0.55 c:+0.3
 // @euclid gene    G_SEED  expr   float 0.0  100.0 0.0
 // @euclid steps   64
@@ -49,7 +50,7 @@ float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voi
 float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_vocalIsolation)); }
 
 // ── Canales globales (una evaluación por píxel) ─────────────────────────
-float gBeats, gGlitch, gTwist, gKickZ;
+float gBeats, gGlitch, gTwist, gKickZ, gCamZ;
 
 // Distancia a un n-gono regular de apotema r (negativa dentro).
 float sdNgon(vec2 p, float n, float r) {
@@ -60,7 +61,11 @@ float sdNgon(vec2 p, float n, float r) {
 
 // Espacio del túnel: torsión continua (reloj) + desgarro (glitch).
 vec3 warpTunnel(vec3 p) {
-  float tw = gTwist * p.z + gGlitch * 0.9 * sin(p.z * 1.7 + gBeats * PI);
+  // 🌊 WAVE 8290 — torsión RELATIVA a la cámara: `p.z` es coordenada de
+  // mundo y crece con camZ sin cota → el túnel se enrollaba cada vez más
+  // denso hasta licuar la geometría (el "spin infinito"). `p.z - gCamZ`
+  // = profundidad por delante del visor → paso de hélice constante.
+  float tw = gTwist * (p.z - gCamZ) + gGlitch * 0.9 * sin(p.z * 1.7 + gBeats * PI);
   p.xy = rot2(tw) * p.xy;
   // Glitch rompe la simetría: cizalla por bloques discretos de z.
   float blk = floor(p.z * 1.5);
@@ -86,8 +91,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — el conduit late al beat; el estallido
   // del punto de fuga solo cuando un clip físico corre en las luces.
   float fx    = u_activeEffectEnergy;
-  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
-  float swell = sin(3.1415927 * u_barPhase);
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase) * u_speed;
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
   gTwist  = 0.035 + 0.05 * u_twist + 0.04 * beatP;
 
   // Scanline tear (glitch agresivo) antes de construir el rayo.
@@ -100,6 +105,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 2. CÁMARA — avanza con el reloj musical (obedece SPEED) ─────────
   float camZ = gBeats * G_VEL;
+  gCamZ = camZ;
   vec3 ro = vec3(0.0, 0.0, camZ);
   float fov = 1.25 - 0.2 * swell + 0.35 * fx;              // disparo = teleobjetivo
   vec3 rd = normalize(vec3(uv, fov));

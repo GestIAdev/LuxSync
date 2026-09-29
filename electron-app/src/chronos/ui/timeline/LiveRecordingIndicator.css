@@ -27,17 +27,21 @@
  * BORDER - Pulsating stroke
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* 🌊 WAVE 8295 — stroke-width es geometría SVG (re-raster por frame);
+   ahora scale+opacity con transform-box (composited). */
 .live-rec-border {
+  transform-box: fill-box;
+  transform-origin: center;
   animation: live-rec-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes live-rec-pulse {
   0%, 100% {
-    stroke-width: 2px;
+    transform: scale(1);
     opacity: 0.6;
   }
   50% {
-    stroke-width: 3px;
+    transform: scale(1.02);
     opacity: 1;
   }
 }

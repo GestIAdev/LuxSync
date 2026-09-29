@@ -426,6 +426,7 @@
 }
 
 .war-log__liquid-hud__ignite {
+  position: relative;
   margin-left: 4px;
   padding: 2px 8px;
   background: rgba(251, 191, 36, 0.15);
@@ -435,17 +436,23 @@
   font-weight: 700;
   font-size: 0.6rem;
   letter-spacing: 1px;
-  animation: ignite-pulse 1s ease-in-out infinite alternate;
   flex-shrink: 0;
 }
 
+/* 🌊 WAVE 8295 — pulso ignite via ::after + opacity (composited) */
+.war-log__liquid-hud__ignite::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+  pointer-events: none;
+  animation: ignite-pulse 1s ease-in-out infinite;
+}
+
 @keyframes ignite-pulse {
-  from {
-    box-shadow: 0 0 4px rgba(251, 191, 36, 0.2);
-  }
-  to {
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
-  }
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
 }
 
 /* Liquid entry hover */

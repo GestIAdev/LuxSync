@@ -31,11 +31,7 @@
  *     worker como `frameContextSAB` — su primera página de 16B es el reloj.
  *   - TheiaOutputView (Modo B): ring local para el futuro shader propio.
  */
-import {
-    TELEMETRY_RING_BYTES as EUCLID_RING_BYTES,
-    TELEMETRY_RING_BYTES_V1 as EUCLID_RING_BYTES_V1,
-    TELEMETRY_RING_SLOTS as EUCLID_RING_SLOTS,
-} from './telemetry/TheiaTelemetryRing';
+import { TELEMETRY_RING_BYTES as EUCLID_RING_BYTES, TELEMETRY_RING_BYTES_V1 as EUCLID_RING_BYTES_V1, TELEMETRY_RING_SLOTS as EUCLID_RING_SLOTS, } from './telemetry/TheiaTelemetryRing';
 /** Bytes del ring Euclid — una línea de caché ×8 (v2: 512B). */
 export const TELEMETRY_RING_BYTES = EUCLID_RING_BYTES;
 /** Tamaño legado v1 (256B) — tolerado por mirror/reader/guard. */
@@ -70,16 +66,14 @@ export function createLocalTelemetryRing() {
  */
 export class TelemetryMirror {
     constructor(ring) {
-        /** Slots Int32 del ring local (128 en v2 · 64 en un ring legado v1). */
+        /** La página B del ring contiene datos de frames v2 — al llegar un frame
+         *  v1 (256B) se limpia UNA vez (transición de formato, no por mensaje). */
+        this.pageBHot = false;
         this.dstSlots = Math.min(ring.byteLength >> 2, TELEMETRY_RING_INT32_LENGTH);
-        /** Vista fija sobre el ring local. Null si el ring es demasiado pequeño. */
         this.dst =
             ring.byteLength >= TELEMETRY_RING_BYTES_V1
                 ? new Int32Array(ring, 0, this.dstSlots)
                 : null;
-        /** La página B del ring contiene datos de frames v2 — al llegar un frame
-         *  v1 (256B) se limpia UNA vez (transición de formato, no por mensaje). */
-        this.pageBHot = false;
     }
     /**
      * Espeja un buffer de telemetría recibido dentro del ring local.

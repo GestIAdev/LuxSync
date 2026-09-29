@@ -3,6 +3,7 @@
 // @euclid family  metal+crystal
 // @euclid genome  aggression=0.60 chaos=0.45 organicity=0.65
 // @euclid zone    ambient..peak
+// @euclid vibes   techno-club+rave+chill-lounge
 // @euclid param   u_visc  float -1.0 1.0 0.0 "Viscosity"
 // @euclid param   u_facet float -1.0 1.0 0.0 "Facets"
 // @euclid gene    G_BLOBS  struct int   3    6     4    c:+0.4 o:+0.2
@@ -51,7 +52,7 @@ uniform float u_facet;
 #define LUMA     vec3(0.2126, 0.7152, 0.0722)
 
 // ── Canales globales (una evaluación por píxel) ─────────────────────────
-float gBeats, gET, gVisc, gK, gRot, gAmp;
+float gBeats, gET, gVisc, gK, gRot, gAmp, gFling;
 
 float mapPhase(vec3 p) {
   p.xz = rot2(gRot) * p.xz;
@@ -66,9 +67,13 @@ float mapPhase(vec3 p) {
   for (int i = 0; i < BLOB_MAX; i++) {
     if (float(i) >= G_BLOBS) break;
     float fi = float(i);
-    float ph = gBeats * TAU / 32.0 * G_ORBIT + fi * TAU / G_BLOBS + G_SEED;
+    // 🌊 WAVE 8297 · M2 — disparo con cristal: las esquirlas se EYECTAN
+    // en espiral (fase + radio crecen con gFling); al caer el clip la
+    // órbita nominal las recoge → ruptura y reconstitución.
+    float ph = gBeats * TAU / 32.0 * G_ORBIT + fi * TAU / G_BLOBS + G_SEED
+             + gFling * 1.2;
     vec3 cp = vec3(cos(ph), 0.45 * sin(ph * 1.3 + fi), sin(ph))
-            * (1.3 + 0.15 * sin(fi * 2.1 + gBeats * 0.25));
+            * (1.3 + 0.15 * sin(fi * 2.1 + gBeats * 0.25) + 1.1 * gFling);
     vec3 q = p - cp;
     q.xy = rot2(ph * 1.7 + fi) * q.xy;
     q.yz = rot2(ph + fi * 0.7) * q.yz;
@@ -107,14 +112,18 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   gET    = u_energyTime;
   // 🔫 WAVE 8287 · Clean Shot — fx = clip físico vivo; swell respira al compás.
   float fx    = u_activeEffectEnergy;
-  float swell = sin(3.1415927 * u_barPhase);
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
 
   // EL parámetro de fase: pads → mercurio (1), percusión seca → cristal (0).
   float visc = smoothstep(0.15, 0.75, u_synthSustain) * (1.0 - 0.8 * u_percussiveness);
   gVisc = clamp(visc + 0.35 * u_visc, 0.0, 1.0);
   gK    = mix(0.008, 0.40, gVisc);                          // cristal → mercurio
   gRot  = gBeats * TAU / 48.0;
-  gAmp  = (0.04 + 0.10 * u_kickPulse + 0.05 * u_bass) * live;
+  // 🌊 WAVE 8297 · M2 — colapso de fase por disparo: el mercurio HIERTE
+  // descontrolado (gAmp ×hasta 5 — solo actúa con gVisc>0 dentro de
+  // mapPhase) y el cristal EXPULSA sus esquirlas (gFling solo con visc→0).
+  gAmp  = (0.04 + 0.10 * u_kickPulse + 0.05 * u_bass) * live * (1.0 + 4.0 * fx);
+  gFling = fx * (1.0 - gVisc);
 
   vec2 fc = fragCoord;
   if (glitch > 0.01) {
@@ -182,8 +191,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     float spec = pow(max(dot(reflect(-L, n), V), 0.0), mix(96.0, 12.0, gVisc));
     col += spec * mix(1.6, 0.5, gVisc) * (0.6 + 0.4 * u_energy);
 
-    // Caja verdadera (MACD): el cristal se FRACTURA por los filos de faceta.
-    col += edge * (u_snareTruePulse * 2.4 + 0.12 * live) * disp2;
+    // Caja verdadera (MACD): el cristal se FRACTURA por los filos de
+    // faceta; con disparo los filos se incandescecen durante la ruptura.
+    col += edge * (u_snareTruePulse * 2.4 + 0.12 * live + fx * 2.2) * disp2;
     // Bombo: la piel del mercurio se enciende en el fresnel al ondular.
     col += gVisc * u_kickPulse * 0.6 * fres * vec3(1.0, 0.92, 0.85);
     // Hi-hat: chispas en las aristas del cristal.
@@ -192,12 +202,11 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
     col = mix(col, bg, 1.0 - exp(-t * 0.04));
   }
-  col += glow * disp * (0.2 + 1.2 * u_kickPulse + 0.8 * fx) * (0.4 + 0.6 * gVisc);
+  // 🌊 WAVE 8297 · M2 — sin flash plano: la energía del disparo va a la
+  // corona volumétrica del metal hirviendo (posicional, no overlay).
+  col += glow * disp * (0.2 + 1.2 * u_kickPulse + 1.4 * fx) * (0.4 + 0.6 * gVisc);
 
   // ── 4. TRANSITORIOS GLOBALES ──────────────────────────────────────
-  float r = length(uv);
-  col += fx * 0.45 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
-                              vec3(0.0, 0.33, 0.67)) * exp(-2.5 * r);
   if (glitch > 0.01) col = mix(col, col.gbr, 0.5 * glitch * step(0.6, hash21(vec2(floor(fc.y / 4.0), floor(gBeats * 8.0)))));
 
   // ── 5. TENSIÓN + VACÍO (v2: rampa suave + rebote ∝ al vacío) ───────

@@ -89,24 +89,35 @@ void main() {
 export const FLASH_STATS_FRAG_SRC = `#version 300 es
 precision highp float;
 uniform sampler2D u_scene;      // frame actual (post-epílogo, FBO escalado)
-uniform sampler2D u_statsPrev;  // texel previo {mean, budgetNorm}
+uniform sampler2D u_statsPrev;  // texel previo {mean, budgetNorm, coverage}
 uniform float u_dt;             // segundos desde el frame anterior
 uniform float u_flashBudget;    // presupuesto total (luma)
 uniform float u_budgetRate;     // recarga (luma/s)
+uniform float u_flashMaxDelta;  // 🩸 WAVE 8292 — umbral de "demanda brillante"
 out vec4 fragColor;
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 void main() {
+  vec4 prev = texture(u_statsPrev, vec2(0.5));
+  // 🩸 WAVE 8292 — cobertura brillante: fracción del campo que excede el
+  // cap estricto (prevMean + 0.9·maxDelta). El factor 0.9 incluye a los
+  // píxeles YA recortados (quedan justo EN el cap) → la métrica es estable
+  // para campos uniformes (strobe: cov≈1 siempre) y para brillos
+  // localizados (disco de acreción ≈5-10% → cov≈0.08 estable).
+  float hiThresh = prev.r + u_flashMaxDelta * 0.9;
   vec3 acc = vec3(0.0);
+  float hiCount = 0.0;
   for (int y = 0; y < 8; y++) {
     for (int x = 0; x < 8; x++) {
-      acc += texture(u_scene, (vec2(float(x), float(y)) + 0.5) / 8.0).rgb;
+      vec3 s = texture(u_scene, (vec2(float(x), float(y)) + 0.5) / 8.0).rgb;
+      acc += s;
+      if (dot(s, LUMA) > hiThresh) hiCount += 1.0;
     }
   }
   float mean = dot(acc * (1.0 / 64.0), LUMA);
-  vec4 prev = texture(u_statsPrev, vec2(0.5));
+  float cov = hiCount * (1.0 / 64.0);
   float budget = min(u_flashBudget, prev.g * u_flashBudget + u_dt * u_budgetRate);
   budget = max(0.0, budget - max(0.0, mean - prev.r));
-  fragColor = vec4(mean, budget / u_flashBudget, 0.0, 1.0);
+  fragColor = vec4(mean, budget / u_flashBudget, cov, 1.0);
 }
 `;
 // ─────────────────────────── Preámbulo ───────────────────────────
@@ -133,6 +144,12 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS) {
         'uniform float u_time;',
         'uniform float u_dt;',
         'uniform vec3  u_resolution;',
+        '// 🌊 WAVE 8290 — gobernador de tiempo EFECTIVO (timeScale ya',
+        '// suavizado, incluye masterSpeed y el halving de audio-muerto).',
+        '// Úsalo para escalar la DESVIACIÓN de los osciladores de fase',
+        '// (`beatP`/`swell` corren a BPM real — el fader SPEED solo los',
+        '// doma multiplicándolos: `0.5 + 0.5·cos(2π·u_beatPhase)·spd`).',
+        'uniform float u_speed;',
         'uniform float u_beatTime;',
         'uniform float u_kickPulse;',
         'uniform float u_snarePulse;',
@@ -154,6 +171,13 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS) {
         'uniform float u_contrast;',
         'uniform float u_blackout;',
         'uniform float u_renderScale;',
+        '// 🌊 WAVE 8302 · M1 — masters de post-procesado (SAT/HUE/STROBE).',
+        '// Viven fuera del namespace u_gene — son globals del motor, igual',
+        '// que u_brightness/u_contrast (por eso NO están en GEN_STD_UNIFORMS:',
+        '// el worker los entrega por el lazy-bind genérico de paramLocs).',
+        'uniform float u_masterSaturation;',
+        'uniform float u_masterHue;',
+        'uniform float u_masterStrobe;',
         '// Frame previo (crossfade) + estado fotosensible {mean,budget}',
         'uniform sampler2D u_prevFrame;',
         'uniform sampler2D u_flashState;',
@@ -210,18 +234,22 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS) {
     // Uniformidad por construcción): los 5 canales derivados que consumen
     // las matemáticas de las familias, calculados IDÉNTICOS en todos los
     // cores. Una evaluación por píxel, O(1), sin estado.
-    lines.push('// ── Canales estándar §3.1 (G6 — euChannels) ──');
-    lines.push('//   tc     — tensión·contracción: curva perceptual u_approach² (§3.4)');
-    lines.push('//   td     — tensión·disolución: breakdown inminente (u_enums.y==3)');
+    lines.push('// ── Canales estándar §3.1 (G6 — euChannels · Clean Shot 8287) ──');
     lines.push('//   glitch — ruptura digital con compuerta APOCALYPSE (§3.5)');
     lines.push('//   live   — factor de vida: audio vivo vs. latido libre');
     lines.push('//   groove — swing solo con pulso fiable (PLL_LOCKED)');
-    lines.push('void euChannels(out float tc, out float td, out float glitch,', '                out float live, out float groove) {', '  bool breakNx = (u_enums.y == 3);', '  tc     = breakNx ? 0.0 : u_approach * u_approach;', '  td     = breakNx ? u_approach : 0.0;', '  glitch = APOCALYPSE ? u_harshness : 0.0;', '  live   = AUDIO_LIVE ? 1.0 : 0.3;', '  groove = PLL_LOCKED ? u_beatConfidence : 0.25;', '}', '');
+    lines.push('//   🔫 WAVE 8287 — tc/td extirpados: la aproximación cognitiva ya no');
+    lines.push('//   gobierna geometría. El movimiento base vive en u_beatPhase/');
+    lines.push('//   u_barPhase/u_beatTime; los bursts solo via u_activeEffectEnergy.');
+    lines.push('void euChannels(out float glitch, out float live, out float groove) {', '  glitch = APOCALYPSE ? u_harshness : 0.0;', '  live   = AUDIO_LIVE ? 1.0 : 0.3;', '  groove = PLL_LOCKED ? u_beatConfidence : 0.25;', '}', '');
     // 🌊 WAVE 8279 · F4 — euTimbre (§2.3): pesos convexos (Σ=1) de las 4
-    // "texturas" físicas — voz · synth · percusión · grano/ruido. Los
-    // cuadrados exageran el dominante (w*=w); silencio total → calma
-    // viscosa (synth puro) en lugar de NaN.
-    lines.push('vec4 euTimbre() {', '  vec4 w = vec4(u_vocalIsolation, u_synthSustain, u_percussiveness,', '                max(u_whiteNoise, u_spectralDensity));', '  w *= w;', '  float s = w.x + w.y + w.z + w.w;', '  return s > 1e-4 ? w / s : vec4(0.0, 1.0, 0.0, 0.0);', '}', '');
+    // "texturas" físicas — voz · synth · percusión · grano/ruido.
+    // 🔬 WAVE 8282 — lineal (w/s): la versión cuadrática castigaba a las
+    // texturas minoritarias (voz 0.3 vs synth 0.7 → v²=0.09 vs s²=0.49, la
+    // mezcla colapsaba al dominante); en mezclas masterizadas la voz aislada
+    // rara vez supera ~0.35 → convivencia, no ganador-absoluto.
+    // Silencio total → calma viscosa (synth puro) en lugar de NaN.
+    lines.push('vec4 euTimbre() {', '  vec4 w = vec4(u_vocalIsolation, u_synthSustain, u_percussiveness,', '                max(u_whiteNoise, u_spectralDensity));', '  float s = w.x + w.y + w.z + w.w;', '  return s > 1e-4 ? w / s : vec4(0.0, 1.0, 0.0, 0.0);', '}', '');
     lines.push('// ── Librería Euclid (§4.1 — cero coste si no se usa) ──');
     lines.push('mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }', 'vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {', '  return a + b * cos(6.28318 * (c * t + d)); // IQ cosine palette', '}', 'float hash21(vec2 p) {', '  p = fract(p * vec2(234.34, 435.345));', '  p += dot(p, p + 34.23);', '  return fract(p.x * p.y);', '}', 'float hash31(vec3 p) {', '  // Hoskins — hash 3D→1D sin senos (estable en highp)', '  p = fract(p * vec3(0.1031, 0.1030, 0.0973));', '  p += dot(p, p.yzx + 33.33);', '  return fract((p.x + p.y) * p.z);', '}', 'float noise3(vec3 p) {', '  // WAVE 8232 · G0 (H2) — value noise TRILINEAL C1 en [-1,1]: las 8', '  // esquinas hasheadas sobre la retícula entera + smoothstep. El truco', '  // IQ original interpolaba vía textura bilineal; con hash sobre', '  // coords continuas era ruido blanco en xy (fBm → flicker).', '  vec3 i = floor(p);', '  vec3 f = fract(p);', '  f = f * f * (3.0 - 2.0 * f);', '  float n000 = hash31(i);', '  float n100 = hash31(i + vec3(1.0, 0.0, 0.0));', '  float n010 = hash31(i + vec3(0.0, 1.0, 0.0));', '  float n110 = hash31(i + vec3(1.0, 1.0, 0.0));', '  float n001 = hash31(i + vec3(0.0, 0.0, 1.0));', '  float n101 = hash31(i + vec3(1.0, 0.0, 1.0));', '  float n011 = hash31(i + vec3(0.0, 1.0, 1.0));', '  float n111 = hash31(i + vec3(1.0, 1.0, 1.0));', '  return mix(mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),', '             mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y), f.z) * 2.0 - 1.0;', '}', 'float sdSphere(vec3 p, float r) { return length(p) - r; }', 'float sdBox(vec3 p, vec3 b) {', '  vec3 q = abs(p) - b;', '  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);', '}', 'float sdTorus(vec3 p, vec2 t) {', '  vec2 q = vec2(length(p.xz) - t.x, p.y);', '  return length(q) - t.y;', '}', 'float smin(float a, float b, float k) {', '  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);', '  return mix(b, a, h) - k * h * (1.0 - h);', '}', 'vec3 opRep(vec3 p, vec3 c) { return mod(p + 0.5 * c, c) - 0.5 * c; }', '', `// Governor — techo de iteraciones para raymarching (§4.5, hint @euclid)`, `#define MAX_STEPS ${Math.max(8, Math.floor(maxSteps))}`, '');
     return lines.join('\n');
@@ -259,13 +287,39 @@ export function buildEpilogue() {
         '  // restante (leaky-bucket). El cap dinámico min(maxDelta, presupuesto)',
         '  // agota las subidas grandes: una estrobo sostenida solo puede emitir',
         '  // ~3 excursiones ≥0.1 antes de que el presupuesto mande.',
+        '  // 🩸 WAVE 8292 — fs.b = cobertura brillante (fracción del campo sobre',
+        '  // el cap, medida por el stats pass). WCAG solo penaliza flashes de',
+        '  // CAMPO AMPLIO (≥~25% del campo visual): un brillo localizado — un',
+        '  // disco de acreción ~5-10% sobre fondo negro — no puede mover la',
+        '  // media de campo, así que recibe headroom ×6 sin comprometer el',
+        '  // presupuesto (la subida de media sigue drenando el bucket igual).',
         '  if (u_flashGuard > 0.5 && u_hasPrev > 0.5) {',
         '    vec4 fs = texture(u_flashState, vec2(0.5));',
         '    float prevMean = fs.r;',
         '    float remaining = fs.g * u_flashBudget;',
-        '    float cap = prevMean + min(u_flashMaxDelta, remaining);',
+        '    float headroom = mix(6.0, 1.0, smoothstep(0.08, 0.30, fs.b));',
+        '    float cap = prevMean + min(u_flashMaxDelta * headroom, remaining);',
         '    float cur = dot(c, EU_LUMA);',
         '    if (cur > cap) c *= cap / max(cur, 1e-4);',
+        '  }',
+        '',
+        '  // 🌊 WAVE 8302 · M1 — POST-FX MASTER (antes del tonemap ACES):',
+        '  // 1) HUE — rotación Rodrigues rápida alrededor del eje gris (1,1,1)/√3.',
+        '  //    Preserva la luma del vector (rota el croma, no lo clipea).',
+        '  {',
+        '    float mH = u_masterHue * 6.28318530718;',
+        '    vec3 mK = vec3(0.57735026919);',
+        '    float mC = cos(mH), mS = sin(mH);',
+        '    c = c * mC + cross(mK, c) * mS + mK * dot(mK, c) * (1.0 - mC);',
+        '  }',
+        '  // 2) SATURATION — mezcla contra la luminancia (0=mono, 1=identidad,',
+        '  //    >1 sobresatura — el ACES posterior doma los overshoot).',
+        '  c = mix(vec3(dot(c, EU_LUMA)), c, u_masterSaturation);',
+        '  // 3) STROBE — onda cuadrada 50% duty a Hz reales sobre u_time',
+        '  //    (efecto de LUZ, no de compás → deliberadamente sin u_beatTime).',
+        '  //    Guardia 0.01Hz: desactivado el fader no cuesta ni una rama.',
+        '  if (u_masterStrobe > 0.01) {',
+        '    c *= step(fract(u_time * u_masterStrobe), 0.5);',
         '  }',
         '',
         '  // 🌊 WAVE 8256 — Tonemap fílmico ACES (fit de Narkowicz): comprime el',
@@ -542,6 +596,16 @@ export function parseEuclidMeta(source) {
                     .filter((s) => /^\w+$/.test(s));
                 if (fams.length > 0)
                     meta.family = fams;
+                break;
+            }
+            // ── 🌊 WAVE 8300 — `vibes a+b+c` → compatibleVibes del átomo ──
+            case 'vibes': {
+                const vibes = rest
+                    .split(/[+,]/)
+                    .map((s) => s.trim().toLowerCase())
+                    .filter((s) => /^[\w-]+$/.test(s));
+                if (vibes.length > 0)
+                    meta.vibes = vibes;
                 break;
             }
             case 'seed': {

@@ -3,10 +3,11 @@
 // @euclid family  void+lens
 // @euclid genome  aggression=0.50 chaos=0.55 organicity=0.35
 // @euclid zone    ambient..peak
+// @euclid vibes   chill-lounge+techno-club
 // @euclid param   u_mass float -1.0 1.0 0.0 "Mass"
 // @euclid param   u_disk float -1.0 1.0 0.0 "Disk"
 // @euclid gene    G_STARS struct int   1    3     2    c:+0.3
-// @euclid gene    G_TILT  expr   float 0.05 0.6   0.18 o:+0.2
+// @euclid gene    G_TILT  expr   float 0.18 0.6   0.18 o:+0.2
 // @euclid gene    G_RIN   expr   float 2.0  3.5   2.6  a:+0.2
 // @euclid gene    G_ROUT  expr   float 5.0  12.0  8.0  o:+0.3
 // @euclid gene    G_SWIRL expr   float 1.0  6.0   3.0  c:+0.6
@@ -98,7 +99,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — el colapso SOLO existe mientras un clip
   // físico corre en Hephaestus; la órbita basal respira con el compás.
   float fx    = u_activeEffectEnergy;
-  float swell = sin(3.1415927 * u_barPhase);
+  // 🌊 WAVE 8290 — el oleaje de compás obedece el fader SPEED (W8290 §M2.3).
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
 
   // Masa: el DISPARO de efecto es una oleada gravitatoria — el cielo
   // entero se dobla durante los ms exactos del clip DMX. Sin fuego real,

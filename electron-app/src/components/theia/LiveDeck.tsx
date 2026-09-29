@@ -35,6 +35,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isSupportedMediaFile, useTheiaPackStore } from '../../stores/useTheiaPackStore'
+import { THEIA_ATOM_MIME } from '../../stores/useTheiaPlaylistStore'
 import { getThetaOrchestrator } from '../../theia'
 import type { ITheiaAtom, ITheiaPack } from '../../types/theiaTypes'
 import { LuxIcon } from '../icons'
@@ -51,10 +52,13 @@ const LiveDeck: React.FC = () => {
   const livePackId      = useTheiaPackStore((s) => s.livePackId)
   const expandedPackId  = useTheiaPackStore((s) => s.expandedPackId)
   const armedAtomId     = useTheiaPackStore((s) => s.armedAtomId)
+  const activeAtomId    = useTheiaPackStore((s) => s.activeAtomId)
   const setArmedAtom    = useTheiaPackStore((s) => s.setArmedAtom)
+  const setActiveAtom   = useTheiaPackStore((s) => s.setActiveAtom)
   const setLivePack     = useTheiaPackStore((s) => s.setLivePack)
   const setExpandedPack = useTheiaPackStore((s) => s.setExpandedPack)
   const removePack      = useTheiaPackStore((s) => s.removePack)
+  const libraryScanning = useTheiaPackStore((s) => s.libraryScanning)
   const [isDragOver, setIsDragOver] = useState(false)
   // 🌊 WAVE 8255 — accordion: la fila de Pack Slots puede plegarse para
   // ceder todo el vertical a la grilla de átomos.
@@ -63,6 +67,43 @@ const LiveDeck: React.FC = () => {
   // 11+ tiles la expansión se comía el vertical del Viewport; un click en la
   // cabecera del pack expandido la oculta y el deck se encoge a su título.
   const [atomsCollapsed, setAtomsCollapsed] = useState(false)
+
+  // 🩸 WAVE 8294 — verdad absoluta del deck: el átomo vivo llega del
+  // perf-report del motor (~1 Hz, `activeShader` = genActiveId real), no
+  // del intent. Mutantes `core#seed` se normalizan al id canónico; cuando
+  // el shader activo es 'builtin' (átomo de vídeo) la verdad la lleva
+  // `getCurrentAtomId()` del orchestrator.
+  useEffect(() => {
+    const theta = getThetaOrchestrator()
+    const syncFromEngine = () => {
+      const sid = theta.getActiveShaderId()
+      setActiveAtom(
+        sid && sid !== 'builtin'
+          ? sid.split('#')[0]
+          : theta.getCurrentAtomId(),
+      )
+    }
+    const offPerf = theta.onPerfReport((p) => {
+      if (p.activeShader === undefined) return
+      setActiveAtom(
+        p.activeShader !== 'builtin'
+          ? p.activeShader.split('#')[0]
+          : theta.getCurrentAtomId(),
+      )
+    })
+    syncFromEngine()
+    return offPerf
+  }, [setActiveAtom])
+
+  // 🌊 WAVE 8299 — hidrata la librería de disco al montar el deck.
+  // Sin file watchers nativos, el rescan es manual (botón ↻) + este boot-scan.
+  useEffect(() => {
+    void useTheiaPackStore.getState().loadLibraryFromDisk()
+  }, [])
+
+  const handleRescan = useCallback(() => {
+    void useTheiaPackStore.getState().loadLibraryFromDisk()
+  }, [])
 
   const packs = useMemo(() => Array.from(packsMap.values()), [packsMap])
   const expandedPack = expandedPackId ? packsMap.get(expandedPackId) ?? null : null
@@ -86,6 +127,12 @@ const LiveDeck: React.FC = () => {
   const handleDeletePack = useCallback((packId: string) => {
     removePack(packId)
   }, [removePack])
+
+  // 🌊 WAVE 8302 · M3 — CRUD de mutaciones: baja de un átomo `core#seed`
+  // de la sesión (pack + registry + bookkeeping del GenomePool).
+  const handleDeleteAtom = useCallback((atom: ITheiaAtom) => {
+    useTheiaPackStore.getState().removeAtom(atom.id)
+  }, [])
 
   const handleAtomTrigger = useCallback(async (atom: ITheiaAtom) => {
     const theta = getThetaOrchestrator()
@@ -166,6 +213,17 @@ const LiveDeck: React.FC = () => {
         <span className="theia-live-deck__count">
           {packs.length} {packs.length === 1 ? 'PACK' : 'PACKS'}
         </span>
+        {/* 🌊 WAVE 8299 — rescan manual de userData/theia/packs/ */}
+        <button
+          type="button"
+          className="theia-live-deck__rescan"
+          onClick={handleRescan}
+          disabled={libraryScanning}
+          title="Rescan library — userData/theia/packs/"
+          aria-label="Rescan library"
+        >
+          <LuxIcon name="repeat" size={11} />
+        </button>
       </div>
 
       {/* ─── Fila de Pack Slots ─── */}
@@ -229,7 +287,9 @@ const LiveDeck: React.FC = () => {
                   atom={atom}
                   accent={expandedPack.manifest?.accentColor}
                   isArmed={atom.id === armedAtomId}
+                  isActive={atom.id === activeAtomId}
                   onTrigger={handleAtomTrigger}
+                  onDelete={handleDeleteAtom}
                 />
               ))}
             </div>
@@ -333,21 +393,54 @@ interface AtomTileProps {
   accent?: string
   /** 🖥️ WAVE 8268 — intent armado (motor OFF): standby hasta LIVE. */
   isArmed?: boolean
+  /** 🩸 WAVE 8294 — átomo realmente vivo en GPU (perf-report → store). */
+  isActive?: boolean
   onTrigger: (atom: ITheiaAtom) => void
+  /** 🌊 WAVE 8302 · M3 — baja de mutaciones de la sesión. */
+  onDelete?: (atom: ITheiaAtom) => void
 }
 
-const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, isArmed, onTrigger }) => {
+const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, isArmed, isActive, onTrigger, onDelete }) => {
   const isShader = atom.source?.kind === 'shader'
+  // 🌊 WAVE 8302 · M3 — mutación = id dinámico `core#seed` (spawnGenomeVariant).
+  const isMutation = atom.id.includes('#')
   const durMs = atom.trim.endMs - atom.trim.startMs
   // 🎛️ U1 — duración honesta: los shader atoms loopean (∞); un vídeo sin
   // metadata medida aún muestra '—' en lugar de una cifra inventada.
   const durLabel = isShader ? '∞' : durMs > 0 ? `${Math.round(durMs / 1000)}s` : '—'
   const kindLabel = isShader ? 'GEN' : 'VID'
 
+  // 🌊 WAVE 8305 · M3 — el tile es origen DnD para el Playlist Lane.
+  // Mutaciones viajan como {coreId, seed} (referencia inmortal §6.1): el
+  // playlist puede respawnear el átomo aunque se borre del deck/sesión.
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      const genome = isMutation
+        ? {
+            coreId: atom.id.split('#')[0],
+            seed: Number(atom.id.split('#')[1]),
+          }
+        : undefined
+      e.dataTransfer.setData(
+        THEIA_ATOM_MIME,
+        JSON.stringify({
+          atomId: atom.id,
+          label: atom.id,
+          kind: isShader ? 'shader' : 'video',
+          ...(genome && Number.isFinite(genome.seed) ? { genome } : {}),
+        }),
+      )
+      e.dataTransfer.effectAllowed = 'copy'
+    },
+    [atom.id, isShader, isMutation],
+  )
+
   return (
     <button
       type="button"
-      className={`theia-atom-tile${isShader ? ' is-shader' : ''}${isArmed ? ' is-armed' : ''}`}
+      draggable
+      onDragStart={handleDragStart}
+      className={`theia-atom-tile${isShader ? ' is-shader' : ''}${isArmed ? ' is-armed' : ''}${isActive ? ' is-active' : ''}`}
       style={accent ? { ['--atom-accent' as string]: accent } : undefined}
       onClick={() => onTrigger(atom)}
       data-midi-bind={`theia.live.atom.${atom.packId}.${atom.id}`}
@@ -361,6 +454,20 @@ const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, isArmed, onTrigger })
       <span className="theia-atom-tile__meta">
         {durLabel} · A{atom.aggression.toFixed(1)}/C{atom.chaos.toFixed(1)}/O{atom.organicity.toFixed(1)}
       </span>
+      {isMutation && onDelete && (
+        <span
+          role="button"
+          className="theia-atom-tile__delete"
+          title={`Delete mutation ${atom.id}`}
+          aria-label={`Delete mutation ${atom.id}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(atom)
+          }}
+        >
+          <LuxIcon name="x" size={10} />
+        </span>
+      )}
       <span className="theia-atom-tile__badges">
         {atom.isDivineCandidate && (
           <span className="theia-atom-tile__badge is-divine" title="Divine candidate">

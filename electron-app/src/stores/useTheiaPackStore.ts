@@ -22,9 +22,18 @@
 
 import { create } from 'zustand'
 import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
+// 🌊 WAVE 8302 · M3 — ciclo store↔GenomePool consciente: el pool ya
+// importa este store (spawn/_extinguish); ambos solo usan los bindings
+// dentro de funciones → ESM live-bindings lo resuelve sin TDZ.
+import { releaseGenomeAtom } from '../theia/genome/GenomePool'
 import { parseEuclidMeta } from '../theia/shader/ShaderAssembler'
 import { ENERGY_ZONE_ORDINAL } from '../types/theiaTypes'
-import type { EnergyZone, ITheiaAtom, ITheiaPack } from '../types/theiaTypes'
+import type {
+  EnergyZone,
+  ITheiaAtom,
+  ITheiaPack,
+  ITheiaScannedPack,
+} from '../types/theiaTypes'
 
 // ─── MEDIA POOL ───────────────────────────────────────────────────────────────
 
@@ -83,16 +92,53 @@ interface TheiaPackState {
    *  refleja el `pendingPlayIntent` del orchestrator para que el tile
    *  brille en standby hasta que LIVE lo dispare. Latest-wins. */
   readonly armedAtomId: string | null
+  /** 🩸 WAVE 8294 — átomo realmente VIVO en GPU (verdad, no intent):
+   *  alimentado por `theia:perf-report` → `p.activeShader` (o
+   *  `getCurrentAtomId()` para átomos de vídeo), normalizado sin el
+   *  sufijo `#seed` de los mutantes. null = builtin/salida de vídeo. */
+  readonly activeAtomId: string | null
+  /** 🩸 WAVE 8294 — memoria inmortal del Inspector (M3): overrides de
+   *  genes `expr` por átomo (atomId → G_NAME → valor). Vive en el store,
+   *  no en refs de componente — sobrevive al cierre del Inspector. */
+  readonly atomGeneValues: ReadonlyMap<string, Readonly<Record<string, number>>>
+  /** Ídem para los `@euclid param` (atomId → u_name → valor). */
+  readonly atomParamValues: ReadonlyMap<string, Readonly<Record<string, number>>>
+  /** 🌊 WAVE 8299 — true mientras `loadLibraryFromDisk` está en vuelo. */
+  readonly libraryScanning: boolean
 }
 
 interface TheiaPackActions {
   // ── Packs ────────────────────────────────────────────────────────────────
   upsertPack(pack: ITheiaPack): void
   removePack(packId: string): void
+  /**
+   * 🌊 WAVE 8302 · M3 — borra UN átomo de la sesión (mutaciones `core#seed`).
+   * Libera el slot del Deck (pack.atoms + manifest.atomOrder), los overrides
+   * de genes/params del Inspector, el registro central y la contabilidad del
+   * GenomePool. No-op si el átomo no está en ningún pack.
+   */
+  removeAtom(atomId: string): void
   setLivePack(packId: string | null): void
   setExpandedPack(packId: string | null): void
   /** 🖥️ WAVE 8268 — marca/desmarca el átomo armado (null = desarmar). */
   setArmedAtom(atomId: string | null): void
+  /** 🩸 WAVE 8294 — fija el átomo vivo en GPU; si coincide con el armado,
+   *  lo desarma (ya disparó). */
+  setActiveAtom(atomId: string | null): void
+  /** 🩸 WAVE 8294 — memoria del Inspector: overrides de genes del átomo. */
+  setAtomGeneValues(atomId: string, values: Readonly<Record<string, number>>): void
+  /** Ídem para `@euclid param`. */
+  setAtomParamValues(atomId: string, values: Readonly<Record<string, number>>): void
+
+  // ── Disk library (WAVE 8299) ────────────────────────────────────────────
+  /**
+   * 🌊 WAVE 8299 — puebla el store desde `userData/theia/packs/` vía IPC
+   * `theia:library:scan`. Los packs de disco nacen con `pending:false` y
+   * `rootPath` real; los `pending` de sesión (drag&drop) sobreviven al
+   * rescan. Idempotente — rescan reemplaza átomos de disco por id.
+   * Devuelve el número de packs hidratados.
+   */
+  loadLibraryFromDisk(): Promise<number>
 
   // ── Raw clips ────────────────────────────────────────────────────────────
   addRawClips(clips: readonly RawClip[]): void
@@ -194,6 +240,10 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
   livePackId: null,
   expandedPackId: null,
   armedAtomId: null,
+  activeAtomId: null,
+  atomGeneValues: new Map(),
+  atomParamValues: new Map(),
+  libraryScanning: false,
 
   // ── Packs ────────────────────────────────────────────────────────────────
   upsertPack(pack) {
@@ -220,6 +270,48 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
     })
   },
 
+  removeAtom(atomId) {
+    const st = get()
+    let owner: ITheiaPack | undefined
+    for (const p of st.packs.values()) {
+      if (p.atoms.some((a) => a.id === atomId)) { owner = p; break }
+    }
+    if (!owner) return
+
+    const nextPacks = new Map(st.packs)
+    nextPacks.set(owner.id, {
+      ...owner,
+      atoms: owner.atoms.filter((a) => a.id !== atomId),
+      manifest: owner.manifest
+        ? {
+            ...owner.manifest,
+            atomOrder: (owner.manifest.atomOrder ?? []).filter(
+              (id) => id !== atomId,
+            ),
+          }
+        : owner.manifest,
+    })
+
+    const genes = new Map(st.atomGeneValues)
+    const params = new Map(st.atomParamValues)
+    genes.delete(atomId)
+    params.delete(atomId)
+
+    // Salida completa del ecosistema: registro central + bookkeeping del
+    // pool genético (población/fitness/índices). releaseGenomeAtom es
+    // idempotente y barato para ids que no son mutación.
+    getTheiaRegistry().unregister(atomId)
+    releaseGenomeAtom(atomId)
+
+    set({
+      packs: nextPacks,
+      atomGeneValues: genes,
+      atomParamValues: params,
+      armedAtomId: st.armedAtomId === atomId ? null : st.armedAtomId,
+      activeAtomId: st.activeAtomId === atomId ? null : st.activeAtomId,
+    })
+  },
+
   setLivePack(packId) {
     if (packId !== null && !get().packs.has(packId)) {
       console.warn(`[useTheiaPackStore] setLivePack('${packId}') — pack desconocido`)
@@ -235,6 +327,29 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
 
   setArmedAtom(atomId) {
     set({ armedAtomId: atomId })
+  },
+
+  setActiveAtom(atomId) {
+    const { armedAtomId } = get()
+    set({
+      activeAtomId: atomId,
+      // El átomo armado que ya está vivo en pantalla deja de ser "standby".
+      armedAtomId: armedAtomId && armedAtomId === atomId ? null : armedAtomId,
+    })
+  },
+
+  setAtomGeneValues(atomId, values) {
+    const next = new Map(get().atomGeneValues)
+    next.set(atomId, { ...values })
+    set({ atomGeneValues: next })
+    _scheduleOverridesWrite(get(), atomId, 'genes')
+  },
+
+  setAtomParamValues(atomId, values) {
+    const next = new Map(get().atomParamValues)
+    next.set(atomId, { ...values })
+    set({ atomParamValues: next })
+    _scheduleOverridesWrite(get(), atomId, 'params')
   },
 
   // ── Raw clips ────────────────────────────────────────────────────────────
@@ -412,6 +527,85 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
 
     return { clips, atoms, packId: clips[0]?.packId ?? atoms[0]?.packId ?? autoPackId }
   },
+
+  // ── Disk library (WAVE 8299) ─────────────────────────────────────────────
+  async loadLibraryFromDisk() {
+    const theia = typeof window !== 'undefined' ? window.lux?.theia : undefined
+    if (!theia?.scanLibrary) return 0
+    if (get().libraryScanning) return 0
+
+    set({ libraryScanning: true })
+    try {
+      const res = await theia.scanLibrary()
+      if (!res?.success) {
+        console.warn('[PackStore] loadLibraryFromDisk failed:', res?.error)
+        return 0
+      }
+
+      const registry = getTheiaRegistry()
+      const ts = Date.now()
+      const nextPacks = new Map(get().packs)
+      const hydratedGenes = new Map(get().atomGeneValues)
+      const hydratedParams = new Map(get().atomParamValues)
+
+      // Remove disk-backed packs that vanished from the scan (file deleted
+      // between runs). Session packs (pending / rootPath='') are untouched.
+      const scannedIds = new Set(res.packs.map((p) => p.id))
+      for (const [id, pack] of nextPacks) {
+        if (pack.rootPath && !scannedIds.has(id)) nextPacks.delete(id)
+      }
+
+      let hydrated = 0
+      for (const scanned of res.packs) {
+        const atoms: ITheiaAtom[] = []
+        for (const file of scanned.files) {
+          const atom = _atomFromScannedFile(scanned, file)
+          if (!atom) continue
+          atoms.push(atom)
+          registry.register(atom)
+        }
+
+        // manifest.atomOrder reordena; los no listados quedan al final.
+        const order = scanned.manifest?.atomOrder
+        if (order?.length) {
+          const rank = new Map(order.map((id, i) => [id, i]))
+          atoms.sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9))
+        }
+
+        // Hydrate persisted Inspector overrides — session-tweaked values win
+        // (el operador pudo afinar un átomo antes del rescan).
+        for (const [atomId, o] of Object.entries(scanned.manifest?.atomOverrides ?? {})) {
+          if (o.genes && !hydratedGenes.has(atomId)) hydratedGenes.set(atomId, o.genes)
+          if (o.params && !hydratedParams.has(atomId)) hydratedParams.set(atomId, o.params)
+        }
+
+        // Merge con extras de sesión (átomos dropeados sobre un pack de disco
+        // que no están en disco todavía).
+        const existing = nextPacks.get(scanned.id)
+        const incomingIds = new Set(atoms.map((a) => a.id))
+        const extras = (existing?.atoms ?? []).filter((a) => !incomingIds.has(a.id))
+
+        nextPacks.set(scanned.id, {
+          id: scanned.id,
+          rootPath: scanned.rootPath,
+          atoms: [...atoms, ...extras],
+          manifest: scanned.manifest,
+          scannedAt: ts,
+          pending: false,
+        })
+        hydrated++
+      }
+
+      set({
+        packs: nextPacks,
+        atomGeneValues: hydratedGenes,
+        atomParamValues: hydratedParams,
+      })
+      return hydrated
+    } finally {
+      set({ libraryScanning: false })
+    }
+  },
 }))
 
 // ─── BULK HELPERS (free functions) ───────────────────────────────────────────
@@ -427,13 +621,20 @@ function _toEnergyZone(s: string | undefined, fallback: EnergyZone): EnergyZone 
  * zona se derivan del header `@euclid` (defaults neutros si ausente).
  * `id` estable por basename → re-dropear el mismo archivo reemplaza.
  */
-export function buildGlslAtom(fileName: string, glsl: string, packId: string): ITheiaAtom {
+export function buildGlslAtom(
+  fileName: string,
+  glsl: string,
+  packId: string,
+  filePath?: string,
+): ITheiaAtom {
   const meta = parseEuclidMeta(glsl)
   const base = _safeBasename(fileName)
   return {
     id: `glsl_${base}`,
     packId,
-    filePath: `file://${fileName}`, // identidad simbólica — el medio es el glsl embebido
+    // 🌊 WAVE 8299 — `filePath` real cuando el átomo viene del disco;
+    // `file://name` queda como identidad simbólica para drag&drop de sesión.
+    filePath: filePath ?? `file://${fileName}`,
     aggression: meta.genome.aggression ?? 0.5,
     chaos: meta.genome.chaos ?? 0.5,
     organicity: meta.genome.organicity ?? 0.5,
@@ -443,13 +644,105 @@ export function buildGlslAtom(fileName: string, glsl: string, packId: string): I
     },
     validSections: ['verse', 'buildup', 'drop', 'breakdown', 'outro'],
     trim: { startMs: 0, endMs: 8000 }, // loop infinito — trim nominal
-    compatibleVibes: ['generic'], // untagged — el trigger manual es su vía
+    // 🌊 WAVE 8300 — `@euclid vibes a+b` declara elegibilidad Selene;
+    // sin header el átomo queda 'generic' (solo disparo manual).
+    compatibleVibes: meta.vibes?.length ? [...meta.vibes] : ['generic'],
     source: { kind: 'shader', glsl },
   }
 }
 
 // alias interno usado por ingestFiles
 const _buildGlslAtom = buildGlslAtom
+
+// ─── WAVE 8299 — DISK LIBRARY HELPERS ───────────────────────────────────────
+
+/**
+ * Convierte un archivo escaneado del disco en `ITheiaAtom` jugable.
+ * `.glsl` → `source.kind='shader'` con GLSL embebido; `.theia` → JSON +
+ * `_isValidTheiaAtom` (mismo gate que ingestFiles). Devuelve null en
+ * archivo malformado (fail-silent WAVE 2483).
+ */
+function _atomFromScannedFile(
+  pack: ITheiaScannedPack,
+  file: { fileName: string; absPath: string; kind: 'glsl' | 'theia'; text: string },
+): ITheiaAtom | null {
+  try {
+    if (file.kind === 'glsl') {
+      return buildGlslAtom(file.fileName, file.text, pack.id, file.absPath)
+    }
+    const parsed: unknown = JSON.parse(file.text)
+    const raw = (parsed as Record<string, unknown>)?.atom ?? parsed // soporta wrapper v2 y flat
+    if (!_isValidTheiaAtom(raw)) {
+      console.warn(`[PackStore] .theia inválido en disco, ignorado: ${file.absPath}`)
+      return null
+    }
+    return { ...(raw as ITheiaAtom), packId: pack.id, filePath: file.absPath }
+  } catch (err) {
+    console.warn(`[PackStore] error materializando ${file.absPath}:`, err)
+    return null
+  }
+}
+
+/** Escrituras debounced del manifest — clave `${packId}::${atomId}`. */
+const _pendingOverrideWrites = new Map<
+  string,
+  { packId: string; atomId: string; genes?: Record<string, number>; params?: Record<string, number>; timer: ReturnType<typeof setTimeout> }
+>()
+
+const MANIFEST_WRITE_DEBOUNCE_MS = 500
+
+/**
+ * Persiste los ajustes del Inspector en `pack.theiapack.json` — SOLO para
+ * átomos cuyo pack es disk-backed (`rootPath` no vacío, `pending` falso).
+ * Los packs de sesión (pending) no tienen manifest donde escribir.
+ * Debounced: arrastrar un fader coalescing a 1 write por 500ms de silencio.
+ */
+function _scheduleOverridesWrite(
+  state: Pick<TheiaPackState, 'packs'>,
+  atomId: string,
+  field: 'genes' | 'params',
+): void {
+  const theia = typeof window !== 'undefined' ? window.lux?.theia : undefined
+  if (!theia?.saveAtomOverrides) return
+
+  // Localiza el pack del átomo.
+  let packId: string | null = null
+  for (const pack of state.packs.values()) {
+    if (pack.rootPath && pack.atoms.some((a) => a.id === atomId)) {
+      packId = pack.id
+      break
+    }
+  }
+  if (!packId) return // átomo de sesión — sin manifest donde persistir
+
+  const key = `${packId}::${atomId}`
+  const pending = _pendingOverrideWrites.get(key)
+  if (pending) clearTimeout(pending.timer)
+
+  const latest = useTheiaPackStore.getState()
+  const entry = {
+    packId,
+    atomId,
+    genes: pending?.genes,
+    params: pending?.params,
+    timer: setTimeout(() => {
+      _pendingOverrideWrites.delete(key)
+      const patch = {
+        genes: entry.genes,
+        params: entry.params,
+      }
+      void theia.saveAtomOverrides(entry.packId, entry.atomId, patch).then((r) => {
+        if (!r?.success) console.warn(`[PackStore] manifest write failed for ${key}:`, r?.error)
+      })
+    }, MANIFEST_WRITE_DEBOUNCE_MS),
+  }
+  const snapshot = field === 'genes'
+    ? latest.atomGeneValues.get(atomId)
+    : latest.atomParamValues.get(atomId)
+  if (snapshot) entry[field] = { ...snapshot }
+
+  _pendingOverrideWrites.set(key, entry)
+}
 
 /**
  * Adjunta un átomo recién exportado a su Pack. Si el Pack no existe lo crea

@@ -101,12 +101,16 @@
 
 .oracle-hybrid__current-point {
   filter: drop-shadow(0 0 4px currentColor);
+  /* 🌊 WAVE 8295 — antes animaba `r` (geometría SVG = repaint por frame);
+     ahora scale+opacity con transform-box (composited). */
+  transform-box: fill-box;
+  transform-origin: center;
   animation: point-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes point-pulse {
-  0%, 100% { r: 3; opacity: 1; }
-  50% { r: 5; opacity: 0.8; }
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.6); opacity: 0.8; }
 }
 
 .oracle-hybrid__energy-value {

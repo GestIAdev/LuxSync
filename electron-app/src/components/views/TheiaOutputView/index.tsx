@@ -98,6 +98,10 @@ const TheiaOutputView: React.FC = () => {
     let genMode = false
     let genRafHandle = 0
     const genUniforms = new Map<string, number>()
+    // 🩸 WAVE 8294 — espejo del purge del worker: `u_gene[k]` es namespace
+    // global compartido; sin limpiar en el switch el fenotipo entrante
+    // heredaría los overrides del átomo saliente (contaminación de genes).
+    let lastGenShaderId: string | null = null
     const telReader = new TelemetryWireReader(telemetryRing)
     const smoother = new TelemetrySmoother()
     const genGovernor = new RenderGovernor()
@@ -281,8 +285,15 @@ const TheiaOutputView: React.FC = () => {
             )
           } else if (data.type === THEIA_GEN_ACTIVATE_MSG) {
             if (data.shaderId === BUILTIN_SHADER_ID) {
+              lastGenShaderId = null
               exitGenMode()
             } else {
+              if (data.shaderId !== lastGenShaderId) {
+                for (const k of genUniforms.keys()) {
+                  if (k.startsWith('u_gene[')) genUniforms.delete(k)
+                }
+                lastGenShaderId = data.shaderId
+              }
               enterGenMode()
               genRuntime?.activate(data.shaderId, data.crossfadeMs)
             }

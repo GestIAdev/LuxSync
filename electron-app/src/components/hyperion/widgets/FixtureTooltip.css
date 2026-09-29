@@ -351,12 +351,20 @@
  * ANIMATIONS
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* 🌊 WAVE 8295 — pulso del tooltip via ::after + opacity (composited);
+   el box-shadow animado repintaba todo el tooltip por frame. */
 @keyframes tooltip-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.12), 0 4px 30px rgba(0, 0, 0, 0.6); }
-  50% { box-shadow: 0 0 25px rgba(0, 240, 255, 0.18), 0 4px 30px rgba(0, 0, 0, 0.6); }
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
 }
 
-.fixture-tooltip.selected.visible {
+.fixture-tooltip.selected.visible::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 22px rgba(0, 240, 255, 0.16);
+  pointer-events: none;
   animation: tooltip-pulse 2s ease-in-out infinite;
 }
 

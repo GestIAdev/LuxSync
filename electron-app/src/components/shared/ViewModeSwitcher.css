@@ -40,6 +40,9 @@
 }
 
 .view-mode-btn.active .view-mode-icon {
+  /* 🌊 WAVE 8295 — drop-shadow FIJO; el pulso es opacity (composited).
+     Animar el filter reblureaba el icono cada frame. */
+  filter: drop-shadow(0 0 6px currentColor);
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
@@ -98,10 +101,6 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 2px currentColor);
-  }
-  50% {
-    filter: drop-shadow(0 0 8px currentColor);
-  }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
 }

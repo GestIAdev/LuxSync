@@ -41,6 +41,8 @@ import { resolveCustomVibe } from '../src/engine/vibe/custom/VibeFusionResolver'
 import { graft as graftToBackend } from '../src/engine/vibe/custom/VibeGraftRegistry';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
+import { setupTheiaLibraryIPCHandlers } from '../src/core/theia/TheiaLibraryIPCHandlers';
+import { bootstrapTheiaFactory } from '../src/core/theia/TheiaLibraryScanner';
 // 🧬 WAVE 5000.V3: Genesis Engine IPC (Era V)
 import { setupGenesisIPCHandlers } from '../src/core/genesis/genesisIpc';
 import { getGenesisVault } from '../src/core/genesis/GenesisVaultService';
@@ -580,6 +582,26 @@ async function initTitan() {
     // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
     // ═══════════════════════════════════════════════════════════════════════════
     setupHephIPCHandlers();
+    // 🌊 WAVE 8299: Initialize Theia Library IPC (userData/theia/packs scan + manifest writes)
+    setupTheiaLibraryIPCHandlers();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 8300: THEIA FACTORY BOOTSTRAP — siembra de userData/theia/packs/Factory/
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  Mismo modelo que el arsenal builtins → userData/arsenal/: en una instalación
+    //  limpia la carpeta no existía hasta el primer scan ("creación perezosa"). Aquí
+    //  se siembra UNA vez con los .glsl de fábrica; si el usuario borra Factory/ el
+    //  deck queda vacío — el renderer no tiene fallback estático (opusLibrary muerto).
+    const _theiaFactorySrc = app.isPackaged
+        ? path.join(process.resourcesPath, 'theia-factory')
+        : [
+            path.join(__dirname, '..', 'assets', 'shaders'), // entry dist-electron/
+            path.join(__dirname, '..', '..', 'assets', 'shaders'), // entry dist-electron-backend/electron/
+        ].find((p) => fs.existsSync(p)) ?? null;
+    if (_theiaFactorySrc) {
+        bootstrapTheiaFactory(_theiaFactorySrc).catch((err) => {
+            console.warn('[Main] ⚠️ Theia factory bootstrap failed (non-fatal):', err);
+        });
+    }
     // ═══════════════════════════════════════════════════════════════════════════
     // 🧬 WAVE 5000.V3: Initialize Genesis Engine IPC + Ignite Geological Loop
     // ═══════════════════════════════════════════════════════════════════════════

@@ -1584,8 +1584,9 @@ export class NodeArbiter {
     // ── Inhibit Limit API (WAVE 4531) ─────────────────────────────────────────────────────
     /**
      * WAVE 4531: Registra un inhibit limit (cap 0-1) sobre el canal `dimmer`
-     * del nodo indicado. El cap se aplica post-arbitraje, antes de retornar
-     * el resultado — sin alterar ninguna capa.
+     * del nodo indicado. WAVE 8269: también capa `brightness` (dimmer virtual
+     * de nodos de color sin dimmer físico). El cap se aplica post-arbitraje,
+     * antes de retornar el resultado — sin alterar ninguna capa.
      *
      * @param nodeId  NodeId en formato Aether (ej: 'fix-01:impact')
      * @param limit   Valor 0-1. 1.0 = sin límite. 0.0 = oscuro total.

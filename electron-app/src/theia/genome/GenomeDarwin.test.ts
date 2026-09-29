@@ -11,7 +11,12 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest'
-import { TheiaRegistry } from '../../core/theia/TheiaRegistry'
+import {
+  TheiaRegistry,
+  getTheiaRegistry,
+  __resetTheiaRegistryForTests,
+} from '../../core/theia/TheiaRegistry'
+import { useTheiaPackStore } from '../../stores/useTheiaPackStore'
 import {
   atomIdForGenome,
   darwinTournament,
@@ -19,6 +24,7 @@ import {
   getFitness,
   getPopulation,
   GENOME_POPULATION_MAX,
+  releaseGenomeAtom,
   resetGenomePool,
   skipAtom,
   spawnCrossoverVariant,
@@ -324,5 +330,97 @@ describe('G4 — Torneo de Darwin (§4.6)', () => {
     const pop = getPopulation('core_test')
     expect(pop.length).toBe(GENOME_POPULATION_MAX)
     expect(pop).toContain(child!.atomId)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 8302 · M3 — CRUD de mutaciones: baja manual vía removeAtom
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('WAVE 8302 · M3 — removeAtom (baja manual de mutaciones)', () => {
+  // removeAtom va al registry GLOBAL (getTheiaRegistry) — el path real de
+  // la UI. Aquí se usa ese singleton, no una instancia inyectada. OJO: el
+  // reset lo RECREA → hay que capturarlo después, dentro de beforeEach.
+  let registry: TheiaRegistry
+
+  const makePack = (core: ITheiaAtom) => ({
+    id: core.packId,
+    rootPath: 'euclid://pack_test',
+    atoms: [core],
+    manifest: null,
+    scannedAt: Date.now(),
+    pending: true,
+  })
+
+  beforeEach(() => {
+    __resetTheiaRegistryForTests()
+    registry = getTheiaRegistry()
+    resetGenomePool()
+    // El store es singleton: reseteo quirúrgico de los cubos que M3 toca.
+    useTheiaPackStore.setState({
+      packs: new Map(),
+      atomGeneValues: new Map(),
+      atomParamValues: new Map(),
+      armedAtomId: null,
+      activeAtomId: null,
+    })
+    const core = makeCore()
+    expect(registry.register(core)).not.toBeNull()
+    useTheiaPackStore.getState().upsertPack(makePack(core))
+  })
+
+  it('elimina la mutación del pack, del registry y libera la población', () => {
+    const born = spawnGenomeVariant('core_test', 42, registry)!
+    expect(born.created).toBe(true)
+    const pack = useTheiaPackStore.getState().packs.get('pack_test')!
+    expect(pack.atoms.some((a) => a.id === born.atomId)).toBe(true)
+    expect(registry.getAtom(born.atomId)).toBeDefined()
+    expect(getPopulation('core_test')).toContain(born.atomId)
+
+    useTheiaPackStore.getState().removeAtom(born.atomId)
+
+    const after = useTheiaPackStore.getState().packs.get('pack_test')!
+    expect(after.atoms.some((a) => a.id === born.atomId)).toBe(false)
+    expect(registry.getAtom(born.atomId)).toBeUndefined()
+    expect(getPopulation('core_test')).not.toContain(born.atomId)
+    // El core (especie raíz) sobrevive.
+    expect(registry.getAtom('core_test')).toBeDefined()
+    expect(after.atoms.some((a) => a.id === 'core_test')).toBe(true)
+    // La misma semilla renace limpia — genomeIndex quedó libre.
+    const reborn = spawnGenomeVariant('core_test', 42, registry)!
+    expect(reborn.created).toBe(true)
+    expect(registry.getAtom(reborn.atomId)).toBeDefined()
+  })
+
+  it('limpia overrides de genes/params y desarma el átomo si estaba armado', () => {
+    const born = spawnGenomeVariant('core_test', 7, registry)!
+    const st = useTheiaPackStore.getState()
+    st.setAtomGeneValues(born.atomId, { G_FOLD: 9 })
+    st.setAtomParamValues(born.atomId, { u_x: 0.5 })
+    st.setArmedAtom(born.atomId)
+
+    st.removeAtom(born.atomId)
+
+    const after = useTheiaPackStore.getState()
+    expect(after.atomGeneValues.has(born.atomId)).toBe(false)
+    expect(after.atomParamValues.has(born.atomId)).toBe(false)
+    expect(after.armedAtomId).toBeNull()
+  })
+
+  it('no-op sobre átomos inexistentes o ids que no están en ningún pack', () => {
+    const before = useTheiaPackStore.getState().packs.get('pack_test')!
+    useTheiaPackStore.getState().removeAtom('ghost#999')
+    expect(useTheiaPackStore.getState().packs.get('pack_test')).toBe(before)
+  })
+
+  it('releaseGenomeAtom es idempotente para ids no-genómicos', () => {
+    spawnGenomeVariant('core_test', 3, registry) // puebla la población
+    expect(() => {
+      releaseGenomeAtom('core_test')   // el core no sale de su población
+      releaseGenomeAtom('ghost#999')   // id inexistente
+      releaseGenomeAtom('glsl_x')      // átomo de disco, sin '#'
+    }).not.toThrow()
+    expect(getPopulation('core_test')).toContain('core_test')
+    expect(getPopulation('core_test')).toContain('core_test#3')
   })
 })

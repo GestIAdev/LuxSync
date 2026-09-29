@@ -81,6 +81,10 @@ describe('E3 preamble — shader contract', () => {
       'uniform float u_contrast;',
       'uniform float u_blackout;',
       'uniform float u_renderScale;',
+      // 🌊 WAVE 8302 · M1 — masters de post-procesado.
+      'uniform float u_masterSaturation;',
+      'uniform float u_masterHue;',
+      'uniform float u_masterStrobe;',
       'uniform sampler2D u_prevFrame;',
       'uniform sampler2D u_flashState;',
       'uniform float u_hasPrev;',
@@ -196,9 +200,34 @@ describe('E3 epilogue — safety contract', () => {
     expect(iFlash).toBeLessThan(iGamma)
   })
 
+  it('🌊 WAVE 8302 · M1 — post-fx master (hue→sat→strobe) entre el limitador y ACES', () => {
+    const iFlash = epi.indexOf('u_flashState')
+    const iHue = epi.indexOf('u_masterHue')
+    const iSat = epi.indexOf('u_masterSaturation')
+    const iStrobe = epi.indexOf('u_masterStrobe')
+    const iAces = epi.indexOf('2.51 * c + 0.03')
+    const iGamma = epi.indexOf('pow(clamp(c, 0.0, 1.0)')
+    // Los tres viven después del limitador y antes del tonemap.
+    expect(iFlash).toBeGreaterThan(0)
+    expect(iFlash).toBeLessThan(iHue)
+    expect(iHue).toBeLessThan(iSat)
+    expect(iSat).toBeLessThan(iStrobe)
+    expect(iStrobe).toBeLessThan(iAces)
+    expect(iAces).toBeLessThan(iGamma)
+    // Strobe = onda cuadrada 50% duty a Hz reales sobre u_time, con guardia.
+    expect(epi).toContain('u_masterStrobe > 0.01')
+    expect(epi).toContain('step(fract(u_time * u_masterStrobe), 0.5)')
+    // Hue = rotación Rodrigues alrededor del eje gris; Sat = mezcla de luma.
+    expect(epi).toContain('cross(mK, c)')
+    expect(epi).toContain('mix(vec3(dot(c, EU_LUMA)), c, u_masterSaturation)')
+  })
+
   it('el limitador usa presupuesto leaky-bucket (no solo delta)', () => {
     expect(epi).toContain('fs.g * u_flashBudget')
-    expect(epi).toContain('min(u_flashMaxDelta, remaining)')
+    // 🩸 WAVE 8292 — headroom de cobertura: brillos localizados (fs.b bajo)
+    // reciben hasta ×6 de delta sin que el bucket deje de limitar la media.
+    expect(epi).toContain('smoothstep(0.08, 0.30, fs.b)')
+    expect(epi).toContain('min(u_flashMaxDelta * headroom, remaining)')
     // Solo un flag de operador (u_flashGuard) puede desactivarlo.
     expect(epi).toContain('u_flashGuard > 0.5')
   })
@@ -294,21 +323,38 @@ describe('E3 hints y helpers', () => {
 describe('E3 limitador fotosensible — certificación WCAG', () => {
   /**
    * Espejo exacto del algoritmo GLSL (epílogo + pass de stats):
-   *   epílogo: cap = prevMean + min(maxDelta, budget); out = min(in, cap)
-   *   stats:   budget = min(B, budget + dt·rate) − max(0, out − prevMean)
+   *   epílogo: cap = prevMean + min(maxDelta·headroom(cov), budget)
+   *   stats:   cov = frac(output > prevMean + 0.9·maxDelta)
+   *            budget = min(B, budget + dt·rate) − max(0, out − prevMean)
+   * 🩸 WAVE 8292: `coverage` modela el canal fs.b del texel de stats.
+   * Para campo uniforme (todos los píxeles igual que `inputLuma[i]`),
+   * cov es 1 si el frame supera el umbral y 0 si no — comportamiento
+   * estricto idéntico al limitador original sobre strobes de campo amplio.
    * Si el algoritmo cambia en el shader, este test debe reflejarlo.
    */
   function simulateFlashLimiter(
     inputLuma: number[],
     fps: number,
+    coverage?: number[],
   ): { out: number[] } {
-    let prevMean = 0.5 // init del texel {0.5, full}
+    const smoothstep = (e0: number, e1: number, x: number) => {
+      const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)))
+      return t * t * (3 - 2 * t)
+    }
+    let prevMean = 0.5 // init del texel {0.5, full, 0}
+    let prevCov = 0
     let budget = FLASH_BUDGET
     const out: number[] = []
-    for (const inp of inputLuma) {
-      const cap = prevMean + Math.min(DEFAULT_FLASH_MAX_DELTA, budget)
+    for (let i = 0; i < inputLuma.length; i++) {
+      const inp = inputLuma[i]
+      const headroom = 6.0 + (1.0 - 6.0) * smoothstep(0.08, 0.30, prevCov)
+      const cap = prevMean + Math.min(DEFAULT_FLASH_MAX_DELTA * headroom, budget)
       const o = Math.min(Math.max(inp, 0), 1, cap)
       out.push(o)
+      // stats pass: cobertura de píxeles sobre prevMean + 0.9·maxDelta
+      prevCov = coverage
+        ? coverage[i]
+        : o > prevMean + DEFAULT_FLASH_MAX_DELTA * 0.9 ? 1 : 0
       const dt = 1 / fps
       budget = Math.min(FLASH_BUDGET, budget + dt * FLASH_BUDGET_RATE)
       budget = Math.max(0, budget - Math.max(0, o - prevMean))
@@ -378,6 +424,53 @@ describe('E3 limitador fotosensible — certificación WCAG', () => {
     const input = new Array(fps * 6).fill(1)
     const { out } = simulateFlashLimiter(input, fps)
     expect(out[out.length - 1]).toBeGreaterThan(0.85)
+  })
+
+  it('🩸 WAVE 8292 — brillo localizado (disco ~8% del campo) no se aplasta en fondo negro', () => {
+    const fps = 60
+    // Frame mayormente negro (luma alta solo en ~8% de píxeles → el input
+    // representa el píxel del disco; la media de campo apenas sube).
+    const input = new Array(fps * 2).fill(0.9)
+    const coverage = new Array(fps * 2).fill(0.08)
+    // Arranque en fondo oscuro: prevMean bajo simulado → semilla 0.1
+    let prevMean = 0.1
+    let budget = FLASH_BUDGET
+    const smoothstep = (e0: number, e1: number, x: number) => {
+      const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)))
+      return t * t * (3 - 2 * t)
+    }
+    const out: number[] = []
+    let cov = coverage[0]
+    for (let i = 0; i < input.length; i++) {
+      const headroom = 6.0 + (1.0 - 6.0) * smoothstep(0.08, 0.30, cov)
+      const cap = prevMean + Math.min(DEFAULT_FLASH_MAX_DELTA * headroom, budget)
+      const o = Math.min(Math.max(input[i], 0), 1, cap)
+      out.push(o)
+      cov = coverage[i]
+      budget = Math.min(FLASH_BUDGET, budget + (1 / fps) * FLASH_BUDGET_RATE)
+      // La media de campo apenas sube: solo 8% de píxeles a 0.9.
+      const fieldMean = 0.08 * o + 0.92 * 0.02
+      budget = Math.max(0, budget - Math.max(0, fieldMean - prevMean))
+      prevMean = fieldMean
+    }
+    // Con el cap antiguo el disco viviría a ~0.16 de luma (aplastado);
+    // con headroom de cobertura el píxel del disco converge a
+    // prevMean + min(0.36, budget≈0.3) ≈ 0.35 — visible, no borrado.
+    expect(out[out.length - 1]).toBeGreaterThan(0.3)
+  })
+
+  it('🩸 WAVE 8292 — campo amplio brillante sigue estricto (cov≈1)', () => {
+    const fps = 60
+    const input = new Array(fps * 3).fill(1)
+    // Campo uniforme blanco: toda la pantalla exige más que el cap.
+    const coverage = new Array(fps * 3).fill(1)
+    const { out } = simulateFlashLimiter(input, fps, coverage)
+    // El slew por frame nunca supera maxDelta — comportamiento original.
+    for (let i = 1; i < out.length; i++) {
+      expect(out[i] - out[i - 1]).toBeLessThanOrEqual(
+        DEFAULT_FLASH_MAX_DELTA + 1e-6,
+      )
+    }
   })
 
   it('constantes coherentes con el límite de 3 flashes/s', () => {

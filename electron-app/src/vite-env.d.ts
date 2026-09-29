@@ -396,11 +396,19 @@ declare global {
         asset: unknown,
         suggestedName?: string,
       ) => Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }>
-      /** WAVE 4910.6 — Native Save As dialog to export a .theia asset JSON to disk. */
-      exportAsset: (
-        asset: unknown,
-        suggestedName?: string,
-      ) => Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }>
+      /** WAVE 8299 — Recursive scan of userData/theia/packs/ → pack tree with inline file text. */
+      scanLibrary: () => Promise<{
+        success: boolean
+        error?: string
+        packsRoot: string
+        packs: readonly import('./types/theiaTypes').ITheiaScannedPack[]
+      }>
+      /** WAVE 8299 — Persist Inspector overrides (genes/params) into pack.theiapack.json. */
+      saveAtomOverrides: (
+        packId: string,
+        atomId: string,
+        patch: { genes?: Record<string, number>; params?: Record<string, number> },
+      ) => Promise<{ success: boolean; error?: string }>
     }
 
     // �🎭 WAVE 700.5.4: Mood Control

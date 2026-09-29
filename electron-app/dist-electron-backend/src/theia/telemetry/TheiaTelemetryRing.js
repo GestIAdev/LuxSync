@@ -70,11 +70,14 @@ export const TEL_FLAG = {
     GLASS_BREAK: 16, // efecto soberano disparado antes del countdown (ruptura)
     // 🌊 WAVE 8279 · F3 — página B flags (EUCLID_RING_EXPANSION_8276 §2.3)
     REAL_SILENCE: 17, // nivel — physicsTel.realSilence (rama silencio/AGC-trap)
-    VOCAL_ONSET: 18, // flanco — vocalIsolation cruza 0.35 al alza (rearme <0.2)
+    VOCAL_ONSET: 18, // flanco — vocalIsolation cruza 0.28 al alza (rearme <0.15) · WAVE 8282
     NOISE_MODE: 19, // nivel — flatness > umbral del perfil
     GATE_DEAD: 20, // nivel — gateHealth < 0.1 (caja sintética / AND-gate muerta)
     SNARE_TRUE: 21, // flanco — onset MACD; fallback: edge de crack_flux > 0.25
     VOID_RELEASE: 22, // flanco — el vacío termina tras VOID_HOLD ≥ 2 s
+    // 🔫 WAVE 8287 — Clean Shot: hay clip .lfx vivo en HephaestusRuntime o
+    // la envolvente ACTIVE_FX aún está en cola de release (§2.4).
+    EFFECT_ACTIVE: 23,
 };
 export function telFlag(flags, bit) {
     return ((flags >>> bit) & 1) === 1;
@@ -215,9 +218,22 @@ export const TELEMETRY_SCHEMA = [
     // MASTER — u_tel4[22]
     { slot: 92, name: 'AGC_STRESS', uniform: 'u_agcStress', kind: 'linear', attack: 0.2, release: 0.05 },
     // 93-95: reserva stereo width/corr/balance (wave futura — el pipeline
-    // aún no retransmite GodEarSpectrum.stereo). 96-127: margen, generados.
-    ...Array.from({ length: TELEMETRY_RING_SLOTS - 93 }, (_, i) => {
-        const slot = 93 + i;
+    // aún no retransmite GodEarSpectrum.stereo).
+    { slot: 93, name: 'RESERVED_93', uniform: '', kind: 'none' },
+    { slot: 94, name: 'RESERVED_94', uniform: '', kind: 'none' },
+    { slot: 95, name: 'RESERVED_95', uniform: '', kind: 'none' },
+    // 🔫 WAVE 8287 — FX · u_fxVec = u_tel4[23] (Clean Shot §2.4): energía
+    // del clip .lfx vivo dominante en HephaestusRuntime — paridad exacta
+    // video↔luces físicas (hold = clip corriendo, release 250 ms al morir).
+    // kind 'none': la envolvente ya nace exacta del tracker — resuavizarla
+    // corrompería la paridad temporal.
+    { slot: 96, name: 'ACTIVE_FX_ENERGY', uniform: 'u_activeEffectEnergy', kind: 'none' },
+    { slot: 97, name: 'ACTIVE_FX_AGE', uniform: 'u_activeEffectAge', kind: 'none' },
+    { slot: 98, name: 'ACTIVE_FX_ID', uniform: 'u_activeEffectId', kind: 'none' },
+    { slot: 99, name: 'ACTIVE_FX_COUNT', uniform: 'u_activeEffectCount', kind: 'none' },
+    // 100-127: margen, generados.
+    ...Array.from({ length: TELEMETRY_RING_SLOTS - 100 }, (_, i) => {
+        const slot = 100 + i;
         return { slot, name: `RESERVED_${slot}`, uniform: '', kind: 'none' };
     }),
 ];
@@ -278,6 +294,8 @@ function ringViews(sab) {
 /**
  * Escritor seqlock — proceso MAIN (TickEngine), una invocación por tick.
  * Presupuesto < 1 µs: 3 Atomics.store de header + fill directo sobre el f32.
+ * STRICT v2: un anillo de 256 B haría las escrituras de página B OOB-silent
+ * (TypedArray no lanza fuera de rango) → fallo ruidoso en ctor.
  */
 export class TelemetryWriter {
     constructor(sab) {
@@ -390,6 +408,10 @@ export const WIRE_ENUMS_SLOT = 57;
  * La instancia queda ligada a un par (src ring, dst wire). Si la fuente
  * cambia de identidad (re-attach del SAB), el caller crea una nueva — en el
  * steady-state jamás se asigna.
+ *
+ * Semántica idéntica a la antigua función libre: escribe el payload
+ * (slots 4..63) y FLAGS/ENUMS como bits en 56/57. NO toca los slots 0..3
+ * (la cabecera FrameContext la escribe el pump).
  */
 export class TelemetrySnapshotter {
     constructor(src, dst) {
@@ -398,7 +420,6 @@ export class TelemetrySnapshotter {
         // rellena con fill(0) antes de cada snapshot). El wire dst es siempre
         // v2 — el pump crea su scratch con TELEMETRY_RING_BYTES.
         this.srcSlots = ringSlotsFor(src.byteLength);
-        /** Tamaños validados en ctor — un par inválido queda inerte (snapshot→false). */
         this.valid = this.srcSlots > 0 && dst.byteLength === TELEMETRY_RING_BYTES;
         if (!this.valid) {
             this.srcI32 = new Int32Array(0);
@@ -415,7 +436,8 @@ export class TelemetrySnapshotter {
     /**
      * Copia seqlock-verificada anillo → wire buffer. Cero asignaciones.
      * @returns `true` si la copia fue consistente; `false` si los 3 intentos
-     *          colisionaron con una escritura (o el par src/dst era inválido).
+     *          colisionaron con una escritura (o el par src/dst era inválido)
+     *          — el caller descarta el destino para este tick.
      */
     snapshot() {
         if (!this.valid)

@@ -101,6 +101,8 @@ export function buildPayload(input) {
         photon: spectrum.photon,
         // WAVE 8008: Rhythmic percussion telemetry
         rhythmic: spectrum.rhythmic,
+        // 🩸 WAVE 8292: AGC pumping score → isAGCTrap en HAL/Liquid
+        agcPumping: spectrum.agcPumping,
         zeroCrossingRate: calculateZeroCrossingRate(snapshotBuffer),
         // -- WAVE 1162: RAW BASS (pre-AGC, para Pacemaker) --
         rawBassEnergy: spectrum.rawBassEnergy,

@@ -81,6 +81,10 @@ export interface SpectrumResult {
 
   // WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
   rhythmic?: GodEarRhythmicPercussion;
+
+  // 🩸 WAVE 8292: AGC Pumping score (0-1) — hueco de graves + flatness alta
+  // + boost HF de la Trust Zone. Consumido downstream como isAGCTrap.
+  agcPumping?: number;
 }
 
 // ============================================
@@ -208,6 +212,8 @@ export class SpectrumAnalyzer {
       photon: godEarResult.photon,
       // WAVE 8008: Rhythmic percussion telemetry
       rhythmic: godEarResult.rhythmic,
+      // 🩸 WAVE 8292: AGC pumping score → isAGCTrap downstream
+      agcPumping: godEarResult.agcPumping,
     };
   }
 

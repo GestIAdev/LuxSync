@@ -33,7 +33,7 @@ import { createThumbSAB } from './TheiaThumbBuffer';
 import { parseEuclidMeta, resolveGeneValues, geneSignature, layoutExprGenes, structGenesDiffer, } from './shader/ShaderAssembler';
 // 🧬 WAVE 8235 — INFINITE GENOME · G3: mutación en frontera de frase (§4.6)
 import { darwinTournament, favoriteAtom, skipAtom, } from './genome/GenomePool';
-import { genomeChildSeed } from './genome/GenomeExpander';
+import { expandGenome, genomeChildSeed } from './genome/GenomeExpander';
 // 🎛️ WAVE 8239 · U1 — transporte reactivo del medio oculto (Hybrid Deck)
 import { useTheiaTransportStore } from '../stores/useTheiaTransportStore';
 import { getTheiaRegistry } from '../core/theia/TheiaRegistry';
@@ -382,9 +382,10 @@ export class ThetaOrchestrator {
      * Consume el port de telemetría en la PÁGINA (no en el worker): el ring
      * SAB local sobrevive respawns y también lo leen futuros consumers del
      * renderer. Cada buffer de 512B (clone serializado — WAVE 8216: el
-     * MessagePortMain del pump no transfiere) se espeja al ring y se devuelve
-     * por `ack` CON transfer en el mismo handler — ZERO-ALLOC: aquí jamás se
-     * instancia un ArrayBuffer; el ack repone el pool fijo del pump.
+     * MessagePortMain del pump no transfiere) se espeja al ring con el
+     * `TelemetryMirror` cacheado y se acusa recibo con {ack,seq} — ZERO-ALLOC
+     * salvo la vista src inevitable por clone (WAVE 8253: el ack ya no
+     * devuelve buffer; mojo despojaba los transferables renderer→main).
      */
     attachTelemetryPort(port) {
         try {
@@ -964,6 +965,17 @@ export class ThetaOrchestrator {
      * al plasma interno de WAVE 8207. La elección persiste para replay.
      */
     activateShader(shaderId, crossfadeMs = 0) {
+        // 🩸 WAVE 8294 — pizarra genética limpia por context switch: las claves
+        // `u_gene[k]` son un namespace global compartido por TODOS los átomos —
+        // sin purga, un respawn Phoenix rehidrataría los overrides del átomo
+        // muerto sobre el fenotipo del entrante. El worker purga su copia en
+        // `activateGenProgram`; aquí limpiamos la fuente de verdad del replay.
+        if (shaderId !== this.desiredActiveShader) {
+            for (const k of this.desiredUniforms.keys()) {
+                if (k.startsWith('u_gene['))
+                    this.desiredUniforms.delete(k);
+            }
+        }
         this.desiredActiveShader = shaderId;
         if (!this.worker)
             return;
@@ -1012,6 +1024,27 @@ export class ThetaOrchestrator {
             : barMs > 0
                 ? Math.min(6000, Math.max(400, barMs * 2))
                 : 0;
+        // 🧬 WAVE 8290 · Mutation Audit — la mutación `expr` era INVISIBLE:
+        // fast-path u_gene sin crossfade ni rastro → G_TILT aterrizando en
+        // 0.05 borraba el disco del Event Horizon sin que nadie lo viera.
+        // El fenotipo padre se recomputa determinista (misma semilla = mismo
+        // individuo); el diff solo lista los genes que cambiaron.
+        try {
+            const parentPheno = expandGenome(meta, shaderSrc.source, curSeed).genes;
+            const diff = [];
+            for (const g of meta.genes) {
+                if (!/^G_[A-Za-z0-9_]+$/.test(g.name))
+                    continue;
+                const a = parentPheno[g.name] ?? g.defaultValue;
+                const b = childGenes[g.name] ?? g.defaultValue;
+                if (a !== b)
+                    diff.push(`${g.name} ${a.toFixed(2)}→${b.toFixed(2)}`);
+            }
+            console.info(`[GENOME] 🧬 ${id} → ${spawned.atomId} ` +
+                `[${exprOnly ? 'expr·u_gene' : `struct·fade ${fadeMs.toFixed(0)}ms`}]` +
+                (diff.length > 0 ? ` — ${diff.join(' ')}` : ' — sin delta'));
+        }
+        catch { /* log best-effort — la mutación ya está servida */ }
         this.activateShader(spawned.atomId, fadeMs);
     }
     /**

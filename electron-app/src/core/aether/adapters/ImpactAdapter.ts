@@ -154,7 +154,8 @@ export class ImpactAdapter extends BaseSystem<IImpactNodeData> implements IAethe
     b.ultraAir = audio.air                  // air (12-20kHz) = ultraAir del LiquidEngine
 
     inp.isRealSilence    = audio.energy < 0.01
-    inp.isAGCTrap        = false
+    // 🩸 WAVE 8292: cortafuegos real — pumping del Trust-Zone AGC
+    inp.isAGCTrap        = (audio.agcPumping ?? 0) > 0.5
     inp.harshness        = audio.highMid
     inp.flatness         = 0                // AudioMetrics no expone spectralFlatness → 0 neutro
     inp.isKick           = audio.hasTransient && audio.bass > 0.5

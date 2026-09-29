@@ -92,13 +92,16 @@
 }
 
 .dna-cube__dot {
-  filter: drop-shadow(0 0 6px #ff6b2b);
-  animation: dna-dot-pulse 2s ease infinite;
+  /* 🌊 WAVE 8295 — drop-shadow FIJO (un solo raster); el pulso es opacity
+     que funde también el glow filtrado (composited). Animar el filter
+     reblureaba el SVG cada frame. */
+  filter: drop-shadow(0 0 8px #ff6b2b);
+  animation: dna-dot-pulse 2s ease-in-out infinite;
 }
 
 @keyframes dna-dot-pulse {
-  0%, 100% { filter: drop-shadow(0 0 4px #ff6b2b); }
-  50%       { filter: drop-shadow(0 0 10px #ff6b2b); }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
 }
 
 /* ── Genome sliders ── */

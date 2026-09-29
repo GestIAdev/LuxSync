@@ -438,12 +438,14 @@ export class TickEngine {
     p[S.RAW_HIGHMID_DELTA] = pt?.rawHighMidDelta ?? 0
     p[S.RAW_TREBLE_DELTA] = pt?.rawTrebleDelta ?? 0
     p[S.RAW_HH_DELTA] = rhythmic?.raw_hh_delta ?? 0
-    // MASTER — u_tel4[22]: estrés del AGC normalizado — 0 sin reducción,
-    // −6dB→0.67, −9dB→1.0 (saturación master brickwall, §2.2).
+    // MASTER — u_tel4[22]: estrés del AGC BIDIRECCIONAL — compresión
+    // brickwall (gain<1: −6dB→0.67, −9dB→1.0, §2.2) O pumping detectado
+    // (score GodEar 0-1: hueco de graves + flatness + boost HF, §8292).
     const agcGain = ad?.agcGainFactor ?? 1
-    p[S.AGC_STRESS] = agcGain >= 1
+    const agcCompress = agcGain >= 1
       ? 0
       : Math.min(1, Math.max(0, Math.log2(Math.max(1e-6, agcGain)) / -1.5))
+    p[S.AGC_STRESS] = Math.max(agcCompress, ad?.agcPumping ?? 0)
     // 🔫 WAVE 8287 — FX · u_fxVec = u_tel4[23] (slots 96-99): envolvente
     // del clip Hephaestus dominante, sampleado en publish (Clean Shot §2.4).
     const fx = this._euclidFx
@@ -1050,8 +1052,11 @@ export class TickEngine {
       isPLLBeat: beatState.pllOnBeat,
       // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
       agcGainFactor: this.audioPipeline.lastAudioData.agcGainFactor,
+      // 🩸 WAVE 8292: AGC pumping score — hueco de graves + flatness + boost
+      // HF de la Trust Zone. TitanEngine lo propaga a SeleneLux → isAGCTrap.
+      agcPumping: this.audioPipeline.lastAudioData.agcPumping,
     }
-    
+
     // For HAL
     // ðŸŽµ WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
     // BEFORE: HAL calculated its own fake beatPhase from hardcoded 120 BPM
@@ -1069,7 +1074,10 @@ export class TickEngine {
       rawTreble: high,
       energy,
       isRealSilence: false,
-      isAGCTrap: false,
+      // 🩸 WAVE 8292: cortafuegos real — el detector de pumping de GodEar
+      // (Trust-Zone boost + flatness + hueco de graves) activa la rama de
+      // cuarentena en ZoneRouter/LiquidEngineBase durante huecos dembow.
+      isAGCTrap: (this.audioPipeline.lastAudioData.agcPumping ?? 0) > 0.5,
       beatPhase: halBeatPhase,
       bpm: halBpm,
       // ðŸŽµ WAVE 2720: LA LEY UNIVERSAL DEL PÃ‰NDULO â€” Propagar bpmConfidence al HAL
@@ -1667,6 +1675,8 @@ export class TickEngine {
       _a.bpm               = engineAudioMetrics.bpm
       _a.beatPhase         = engineAudioMetrics.beatPhase
       _a.beatCount         = engineAudioMetrics.beatCount
+      // 🩸 WAVE 8292: pumping score para ImpactAdapter.isAGCTrap
+      _a.agcPumping        = this.audioPipeline.lastAudioData.agcPumping ?? 0
 
       // MusicalContext: del contexto de Brain
       const _m = this._aetherMusical as MusicalContext & Record<string, unknown>
@@ -2495,8 +2505,16 @@ export class TickEngine {
     // absoluto y el `u_approach` INSTANTÁNEO del oráculo (misma fórmula
     // del smoother sin el EMA — conservador: adelanta el veto ante un
     // buildup naciente). Jamás muta en clímax (zona peak / apocalypse).
+    //
+    // 🔒 WAVE 8290 · Genome Taming — sin oráculo no hay evolución: con
+    // Selene OFF `approachNow` es 0 permanentemente → la compuerta <0.2
+    // quedaba ABIERTA en toda frontera de frase y los exprGenes se
+    // re-tiraban cada 16 compases en silencio (G_TILT→0.05 = disco de
+    // acreción edge-on = "desaparece"). La evolución exige consciousness.
     const evolver = getGenomeEvolver()
-    if (evolver.isAttached()) {
+    const conscious = this.engine?.isConsciousnessEnabled() === true
+    evolver.enabled = conscious
+    if (evolver.isAttached() && conscious) {
       const predicting =
         sel.predictionType !== null && sel.predictionType !== 'none'
       const approachNow = predicting

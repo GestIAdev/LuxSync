@@ -73,7 +73,7 @@ import {
   favoriteAtom,
   skipAtom,
 } from './genome/GenomePool'
-import { genomeChildSeed } from './genome/GenomeExpander'
+import { expandGenome, genomeChildSeed } from './genome/GenomeExpander'
 // 🎛️ WAVE 8239 · U1 — transporte reactivo del medio oculto (Hybrid Deck)
 import { useTheiaTransportStore } from '../stores/useTheiaTransportStore'
 import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
@@ -1144,6 +1144,16 @@ export class ThetaOrchestrator {
    * al plasma interno de WAVE 8207. La elección persiste para replay.
    */
   activateShader(shaderId: string, crossfadeMs = 0): void {
+    // 🩸 WAVE 8294 — pizarra genética limpia por context switch: las claves
+    // `u_gene[k]` son un namespace global compartido por TODOS los átomos —
+    // sin purga, un respawn Phoenix rehidrataría los overrides del átomo
+    // muerto sobre el fenotipo del entrante. El worker purga su copia en
+    // `activateGenProgram`; aquí limpiamos la fuente de verdad del replay.
+    if (shaderId !== this.desiredActiveShader) {
+      for (const k of this.desiredUniforms.keys()) {
+        if (k.startsWith('u_gene[')) this.desiredUniforms.delete(k)
+      }
+    }
     this.desiredActiveShader = shaderId
     if (!this.worker) return
     try {
@@ -1191,6 +1201,26 @@ export class ThetaOrchestrator {
       : barMs > 0
         ? Math.min(6000, Math.max(400, barMs * 2))
         : 0
+    // 🧬 WAVE 8290 · Mutation Audit — la mutación `expr` era INVISIBLE:
+    // fast-path u_gene sin crossfade ni rastro → G_TILT aterrizando en
+    // 0.05 borraba el disco del Event Horizon sin que nadie lo viera.
+    // El fenotipo padre se recomputa determinista (misma semilla = mismo
+    // individuo); el diff solo lista los genes que cambiaron.
+    try {
+      const parentPheno = expandGenome(meta, shaderSrc.source, curSeed).genes
+      const diff: string[] = []
+      for (const g of meta.genes) {
+        if (!/^G_[A-Za-z0-9_]+$/.test(g.name)) continue
+        const a = parentPheno[g.name] ?? g.defaultValue
+        const b = childGenes[g.name] ?? g.defaultValue
+        if (a !== b) diff.push(`${g.name} ${a.toFixed(2)}→${b.toFixed(2)}`)
+      }
+      console.info(
+        `[GENOME] 🧬 ${id} → ${spawned.atomId} ` +
+          `[${exprOnly ? 'expr·u_gene' : `struct·fade ${fadeMs.toFixed(0)}ms`}]` +
+          (diff.length > 0 ? ` — ${diff.join(' ')}` : ' — sin delta'),
+      )
+    } catch { /* log best-effort — la mutación ya está servida */ }
     this.activateShader(spawned.atomId, fadeMs)
   }
 

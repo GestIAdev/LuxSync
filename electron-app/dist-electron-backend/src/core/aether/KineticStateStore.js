@@ -18,9 +18,26 @@
  *     compartir la referencia el store refleja siempre el estado más fresco
  *     sin coste de copia y sin escrituras en el hot path.
  *
+ * ESCRITORES (gesture/patch time — NUNCA en el frame loop):
+ *   - NodeArbiter: setManualOverride/clearManualOverride,
+ *     setMotorKineticOverride/clearMotorKineticOverride,
+ *     setManualPatternLock/clearManualPatternLock,
+ *     setInhibitLimit/clearInhibitLimit, purgeForShow/purgeForDevice.
+ *   - AetherKineticEngine: setManualKinetics/updateScalars (via ref),
+ *     removeNodes/stop, restoreNodeConfig.
+ *   - FixtureHydrationEngine: capturePosition() antes de unregisterDevice.
+ *
+ * REHIDRATACIÓN:
+ *   `FixtureHydrationEngine.registerAetherDevice()` consulta getDevice()
+ *   tras registrar los nodos y re-aplica el estado al arbiter/engine/PPP.
+ *   La guarda "skip-if-live" evita que el mirror pise estado más reciente.
+ *
  * @module core/aether/KineticStateStore
  * @version WAVE 8271
  */
+// ═══════════════════════════════════════════════════════════════════════════
+// STORE
+// ═══════════════════════════════════════════════════════════════════════════
 export class KineticStateStore {
     constructor() {
         /** deviceId → (nodeId → estado cinético) */
@@ -193,4 +210,3 @@ export class KineticStateStore {
         this._devices.clear();
     }
 }
-//# sourceMappingURL=KineticStateStore.js.map

@@ -7,7 +7,7 @@
 - Typecheck renderer: `npx tsc --noEmit -p tsconfig.json`
 - Espejos JS en `dist-electron-backend/src/**` se mantienen a mano junto a su
   `.ts` (no se regeneran solos): validar con `node --check <archivo>.js`.
-  El worker, GenRuntime, TelemetrySmoother y opusLibrary van por Vite — sin espejo.
+  El worker, GenRuntime y TelemetrySmoother van por Vite — sin espejo.
 
 ## Átomos GLSL (electron-app/assets/shaders/)
 
@@ -16,8 +16,14 @@
   - `node scripts/migrate_atoms_v2.js --check` (CI: exit 1 si algo no es v2 o no compila)
   - `node scripts/migrate_atoms_v2.js --dir <carpeta>` para shaders externos (dry-run)
   - `--write` aplica, `--diff` muestra las líneas tocadas.
-- Átomo nuevo: registrarlo en `src/theia/shader/atoms/opusLibrary.ts` y en los
-  IDs de `OpusLibrary.test.ts`.
+- WAVE 8300 — DISK-ONLY: `opusLibrary.ts` está extinto. El Deck vive solo del
+  scan IPC de `userData/theia/packs/` (bootstrap siembra `Factory/` al primer
+  arranque desde `assets/shaders/`; en prod `resources/theia-factory/`).
+  El `.glsl` es su propio manifiesto: declarar `// @euclid vibes a+b` para que
+  Selene lo matchee (sin vibes → `generic`, solo disparo manual).
+- Átomo nuevo de fábrica: pasar `--check`, añadir el nombre de archivo a
+  `FACTORY_ATOM_FILES` en `src/core/theia/TheiaLibraryScanner.ts` y a la lista
+  del test `src/theia/shader/atoms/FactoryPipeline.test.ts`.
 
 ## Diagnóstico de telemetría en vivo (WAVE 8281-RECON)
 

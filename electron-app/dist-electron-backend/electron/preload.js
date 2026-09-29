@@ -770,6 +770,10 @@ const luxApi = {
         isOutputOpen: () => ipcRenderer.invoke('theia:is-output-open'),
         /** 🎬 WAVE 4910.6 — Abre diálogo Save As nativo y escribe el asset .theia como JSON. */
         exportAsset: (asset, suggestedName) => ipcRenderer.invoke('lux:theia:exportAsset', asset, suggestedName),
+        /** 🌊 WAVE 8299 — Escanea userData/theia/packs/ (recursivo, fail-silent). */
+        scanLibrary: () => ipcRenderer.invoke('theia:library:scan'),
+        /** 🌊 WAVE 8299 — Persiste overrides del Inspector en pack.theiapack.json. */
+        saveAtomOverrides: (packId, atomId, patch) => ipcRenderer.invoke('theia:atom:save-overrides', { packId, atomId, ...patch }),
     },
     mood: {
         /** Set active Mood (calm, balanced, punk) */

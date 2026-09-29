@@ -145,6 +145,10 @@ uniform float u_phase;
 uniform float u_brightness;
 uniform float u_contrast;
 uniform float u_blackout;
+// 🌊 WAVE 8302 — masters post-fx (paridad con el epílogo de ShaderAssembler).
+uniform float u_masterSaturation;
+uniform float u_masterHue;
+uniform float u_masterStrobe;
 
 // 🔮 WAVE 8228 — EUCLID ORACLE · E2: Uniform Bridge (§3.4/§3.5)
 // u_tel[60] = payload del anillo (índice = slot − 4), una sola subida
@@ -215,6 +219,17 @@ void main() {
   // Master epilogue — applies to plasma AND video alike.
   col = (col - 0.5) * u_contrast + 0.5;
   col *= u_brightness;
+  // 🌊 WAVE 8302 · M1 — post-fx master (hue/sat/strobe) en el path builtin.
+  {
+    float mH = u_masterHue * 6.28318530718;
+    vec3 mK = vec3(0.57735026919);
+    float mC = cos(mH), mS = sin(mH);
+    col = col * mC + cross(mK, col) * mS + mK * dot(mK, col) * (1.0 - mC);
+  }
+  col = mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, u_masterSaturation);
+  if (u_masterStrobe > 0.01) {
+    col *= step(fract(u_time * u_masterStrobe), 0.5);
+  }
   col *= 1.0 - u_blackout;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
@@ -257,6 +272,10 @@ interface WorkerState {
   glUniformBrightness: WebGLUniformLocation | null
   glUniformContrast: WebGLUniformLocation | null
   glUniformBlackout: WebGLUniformLocation | null
+  // 🌊 WAVE 8302 — masters post-fx del path builtin.
+  glUniformMasterSaturation: WebGLUniformLocation | null
+  glUniformMasterHue: WebGLUniformLocation | null
+  glUniformMasterStrobe: WebGLUniformLocation | null
   /** 🌊 WAVE 8211 — master uniform values (theia:set-uniform). */
   uniforms: Map<string, number>
   videoTex: WebGLTexture | null
@@ -387,6 +406,7 @@ interface WorkerState {
   statsDtLoc: WebGLUniformLocation | null
   statsBudgetLoc: WebGLUniformLocation | null
   statsRateLoc: WebGLUniformLocation | null
+  statsMaxDeltaLoc: WebGLUniformLocation | null
   statsPos: number
   /** KHR_parallel_shader_compile (si existe). */
   khrCompile: { COMPLETION_STATUS_KHR: number } | null
@@ -450,11 +470,18 @@ const state: WorkerState = {
   glUniformBrightness: null,
   glUniformContrast: null,
   glUniformBlackout: null,
+  glUniformMasterSaturation: null,
+  glUniformMasterHue: null,
+  glUniformMasterStrobe: null,
   uniforms: new Map<string, number>([
     ['u_brightness', 1.0],
     ['u_contrast', 1.0],
     ['u_blackout', 0.0],
     ['u_speed', 1.0],
+    // 🌊 WAVE 8302 — defaults master post-fx (identidad).
+    ['u_masterSaturation', 1.0],
+    ['u_masterHue', 0.0],
+    ['u_masterStrobe', 0.0],
   ]),
   videoTex: null,
   prevTex: null,
@@ -538,6 +565,7 @@ const state: WorkerState = {
   statsDtLoc: null,
   statsBudgetLoc: null,
   statsRateLoc: null,
+  statsMaxDeltaLoc: null,
   statsPos: -1,
   khrCompile: null,
   timerExt: null,
@@ -923,6 +951,10 @@ function buildGLResources(): boolean {
   state.glUniformBrightness = gl.getUniformLocation(prog, 'u_brightness')
   state.glUniformContrast = gl.getUniformLocation(prog, 'u_contrast')
   state.glUniformBlackout = gl.getUniformLocation(prog, 'u_blackout')
+  // 🌊 WAVE 8302 — locs masters post-fx (path builtin plasma+vídeo).
+  state.glUniformMasterSaturation = gl.getUniformLocation(prog, 'u_masterSaturation')
+  state.glUniformMasterHue = gl.getUniformLocation(prog, 'u_masterHue')
+  state.glUniformMasterStrobe = gl.getUniformLocation(prog, 'u_masterStrobe')
   // 🔮 WAVE 8228 · E2 — cachear locations del Euclid Uniform Bridge en el
   // link (una vez por programa; rebuild tras context-restore). Los uniforms
   // que el compilador optimice fuera devuelven null → uploads no-op seguros.
@@ -999,6 +1031,8 @@ function buildGLResources(): boolean {
           state.statsDtLoc = gl.getUniformLocation(sprog, 'u_dt')
           state.statsBudgetLoc = gl.getUniformLocation(sprog, 'u_flashBudget')
           state.statsRateLoc = gl.getUniformLocation(sprog, 'u_budgetRate')
+          // 🩸 WAVE 8292 — umbral para la métrica de cobertura brillante
+          state.statsMaxDeltaLoc = gl.getUniformLocation(sprog, 'u_flashMaxDelta')
           state.statsPos = gl.getAttribLocation(sprog, 'a_pos')
         } else {
           gl.deleteProgram(sprog)
@@ -1680,13 +1714,6 @@ function handleActivateShader(p: ThetaActivateShaderPayload): void {
  */
 function handleHydrate(p: ThetaHydratePayload): void {
   if (!p || typeof p !== 'object') return
-  if (Array.isArray(p.uniforms)) {
-    for (const [name, value] of p.uniforms) {
-      if (typeof name === 'string' && typeof value === 'number') {
-        state.uniforms.set(name, value)
-      }
-    }
-  }
   if (p.previewDims && p.previewDims.width > 0 && p.previewDims.height > 0) {
     state.pendingPreviewDims = { width: p.previewDims.width, height: p.previewDims.height }
     if (state.previewCanvas) {
@@ -1704,10 +1731,36 @@ function handleHydrate(p: ThetaHydratePayload): void {
   if (typeof p.activeShaderId === 'string' && p.activeShaderId !== BUILTIN_SHADER_ID) {
     handleActivateShader({ shaderId: p.activeShaderId, crossfadeMs: 0 })
   }
+  // 🩸 WAVE 8294 — uniforms AL FINAL: `activateGenProgram` purga las claves
+  // `u_gene[k]` del mapa (pizarra limpia por fenotipo). Si el replay corriera
+  // antes del activate, la purga borraría los overrides legítimos del átomo
+  // activo que `desiredUniforms` traía para este respawn.
+  if (Array.isArray(p.uniforms)) {
+    for (const [name, value] of p.uniforms) {
+      if (typeof name === 'string' && typeof value === 'number') {
+        state.uniforms.set(name, value)
+      }
+    }
+  }
+}
+
+/** 🩸 WAVE 8294 — purga de overrides `u_gene[k]` del mapa global. Las keys
+ *  `u_gene[N]` son un namespace COMPARTIDO por todos los átomos: el pase
+ *  genérico las aplica tras `uniform1fv(genGeneValues)` cada frame, así que
+ *  los valores afinados del átomo saliente contaminarían al entrante (el
+ *  G_TILT de event_horizon heredaba el G_WARP de aether_serpent). En un
+ *  context switch real el fenotipo nuevo arranca limpio desde exprValues. */
+function purgeGeneUniformOverrides(): void {
+  for (const k of state.uniforms.keys()) {
+    if (k.startsWith('u_gene[')) state.uniforms.delete(k)
+  }
 }
 
 /** Conmuta el programa activo: snapshot prev-frame + rampa crossfade. */
 function activateGenProgram(ent: GenProgram, id: string, fadeMs: number): void {
+  // Solo en context switch real: re-disparar el MISMO átomo conserva los
+  // overrides vivos del operador (no hay fenotipo nuevo que proteger).
+  if (id !== state.genActiveId) purgeGeneUniformOverrides()
   // 🧬 WAVE 8235 · G3 — fast-path §4.6: si la variante entrante comparte
   // programKey con la activa, SOLO cambiaron genes `expr` → se fijan por
   // `u_gene` sin recompilar, sin snapshot y sin crossfade.
@@ -2053,6 +2106,12 @@ function renderGenerativeFrame(
       state.statsRateLoc,
       state.uniforms.get('u_flashBudgetRate') ?? FLASH_BUDGET_RATE,
     )
+    // 🩸 WAVE 8292 — mismo maxDelta que el epílogo para que la cobertura
+    // mida exactamente la fracción del campo sobre el cap estricto.
+    gl.uniform1f(
+      state.statsMaxDeltaLoc,
+      state.uniforms.get('u_flashMaxDelta') ?? DEFAULT_FLASH_MAX_DELTA,
+    )
     gl.bindBuffer(gl.ARRAY_BUFFER, state.glVbo)
     gl.enableVertexAttribArray(state.statsPos)
     gl.vertexAttribPointer(state.statsPos, 2, gl.FLOAT, false, 0, 0)
@@ -2361,6 +2420,10 @@ function renderCurrentFrame(timestampMs: number): void {
   gl.uniform1f(state.glUniformBrightness, state.uniforms.get('u_brightness') ?? 1.0)
   gl.uniform1f(state.glUniformContrast, state.uniforms.get('u_contrast') ?? 1.0)
   gl.uniform1f(state.glUniformBlackout, state.uniforms.get('u_blackout') ?? 0.0)
+  // 🌊 WAVE 8302 — masters post-fx (path builtin).
+  gl.uniform1f(state.glUniformMasterSaturation, state.uniforms.get('u_masterSaturation') ?? 1.0)
+  gl.uniform1f(state.glUniformMasterHue, state.uniforms.get('u_masterHue') ?? 0.0)
+  gl.uniform1f(state.glUniformMasterStrobe, state.uniforms.get('u_masterStrobe') ?? 0.0)
 
   // 🔮 WAVE 8228 · E2 — Euclid Uniform Bridge (§3.4/§3.5): el array
   // suavizado sube ENTERO en una llamada (60 floats); flags/enums van

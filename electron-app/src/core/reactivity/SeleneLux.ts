@@ -149,6 +149,9 @@ export interface SeleneLuxAudioMetrics {
   raw_hh_delta?: number;
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number;
+  // 🩸 WAVE 8292: AGC Pumping score (0-1) — Trust-Zone boost sobre hueco de
+  // graves con flatness alta → isAGCTrap (cuarentena de página B).
+  agcPumping?: number;
   // ⚒️ WAVE 7749.86: Rhythm Gate — beat phase & PLL state for ghost-path discipline
   beatPhase?: number;    // 0-1, phase within current beat (0 = beat onset)
   pllLocked?: boolean;   // true if PLL is locked to the beat grid
@@ -724,7 +727,9 @@ export class SeleneLux {
         bands,
         sectionType: vibeContext.section,
         isRealSilence: this.computeIsRealSilence(audioMetrics.avgNormEnergy),
-        isAGCTrap: false,
+        // 🩸 WAVE 8292: cortafuegos real — el detector GodEar de pumping
+        // (hueco dembow + flatness + boost HF) cuarentena la página B.
+        isAGCTrap: (audioMetrics.agcPumping ?? 0) > 0.5,
         harshness: audioMetrics.harshness,
         flatness: audioMetrics.spectralFlatness,
         isKick: audioMetrics.kickDetected ?? false,
@@ -853,7 +858,8 @@ export class SeleneLux {
         bpm: vibeContext.bpm ?? 120,
         melodyThreshold: 0.4,
         isRealSilence: this.computeIsRealSilence(audioMetrics.avgNormEnergy),
-        isAGCTrap: false,
+        // 🩸 WAVE 8292: mismo cortafuegos en el fallback Techno Stereo
+        isAGCTrap: (audioMetrics.agcPumping ?? 0) > 0.5,
         isKick: audioMetrics.kickDetected ?? false,
         isPLLBeat: audioMetrics.isPLLBeat ?? false,  // 🎯 WAVE 2305: EL CABLE CONECTADO
         sectionType: vibeContext.section,

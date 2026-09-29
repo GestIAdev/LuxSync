@@ -50,6 +50,10 @@ export interface ExtendedAudioAnalysis extends AudioAnalysis {
   /** WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies */
   rhythmic?: GodEarRhythmicPercussion;
 
+  /** 🩸 WAVE 8292: AGC Pumping score (0-1) — hueco de graves + flatness +
+   * boost HF de la Trust Zone. Downstream: isAGCTrap. */
+  agcPumping?: number;
+
   /** Wave 8 rich analysis data — enviado a GAMMA para decisiones inteligentes */
   wave8?: {
     rhythm: RhythmOutput;
@@ -239,6 +243,8 @@ export function buildPayload(input: AnalysisBuildInput): ExtendedAudioAnalysis {
     photon: spectrum.photon,
     // WAVE 8008: Rhythmic percussion telemetry
     rhythmic: spectrum.rhythmic,
+    // 🩸 WAVE 8292: AGC pumping score → isAGCTrap en HAL/Liquid
+    agcPumping: spectrum.agcPumping,
     zeroCrossingRate: calculateZeroCrossingRate(snapshotBuffer),
 
     // -- WAVE 1162: RAW BASS (pre-AGC, para Pacemaker) --

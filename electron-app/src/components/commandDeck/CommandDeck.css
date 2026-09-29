@@ -1034,10 +1034,23 @@
   );
   border-color: var(--effect-color, #00ffff);
   color: var(--effect-color, #00ffff);
-  box-shadow: 
+  box-shadow:
     0 0 25px color-mix(in srgb, var(--effect-color, #00ffff) 40%, transparent),
     inset 0 0 20px color-mix(in srgb, var(--effect-color, #00ffff) 10%, transparent);
-  animation: quickPulse 0.8s ease infinite;
+}
+
+/* 🌊 WAVE 8295 — pulso ACTIVE via ::before: el padre tiene overflow:hidden,
+   así que el halo exterior quedaría recortado. En su lugar el ::before
+   lleva un glow interior FIJO (rasterizado una vez) y solo `opacity`
+   respira — propiedad del compositor, cero repaint. */
+.quick-btn.active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 26px color-mix(in srgb, var(--effect-color, #00ffff) 45%, transparent);
+  pointer-events: none;
+  animation: quickPulse 0.8s ease-in-out infinite;
 }
 
 .quick-btn.active::after {
@@ -1067,9 +1080,11 @@
   opacity: 0.5;
 }
 
+/* 🌊 WAVE 8295 — antes animaba box-shadow (repaint+re-blur por frame);
+   ahora solo respira la opacity del ::before pre-rasterizado. */
 @keyframes quickPulse {
-  0%, 100% { box-shadow: 0 0 20px color-mix(in srgb, var(--effect-color) 30%, transparent); }
-  50% { box-shadow: 0 0 35px color-mix(in srgb, var(--effect-color) 50%, transparent); }
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 
 .quick-icon {
@@ -1238,21 +1253,26 @@
   );
   border-color: #FF4444;
   color: white;
-  box-shadow: 
+  box-shadow:
     0 0 40px rgba(255, 0, 0, 0.5),
     inset 0 0 30px rgba(255, 255, 255, 0.1);
-  animation: blackoutPulse 0.5s ease infinite;
+}
+
+/* 🌊 WAVE 8295 — blackout pulse via ::before interior (overflow:hidden en el
+   padre) + opacity. Antes animaba box-shadow+border-color = repaint por frame. */
+.blackout-master.active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 30px rgba(255, 60, 60, 0.55);
+  pointer-events: none;
+  animation: blackoutPulse 0.5s ease-in-out infinite;
 }
 
 @keyframes blackoutPulse {
-  0%, 100% { 
-    box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-    border-color: #FF4444;
-  }
-  50% { 
-    box-shadow: 0 0 50px rgba(255, 0, 0, 0.7);
-    border-color: #FF0000;
-  }
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
 
 .blackout-icon {

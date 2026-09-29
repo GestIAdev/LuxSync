@@ -448,8 +448,9 @@ export class NodeResolver {
         this._precomputeIgnitionMap(deviceId);
         this._precomputeWheelDeviceEntry(deviceId);
         this._precomputeGovernorMap(deviceId);
-        // WAVE 8269: el mask de soft blackout depende de la topología del nodo
-        // (presencia de 'dimmer' → virtual dimmer channels). Invalidar el cache.
+        // WAVE 8269: el mask de soft blackout ahora depende de la topología del
+        // nodo (presencia de canal 'dimmer' → virtual dimmer channels). Invalidar
+        // el cache del universo del device para que un re-patch reconstruya el mask.
         const dev = this._graph.getDevice(deviceId);
         if (dev)
             this._softBlackoutMasks.delete(dev.universe);
@@ -465,6 +466,9 @@ export class NodeResolver {
      * _ditherError/_prev8bitNorm/_prev8bitDmx/_prev16bitNorm/_prev16bitRaw.
      *
      * PATCH TIME — nunca en hot path.
+     *
+     * @param nodeIds — nodeIds del device según el NodeGraph antes del purge
+     *                  (si se omiten se inferirá por prefijo `${deviceId}:`)
      */
     unregisterDevice(deviceId, nodeIds) {
         this._forgeGraphs.delete(deviceId);
@@ -1101,6 +1105,7 @@ export class NodeResolver {
         // última milla; la ruta Forge escribía directo del evaluador de grafos
         // y los gobernadores nunca llegaban al buffer — un clampMax configurado
         // en la Forja no hacía nada en fixtures compilados (ej. Tungsten beam).
+        // Semántica idéntica: post-eval, post-safety, última palabra sobre el byte.
         const govMap = this._governorMaps.get(deviceId);
         if (govMap !== undefined) {
             const govNodeIds = this._graph.getDeviceNodes(deviceId);
@@ -1108,6 +1113,8 @@ export class NodeResolver {
                 const govNode = this._graph.getNodeData(govNodeIds[ni]);
                 if (!govNode)
                     continue;
+                // Mismo esquema de keys que _accumulateForgeNodeValues:
+                // `${cellSuffix}:${channelType}` para canales celulares.
                 const gColonIdx = govNodeIds[ni].indexOf(':');
                 const gCellSuffix = gColonIdx >= 0 ? govNodeIds[ni].substring(gColonIdx + 1) : '';
                 for (let ci = 0; ci < govNode.channels.length; ci++) {
@@ -1116,12 +1123,17 @@ export class NodeResolver {
                     if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
                         continue;
                     const computed = buf[idx];
+                    // rawNormalized semántico: el valor inyectado en el grafo para este
+                    // canal (ya escalado por virtual dimmer). Fallback al byte actual.
                     const normalized = channelValues[`${gCellSuffix}:${chDef.type}`]
                         ?? channelValues[chDef.type]
                         ?? computed / 255;
                     const governed = sanitizeDmxByte(applyDMXGovernors(govMap, chDef.dmxOffset, chDef.type, normalized, computed));
                     if (governed !== computed) {
                         buf[idx] = governed;
+                        // WAVE 7645-16BIT-PHASE2 parity: si el governor modifica el byte
+                        // coarse de un canal 16-bit, el fine se resetea — el valor fino
+                        // residual pertenecía al valor pre-gobernador.
                         if (chDef.is16bit && idx + 1 < DMX_UNIVERSE_SIZE) {
                             buf[idx + 1] = 0;
                         }
@@ -1154,6 +1166,10 @@ export class NodeResolver {
                 // Un nodo SIN canal 'dimmer' físico no tiene ruta de apagado: el mask
                 // original solo zeraba dimmer/hard-safety, así que un RGBW huérfano
                 // (ej. beam-color del Tungsten) quedaba encendido durante el blackout.
+                // Para esos nodos, los canales de mezcla electrónica SON su dimmer
+                // virtual → se incluyen en el mask. color_wheel queda fuera (es un
+                // selector de slot, no intensidad). Nodos con dimmer conservan el
+                // comportamiento actual (color preservado para el return).
                 const hasPhysicalDimmer = node.channels.some(c => c.type === DIMMER_CHANNEL);
                 for (let ci = 0; ci < node.channels.length; ci++) {
                     const chDef = node.channels[ci];
@@ -1162,7 +1178,9 @@ export class NodeResolver {
                     // (emission_gate/fire_valve/fire_ignite) SIEMPRE se incluyen en
                     // el mask de soft blackout — nunca deben quedar armados mientras
                     // el show se percibe apagado.
-                    if (!isVirtualDimmerChannel && !SOFT_BLACKOUT_INTENSITY_CHANNELS.has(chDef.type) && !HARD_SAFETY_CHANNELS.has(chDef.type))
+                    if (!isVirtualDimmerChannel &&
+                        !SOFT_BLACKOUT_INTENSITY_CHANNELS.has(chDef.type) &&
+                        !HARD_SAFETY_CHANNELS.has(chDef.type))
                         continue;
                     const idx = baseAddr + chDef.dmxOffset;
                     if (idx >= 0 && idx < DMX_UNIVERSE_SIZE) {

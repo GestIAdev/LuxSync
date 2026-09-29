@@ -36,9 +36,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './TheiaEngineView.css'
-import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
-// 🔮 WAVE 8230 — EUCLID · E4: átomos generativos + meta @euclid → sliders
-import { ensureEuclidShaderAtoms } from '../../../theia/shader/atoms'
+import { getThetaOrchestrator, getSeleneTheiaBridge, getTheiaAutopilot } from '../../../theia'
+// 🔮 WAVE 8230 — EUCLID · E4: meta @euclid → sliders
 import type { EuclidMeta } from '../../../theia'
 // 🧬 WAVE 8241 · U3 — gene faders (u_gene fast-path) + HUD biológico
 import { layoutExprGenes, resolveGeneValues, getFitness } from '../../../theia'
@@ -48,8 +47,15 @@ import {
   MEDIA_POOL_ACCEPT,
   useTheiaPackStore,
 } from '../../../stores/useTheiaPackStore'
+// 🖥️ WAVE 8303 — workspaces PERFORM/DESIGN + drawer del Media Browser
+import {
+  useTheiaUiStore,
+  panelCollapseFor,
+} from '../../../stores/useTheiaUiStore'
 import LiveDeck from '../../theia/LiveDeck'
-import TransportBar from '../../theia/TransportBar'
+import ContextStrip from '../../theia/ContextStrip'
+import PlaylistLane from '../../theia/PlaylistLane'
+import AutoPilotBar from '../../theia/AutoPilotBar'
 import { LuxIcon } from '../../icons'
 // 🎛️ WAVE 8240 · U2 — lectura zero-alloc del ring 256B (Glass Bridge mirror)
 import {
@@ -65,7 +71,7 @@ import {
 
 /** energyZone (Selene) → label/color del monitor. Índice = bits 24..31 del ENUMS. */
 const ZONE_META = [
-  { label: 'CALM',    color: '#84cc16' },
+  { label: 'CALM',    color: '#2ecc10' },
   { label: 'RISING',  color: '#fbbf24' },
   { label: 'PEAK',    color: '#ef4444' },
   { label: 'FALLING', color: '#a855f7' },
@@ -88,7 +94,7 @@ const TheiaEngineView: React.FC = () => {
   // 🌊 WAVE 8259 — BRIGHT/SPEED/CONTRAST ya NO viven en la raíz: cada `input`
   // del fader re-renderizaba el árbol entero (Viewport+Deck+Inspector) a
   // ~100Hz → el hilo se saturaba y el telemetry port pasaba hambre
-  // (telGap>500ms). Ahora residen en <MastersCluster/> dentro del Inspector:
+  // (telGap>500ms). Ahora residen en <MastersPanel/> (columna fija propia):
   // el re-render queda acotado a 3 nodos y los efectos caros van throttled.
 
   // 🌊 WAVE 8242 · U4 — estado del fade BLACKOUT + resumen del transporte.
@@ -118,6 +124,30 @@ const TheiaEngineView: React.FC = () => {
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const toggleInspector = useCallback(() => setInspectorOpen((o) => !o), [])
 
+  // 🖥️ WAVE 8303 — workspace mode (PERFORM ⇄ DESIGN) + drawer del browser.
+  const workspaceMode = useTheiaUiStore((s) => s.mode)
+  const toggleMode = useTheiaUiStore((s) => s.toggleMode)
+  const browserOpen = useTheiaUiStore((s) => s.browserOpen)
+  const toggleBrowser = useTheiaUiStore((s) => s.toggleBrowser)
+
+  // Tecla Tab → alterna PERFORM/DESIGN (blueprint §8). Misma guardia que el
+  // Spacebar de BLACKOUT: nada dentro de inputs/editables; preventDefault
+  // para que Tab no robe el foco.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || e.repeat) return
+      const el = e.target as HTMLElement | null
+      if (el) {
+        const tag = el.tagName
+        if (el.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      }
+      e.preventDefault()
+      toggleMode()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toggleMode])
+
   // 🎛️ WAVE 8240 · U2 — la telemetría vive en el Inspector/Viewport a través
   // del ring 256B (TelemetryWireReader + rAF sobre refs). Cero React state
   // en la ruta caliente — aquí no queda nada que alimentar.
@@ -140,17 +170,15 @@ const TheiaEngineView: React.FC = () => {
     return () => { bridge.detach() }
   }, [aiEnabled])
 
-  // ─── 🔮 WAVE 8230 · E4 — átomos generativos Euclid (kind:'shader') ────
-  // Idempotente: registra el pack euclid-oracle en el LiveDeck + registry.
-  useEffect(() => {
-    ensureEuclidShaderAtoms()
-  }, [])
+  // ─── 🌊 WAVE 8300 — DISK-ONLY: los átomos de fábrica ya no se siembran
+  // desde código. El LiveDeck se hidrata EXCLUSIVAMENTE del scan IPC de
+  // `userData/theia/packs/` (auto-scan al montar LiveDeck + botón RESCAN).
 
   // ─── 🌊 WAVE 8211 (H2) — Push initial master values to the worker once.
   // The orchestrator replays them on every 'theia:ready' (Phoenix respawn),
   // so this just keeps the UI and the shader in sync at mount.
   // 🌊 WAVE 8259 — brightness/contrast/speed empujan su inicial desde
-  // <MastersCluster/>; aquí solo queda el master que también posee la raíz.
+  // <MastersPanel/>; aquí solo queda el master que también posee la raíz.
   useEffect(() => {
     getThetaOrchestrator().setUniform('u_blackout', blackout ? 1 : 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -203,7 +231,7 @@ const TheiaEngineView: React.FC = () => {
   }, [])
 
   // ── 🌊 WAVE 8211 (H2) — Masters: brightness/contrast/speed viven en
-  // <MastersCluster/> (WAVE 8259 — el estado salió de la raíz). ────────────
+  // <MastersPanel/> (WAVE 8259 — el estado salió de la raíz). ────────────
 
   const handleBlackout = useCallback(() => {
     // 🌊 WAVE 8242 · U4 — BLACKOUT suave: u_blackout rampea 0↔1 por rAF
@@ -241,6 +269,33 @@ const TheiaEngineView: React.FC = () => {
     blackoutRafRef.current = requestAnimationFrame(step)
   }, [blackout])
 
+  // 🌊 WAVE 8302 · M2 — BOTÓN DEL PÁNICO: Spacebar → BLACKOUT.
+  // Global (window): el botón es un reflejo VJ — debe funcionar con el
+  // foco en cualquier hijo del panel. Guardias:
+  //  · preventDefault ANTES del toggle (Space scrollea si lo ignoramos).
+  //  · skip si el target es input/textarea/select/contenteditable — ahí el
+  //    espacio es texto, no panic. repeat filtrado (un toggle por pulsación).
+  useEffect(() => {
+    const isEditableTarget = (t: EventTarget | null): boolean => {
+      const el = t as HTMLElement | null
+      if (!el) return false
+      if (el.isContentEditable) return true
+      const tag = el.tagName
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' && e.key !== ' ') return
+      if (e.repeat || isEditableTarget(e.target)) return
+      e.preventDefault()
+      handleBlackout()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handleBlackout])
+
+  // ✈️ WAVE 8306 — Auto-Pilot: conecta el motor a los stores mientras la
+  // vista Theia está montada (rAF propio + SAB de telemetría, fuera de React).
+  useEffect(() => getTheiaAutopilot().init(), [])
 
 
   // ── File Picker ──────────────────────────────────────────────────────
@@ -322,7 +377,7 @@ const TheiaEngineView: React.FC = () => {
 
   return (
     <div
-      className={`theia-view ${inspectorOpen ? 'theia-view--insp-open' : 'theia-view--insp-closed'}`}
+      className={`theia-view is-mode-${workspaceMode} ${inspectorOpen ? 'theia-view--insp-open' : 'theia-view--insp-closed'}`}
     >
       {/* ═══════════════════════════════════════════════════════════════════
        * HEADER TOOLBAR
@@ -337,7 +392,20 @@ const TheiaEngineView: React.FC = () => {
             <span className="theia-header__subtitle">VIDEO ENGINE</span>
           </div>
           <span className="theia-header__beta">BETA</span>
-          {/* 🎛️ WAVE 8241 · U3 — OUTPUT vuelve al header: inconfundible,
+          {/* � WAVE 8301 — LIVE domina el header: movido desde el panel
+              MASTERS (hueco libre para futuros faders). Mismo estado
+              global — `enginePower`/`handlePower` viven en esta vista. */}
+          <button
+            className={`theia-power theia-power--header ${enginePower ? 'is-on' : 'is-off'}`}
+            onClick={handlePower}
+            data-midi-bind="theia.power"
+            title="Theia Engine ON/OFF — go LIVE"
+          >
+            <span className="theia-power__ring" />
+            <span className="theia-power__core" />
+            <span className="theia-power__label">{enginePower ? 'LIVE' : 'OFF'}</span>
+          </button>
+          {/* �🎛️ WAVE 8241 · U3 — OUTPUT vuelve al header: inconfundible,
               siempre visible, inmediatamente a la derecha del badge. */}
           <button
             className={`theia-header__output-btn${isOutputActive ? ' theia-header__output-btn--active' : ''}`}
@@ -347,6 +415,33 @@ const TheiaEngineView: React.FC = () => {
           >
             OUTPUT
           </button>
+          {/* 🖥️ WAVE 8303 · M1 — switch de workspace (blueprint §2).
+              PERFORM = directo · DESIGN = laboratorio. Tecla Tab. */}
+          <div
+            className="theia-mode-switch"
+            role="tablist"
+            aria-label="Workspace mode"
+            title="Workspace: PERFORM (directo) / DESIGN (laboratorio) — Tab"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceMode === 'perform'}
+              className={`theia-mode-switch__seg${workspaceMode === 'perform' ? ' is-active' : ''}`}
+              onClick={() => useTheiaUiStore.getState().setMode('perform')}
+            >
+              PERFORM
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceMode === 'design'}
+              className={`theia-mode-switch__seg${workspaceMode === 'design' ? ' is-active' : ''}`}
+              onClick={() => useTheiaUiStore.getState().setMode('design')}
+            >
+              DESIGN
+            </button>
+          </div>
         </div>
 
         {/* 🎛️ WAVE 8240 · U2 — header limpio: logo + OUTPUT + ingestión.
@@ -396,7 +491,7 @@ const TheiaEngineView: React.FC = () => {
        * MAIN GRID (viewport + asset deck + inspector)
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="theia-main">
-        {/* ─── LEFT COLUMN: viewport + transport + media pool deck ─── */}
+        {/* ─── LEFT COLUMN: viewport + transport ─── */}
         <div className="theia-stage">
           <Viewport
             enginePower={enginePower}
@@ -404,20 +499,61 @@ const TheiaEngineView: React.FC = () => {
           />
 
           {/* 🎛️ WAVE 8239 · U1 — transport bar bajo el viewport */}
-          <TransportBar />
-
-          <LiveDeck />
+          {/* 🦎 WAVE 8304 — slot camaleónico 56px: transporte (VIDEO) ⇄
+              macro-faders genéticos (SHADER) ⇄ idle, crossfade sin shift. */}
+          <ContextStrip />
         </div>
 
-        {/* ─── RIGHT COLUMN: inspector ─── */}
-        <Inspector
-          open={inspectorOpen}
-          onToggle={toggleInspector}
-          enginePower={enginePower}
-          onPower={handlePower}
+        {/* ─── MASTERS: columna fija (PERFORM) · rail 36px (DESIGN) ─── */}
+        <MastersPanel
+          collapse={panelCollapseFor('masters', workspaceMode)}
           blackout={blackout}
           onBlackout={handleBlackout}
         />
+
+        {/* ─── BOTTOM: playlist lane (placeholder W-C) + Media Browser ─── */}
+        <div
+          className="theia-bottom"
+          data-collapse={panelCollapseFor('browser', workspaceMode)}
+        >
+          {/* ✈️ WAVE 8306 — Auto-Pilot (36px) solo en PERFORM: en DESIGN el
+              secuenciador queda en segundo plano junto al lane en rail. */}
+          {workspaceMode === 'perform' && <AutoPilotBar />}
+          <PlaylistLane
+            collapse={panelCollapseFor('playlistLane', workspaceMode)}
+          />
+          <div className="theia-browser">
+            <button
+              type="button"
+              className="theia-browser__bar"
+              onClick={toggleBrowser}
+              aria-expanded={browserOpen}
+              title="Media Browser — packs, vídeos y mutaciones"
+            >
+              <LuxIcon name={browserOpen ? 'chevron-down' : 'chevron-up'} size={11} />
+              <span>MEDIA BROWSER</span>
+              <span className="theia-browser__tabs-hint">PACKS · VIDEO · MUTATIONS</span>
+            </button>
+            {/* P5: drawer cerrado = LiveDeck desmontado → para su rAF
+                de perf-report y su auto-scan IPC. En DESIGN el browser es
+                panel principal y siempre está montado. */}
+            {(workspaceMode === 'design' || browserOpen) && (
+              <div className="theia-browser__body">
+                <LiveDeck />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─── INSPECTOR: solo existe en DESIGN (HIDDEN en PERFORM = cero
+            CPU: telemetría rAF y suscripciones quedan desmontadas) ─── */}
+        {workspaceMode === 'design' && (
+          <Inspector
+            open={inspectorOpen}
+            onToggle={toggleInspector}
+            enginePower={enginePower}
+          />
+        )}
       </div>
     </div>
   )
@@ -434,6 +570,8 @@ interface MasterSliderProps {
   onChange: (v: number) => void
   min?: number
   max?: number
+  /** 🌊 WAVE 8302 — resolución del rango (STROBE usa enteros de Hz). */
+  step?: number
   color: string
   format?: (v: number) => string
 }
@@ -445,6 +583,7 @@ const MasterSlider: React.FC<MasterSliderProps> = ({
   onChange,
   min = 0,
   max = 1,
+  step = 0.001,
   color,
   format,
 }) => {
@@ -460,7 +599,7 @@ const MasterSlider: React.FC<MasterSliderProps> = ({
         type="range"
         min={min}
         max={max}
-        step={0.001}
+        step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="theia-master__input"
@@ -474,7 +613,9 @@ const MasterSlider: React.FC<MasterSliderProps> = ({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SUB-COMPONENT: MastersCluster — 🌊 WAVE 8259 (Slider Choke fix)
+// SUB-COMPONENT: MastersPanel — 🌊 WAVE 8259 (Slider Choke fix)
+// 🖥️ WAVE 8303 · M2 — renombrado: ya no es un clúster dentro del
+// Inspector sino la columna fija de masters del layout (blueprint §3).
 // Los faders BRIGHT/SPEED/CONTRAST poseen su estado AQUÍ, no en la raíz:
 // cada `input` event re-renderiza solo este clúster (3 nodos) en vez del
 // árbol entero de la vista. Los efectos caros — `postMessage` al worker y
@@ -523,12 +664,29 @@ function makeKeyedThrottle(ms: number): (key: string, fn: () => void) => void {
   }
 }
 
-const MastersCluster: React.FC = () => {
+/**
+ * 🖥️ WAVE 8303 · M2 — MastersPanel: columna fija de masters.
+ * PERFORM → EXPANDED (faders + BLACKOUT pineado abajo, sin scroll).
+ * DESIGN  → RAIL 36px (mini-readouts + BLACKOUT mini — blueprint §7.1).
+ * El estado de los faders vive aquí (WAVE 8259): compartido por ambas
+ * vistas para que el rail lea los mismos valores sin duplicar stores.
+ */
+interface MastersPanelProps {
+  collapse: 'expanded' | 'rail' | 'hidden'
+  blackout: boolean
+  onBlackout: () => void
+}
+
+const MastersPanel: React.FC<MastersPanelProps> = ({ collapse, blackout, onBlackout }) => {
   const [brightness, setBrightness] = useState(0.85)
   const [speed, setSpeed] = useState(1.0)
   // 🌊 WAVE 8256 — neutro REAL: u_contrast=0.5 comprimía el rango a
   // [0.25,0.75] pre-gamma → grises lavados. 1.0 = identidad; slider 0–2.
   const [contrast, setContrast] = useState(1.0)
+  // 🌊 WAVE 8302 · M1 — masters de post-procesado (epílogo pre-ACES).
+  const [saturation, setSaturation] = useState(1.0)
+  const [hue, setHue] = useState(0.0)
+  const [strobe, setStrobe] = useState(0.0)
 
   // Un throttle por canal — drags simultáneos (MIDI) no se pisan el pending.
   const throttled = useMemo(() => makeKeyedThrottle(90), [])
@@ -540,6 +698,9 @@ const MastersCluster: React.FC = () => {
     theta.setUniform('u_brightness', brightness)
     theta.setUniform('u_contrast', contrast)
     theta.setUniform('u_speed', speed)
+    theta.setUniform('u_masterSaturation', saturation)
+    theta.setUniform('u_masterHue', hue)
+    theta.setUniform('u_masterStrobe', strobe)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -565,14 +726,56 @@ const MastersCluster: React.FC = () => {
     })
   }, [])
 
+  // 🌊 WAVE 8302 · M1 — handlers de post-fx (misma vía throttled+setUniform).
+  const handleSaturation = useCallback((v: number) => {
+    setSaturation(v)
+    throttled('u_masterSaturation', () =>
+      getThetaOrchestrator().setUniform('u_masterSaturation', v))
+  }, [])
+
+  const handleHue = useCallback((v: number) => {
+    setHue(v)
+    throttled('u_masterHue', () =>
+      getThetaOrchestrator().setUniform('u_masterHue', v))
+  }, [])
+
+  const handleStrobe = useCallback((v: number) => {
+    setStrobe(v)
+    throttled('u_masterStrobe', () =>
+      getThetaOrchestrator().setUniform('u_masterStrobe', v))
+  }, [])
+
+  // RAIL — lectura compacta de los mismos valores (abreviaturas 3 letras).
+  const railCells = [
+    ['BRI', `${Math.round(brightness * 100)}%`],
+    ['SPD', `${speed.toFixed(2)}×`],
+    ['CON', `${contrast.toFixed(2)}×`],
+    ['SAT', `${saturation.toFixed(2)}×`],
+    ['HUE', hue.toFixed(2)],
+    ['STB', strobe < 0.5 ? 'OFF' : `${strobe.toFixed(0)}Hz`],
+  ] as const
+
+  if (collapse === 'hidden') return null
+
   return (
-    <>
-      <MasterSlider
+    <aside
+      className="theia-masters"
+      data-collapse={collapse}
+      aria-label="Master controls"
+    >
+      <div className="theia-masters__head">
+        <span className="theia-masters__head-icon">◈</span>
+        <span>MASTERS</span>
+      </div>
+
+      {/* EXPANDED — faders completos */}
+      <div className="theia-masters__full">
+        <MasterSlider
         label="BRIGHT"
         bindId="theia.brightness"
         value={brightness}
         onChange={handleBrightness}
-        color="#a3e635"
+        color="#39ff14"
       />
       <MasterSlider
         label="SPEED"
@@ -581,7 +784,7 @@ const MastersCluster: React.FC = () => {
         onChange={handleSpeed}
         min={0.25}
         max={2}
-        color="#84cc16"
+        color="#2ecc10"
         format={(v) => `${v.toFixed(2)}×`}
       />
       <MasterSlider
@@ -593,7 +796,64 @@ const MastersCluster: React.FC = () => {
         color="#d9f99d"
         format={(v) => `${v.toFixed(2)}×`}
       />
-    </>
+      {/* 🌊 WAVE 8302 · M1 — masters de post-fx (SAT/HUE/STROBE). */}
+      <MasterSlider
+        label="SATURATION"
+        bindId="theia.saturation"
+        value={saturation}
+        onChange={handleSaturation}
+        min={0}
+        max={2}
+        color="#39ff14"
+        format={(v) => `${v.toFixed(2)}×`}
+      />
+      <MasterSlider
+        label="HUE"
+        bindId="theia.hue"
+        value={hue}
+        onChange={handleHue}
+        min={-0.5}
+        max={0.5}
+        color="#2ecc10"
+        format={(v) => `${v.toFixed(2)}⟳`}
+      />
+      <MasterSlider
+        label="STROBE"
+        bindId="theia.strobe"
+        value={strobe}
+        onChange={handleStrobe}
+        min={0}
+        max={60}
+        step={1}
+        color="#1f9c0b"
+        format={(v) => v < 0.5 ? 'OFF' : `${v.toFixed(0)}Hz`}
+      />
+      </div>
+
+      {/* RAIL — readouts compactos de los mismos valores (blueprint:
+          "faders en miniatura, solo lectura" — edición fina queda para
+          una wave posterior). Cero coste: mismos useState, sin rAF. */}
+      <div className="theia-masters__rail" aria-hidden={collapse !== 'rail'}>
+        {railCells.map(([abbr, val]) => (
+          <div key={abbr} className="theia-masters__railcell" title={abbr}>
+            <span className="theia-masters__railabbr">{abbr}</span>
+            <span className="theia-masters__railval">{val}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* BLACKOUT pineado al fondo — P1: nunca requiere scroll. En RAIL se
+          compacta a un cuadrado (mismo handler + data-midi-bind). */}
+      <button
+        className={`theia-blackout theia-masters__blackout ${blackout ? 'is-active' : ''}`}
+        onClick={onBlackout}
+        data-midi-bind="theia.blackout"
+        title="Force Blackout [Space]"
+      >
+        <span className="theia-blackout__icon">◉</span>
+        <span className="theia-blackout__label">BLACKOUT</span>
+      </button>
+    </aside>
   )
 }
 
@@ -840,7 +1100,7 @@ const Viewport: React.FC<ViewportProps> = ({ enginePower, blackout }) => {
 // WAVE 4922 — `AuthorAssetDeck`, `AssetDeck` y `ClipCard` retirados.
 // 🎛️ WAVE 8239 · U1 — `WorkshopDeck`/`TheiaTrimmer`/`TheiaDNALab` demolidos:
 // el deck vive en `components/theia/LiveDeck.tsx` (Pack Slots + Atom Tiles)
-// y el transporte en `components/theia/TransportBar.tsx`.
+// y la strip contextual en `components/theia/ContextStrip.tsx`.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUB-COMPONENT: Inspector (right rail, retractable)
@@ -850,13 +1110,10 @@ interface InspectorProps {
   open: boolean
   onToggle: () => void
   enginePower: boolean
-  onPower: () => void
-  blackout: boolean
-  onBlackout: () => void
 }
 
 const Inspector: React.FC<InspectorProps> = ({
-  open, onToggle, enginePower, onPower, blackout, onBlackout,
+  open, onToggle, enginePower,
 }) => {
   // 🎛️ WAVE 8240 · U2 — telemetría zero-alloc: refs a nodos DOM + rAF que
   // lee el ring 256B (TelemetryWireReader sobre el espejo local del pump).
@@ -881,6 +1138,11 @@ const Inspector: React.FC<InspectorProps> = ({
     let sparkLen = 0
     let raf = 0
     let fpsTick = 0
+    // 🌊 WAVE 8295 — dirty-check estricto: el rAF corre ~60fps pero la zona de
+    // energía casi nunca cambia. Reescribir borderColor/background cada frame
+    // reevaluaba el estilo (y con el antiguo `transition: all` encadenaba
+    // repaints de 300ms sin fin). Centinela 'off' = estado offline pintado.
+    let lastZoneColor = ''
 
     const setText = (el: HTMLElement | null, text: string) => {
       if (el && el.textContent !== text) el.textContent = text
@@ -888,16 +1150,20 @@ const Inspector: React.FC<InspectorProps> = ({
 
     const paintOffline = () => {
       setText(zoneLabelRef.current, 'NO LINK')
-      if (zoneLabelRef.current) zoneLabelRef.current.style.color = '#94a3b8'
-      if (zoneBannerRef.current) {
-        zoneBannerRef.current.style.borderColor = '#47556966'
-        zoneBannerRef.current.style.background = '#47556915'
+      if (lastZoneColor !== 'off') {
+        lastZoneColor = 'off'
+        if (zoneLabelRef.current) zoneLabelRef.current.style.color = '#94a3b8'
+        if (zoneBannerRef.current) {
+          zoneBannerRef.current.style.borderColor = '#47556966'
+          zoneBannerRef.current.style.background = '#47556915'
+        }
       }
       setText(zoneConfRef.current, 'TELEMETRY OFFLINE')
       setText(bpmRef.current, '—')
       setText(energyRef.current, '—')
       setText(fpsRef.current, '—')
-      sparkDotRef.current?.setAttribute('opacity', '0')
+      const dot = sparkDotRef.current
+      if (dot && dot.getAttribute('opacity') !== '0') dot.setAttribute('opacity', '0')
     }
 
     const tick = () => {
@@ -914,10 +1180,14 @@ const Inspector: React.FC<InspectorProps> = ({
       unpackEnums(reader.enums, enums)
       const zone = ZONE_META[enums.energyZone & 3] ?? ZONE_META[0]
       setText(zoneLabelRef.current, zone.label)
-      if (zoneLabelRef.current) zoneLabelRef.current.style.color = zone.color
-      if (zoneBannerRef.current) {
-        zoneBannerRef.current.style.borderColor = `${zone.color}66`
-        zoneBannerRef.current.style.background = `${zone.color}15`
+      if (zone.color !== lastZoneColor) {
+        lastZoneColor = zone.color
+        if (zoneLabelRef.current) zoneLabelRef.current.style.color = zone.color
+        if (zoneBannerRef.current) {
+          zoneBannerRef.current.style.borderColor = `${zone.color}66`
+          zoneBannerRef.current.style.background = `${zone.color}15`
+        }
+        sparkDotRef.current?.setAttribute('fill', zone.color)
       }
       setText(
         zoneConfRef.current,
@@ -950,9 +1220,8 @@ const Inspector: React.FC<InspectorProps> = ({
         sparkFillRef.current?.setAttribute('d', `${d} L100,40 L0,40 Z`)
         const dot = sparkDotRef.current
         if (dot) {
-          dot.setAttribute('opacity', '1')
+          if (dot.getAttribute('opacity') !== '1') dot.setAttribute('opacity', '1')
           dot.setAttribute('cy', (40 - energy * 36 - 2).toFixed(1))
-          dot.setAttribute('fill', zone.color)
         }
       }
     }
@@ -1015,19 +1284,19 @@ const Inspector: React.FC<InspectorProps> = ({
               <svg viewBox="0 0 100 40" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="theia-spark-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="#a3e635" stopOpacity="0.7" />
-                    <stop offset="60%" stopColor="#84cc16" stopOpacity="0.9" />
+                    <stop offset="0%" stopColor="#39ff14" stopOpacity="0.7" />
+                    <stop offset="60%" stopColor="#2ecc10" stopOpacity="0.9" />
                     <stop offset="100%" stopColor="#fbbf24" stopOpacity="1" />
                   </linearGradient>
                   <linearGradient id="theia-spark-fill" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="#a3e635" stopOpacity="0.05" />
-                    <stop offset="100%" stopColor="#84cc16" stopOpacity="0.25" />
+                    <stop offset="0%" stopColor="#39ff14" stopOpacity="0.05" />
+                    <stop offset="100%" stopColor="#2ecc10" stopOpacity="0.25" />
                   </linearGradient>
                 </defs>
                 <line x1="0" y1="20" x2="100" y2="20" stroke="rgba(255,255,255,0.06)" strokeWidth="0.4" />
                 <path ref={sparkFillRef} d="" fill="url(#theia-spark-fill)" />
                 <path ref={sparkPathRef} d="" fill="none" stroke="url(#theia-spark-grad)" strokeWidth="1.2" />
-                <circle ref={sparkDotRef} cx="100" cy="38" r="2" opacity="0" fill="#84cc16" />
+                <circle ref={sparkDotRef} cx="100" cy="38" r="2" opacity="0" fill="#2ecc10" />
               </svg>
             </div>
 
@@ -1048,41 +1317,9 @@ const Inspector: React.FC<InspectorProps> = ({
             </div>
           </div>
 
-          {/* ── SECTION 2: Masters — power/output/blackout + faders ── */}
-          <div className="theia-insp__block">
-            <div className="theia-insp__block-header">
-              <span className="theia-insp__block-icon">◈</span>
-              <span className="theia-insp__block-title">MASTERS</span>
-            </div>
-
-            <div className="theia-insp__sys">
-              <button
-                className={`theia-power ${enginePower ? 'is-on' : 'is-off'}`}
-                onClick={onPower}
-                data-midi-bind="theia.power"
-                title="Theia Engine ON/OFF"
-              >
-                <span className="theia-power__ring" />
-                <span className="theia-power__core" />
-                <span className="theia-power__label">{enginePower ? 'LIVE' : 'OFF'}</span>
-              </button>
-              <button
-                className={`theia-blackout ${blackout ? 'is-active' : ''}`}
-                onClick={onBlackout}
-                data-midi-bind="theia.blackout"
-                title="Force Blackout"
-              >
-                <span className="theia-blackout__icon">◉</span>
-                <span className="theia-blackout__label">BLACKOUT</span>
-              </button>
-            </div>
-
-            <div className="theia-insp__masters">
-              {/* 🌊 WAVE 8259 — estado localizado: los faders re-renderizan
-                  solo este clúster, no el árbol de la vista. */}
-              <MastersCluster />
-            </div>
-          </div>
+          {/* 🖥️ WAVE 8303 · M2 — MASTERS salió del Inspector: es columna
+              fija propia (MastersPanel) accesible en AMBOS modos, no una
+              sección más del laboratorio. */}
 
           {/* ── SECTION 3: Ecosystem Control — botones Darwin + HUD ── */}
           <EcosystemControl />
@@ -1310,31 +1547,29 @@ const GeneFadersPanel: React.FC = () => {
 
   const exprGenes = meta ? layoutExprGenes(meta) : []
 
-  // Relee meta + seed de valores efectivos al cambiar de shader. El Map de
-  // `saved` conserva los movimientos del operador por id (la LRU del worker
-  // retiene el programa — al volver, el shader recibe los valores previos).
-  const savedRef = useRef<Map<string, Record<string, number>>>(new Map())
-  const pushedRef = useRef<Set<string>>(new Set())
   // 🌊 WAVE 8261 — throttle trailing por gen: el drag repinta solo este
   // panel y el postMessage al worker se estrangula a ~11 Hz por canal.
   const throttled = useMemo(() => makeKeyedThrottle(90), [])
 
+  // 🩸 WAVE 8294 — memoria inmortal: los valores afinados viven en el
+  // store (sobreviven al desmontaje del Inspector). En cada switch el
+  // worker purga `u_gene[k]` y el fenotipo arranca desde spec.exprValues;
+  // re-empujamos los overrides SOLO si el operador ya afinó este átomo —
+  // un id nuevo o mutante `core#seed` conserva su fenotipo declarado.
   useEffect(() => {
     const theta = getThetaOrchestrator()
     const m = theta.getShaderMeta(activeId)
     setMeta(m)
     const layout = m ? layoutExprGenes(m) : []
     const resolved = m ? (resolveGeneValues(m) ?? {}) : {}
-    const saved = savedRef.current.get(activeId)
+    const saved = useTheiaPackStore.getState().atomGeneValues.get(activeId)
     const seed: Record<string, number> = {}
     for (const name of layout) seed[name] = saved?.[name] ?? resolved[name] ?? 0
     setValues(seed)
-    // Primer mount del id: empuja los valores efectivos a u_gene[k] —
-    // los uniforms GLSL arrancan en 0 hasta que el host los puebla.
-    if (layout.length > 0 && !pushedRef.current.has(activeId)) {
-      pushedRef.current.add(activeId)
+    if (saved && layout.length > 0) {
       layout.forEach((name, k) => {
-        theta.setUniform(`u_gene[${k}]`, seed[name])
+        const v = saved[name]
+        if (v !== undefined) theta.setUniform(`u_gene[${k}]`, v)
       })
     }
   }, [activeId])
@@ -1367,7 +1602,7 @@ const GeneFadersPanel: React.FC = () => {
                 value={values[name] ?? decl.defaultValue}
                 min={decl.min}
                 max={decl.max}
-                color="#a3e635"
+                color="#39ff14"
                 format={(v) =>
                   decl.type === 'int' ? `${Math.round(v)}` : v.toFixed(2)
                 }
@@ -1375,7 +1610,7 @@ const GeneFadersPanel: React.FC = () => {
                   const val = decl.type === 'int' ? Math.round(v) : v
                   setValues((prev) => {
                     const next = { ...prev, [name]: val }
-                    savedRef.current.set(activeId, next)
+                    useTheiaPackStore.getState().setAtomGeneValues(activeId, next)
                     return next
                   })
                   // Fast-path G3: override directo del slot del array.
@@ -1433,27 +1668,23 @@ const ShaderParamsPanel: React.FC = () => {
     }
   }, [])
 
-  // Valores por shader-id: la LRU del worker retiene el programa y sus
-  // uniforms — al volver a un shader se restauran los valores del usuario,
-  // no los defaults.
-  const savedRef = useRef<Map<string, Record<string, number>>>(new Map())
-  const pushedRef = useRef<Set<string>>(new Set())
-  // 🌊 WAVE 8261 — mismo estrangulador que los masters/genes.
+  // 🩸 WAVE 8294 — memoria inmortal: valores afinados en el store (no en
+  // refs de mount). En cada activación re-empujamos saved ?? defaults:
+  // los params no comparten namespace entre átomos (nombres únicos), pero
+  // el re-push garantiza defaults declarados no-cero tras un respawn donde
+  // el panel llegó tarde, y restaura el ajuste del operador al volver.
   const throttled = useMemo(() => makeKeyedThrottle(90), [])
 
-  // Relee meta + seed al cambiar de shader. Primera activación de un id:
-  // push de los defaults declarados (los uniforms GLSL arrancan en 0).
   useEffect(() => {
     const theta = getThetaOrchestrator()
     const m = theta.getShaderMeta(activeId)
     setMeta(m)
-    const saved = savedRef.current.get(activeId)
+    const saved = useTheiaPackStore.getState().atomParamValues.get(activeId)
     const seed: Record<string, number> = {}
     for (const p of m?.params ?? []) seed[p.name] = saved?.[p.name] ?? p.defaultValue
     setValues(seed)
-    if (m && m.params.length > 0 && !pushedRef.current.has(activeId)) {
-      pushedRef.current.add(activeId)
-      for (const p of m.params) theta.setUniform(p.name, p.defaultValue)
+    if (m && m.params.length > 0) {
+      for (const p of m.params) theta.setUniform(p.name, seed[p.name])
     }
   }, [activeId])
 
@@ -1484,7 +1715,7 @@ const ShaderParamsPanel: React.FC = () => {
               const val = p.type === 'int' ? Math.round(v) : v
               setValues((prev) => {
                 const next = { ...prev, [p.name]: val }
-                savedRef.current.set(activeId, next)
+                useTheiaPackStore.getState().setAtomParamValues(activeId, next)
                 return next
               })
               throttled(p.name, () =>

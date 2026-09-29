@@ -16,6 +16,8 @@ import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 // so the nested defaults can be shared by reference safely.
 const _cachedDefaultCognitive = createDefaultCognitive();
 import { SCHEMA_VERSION, TEL_FLAG, TELEMETRY_SLOT, createIntegralClocks, stepIntegralClocks, } from '../../../theia/telemetry/TheiaTelemetryRing';
+// 🔫 WAVE 8287 — Clean Shot: envolvente del clip Hephaestus vivo (slots 96-99)
+import { createEffectEnergyTracker, createFxEnergySample, } from '../../../theia/telemetry/EffectEnergyTracker';
 import { getGenomeEvolver } from '../../../theia/genome/GenomeEvolver';
 const ZONE_MAP = {
     'FRONT_PARS': 'front', 'BACK_PARS': 'back', 'LEFT_PARS': 'left', 'RIGHT_PARS': 'right',
@@ -200,6 +202,10 @@ export class TickEngine {
         this._vocalTimeSec = 0;
         this._voidHoldSec = 0;
         this._vocalOnsetArmed = true;
+        // 🔫 WAVE 8287 · Clean Shot — envolvente del efecto FÍSICO vivo
+        // (HephaestusRuntime.activeClips sondeado cada publish; scratch fijo).
+        this._fxTracker = createEffectEnergyTracker();
+        this._euclidFx = createFxEnergySample();
         /**
          * Fill pre-bound asignado UNA vez — lee los scratch fields y escribe
          * directo sobre la vista f32 del anillo (writer.publish invoca con el
@@ -316,12 +322,21 @@ export class TickEngine {
             p[S.RAW_HIGHMID_DELTA] = pt?.rawHighMidDelta ?? 0;
             p[S.RAW_TREBLE_DELTA] = pt?.rawTrebleDelta ?? 0;
             p[S.RAW_HH_DELTA] = rhythmic?.raw_hh_delta ?? 0;
-            // MASTER — u_tel4[22]: estrés del AGC normalizado — 0 sin reducción,
-            // −6dB→0.67, −9dB→1.0 (saturación master brickwall, §2.2).
+            // MASTER — u_tel4[22]: estrés del AGC BIDIRECCIONAL — compresión
+            // brickwall (gain<1: −6dB→0.67, −9dB→1.0, §2.2) O pumping detectado
+            // (score GodEar 0-1: hueco de graves + flatness + boost HF, §8292).
             const agcGain = ad?.agcGainFactor ?? 1;
-            p[S.AGC_STRESS] = agcGain >= 1
+            const agcCompress = agcGain >= 1
                 ? 0
                 : Math.min(1, Math.max(0, Math.log2(Math.max(1e-6, agcGain)) / -1.5));
+            p[S.AGC_STRESS] = Math.max(agcCompress, ad?.agcPumping ?? 0);
+            // 🔫 WAVE 8287 — FX · u_fxVec = u_tel4[23] (slots 96-99): envolvente
+            // del clip Hephaestus dominante, sampleado en publish (Clean Shot §2.4).
+            const fx = this._euclidFx;
+            p[S.ACTIVE_FX_ENERGY] = fx.energy;
+            p[S.ACTIVE_FX_AGE] = fx.ageN;
+            p[S.ACTIVE_FX_ID] = fx.typeId;
+            p[S.ACTIVE_FX_COUNT] = fx.count;
         };
         this.ctx = ctx;
         TickEngine._instances.add(this);
@@ -836,6 +851,9 @@ export class TickEngine {
             isPLLBeat: beatState.pllOnBeat,
             // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
             agcGainFactor: this.audioPipeline.lastAudioData.agcGainFactor,
+            // 🩸 WAVE 8292: AGC pumping score — hueco de graves + flatness + boost
+            // HF de la Trust Zone. TitanEngine lo propaga a SeleneLux → isAGCTrap.
+            agcPumping: this.audioPipeline.lastAudioData.agcPumping,
         };
         // For HAL
         // ðŸŽµ WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
@@ -853,7 +871,10 @@ export class TickEngine {
             rawTreble: high,
             energy,
             isRealSilence: false,
-            isAGCTrap: false,
+            // 🩸 WAVE 8292: cortafuegos real — el detector de pumping de GodEar
+            // (Trust-Zone boost + flatness + hueco de graves) activa la rama de
+            // cuarentena en ZoneRouter/LiquidEngineBase durante huecos dembow.
+            isAGCTrap: (this.audioPipeline.lastAudioData.agcPumping ?? 0) > 0.5,
             beatPhase: halBeatPhase,
             bpm: halBpm,
             // ðŸŽµ WAVE 2720: LA LEY UNIVERSAL DEL PÃ‰NDULO â€” Propagar bpmConfidence al HAL
@@ -910,6 +931,13 @@ export class TickEngine {
             }
             this.engine.setDominantMountOrientation(dominantOrientation);
         }
+        // 🔮 WAVE 8282 — PRIORIDAD TELEMÉTRICA: el publish se adelanta a ANTES de
+        // los awaits pesados (engine.update + arbitraje + commit DMX). La GPU
+        // recibe datos frescos aunque el resto del ciclo tarde ms extra — los
+        // huecos de cadencia medidos en TELDIAG (telHz 19–48) nacían aquí.
+        // Coste: los campos engine-sourced (physicsTel, lastFrame, Selene) llevan
+        // ~1 tick de lag — el DSP publica el estado del frame ANTERIOR.
+        this.publishEuclidTelemetry(now, engineAudioMetrics, context, beatState, workerOnBeat);
         const intent = await this.engine.update(context, engineAudioMetrics);
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // ðŸª“ WAVE 4592 â†’ WAVE 4703: AETHER PIPELINE ONLY
@@ -1466,6 +1494,8 @@ export class TickEngine {
                 _a.bpm = engineAudioMetrics.bpm;
                 _a.beatPhase = engineAudioMetrics.beatPhase;
                 _a.beatCount = engineAudioMetrics.beatCount;
+                // 🩸 WAVE 8292: pumping score para ImpactAdapter.isAGCTrap
+                _a.agcPumping = this.audioPipeline.lastAudioData.agcPumping ?? 0;
                 // MusicalContext: del contexto de Brain
                 const _m = this._aetherMusical;
                 _m.section = (context.section?.type ?? 'unknown');
@@ -1758,10 +1788,8 @@ export class TickEngine {
                 if (uniList.length > 0) {
                     this.dmxWriter.commitFrame(this.frameCount, uniList, maskLo, maskHi);
                 }
-                // 🔮 WAVE 8227 — EUCLID ORACLE · E1: publicación de telemetría 512B
-                // INMEDIATAMENTE después del commit DMX (la luz sale primero, §2.4).
-                // Seqlock write a 44Hz sobre la vista del anillo — cero asignaciones.
-                this.publishEuclidTelemetry(now, engineAudioMetrics, context, beatState, workerOnBeat);
+                // 🔮 WAVE 8282 — el publish telemétrico ya no vive aquí: se adelantó a
+                // antes de engine.update (prioridad GPU sobre el resto del ciclo).
                 _t_hal_end = performance.now();
                 // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)
                 // WAVE 7124: AduanaGate log silenced for forensic profiling clarity
@@ -2113,18 +2141,26 @@ export class TickEngine {
                 voidRelease = true;
             this._voidHoldSec = 0;
         }
-        // VOCAL_ONSET con histéresis (§2.3): flanco al cruzar 0.35 al alza,
-        // se rearma cuando vocalIsolation cae <0.2 — anti-chatter.
+        // VOCAL_ONSET con histéresis (§2.3): flanco al cruzar 0.28 al alza,
+        // se rearma cuando vocalIsolation cae <0.15 — anti-chatter.
+        // 🔬 WAVE 8282 — calibrado sobre mezclas masterizadas: con Adele el
+        // aislamiento vocal pico era 0.33 y el umbral 0.35 nunca disparaba.
         let vocalOnset = false;
         if (this._vocalOnsetArmed) {
-            if (vocalIsoNow >= 0.35) {
+            if (vocalIsoNow >= 0.28) {
                 vocalOnset = true;
                 this._vocalOnsetArmed = false;
             }
         }
-        else if (vocalIsoNow < 0.2) {
+        else if (vocalIsoNow < 0.15) {
             this._vocalOnsetArmed = true;
         }
+        // 🔫 WAVE 8287 · Clean Shot — sondeo de clips .lfx vivos en
+        // HephaestusRuntime (paridad video↔luces: stops/aborts/expiración se
+        // capturan solos — pertenecer al mapa ES estar encendiendo fixtures).
+        // Corre SIEMPRE como los relojes integrales: la cola de release debe
+        // agotarse aunque el consumidor desaparezca unos ticks.
+        this._fxTracker.sample(now, getHephaestusRuntime().getActiveClips(), this._euclidFx);
         const writer = this.trinity?.getTelemetryWriter();
         if (!writer)
             return;
@@ -2192,6 +2228,9 @@ export class TickEngine {
             flags |= 1 << TEL_FLAG.SNARE_TRUE;
         if (voidRelease)
             flags |= 1 << TEL_FLAG.VOID_RELEASE;
+        // 🔫 WAVE 8287 — EFFECT_ACTIVE: clip vivo o cola de release aún >0.
+        if (this._euclidFx.energy > 0)
+            flags |= 1 << TEL_FLAG.EFFECT_ACTIVE;
         // ENUMS empaquetados inline (sin packEnums — evita el objeto arg por tick).
         const enumsPacked = (SCHEMA_VERSION & 0xff) |
             ((predType & 0xff) << 8) |
@@ -2211,8 +2250,16 @@ export class TickEngine {
         // absoluto y el `u_approach` INSTANTÁNEO del oráculo (misma fórmula
         // del smoother sin el EMA — conservador: adelanta el veto ante un
         // buildup naciente). Jamás muta en clímax (zona peak / apocalypse).
+        //
+        // 🔒 WAVE 8290 · Genome Taming — sin oráculo no hay evolución: con
+        // Selene OFF `approachNow` es 0 permanentemente → la compuerta <0.2
+        // quedaba ABIERTA en toda frontera de frase y los exprGenes se
+        // re-tiraban cada 16 compases en silencio (G_TILT→0.05 = disco de
+        // acreción edge-on = "desaparece"). La evolución exige consciousness.
         const evolver = getGenomeEvolver();
-        if (evolver.isAttached()) {
+        const conscious = this.engine?.isConsciousnessEnabled() === true;
+        evolver.enabled = conscious;
+        if (evolver.isAttached() && conscious) {
             const predicting = sel.predictionType !== null && sel.predictionType !== 'none';
             const approachNow = predicting
                 ? (1 - Math.min(1, Math.max(0, etaBeats / 8))) *

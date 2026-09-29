@@ -289,6 +289,19 @@
 /* 🔴 WAVE 2010: Recording Mode - Vibe Card Ready to Record */
 .vibe-card.rec-mode {
   border-color: rgba(233, 30, 99, 0.5);
+  box-shadow: 0 0 15px rgba(233, 30, 99, 0.2);
+}
+
+/* 🌊 WAVE 8295 — el pulso REC era box-shadow animado (repaint por frame).
+   overflow:hidden en la card recorta el halo exterior → glow INTERIOR fijo
+   en ::after que solo respira por opacity (composited). */
+.vibe-card.rec-mode::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 24px rgba(233, 30, 99, 0.4);
+  pointer-events: none;
   animation: vibe-rec-pulse 1.2s ease-in-out infinite;
 }
 
@@ -301,12 +314,8 @@
 }
 
 @keyframes vibe-rec-pulse {
-  0%, 100% { 
-    box-shadow: 0 0 15px rgba(233, 30, 99, 0.2);
-  }
-  50% { 
-    box-shadow: 0 0 25px rgba(233, 30, 99, 0.35);
-  }
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
 }
 
 /* Recording indicator dot */
@@ -322,6 +331,17 @@
 /* WAVE 7109: MIDI Learn states for vibe cards */
 .vibe-card.midi-listening {
   border-color: rgba(0, 255, 100, 0.5);
+  box-shadow: 0 0 8px rgba(0, 255, 100, 0.2);
+}
+
+/* 🌊 WAVE 8295 — mismo patrón: glow interior ::after + opacity */
+.vibe-card.midi-listening::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 20px rgba(0, 255, 100, 0.35);
+  pointer-events: none;
   animation: vibe-midi-listen-pulse 1s ease-in-out infinite;
 }
 
@@ -330,8 +350,8 @@
 }
 
 @keyframes vibe-midi-listen-pulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 100, 0.2); }
-  50% { box-shadow: 0 0 16px rgba(0, 255, 100, 0.4); }
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
 }
 
 .vibe-card-midi-dot {
@@ -612,9 +632,11 @@
   animation: strobe-flash 1.2s ease-in-out infinite;
 }
 
+/* 🌊 WAVE 8295 — el spike de brillo ya lo da el pico de opacity;
+   `filter: brightness()` era un pase de filtro por frame. */
 @keyframes strobe-flash {
   0%, 80%, 100% { opacity: 0.3; }
-  85% { opacity: 1; filter: brightness(1.5); }
+  85% { opacity: 1; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -821,26 +843,31 @@
 }
 
 .arm-button.recording .arm-core {
-  background: linear-gradient(145deg, 
+  background: linear-gradient(145deg,
     #E91E63,
     #c2185b
   );
   border-color: #ff4081;
-  box-shadow: 
+  box-shadow:
     inset 0 0 20px rgba(255, 255, 255, 0.2),
     0 0 30px rgba(233, 30, 99, 0.5);
+}
+
+/* 🌊 WAVE 8295 — halo REC via ::after pre-rasterizado + opacity.
+   .arm-button no tiene overflow → el glow exterior es visible. */
+.arm-button.recording .arm-core::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 42px rgba(233, 30, 99, 0.6);
+  pointer-events: none;
   animation: core-pulse 0.5s ease-in-out infinite;
 }
 
 @keyframes core-pulse {
-  0%, 100% { box-shadow: 
-    inset 0 0 20px rgba(255, 255, 255, 0.2),
-    0 0 30px rgba(233, 30, 99, 0.5);
-  }
-  50% { box-shadow: 
-    inset 0 0 25px rgba(255, 255, 255, 0.3),
-    0 0 40px rgba(233, 30, 99, 0.7);
-  }
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
 }
 
 /* Core icon */

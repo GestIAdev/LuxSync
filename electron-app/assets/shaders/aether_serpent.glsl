@@ -3,10 +3,11 @@
 // @euclid family  ether
 // @euclid genome  aggression=0.40 chaos=0.55 organicity=0.90
 // @euclid zone    ambient..peak
+// @euclid vibes   psytrance+ambient+techno
 // @euclid param   u_warpBoost    float -1.0 1.0 0.0 "Warp"
 // @euclid param   u_densityBoost float -1.0 1.0 0.0 "Density"
 // @euclid gene    G_SYM        struct int   3    9     5    a:+0.3 c:+0.2 o:-0.4
-// @euclid gene    G_WARP       expr   float 0.4  2.2   1.25 a:+0.2 c:+0.8 o:+0.3
+// @euclid gene    G_WARP       expr   float 0.4  1.6   1.25 a:+0.2 c:+0.8 o:+0.3
 // @euclid gene    G_HUE_SPREAD expr   float 0.05 0.6   0.30 c:+0.6 o:+0.2
 // @euclid gene    G_SEED       expr   float 0.0  100.0 0.0
 // @euclid steps   56
@@ -85,8 +86,11 @@ vec2 serpent(float z) {
 float density(vec3 p, out float fil, out float ang) {
   vec3 q = p;
   q.xy -= serpent(q.z);
-  // Torsión: base lenta en rejilla de 16 beats + tensión de Cassandra.
-  q.xy *= rot2(q.z * gTwist + gBeats * TAU / 16.0);
+  // Torsión RELATIVA a la cámara (WAVE 8290): `q.z·gTwist` con z absoluto
+  // enrollaba el campo sin límite (camZ crece para siempre → el fondo
+  // latigueaba ±rad·march). `q.z - gCamZ` = profundidad delante de la
+  // cámara → paso de hélice constante. El roll temporal queda intacto.
+  q.xy *= rot2((q.z - gCamZ) * gTwist + gBeats * TAU / 16.0);
   float r = length(q.xy);
   ang = atan(q.y, q.x);
   // Pliegue polar de orden G_SYM — simetría diédrica del mandala.
@@ -117,8 +121,11 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — la serpiente respira con el compás; la
   // expansión extrema solo mientras un clip físico corre en las luces.
   float fx    = u_activeEffectEnergy;
-  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
-  float swell = sin(3.1415927 * u_barPhase);
+  // 🌊 WAVE 8290 — beatP/swell bombean a BPM real ignorando el fader:
+  // la DESVIACIÓN del oscilador se multiplica por u_speed (la base se
+  // preserva → a SPEED=0 el pulso descansa, no desaparece).
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase) * u_speed;
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
 
   gRadius  = 2.3 + 0.5 * u_subBass * gLive - 0.6 * beatP + 1.6 * fx;
   gWarp    = G_WARP * max(0.35 + 0.9 * u_bass + 0.4 * u_warpBoost, 0.05) * (1.0 + 0.6 * beatP);

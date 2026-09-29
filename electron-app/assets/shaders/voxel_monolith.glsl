@@ -3,6 +3,7 @@
 // @euclid family  lattice+city
 // @euclid genome  aggression=0.80 chaos=0.35 organicity=0.10
 // @euclid zone    active..peak
+// @euclid vibes   techno-club+rave
 // @euclid param   u_extrude float -1.0 1.0 0.0 "Extrude"
 // @euclid param   u_neon    float -1.0 1.0 0.0 "Neon"
 // @euclid gene    G_WINDOWS struct int   3    9     7    o:-0.3
@@ -109,7 +110,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — la cámara respira con el compás; el picado
   // sobre la ciudad y el relámpago solo ocurren con clip físico vivo.
   float fx    = u_activeEffectEnergy;
-  float swell = sin(3.1415927 * u_barPhase);
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
 
   vec2 fc = fragCoord;
   if (glitch > 0.01) {

@@ -994,6 +994,17 @@ const luxApi = {
     ): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> =>
       ipcRenderer.invoke('lux:theia:exportAsset', asset, suggestedName),
 
+    /** 🌊 WAVE 8299 — Escanea userData/theia/packs/ (recursivo, fail-silent). */
+    scanLibrary: () => ipcRenderer.invoke('theia:library:scan'),
+
+    /** 🌊 WAVE 8299 — Persiste overrides del Inspector en pack.theiapack.json. */
+    saveAtomOverrides: (
+      packId: string,
+      atomId: string,
+      patch: { genes?: Record<string, number>; params?: Record<string, number> },
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('theia:atom:save-overrides', { packId, atomId, ...patch }),
+
   },
 
   mood: {

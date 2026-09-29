@@ -123,6 +123,8 @@ export function applyDMXGovernors(govMap, channelOffset, channelType, normalized
         // 🌗 WAVE 8269 — clampMax: techo duro absoluto. Se aplica AL FINAL,
         // tras cualquier transformación (curve/mapToRange) y tras clampMin.
         // Math.min(result, clampMax) — el límite superior siempre gana.
+        // Caso de uso: limitar brillo máximo de fixtures sin dimmer físico
+        // (p.ej. beam RGBW huérfano) o demasiado potentes en el rig.
         if (act.clampMax !== undefined && result > act.clampMax) {
             result = act.clampMax;
         }

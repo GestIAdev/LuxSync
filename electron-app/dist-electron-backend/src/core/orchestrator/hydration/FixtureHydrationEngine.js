@@ -53,10 +53,10 @@ function detectLiquidLayoutFromFixtures(fixtures) {
 export class FixtureHydrationEngine {
     constructor(ctx) {
         /**
-         * 🧠 WAVE 8271: store persistente del estado cinético explícito del
-         * operador, indexado por deviceId. Sobrevive a los repatches en
-         * caliente — los maps del arbiter/engine lo espejan por referencia
-         * (gesture time only). Ver KINETIC_STATE_DEHYDRATION_AUDIT.md.
+         * 🧠 WAVE 8271: store persistente del estado cinético explícito del operador,
+         * indexado por deviceId. Sobrevive a los repatches en caliente — los maps
+         * del arbiter/engine lo espejan por referencia (gesture time only).
+         * Ver docs/technical_audits/KINETIC_STATE_DEHYDRATION_AUDIT.md.
          */
         this._kineticStore = new KineticStateStore();
         this.ctx = ctx;

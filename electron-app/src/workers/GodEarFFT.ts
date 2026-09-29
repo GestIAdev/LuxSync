@@ -163,6 +163,8 @@ export interface GodEarTelemetry {
       ultraAir: number;
     };
     freezeReduction: boolean;
+    /** 🩸 WAVE 8292: pumping score 0-1 (hueco de graves + flatness + boost HF) */
+    pumping: number;
   };
   strobe: {
     drive: number;
@@ -279,6 +281,10 @@ export interface GodEarSpectrum {
   // WAVE 8003: Photon block — saturation, wallIntensity, strobe, hue, etc.
   // Undefined if V2 fallback.
   photon?: GodEarPhoton;
+
+  // 🩸 WAVE 8292: AGC Pumping score (0-1) — hueco de graves + flatness alta
+  // + boost HF de la Trust Zone. Consumido como `isAGCTrap` por HAL/Liquid.
+  agcPumping: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1621,6 +1627,12 @@ class AGCTrustZone {
   private isActive = true;
   // WAVE 8003: AGC Freeze — when SI > 0.6, prevent gain reduction (brickwall anti-compensate)
   private freezeReduction = false;
+  // 🩸 WAVE 8292 — PUMPING GUARD: en huecos rítmicos con flatness alta el
+  // analyzer marca isAGCTrap; mientras dure, las bandas agudas (portadoras
+  // del hiss residual) NO pueden amplificarse por encima de la unidad — así
+  // el AGC no fabrica "ruido fantasma" sobre huecos de graves (dembow).
+  private pumpingGuard = false;
+  private static readonly HF_GUARD_BANDS = new Set(['highMid', 'treble', 'ultraAir']);
   
   constructor() {
     // Initialize gains to 1.0 for all bands
@@ -1675,6 +1687,13 @@ class AGCTrustZone {
       targetGain = config.targetRMS / avgRMS;
       targetGain = Math.min(targetGain, config.maxGain);
       targetGain = Math.max(targetGain, 0.1); // Don't attenuate too much
+    }
+
+    // 🩸 WAVE 8292 — durante un hueco bombeado el hiss residual NO se
+    // amplifica: targetGain ≤ 1.0 en highMid/treble/ultraAir. Las bandas
+    // graves/melódicas siguen normalizando honestamente (el kick vuelve).
+    if (this.pumpingGuard && AGCTrustZone.HF_GUARD_BANDS.has(bandId)) {
+      targetGain = Math.min(targetGain, 1.0);
     }
     
     // Smooth gain change (attack/release asymmetry)
@@ -1744,7 +1763,13 @@ class AGCTrustZone {
 
   // WAVE 8004: Telemetry getter
   get isFreezeReduction(): boolean { return this.freezeReduction; }
-  
+
+  // 🩸 WAVE 8292 — Pumping guard (hot-path, zero-alloc)
+  setPumpingGuard(active: boolean): void { this.pumpingGuard = active; }
+  get isPumpingGuard(): boolean { return this.pumpingGuard; }
+  /** Ganancia actual de una banda — lectura directa, sin alloc (a diferencia de getState). */
+  bandGain(bandId: string): number { return this.gains[bandId] ?? 1.0; }
+
   /**
    * Reset AGC state
    */
@@ -1756,6 +1781,7 @@ class AGCTrustZone {
       this.rmsHistorySum[config.id] = 0;
       this.rmsHistoryCount[config.id] = 0;
     }
+    this.pumpingGuard = false;
   }
 }
 
@@ -2351,6 +2377,11 @@ export class GodEarAnalyzer {
   private rawBassEnergyRef: number = 0;
   // WAVE 8003: Last frame's SI for AGC freeze (set before AGC runs)
   private lastSI: number = 0;
+  // 🩸 WAVE 8292 — AGC Pumping score (0-1, EMA): alto cuando el AGC está
+  // inflando agudos sobre un hueco de graves con flatness elevada (dembow).
+  // Sale en el frame como `agcPumping`; HAL/Liquid lo consumen como
+  // isAGCTrap y el propio AGCTrustZone lo usa para bloquear el boost de HF.
+  private agcPumping: number = 0;
   // WAVE 8004: Debug mode — enables telemetry collection (zero-cost when false)
   private debugMode: boolean = false;
   // WAVE 8004: Cached telemetry snapshot from last analyze() call
@@ -2677,6 +2708,31 @@ export class GodEarAnalyzer {
     // WAVE 8008: Rhythmic Percussion Tracker — sub-band snare/HH isolation + void
     const rhythmic = this.rhythmicTracker.process(this.powerSpectrum, deltaMs);
 
+    // ═══ 🩸 WAVE 8292: AGC PUMPING DETECTOR ═══
+    // Hueco rítmico del dembow: los graves caen muy por debajo de su media
+    // (~1s EMA), la historia de 5 frames de la Trust Zone colapsa y la
+    // ganancia de las bandas agudas despega amplificando hiss residual —
+    // flatness alta + boost HF = ruido fantasma que convulsa los shaders.
+    // `bassGap` es el hueco de graves REAL (auto-adaptativo al nivel del
+    // track); `hfGain` mide cuánto está subiendo ya la zona de confianza.
+    const hfGain = Math.max(
+      this.agc.bandGain('highMid'),
+      this.agc.bandGain('treble'),
+      this.agc.bandGain('ultraAir'),
+    );
+    const bassGap = this.rawBassEnergyRef > 0.02
+      && rawBassEnergy < this.rawBassEnergyRef * 0.35;
+    const pumpingNow = this.useAGC
+      && bassGap
+      && flatness > 0.15
+      && hfGain > 1.15;
+    // Attack instantáneo (cubrir el hueco ya), release ~400ms (sobrevivir
+    // al hueco completo ~290ms@104BPM sin flicker frame a frame).
+    const kPump = pumpingNow ? 1.0 : Math.min(1.0, deltaMs / 400);
+    this.agcPumping += kPump * ((pumpingNow ? 1 : 0) - this.agcPumping);
+    // Guard del PRÓXIMO frame: bloquea que las bandas HF amplifiquen hiss.
+    this.agc.setPumpingGuard(this.agcPumping > 0.5);
+
     const photon: GodEarPhoton = {
       saturation: si,
       wallIntensity,
@@ -2696,6 +2752,7 @@ export class GodEarAnalyzer {
         agc: {
           gains: agcState.perBandGains,
           freezeReduction: this.agc.isFreezeReduction,
+          pumping: this.agcPumping,
         },
         strobe: {
           drive: this.strobeEngine.drive,
@@ -2771,6 +2828,8 @@ export class GodEarAnalyzer {
       photon,
       // WAVE 8008: Rhythmic percussion telemetry
       rhythmic,
+      // 🩸 WAVE 8292: AGC pumping score (0-1) — isAGCTrap downstream
+      agcPumping: this.agcPumping,
     };
   }
   
@@ -2829,6 +2888,7 @@ export class GodEarAnalyzer {
     this.rhythmicTracker.reset();
     this.rawBassEnergyRef = 0;
     this.lastSI = 0;
+    this.agcPumping = 0;
     this.prevPower.fill(0);
     this.fluxWhitening.fill(0);
     this.frameIndex = 0;

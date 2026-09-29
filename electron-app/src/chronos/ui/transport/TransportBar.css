@@ -227,7 +227,9 @@
 /* ENGINE STATE: ON — Data (Red) */
 .ct-engine-btn.status-on.variant-data .ct-engine-icon {
   color: #ef4444;
-  filter: drop-shadow(0 0 6px #ef4444);
+  /* 🌊 WAVE 8295 — drop-shadow FIJO; el pulso es scale+opacity (composited).
+     Animar el filter reblureaba el icono cada frame. */
+  filter: drop-shadow(0 0 8px #ef4444);
   animation: ct-data-pulse 0.5s ease-in-out infinite;
 }
 .ct-engine-btn.status-on.variant-data .ct-engine-glow {
@@ -239,14 +241,14 @@
 }
 
 @keyframes ct-data-pulse {
-  0%, 100% { filter: drop-shadow(0 0 6px #ef4444); }
-  50% { filter: drop-shadow(0 0 10px #ef4444) drop-shadow(0 0 3px #ff6b6b); }
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.14); opacity: 0.85; }
 }
 
 /* ENGINE STATE: ON — AI / Synapse (Cyan) */
 .ct-engine-btn.status-on.variant-ai .ct-engine-icon {
   color: #3b82f6;
-  filter: drop-shadow(0 0 6px #3b82f6);
+  filter: drop-shadow(0 0 8px #3b82f6);
   animation: ct-synapse-pulse 2s ease-in-out infinite;
 }
 .ct-engine-btn.status-on.variant-ai .ct-engine-glow {
@@ -258,14 +260,8 @@
 }
 
 @keyframes ct-synapse-pulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 6px #3b82f6);
-    transform: scale(1);
-  }
-  50% {
-    filter: drop-shadow(0 0 10px #60a5fa) drop-shadow(0 0 3px #93c5fd);
-    transform: scale(1.05);
-  }
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.06); opacity: 0.85; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

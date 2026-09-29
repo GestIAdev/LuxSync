@@ -3,12 +3,13 @@
 // @euclid family  ether+fluid
 // @euclid genome  aggression=0.15 chaos=0.50 organicity=0.95
 // @euclid zone    valley..active
+// @euclid vibes   chill-lounge
 // @euclid param   u_viscosity float -1.0 1.0 0.0 "Viscosity"
 // @euclid param   u_trails    float -1.0 1.0 0.0 "Trails"
 // @euclid gene    G_OCT    struct int   3    6     5    c:+0.4 o:+0.3
-// @euclid gene    G_WARP   expr   float 1.0  6.0   3.5  c:+0.6 o:+0.4
+// @euclid gene    G_WARP   expr   float 1.0  4.0   3.5  c:+0.6 o:+0.4
 // @euclid gene    G_SCALE  expr   float 0.8  3.0   1.6  a:+0.2
-// @euclid gene    G_FLOW   expr   float 0.02 0.3   0.08 a:+0.4 o:-0.2
+// @euclid gene    G_FLOW   expr   float 0.02 0.15  0.08 a:+0.4 o:-0.2
 // @euclid gene    G_HUE    expr   float 0.0  1.0   0.62 c:+0.3
 // @euclid gene    G_SEED   expr   float 0.0  100.0 0.0
 // Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
@@ -67,8 +68,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — marea de luz solo con clip físico vivo;
   // el fluido respira su fase con el compás, nunca con la predicción.
   float fx    = u_activeEffectEnergy;
-  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
-  float swell = sin(3.1415927 * u_barPhase);
+  // 🌊 WAVE 8290 — desviación del oscilador × gobernador (ver ShaderAssembler).
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase) * u_speed;
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
   vec2 p  = uv * G_SCALE + G_SEED;
@@ -79,7 +81,11 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // compás sin saltos. `live` respira la amplitud del warp.
   float flow = u_time * G_FLOW * (1.0 - 0.5 * u_viscosity) + 0.02 * u_beatTime;
   float t    = flow + 0.6 * swell;
-  float turb = G_WARP * (0.55 + 0.45 * live) * (1.0 + 0.5 * beatP + 0.3 * u_bass);
+  // 🔥 WAVE 8297 · M2 — el disparo RASGA el fluido: el warp se multiplica
+  // agresivamente con el clip vivo (×hasta 2.8) — mutación del dominio,
+  // no flash de color.
+  float turb = G_WARP * (0.55 + 0.45 * live) * (1.0 + 0.5 * beatP + 0.3 * u_bass)
+             * (1.0 + 1.8 * fx);
 
   // ── 3. DOMAIN WARPING DOBLE (IQ) — plasma sin bordes ──────────────
   vec2 q = vec2(fbm(vec3(p, t)),
@@ -106,9 +112,12 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 5. TRANSITORIOS — ondas suaves, sin bordes duros ──────────────
   // Kick: relámpago interno — solo las nubes más densas se iluminan.
   col += gas * u_kickPulse * smoothstep(0.55, 0.95, f) * 1.1;
-  // Disparo: marea de luz complementaria desde el centro (clip físico vivo).
-  col += fx * 0.7 * palette(hue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
-                             vec3(0.0, 0.33, 0.67)) * exp(-1.8 * length(uv)) * f;
+  // 🔥 WAVE 8297 · M2 — deriva térmica por disparo: el dominio desgarrado
+  // se tiñe en caliente (dorado → ámbar → magenta profundo, modulado por
+  // la densidad f) — paleta apta para texturas latinas.
+  vec3 ember = mix(vec3(1.00, 0.80, 0.38), vec3(0.98, 0.35, 0.52),
+                   smoothstep(0.35, 0.95, f));
+  col += fx * 1.15 * ember * exp(-1.6 * length(uv)) * (0.4 + 0.6 * f);
   // Hi-hat / aire: polvo estelar suave (gaussiano, no píxel duro).
   vec2 cell = floor(uv * 60.0);
   float star = step(0.985, hash21(cell + G_SEED));
@@ -118,7 +127,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 6. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.4 * fx); // el disparo blanquea
+  col = mix(col, vec3(lum) * vec3(1.08, 0.97, 0.90), 0.4 * fx); // el disparo calienta el blanco
   col *= euVoidGate(0.5);
   col *= (1.0 + 0.5 * u_energy) * (0.45 + 0.55 * live);
   col *= 1.0 - 0.25 * dot(uv, uv);

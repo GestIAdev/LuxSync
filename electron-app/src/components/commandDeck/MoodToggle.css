@@ -143,20 +143,27 @@
  * ANIMATIONS
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* 🌊 WAVE 8295 — mood-pulse era box-shadow animado (repaint por frame).
+   Ahora el halo es un ::after fijo que respira por opacity (composited). */
 @keyframes mood-pulse {
-  0%, 100% {
-    box-shadow: 
-      0 0 12px rgba(var(--mood-color-rgb), 0.3),
-      inset 0 0 20px rgba(var(--mood-color-rgb), 0.1);
-  }
-  50% {
-    box-shadow: 
-      0 0 20px rgba(var(--mood-color-rgb), 0.5),
-      inset 0 0 30px rgba(var(--mood-color-rgb), 0.2);
-  }
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
 }
 
 .mood-btn.active {
+  position: relative;
+  box-shadow:
+    0 0 12px rgba(var(--mood-color-rgb), 0.3),
+    inset 0 0 20px rgba(var(--mood-color-rgb), 0.1);
+}
+
+.mood-btn.active::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 20px rgba(var(--mood-color-rgb), 0.5);
+  pointer-events: none;
   animation: mood-pulse 2s ease-in-out infinite;
 }
 

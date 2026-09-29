@@ -175,6 +175,9 @@ export interface EngineAudioMetrics {
   photon?: GodEarPhoton
   // ⚒️ WAVE 7749.54: AGC gain factor — for Path 3 hybrid gate (AGC-aware threshold)
   agcGainFactor?: number
+  // 🩸 WAVE 8292: AGC Pumping score (0-1) — Trust-Zone boost en hueco
+  // rítmico con flatness alta → isAGCTrap en Liquid/SeleneLux.
+  agcPumping?: number
 }
 
 /**
@@ -994,6 +997,8 @@ export class TitanEngine extends EventEmitter {
         photon: audio.photon,
         // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
         agcGainFactor: audio.agcGainFactor,
+        // 🩸 WAVE 8292: AGC pumping score → isAGCTrap dentro de SeleneLux
+        agcPumping: audio.agcPumping,
         // ⚒️ WAVE 7749.86: Rhythm Gate inputs — beat phase & PLL state
         beatPhase: audio.beatPhase,
         pllLocked: audio.pllLocked,

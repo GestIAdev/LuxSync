@@ -190,25 +190,32 @@
 
 /* Estado: Sin show — PULSING WARNING */
 .session-card.session-empty {
+  position: relative;
   border-color: rgba(249, 115, 22, 0.4);
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.1);
   background: linear-gradient(
     135deg,
     rgba(249, 115, 22, 0.06) 0%,
     rgba(251, 191, 36, 0.03) 50%,
     rgba(10, 10, 18, 0.6) 100%
   );
+}
+
+/* 🌊 WAVE 8295 — el warning era border-color+box-shadow animados (repaint
+   por frame). Ahora el halo vive en ::after fijo y respira por opacity. */
+.session-card.session-empty::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.2), 0 0 30px rgba(251, 191, 36, 0.1);
+  pointer-events: none;
   animation: pulse-warning 2.5s ease-in-out infinite;
 }
 
 @keyframes pulse-warning {
-  0%, 100% {
-    border-color: rgba(249, 115, 22, 0.3);
-    box-shadow: 0 0 8px rgba(249, 115, 22, 0.1);
-  }
-  50% {
-    border-color: rgba(251, 191, 36, 0.5);
-    box-shadow: 0 0 20px rgba(249, 115, 22, 0.2), 0 0 30px rgba(251, 191, 36, 0.1);
-  }
+  0%, 100% { opacity: 0.2; }
+  50%      { opacity: 1; }
 }
 
 .session-card.session-empty .session-file-icon {
@@ -228,19 +235,26 @@
 
 /* Botón warning para LOAD SHOW cuando no hay show */
 .session-btn.warning {
+  position: relative;
   background: rgba(249, 115, 22, 0.1);
   border-color: rgba(249, 115, 22, 0.4);
   color: #f97316;
+}
+
+/* 🌊 WAVE 8295 — pulso del botón warning via ::after + opacity */
+.session-btn.warning::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
+  pointer-events: none;
   animation: btn-pulse 2s ease-in-out infinite;
 }
 
 @keyframes btn-pulse {
-  0%, 100% {
-    box-shadow: 0 0 4px rgba(249, 115, 22, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
-  }
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
 }
 
 .session-btn.warning:hover:not(:disabled) {

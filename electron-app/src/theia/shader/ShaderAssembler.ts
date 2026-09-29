@@ -109,24 +109,35 @@ void main() {
 export const FLASH_STATS_FRAG_SRC = `#version 300 es
 precision highp float;
 uniform sampler2D u_scene;      // frame actual (post-epílogo, FBO escalado)
-uniform sampler2D u_statsPrev;  // texel previo {mean, budgetNorm}
+uniform sampler2D u_statsPrev;  // texel previo {mean, budgetNorm, coverage}
 uniform float u_dt;             // segundos desde el frame anterior
 uniform float u_flashBudget;    // presupuesto total (luma)
 uniform float u_budgetRate;     // recarga (luma/s)
+uniform float u_flashMaxDelta;  // 🩸 WAVE 8292 — umbral de "demanda brillante"
 out vec4 fragColor;
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 void main() {
+  vec4 prev = texture(u_statsPrev, vec2(0.5));
+  // 🩸 WAVE 8292 — cobertura brillante: fracción del campo que excede el
+  // cap estricto (prevMean + 0.9·maxDelta). El factor 0.9 incluye a los
+  // píxeles YA recortados (quedan justo EN el cap) → la métrica es estable
+  // para campos uniformes (strobe: cov≈1 siempre) y para brillos
+  // localizados (disco de acreción ≈5-10% → cov≈0.08 estable).
+  float hiThresh = prev.r + u_flashMaxDelta * 0.9;
   vec3 acc = vec3(0.0);
+  float hiCount = 0.0;
   for (int y = 0; y < 8; y++) {
     for (int x = 0; x < 8; x++) {
-      acc += texture(u_scene, (vec2(float(x), float(y)) + 0.5) / 8.0).rgb;
+      vec3 s = texture(u_scene, (vec2(float(x), float(y)) + 0.5) / 8.0).rgb;
+      acc += s;
+      if (dot(s, LUMA) > hiThresh) hiCount += 1.0;
     }
   }
   float mean = dot(acc * (1.0 / 64.0), LUMA);
-  vec4 prev = texture(u_statsPrev, vec2(0.5));
+  float cov = hiCount * (1.0 / 64.0);
   float budget = min(u_flashBudget, prev.g * u_flashBudget + u_dt * u_budgetRate);
   budget = max(0.0, budget - max(0.0, mean - prev.r));
-  fragColor = vec4(mean, budget / u_flashBudget, 0.0, 1.0);
+  fragColor = vec4(mean, budget / u_flashBudget, cov, 1.0);
 }
 `
 
@@ -155,6 +166,12 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     'uniform float u_time;',
     'uniform float u_dt;',
     'uniform vec3  u_resolution;',
+    '// 🌊 WAVE 8290 — gobernador de tiempo EFECTIVO (timeScale ya',
+    '// suavizado, incluye masterSpeed y el halving de audio-muerto).',
+    '// Úsalo para escalar la DESVIACIÓN de los osciladores de fase',
+    '// (`beatP`/`swell` corren a BPM real — el fader SPEED solo los',
+    '// doma multiplicándolos: `0.5 + 0.5·cos(2π·u_beatPhase)·spd`).',
+    'uniform float u_speed;',
     'uniform float u_beatTime;',
     'uniform float u_kickPulse;',
     'uniform float u_snarePulse;',
@@ -176,6 +193,13 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     'uniform float u_contrast;',
     'uniform float u_blackout;',
     'uniform float u_renderScale;',
+    '// 🌊 WAVE 8302 · M1 — masters de post-procesado (SAT/HUE/STROBE).',
+    '// Viven fuera del namespace u_gene — son globals del motor, igual',
+    '// que u_brightness/u_contrast (por eso NO están en GEN_STD_UNIFORMS:',
+    '// el worker los entrega por el lazy-bind genérico de paramLocs).',
+    'uniform float u_masterSaturation;',
+    'uniform float u_masterHue;',
+    'uniform float u_masterStrobe;',
     '// Frame previo (crossfade) + estado fotosensible {mean,budget}',
     'uniform sampler2D u_prevFrame;',
     'uniform sampler2D u_flashState;',
@@ -364,13 +388,39 @@ export function buildEpilogue(): string {
     '  // restante (leaky-bucket). El cap dinámico min(maxDelta, presupuesto)',
     '  // agota las subidas grandes: una estrobo sostenida solo puede emitir',
     '  // ~3 excursiones ≥0.1 antes de que el presupuesto mande.',
+    '  // 🩸 WAVE 8292 — fs.b = cobertura brillante (fracción del campo sobre',
+    '  // el cap, medida por el stats pass). WCAG solo penaliza flashes de',
+    '  // CAMPO AMPLIO (≥~25% del campo visual): un brillo localizado — un',
+    '  // disco de acreción ~5-10% sobre fondo negro — no puede mover la',
+    '  // media de campo, así que recibe headroom ×6 sin comprometer el',
+    '  // presupuesto (la subida de media sigue drenando el bucket igual).',
     '  if (u_flashGuard > 0.5 && u_hasPrev > 0.5) {',
     '    vec4 fs = texture(u_flashState, vec2(0.5));',
     '    float prevMean = fs.r;',
     '    float remaining = fs.g * u_flashBudget;',
-    '    float cap = prevMean + min(u_flashMaxDelta, remaining);',
+    '    float headroom = mix(6.0, 1.0, smoothstep(0.08, 0.30, fs.b));',
+    '    float cap = prevMean + min(u_flashMaxDelta * headroom, remaining);',
     '    float cur = dot(c, EU_LUMA);',
     '    if (cur > cap) c *= cap / max(cur, 1e-4);',
+    '  }',
+    '',
+    '  // 🌊 WAVE 8302 · M1 — POST-FX MASTER (antes del tonemap ACES):',
+    '  // 1) HUE — rotación Rodrigues rápida alrededor del eje gris (1,1,1)/√3.',
+    '  //    Preserva la luma del vector (rota el croma, no lo clipea).',
+    '  {',
+    '    float mH = u_masterHue * 6.28318530718;',
+    '    vec3 mK = vec3(0.57735026919);',
+    '    float mC = cos(mH), mS = sin(mH);',
+    '    c = c * mC + cross(mK, c) * mS + mK * dot(mK, c) * (1.0 - mC);',
+    '  }',
+    '  // 2) SATURATION — mezcla contra la luminancia (0=mono, 1=identidad,',
+    '  //    >1 sobresatura — el ACES posterior doma los overshoot).',
+    '  c = mix(vec3(dot(c, EU_LUMA)), c, u_masterSaturation);',
+    '  // 3) STROBE — onda cuadrada 50% duty a Hz reales sobre u_time',
+    '  //    (efecto de LUZ, no de compás → deliberadamente sin u_beatTime).',
+    '  //    Guardia 0.01Hz: desactivado el fader no cuesta ni una rama.',
+    '  if (u_masterStrobe > 0.01) {',
+    '    c *= step(fract(u_time * u_masterStrobe), 0.5);',
     '  }',
     '',
     '  // 🌊 WAVE 8256 — Tonemap fílmico ACES (fit de Narkowicz): comprime el',
@@ -675,6 +725,13 @@ export interface EuclidMeta {
   family?: string[]
   /** Semilla del fenotipo: uint32 o `auto` (0 = fenotipo canónico). */
   seed?: number | 'auto'
+  /**
+   * 🌊 WAVE 8300 — `// @euclid vibes techno-club+rave`: elegibilidad del
+   * átomo para el matcher cognitivo de Selene (`compatibleVibes`). El fichero
+   * `.glsl` es su propio manifiesto — sin vibes declarados el átomo cae a
+   * `['generic']` (solo disparo manual).
+   */
+  vibes?: string[]
   /** ADN del átomo: `aggression=0.6 chaos=0.7 organicity=0.3`. */
   genome: Record<string, number>
   /** Rango de zona energética `gentle..peak`. */
@@ -760,6 +817,15 @@ export function parseEuclidMeta(source: string): EuclidMeta {
           .map((s) => s.trim().toLowerCase())
           .filter((s) => /^\w+$/.test(s))
         if (fams.length > 0) meta.family = fams
+        break
+      }
+      // ── 🌊 WAVE 8300 — `vibes a+b+c` → compatibleVibes del átomo ──
+      case 'vibes': {
+        const vibes = rest
+          .split(/[+,]/)
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => /^[\w-]+$/.test(s))
+        if (vibes.length > 0) meta.vibes = vibes
         break
       }
       case 'seed': {

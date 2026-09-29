@@ -77,6 +77,8 @@ interface GenLocs {
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
   dt: WebGLUniformLocation | null
+  /** 🌊 WAVE 8290 — timeScale gobernado (doma de beatP/swell en átomos). */
+  speed: WebGLUniformLocation | null
   resolution: WebGLUniformLocation | null
   beatTime: WebGLUniformLocation | null
   kickPulse: WebGLUniformLocation | null
@@ -116,6 +118,7 @@ interface SimLocs {
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
   dt: WebGLUniformLocation | null
+  speed: WebGLUniformLocation | null
   resolution: WebGLUniformLocation | null
   beatTime: WebGLUniformLocation | null
   kickPulse: WebGLUniformLocation | null
@@ -232,6 +235,7 @@ export class GenRuntime {
   private statsDtLoc: WebGLUniformLocation | null = null
   private statsBudgetLoc: WebGLUniformLocation | null = null
   private statsRateLoc: WebGLUniformLocation | null = null
+  private statsMaxDeltaLoc: WebGLUniformLocation | null = null
   private statsTexA: WebGLTexture | null = null
   private statsTexB: WebGLTexture | null = null
   private statsFboA: WebGLFramebuffer | null = null
@@ -341,6 +345,7 @@ export class GenRuntime {
       vocalOnset: gl.getUniformLocation(prog, 'u_vocalOnset'),
       snareTruePulse: gl.getUniformLocation(prog, 'u_snareTruePulse'),
       voidRelease: gl.getUniformLocation(prog, 'u_voidRelease'),
+      speed: gl.getUniformLocation(prog, 'u_speed'),
       brightness: gl.getUniformLocation(prog, 'u_brightness'),
       contrast: gl.getUniformLocation(prog, 'u_contrast'),
       blackout: gl.getUniformLocation(prog, 'u_blackout'),
@@ -381,6 +386,7 @@ export class GenRuntime {
       vocalOnset: gl.getUniformLocation(prog, 'u_vocalOnset'),
       snareTruePulse: gl.getUniformLocation(prog, 'u_snareTruePulse'),
       voidRelease: gl.getUniformLocation(prog, 'u_voidRelease'),
+      speed: gl.getUniformLocation(prog, 'u_speed'),
       gene: gl.getUniformLocation(prog, 'u_gene[0]'),
       state: gl.getUniformLocation(prog, 'u_state'),
       stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
@@ -747,6 +753,7 @@ export class GenRuntime {
         this.statsDtLoc = gl.getUniformLocation(prog, 'u_dt')
         this.statsBudgetLoc = gl.getUniformLocation(prog, 'u_flashBudget')
         this.statsRateLoc = gl.getUniformLocation(prog, 'u_budgetRate')
+        this.statsMaxDeltaLoc = gl.getUniformLocation(prog, 'u_flashMaxDelta')
       }
       gl.deleteShader(svs.shader)
       gl.deleteShader(sfs.shader)
@@ -926,6 +933,7 @@ export class GenRuntime {
       )
       gl.uniform1f(SL.time, shaderTimeSec)
       gl.uniform1f(SL.dt, dtMs * 0.001)
+      gl.uniform1f(SL.speed, this.timeScale)
       gl.uniform3f(SL.resolution, sw, sh, 1)
       gl.uniform1f(SL.beatTime, sm.beatTime)
       gl.uniform1f(SL.kickPulse, sm.kickPulse)
@@ -988,6 +996,7 @@ export class GenRuntime {
     )
     gl.uniform1f(L.time, shaderTimeSec)
     gl.uniform1f(L.dt, dtMs * 0.001)
+    gl.uniform1f(L.speed, this.timeScale)
     gl.uniform3f(L.resolution, sw, sh, 1)
     gl.uniform1f(L.beatTime, sm.beatTime)
     gl.uniform1f(L.kickPulse, sm.kickPulse)
@@ -1058,6 +1067,10 @@ export class GenRuntime {
       gl.uniform1f(
         this.statsRateLoc,
         uniforms.get('u_flashBudgetRate') ?? FLASH_BUDGET_RATE,
+      )
+      gl.uniform1f(
+        this.statsMaxDeltaLoc,
+        uniforms.get('u_flashMaxDelta') ?? DEFAULT_FLASH_MAX_DELTA,
       )
       gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo)
       gl.enableVertexAttribArray(this.statsPos)

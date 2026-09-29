@@ -122,6 +122,8 @@ export class SpectrumAnalyzer {
             photon: godEarResult.photon,
             // WAVE 8008: Rhythmic percussion telemetry
             rhythmic: godEarResult.rhythmic,
+            // 🩸 WAVE 8292: AGC pumping score → isAGCTrap downstream
+            agcPumping: godEarResult.agcPumping,
         };
     }
     /**

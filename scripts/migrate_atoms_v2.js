@@ -18,6 +18,15 @@
  *                  rebote ∝ a lo que duró el vacío vía u_voidRelease)
  *   R4  SNARE     u_snarePulse → euSnare()
  *                 (caja MACD verdadera + pulso legado atenuado por voz)
+ *   R5  SPEED     sin/cos sobre fases crudas (u_beatPhase, u_barPhase,
+ *                 u_tSec) → × u_speed            (WAVE 8290 · §3.1 del
+ *                 contrato: la desviación obedece el fader; auto-fix si
+ *                 el argumento es fase pura, revisión si es compuesto;
+ *                 u_beatTime/gBeats ya vienen gobernados → no se tocan)
+ *   R6  CAMZ      profundidad absoluta p.z/q.z alimentando un ángulo
+ *                 (rot2/torsión) sin resta de cámara → revisión manual
+ *                 (WAVE 8290 · §3.2: látigo angular; uso no angular de
+ *                 z — atenuación, bloques, fog — es legal)
  *
  * Solo se inyectan los helpers que el átomo usa, justo tras su bloque de
  * uniforms/defines. Un marcador `Theia 2.0 · contract v2` hace la
@@ -31,6 +40,10 @@
  *   · 🔫 WAVE 8287 · Clean Shot — geometría libre de aproximación
  *     cognitiva: prohibido u_approach/u_impact/predicción y la firma
  *     v1 de euChannels (≥4 args); movimiento base = BPM, bursts = fx
+ *   · WAVE 8290 — auditoría de gobierno: osciladores de fase pura sin
+ *     u_speed son error en --check (R5) y --write los repara también en
+ *     átomos ya migrados; la profundidad angular absoluta es ⚠ revisión
+ *     (R6), nunca bloquea ni auto-escribe
  *   · Compilación REAL — se ensambla con el ShaderAssembler del repo
  *     (preámbulo v2: UBO EuclidTel, euTimbre, pulsos) con los genes por
  *     defecto y se compila con glslangValidator (GLSL ES 3.00, pase
@@ -181,6 +194,99 @@ function splitComment(line) {
   return i < 0 ? [line, ''] : [line.slice(0, i), line.slice(i)]
 }
 
+// ─────────────── R5/R6 — WAVE 8290 · gobierno y látigo angular ───────────────
+
+// Fases CRUDAS: ciclan al BPM/pared aunque SPEED=0 (u_beatTime y gBeats ya
+// vienen escalados por el fader — no entran aquí a propósito).
+const CYCLIC_TEST = /\bu_(?:beatPhase|barPhase|tSec)\b/
+const CYCLIC_ALL = /\bu_(?:beatPhase|barPhase|tSec)\b/g
+const PURE_PHASE = /^[-+*/\d.\s]*$/           // solo operadores/números = fase pura
+
+/** sin/cos cuyo argumento contiene una fase cruda. Devuelve spans y si ya
+ *  obedecen u_speed (dentro del argumento, o multiplicando el resultado). */
+function scanOscillators(code) {
+  const out = []
+  const re = /\b(?:cos|sin)\s*\(/g
+  let m
+  while ((m = re.exec(code)) !== null) {
+    let depth = 1
+    let j = m.index + m[0].length
+    while (j < code.length && depth > 0) {
+      if (code[j] === '(') depth++
+      else if (code[j] === ')') depth--
+      j++
+    }
+    if (depth !== 0) break
+    const args = code.slice(m.index + m[0].length, j - 1)
+    if (!CYCLIC_TEST.test(args)) continue
+    const scaled = /\bu_speed\b/.test(args)
+      || /^\s*\*\s*u_speed\b/.test(code.slice(j))
+      || /u_speed\s*\*\s*$/.test(code.slice(0, m.index))
+    out.push({ end: j, args, scaled, pure: PURE_PHASE.test(args.replace(CYCLIC_ALL, '')) })
+  }
+  return out
+}
+
+/** R5 — añade ` * u_speed` a los osciladores de fase pura sin gobernar;
+ *  los compuestos se devuelven como revisión (el humano decide dónde va). */
+function fixOscInLine(code) {
+  const osz = scanOscillators(code)
+  const hits = []
+  const reviews = []
+  let next = code
+  for (let k = osz.length - 1; k >= 0; k--) {   // de atrás adelante: índices estables
+    const o = osz[k]
+    if (o.scaled) continue
+    if (o.pure) {
+      next = `${next.slice(0, o.end)} * u_speed${next.slice(o.end)}`
+      hits.push(`sin/cos(${o.args.trim()}) → × u_speed`)
+    } else {
+      reviews.push(`oscilador cíclico con términos extra — decide dónde gobernar u_speed: ${o.args.trim()}`)
+    }
+  }
+  return { code: next, hits, reviews }
+}
+
+/** R5 sobre un archivo entero (rama "ya v2" — repara sin tocar el arte). */
+function fixOscillators(src) {
+  const lines = src.split(/\r?\n/)
+  const eol = src.includes('\r\n') ? '\r\n' : '\n'
+  const fixes = []
+  for (let n = 0; n < lines.length; n++) {
+    const [code, comment] = splitComment(lines[n])
+    const fx = fixOscInLine(code)
+    if (fx.code !== code) { lines[n] = fx.code + comment; fixes.push(`L${n + 1}`) }
+  }
+  return { out: lines.join(eol), fixes }
+}
+
+// Resta de cámara canónica: `p.z - gCamZ`, `q.z - camZ`, …
+const CAM_SUB = /\b[pq]\.z\s*-\s*\w*cam\w*/i
+const TWISTY = String.raw`\w*(?:twist|tors|spin|swirl|rot|angle|helix|spiral|pitch|bank|yaw)\w*`
+
+/** R6 — látigo angular: devuelve un aviso si la profundidad absoluta
+ *  p.z/q.z alimenta un término angular sin resta de cámara. */
+function depthRiskInLine(code) {
+  if (CAM_SUB.test(code)) return null
+  const re = /\brot2\s*\(/g
+  let m
+  while ((m = re.exec(code)) !== null) {
+    let depth = 1
+    let j = m.index + m[0].length
+    while (j < code.length && depth > 0) {
+      if (code[j] === '(') depth++
+      else if (code[j] === ')') depth--
+      j++
+    }
+    if (depth !== 0) break
+    const args = code.slice(m.index + m[0].length, j - 1)
+    if (/\b[pq]\.z\b/.test(args)) return `rot2 sobre profundidad absoluta — ¿p.z - camZ? (${args.trim().slice(0, 60)})`
+  }
+  const prod = code.match(new RegExp(`\\b[pq]\\.z\\s*\\*\\s*${TWISTY}|${TWISTY}\\s*\\*\\s*\\b[pq]\\.z\\b`, 'i'))
+  if (prod) return `profundidad absoluta × torsión — ¿p.z - camZ? (${prod[0].trim().slice(0, 60)})`
+  return null
+}
+
 /** Reemplaza `u_tel[expr]` con corchetes balanceados. */
 function rewriteTelV1(code, telMap, hits) {
   let out = ''
@@ -274,6 +380,19 @@ function migrate(src, telMap) {
       hits.push(`u_snarePulse → euSnare() ×${c}`)
     }
 
+    // R5 — osciladores de fase cruda: la desviación obedece SPEED.
+    {
+      const fx = fixOscInLine(code)
+      if (fx.code !== code) { code = fx.code; hits.push(...fx.hits) }
+      for (const r of fx.reviews) review.push({ line: n + 1, text: r })
+    }
+
+    // R6 — látigo angular: profundidad absoluta alimentando ángulos.
+    {
+      const d = depthRiskInLine(code)
+      if (d) review.push({ line: n + 1, text: d })
+    }
+
     if (code !== code0) {
       lines[n] = code + comment
       touched.add(n)
@@ -327,6 +446,7 @@ function ruleOf(h) {
   if (h.startsWith('u_strobeGate') || h.startsWith('STROBE')) return 'R1'
   if (h.startsWith('u_tel')) return 'R2'
   if (h.includes('RHYTHMIC_VOID')) return 'R3'
+  if (h.includes('u_speed')) return 'R5'
   return 'R4'
 }
 
@@ -352,6 +472,26 @@ function codeOnly(src) {
   return src.split(/\r?\n/).map((l) => splitComment(l)[0]).join('\n')
 }
 
+/** Auditoría WAVE 8290 — R5 osciladores (fase pura sin u_speed = error;
+ *  compuesta sin u_speed = revisión) y R6 profundidad angular absoluta
+ *  (revisión — nunca bloquea). */
+function auditAtom(src) {
+  const errs = []
+  const warns = []
+  const lines = src.split(/\r?\n/)
+  for (let n = 0; n < lines.length; n++) {
+    const [code] = splitComment(lines[n])
+    for (const o of scanOscillators(code)) {
+      if (o.scaled) continue
+      if (o.pure) errs.push(`L${n + 1}: oscilador cíclico sin u_speed → (${o.args.trim()}) — R5, §3.1`)
+      else warns.push(`L${n + 1}: oscilador con fase cruda mezclada — decide dónde gobernar u_speed (R5): ${o.args.trim()}`)
+    }
+    const d = depthRiskInLine(code)
+    if (d) warns.push(`L${n + 1}: ${d} (R6, §3.2)`)
+  }
+  return { errs, warns }
+}
+
 function validate(A, glslang, src) {
   const errs = []
   const code = codeOnly(src)
@@ -366,6 +506,8 @@ function validate(A, glslang, src) {
     errs.push('euChannels() con firma v1 (≥4 args) — migrar a (glitch, live, groove)')
   if (/\bu_(approach|impact|predictiveETA|predictionProb|selEtaMs|selEtaBeats|seleneConfidence|tension|beauty|zScoreN|spectralBuildup|glassBreak|strobeGate)\b/.test(code))
     errs.push('canal cognitivo prohibido en átomos (Clean Shot) — usa u_activeEffectEnergy/Age para bursts')
+  const audit = auditAtom(src)
+  errs.push(...audit.errs)
   if (!src.includes(MARKER)) errs.push(`falta el marcador "${MARKER}"`)
   const meta = A.parseEuclidMeta(src)
   if (!meta.name) errs.push('cabecera @euclid sin name')
@@ -388,7 +530,7 @@ function validate(A, glslang, src) {
       }
     }
   }
-  return { errs, compiled }
+  return { errs, warns: audit.warns, compiled }
 }
 
 // ─────────────────────────── Main ───────────────────────────
@@ -418,11 +560,24 @@ for (const file of files) {
   const already = src.includes(MARKER)
 
   if (already) {
-    const v = validate(A, glslang, src)
+    // WAVE 8290 · R5 — los átomos ya migrados también se reparan: los
+    // osciladores de fase pura sin u_speed son auto-fix mecánico.
+    const fx = fixOscillators(src)
+    const target = fx.fixes.length ? fx.out : src
+    const v = validate(A, glslang, target)
     const ok = v.errs.length === 0
     if (!ok) bad++
-    console.log(`${ok ? '✔' : '✖'} ${name.padEnd(26)} ya v2 · glsl:${v.compiled}`)
+    let action = 'ya v2'
+    if (fx.fixes.length) {
+      if (opt.write && ok) {
+        fs.writeFileSync(file, target)
+        written++
+        action = `ya v2 · R5 escrito (${fx.fixes.length})`
+      } else action = `ya v2 · R5 pendiente (${fx.fixes.length})`
+    }
+    console.log(`${ok ? '✔' : '✖'} ${name.padEnd(26)} ${action.padEnd(26)} glsl:${v.compiled}`)
     for (const e of v.errs) console.log(`    ✖ ${e}`)
+    for (const w of v.warns) console.log(`    ⚠ ${w}`)
     continue
   }
 
@@ -452,6 +607,7 @@ for (const file of files) {
   } else if (opt.write) action = 'NO escrito'
   console.log(`${ok ? '✔' : '✖'} ${name.padEnd(26)} ${action.padEnd(10)} ${summary.padEnd(16)} helpers:[${res.helpers.join(', ')}] glsl:${v.compiled}`)
   for (const e of errs) console.log(`    ✖ ${e}`)
+  for (const w of v.warns) console.log(`    ⚠ ${w}`)
   for (const r of res.review) console.log(`    ⚠ revisión manual L${r.line}: ${r.text}`)
   if (opt.diff) {
     const orig = src.split(/\r?\n/)

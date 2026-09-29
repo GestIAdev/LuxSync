@@ -3,6 +3,7 @@
 // @euclid family  swarm+cellular
 // @euclid genome  aggression=0.75 chaos=0.90 organicity=0.45
 // @euclid zone    gentle..peak
+// @euclid vibes   techno-club+rave
 // @euclid param   u_links  float -1.0 1.0 0.0 "Links"
 // @euclid param   u_trails float -1.0 1.0 0.0 "Trails"
 // @euclid gene    G_LAYERS struct int   1    3     2    c:+0.4
@@ -159,8 +160,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — condensación basal por beat/compás; el
   // colapso de la red solo con clip físico vivo (fx).
   float fx    = u_activeEffectEnergy;
-  gBeatP      = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
-  float swell = sin(3.1415927 * u_barPhase);
+  gBeatP      = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase) * u_speed;
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
   // Kick: descarga sináptica — toda la red de enlaces dispara a la vez.
   gLinkGain = (0.6 + 0.4 * u_links) * (1.0 + 3.0 * fx + 0.8 * euSnare() + 2.0 * u_kickPulse);
 

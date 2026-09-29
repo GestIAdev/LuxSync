@@ -6,12 +6,14 @@
  */
 
 :root {
-  /* 🎛️ WAVE 8239 · U1 — identidad Theia: verde fósforo/ácido.
+  /* 🎛️ WAVE 8239 · U1 — identidad Theia.
+     🌊 WAVE 8301 — PHOSPHOR GREEN: verde fósforo de terminal clásico
+     (#39ff14 puro) en lugar del verde ácido amarillento anterior.
      --theia-primary y derivadas son el color de marca; los alias --theia-acid*
      se conservan para las reglas existentes. */
-  --theia-primary:        #a3e635;
-  --theia-primary-dim:    #84cc16;
-  --theia-primary-deep:   #65a30d;
+  --theia-primary:        #39ff14;
+  --theia-primary-dim:    #2ecc10;
+  --theia-primary-deep:   #1f9c0b;
   --theia-acid:           var(--theia-primary-dim);
   --theia-acid-bright:    var(--theia-primary);
   --theia-acid-deep:      var(--theia-primary-deep);
@@ -37,7 +39,7 @@
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(circle at 15% -10%, rgba(132, 204, 22, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 15% -10%, rgba(46, 204, 16, 0.06) 0%, transparent 40%),
     radial-gradient(circle at 90% 110%, rgba(168, 85, 247, 0.04) 0%, transparent 50%),
     var(--theia-bg-deep);
   color: var(--theia-text);
@@ -58,11 +60,11 @@
   padding: 0 16px;
   background: linear-gradient(
     180deg,
-    rgba(132, 204, 22, 0.06) 0%,
-    rgba(132, 204, 22, 0.015) 70%,
+    rgba(46, 204, 16, 0.06) 0%,
+    rgba(46, 204, 16, 0.015) 70%,
     transparent 100%
   );
-  border-bottom: 1px solid rgba(132, 204, 22, 0.18);
+  border-bottom: 1px solid rgba(46, 204, 16, 0.18);
   position: relative;
   z-index: 10;
 }
@@ -80,7 +82,7 @@
     var(--theia-acid) 50%,
     transparent 100%
   );
-  box-shadow: 0 0 16px rgba(132, 204, 22, 0.7);
+  box-shadow: 0 0 16px rgba(46, 204, 16, 0.5);
 }
 
 /* ── Brand cluster ── */
@@ -97,7 +99,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1.5px solid rgba(132, 204, 22, 0.4);
+  border: 1.5px solid rgba(46, 204, 16, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,14 +109,21 @@
 .theia-header__logo.is-on {
   border-color: var(--theia-acid-bright);
   box-shadow:
-    0 0 14px rgba(132, 204, 22, 0.6),
-    inset 0 0 12px rgba(132, 204, 22, 0.25);
-  animation: theia-logo-pulse 2.5s ease-in-out infinite;
+    0 0 14px rgba(46, 204, 16, 0.45),
+    inset 0 0 12px rgba(46, 204, 16, 0.18);
 }
 
-@keyframes theia-logo-pulse {
-  0%, 100% { box-shadow: 0 0 14px rgba(132, 204, 22, 0.5), inset 0 0 12px rgba(132, 204, 22, 0.2); }
-  50%      { box-shadow: 0 0 22px rgba(132, 204, 22, 0.8), inset 0 0 18px rgba(132, 204, 22, 0.4); }
+/* 🌊 WAVE 8295 — glow respirando via pseudo-elemento: el box-shadow se
+ * rasteriza UNA vez y solo se anima `opacity` (propiedad del compositor).
+ * Animar box-shadow directamente era un repaint CPU→GPU por frame. */
+.theia-header__logo.is-on::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  box-shadow: 0 0 22px rgba(46, 204, 16, 0.55);
+  pointer-events: none;
+  animation: theia-glow-breathe 2.5s ease-in-out infinite;
 }
 
 .theia-header__logo-eye {
@@ -141,7 +150,7 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 24px rgba(132, 204, 22, 0.3);
+  text-shadow: 0 0 24px rgba(46, 204, 16, 0.3);
 }
 
 .theia-header__subtitle {
@@ -169,30 +178,30 @@
   font-weight: 700;
   letter-spacing: 2px;
   padding: 3px 9px;
-  background: rgba(132, 204, 22, 0.1);
-  border: 1px solid rgba(132, 204, 22, 0.4);
+  background: rgba(46, 204, 16, 0.1);
+  border: 1px solid rgba(46, 204, 16, 0.4);
   border-radius: 3px;
-  color: #84cc16;
-  box-shadow: 0 0 8px rgba(132, 204, 22, 0.12);
+  color: #2ecc10;
+  box-shadow: 0 0 8px rgba(46, 204, 16, 0.12);
   cursor: pointer;
   font-family: inherit;
   transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
 .theia-header__output-btn:hover {
-  background: rgba(132, 204, 22, 0.2);
-  border-color: rgba(132, 204, 22, 0.7);
-  box-shadow: 0 0 14px rgba(132, 204, 22, 0.3);
+  background: rgba(46, 204, 16, 0.2);
+  border-color: rgba(46, 204, 16, 0.7);
+  box-shadow: 0 0 14px rgba(46, 204, 16, 0.3);
 }
 /* 💡 WAVE 4870 — Active state when projector window is open */
 .theia-header__output-btn--active {
-  background: rgba(132, 204, 22, 0.25);
-  border-color: #84cc16;
-  box-shadow: 0 0 18px rgba(132, 204, 22, 0.5), 0 0 6px rgba(132, 204, 22, 0.4) inset;
+  background: rgba(46, 204, 16, 0.25);
+  border-color: #2ecc10;
+  box-shadow: 0 0 18px rgba(46, 204, 16, 0.38), 0 0 6px rgba(46, 204, 16, 0.3) inset;
   color: #fff;
 }
 .theia-header__output-btn--active:hover {
-  background: rgba(132, 204, 22, 0.35);
-  box-shadow: 0 0 22px rgba(132, 204, 22, 0.6), 0 0 8px rgba(132, 204, 22, 0.5) inset;
+  background: rgba(46, 204, 16, 0.35);
+  box-shadow: 0 0 22px rgba(46, 204, 16, 0.45), 0 0 8px rgba(46, 204, 16, 0.35) inset;
 }
 
 /* ── Power button ── */
@@ -221,18 +230,18 @@
 }
 
 .theia-power.is-off:hover {
-  border-color: rgba(132, 204, 22, 0.4);
+  border-color: rgba(46, 204, 16, 0.4);
   color: var(--theia-acid);
 }
 
 .theia-power.is-on {
   border-color: var(--theia-acid-bright);
   color: var(--theia-acid-bright);
-  background: rgba(132, 204, 22, 0.08);
+  background: rgba(46, 204, 16, 0.08);
   box-shadow:
-    0 0 18px rgba(132, 204, 22, 0.4),
-    inset 0 0 14px rgba(132, 204, 22, 0.1);
-  text-shadow: 0 0 8px rgba(132, 204, 22, 0.6);
+    0 0 18px rgba(46, 204, 16, 0.32),
+    inset 0 0 14px rgba(46, 204, 16, 0.08);
+  text-shadow: 0 0 8px rgba(46, 204, 16, 0.45);
 }
 
 .theia-power__core {
@@ -244,15 +253,48 @@
 }
 
 .theia-power.is-on .theia-power__core {
+  /* 🌊 WAVE 8295 — solo opacity: la sombra fija se funde con la capa del
+   * elemento (composited). Antes animaba box-shadow = repaint por frame. */
+  box-shadow: 0 0 12px currentColor;
   animation: theia-core-blink 1.2s ease-in-out infinite;
 }
 
 @keyframes theia-core-blink {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
-  50%      { opacity: 0.6; box-shadow: 0 0 14px currentColor; }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
 }
 
 .theia-power__ring { display: none; }
+
+/* 🌊 WAVE 8301 — LIVE en el header: más alto y con presencia, anclado a
+   la izquierda junto al logo/OUTPUT. El estado is-on baña el botón en
+   fósforo; is-off queda fantasma pero legible. */
+.theia-power--header {
+  height: 30px;
+  padding: 0 16px 0 12px;
+  font-size: 10px;
+  letter-spacing: 3px;
+  border-radius: 5px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+.theia-power--header .theia-power__core {
+  width: 8px;
+  height: 8px;
+}
+.theia-power--header.is-on {
+  color: #06130a;
+  background: var(--theia-acid-bright);
+  border-color: var(--theia-acid-bright);
+  text-shadow: none;
+  box-shadow:
+    0 0 20px rgba(57, 255, 20, 0.35),
+    inset 0 0 10px rgba(255, 255, 255, 0.18);
+}
+.theia-power--header.is-on .theia-power__core {
+  background: #06130a;
+  box-shadow: none;
+}
 
 /* ── Master sliders ── */
 .theia-masters {
@@ -354,23 +396,651 @@
 }
 
 .theia-blackout.is-active {
+  position: relative;
   background: rgba(239, 68, 68, 0.15);
   border-color: var(--theia-red);
   color: var(--theia-red);
   box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
-  animation: theia-blackout-pulse 1.4s ease-in-out infinite;
 }
 
-@keyframes theia-blackout-pulse {
-  0%, 100% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.4); }
-  50%      { box-shadow: 0 0 22px rgba(239, 68, 68, 0.7); }
+/* 🌊 WAVE 8295 — el halo pulsa por opacity sobre un ::after pre-rasterizado */
+.theia-blackout.is-active::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.5);
+  pointer-events: none;
+  animation: theia-glow-breathe 1.4s ease-in-out infinite;
 }
 
 .theia-blackout__icon {
   font-size: 14px;
 }
 
-/* ── Ingest buttons — 🎛️ WAVE 8241 · U3: ghost/outline minimalista,
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🖥️ WAVE 8303 — WORKSPACE SHELL (PERFORM / DESIGN)
+ * Mode switch (header) · Masters panel (EXPANDED/RAIL) · bottom zone
+ * (playlist lane placeholder + Media Browser drawer)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Mode switch — control segmentado en el header ── */
+.theia-mode-switch {
+  display: flex;
+  margin-left: 14px;
+  border: 1px solid rgba(46, 204, 16, 0.35);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.theia-mode-switch__seg {
+  padding: 4px 12px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  color: var(--theia-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.theia-mode-switch__seg + .theia-mode-switch__seg {
+  border-left: 1px solid rgba(46, 204, 16, 0.25);
+}
+
+.theia-mode-switch__seg:hover { color: var(--theia-text); }
+
+.theia-mode-switch__seg.is-active {
+  background: rgba(57, 255, 20, 0.14);
+  color: var(--theia-primary);
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.45);
+}
+
+/* ── MastersPanel — columna fija; columna derecha de PERFORM ── */
+.theia-masters {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 20, 34, 0.6) 0%,
+    rgba(10, 14, 24, 0.4) 100%
+  );
+  border-left: 1px solid rgba(46, 204, 16, 0.18);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.03);
+}
+
+.theia-masters__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--theia-text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.theia-masters__head-icon { color: var(--theia-primary); }
+
+/* EXPANDED: los faders ocupan el cuerpo (scroll si la ventana es baja),
+ * BLACKOUT queda pineado al fondo → P1: accesible sin scroll. */
+.theia-masters__full {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 10px;
+  scrollbar-width: thin;
+}
+
+.theia-masters__blackout {
+  flex-shrink: 0;
+  margin: 10px 12px 12px;
+  justify-content: center;
+}
+
+/* RAIL (DESIGN) — tira de 36px: readouts compactos + blackout mini.
+ * Los faders completos se ocultan vía CSS (panel montado pero pasivo —
+ * sin rAF ni suscripciones, coste ~0). */
+.theia-masters__rail {
+  display: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.theia-masters[data-collapse="rail"] .theia-masters__full { display: none; }
+.theia-masters[data-collapse="rail"] .theia-masters__rail { display: flex; }
+
+.theia-masters[data-collapse="rail"] .theia-masters__head {
+  padding: 10px 0 8px;
+  justify-content: center;
+}
+.theia-masters[data-collapse="rail"] .theia-masters__head span:last-child {
+  display: none;
+}
+
+.theia-masters__railcell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.theia-masters__railabbr {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--theia-text-muted);
+}
+
+.theia-masters__railval {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--theia-primary-dim);
+  writing-mode: initial;
+  white-space: nowrap;
+}
+
+/* RAIL: blackout como cuadrado mini (icono solo). */
+.theia-masters[data-collapse="rail"] .theia-masters__blackout {
+  width: 26px;
+  height: 26px;
+  margin: 0 auto 6px;
+  padding: 0;
+  border-radius: 3px;
+}
+.theia-masters[data-collapse="rail"] .theia-blackout__label { display: none; }
+.theia-masters[data-collapse="rail"] .theia-blackout__icon { font-size: 11px; }
+
+/* ── Bottom zone: playlist lane + Media Browser drawer ── */
+.theia-bottom {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border-top: 1px solid rgba(46, 204, 16, 0.18);
+  background: rgba(6, 9, 16, 0.6);
+}
+
+/* ✈️ WAVE 8306 — AUTOPILOT BAR (Ola D1): 36px sobre el playlist lane.
+ * Solo en PERFORM; el motor corre fuera de React (rAF + SAB). */
+.theia-autopilot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 36px;
+  flex: 0 0 36px;
+  padding: 0 16px;
+  border-top: 1px solid rgba(46, 204, 16, 0.14);
+  background:
+    linear-gradient(180deg, rgba(8, 12, 20, 0.85) 0%, rgba(5, 9, 15, 0.7) 100%);
+  color: var(--theia-text-dim);
+  overflow: hidden;
+}
+
+.theia-autopilot__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--theia-primary-dim);
+  flex-shrink: 0;
+}
+.theia-autopilot.is-on .theia-autopilot__label {
+  color: var(--theia-primary);
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.4);
+}
+
+.theia-autopilot__modes {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  border: 1px solid rgba(57, 255, 20, 0.18);
+  border-radius: 4px;
+  padding: 2px;
+  background: rgba(4, 7, 12, 0.6);
+}
+
+.theia-autopilot__mode {
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  padding: 3px 8px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.theia-autopilot__mode:hover:not(:disabled) {
+  color: var(--theia-primary);
+}
+.theia-autopilot__mode.is-active {
+  color: #04140a;
+  background: var(--theia-primary);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.4);
+}
+.theia-autopilot__mode:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.theia-autopilot__ctl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.theia-autopilot__key {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  color: var(--theia-text-dim);
+}
+
+.theia-autopilot__select {
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--theia-primary);
+  background: rgba(4, 7, 12, 0.8);
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  border-radius: 3px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+.theia-autopilot__select:hover {
+  border-color: rgba(57, 255, 20, 0.5);
+}
+
+.theia-autopilot__unit {
+  font-family: inherit;
+  font-size: 9px;
+  padding: 2px 6px;
+  background: rgba(57, 255, 20, 0.08);
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  border-radius: 3px;
+  color: var(--theia-primary-dim);
+  cursor: pointer;
+}
+.theia-autopilot__unit:hover {
+  color: var(--theia-primary);
+  border-color: rgba(57, 255, 20, 0.55);
+}
+
+.theia-autopilot__ctl--xfade {
+  min-width: 0;
+}
+.theia-autopilot__xfade {
+  width: 72px;
+  accent-color: var(--theia-primary);
+}
+.theia-autopilot__val {
+  font-size: 10px;
+  color: var(--theia-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+}
+
+.theia-autopilot__snap {
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  padding: 3px 9px;
+  background: none;
+  border: 1px solid rgba(57, 255, 20, 0.22);
+  border-radius: 3px;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.12s ease;
+}
+.theia-autopilot__snap.is-active {
+  color: var(--theia-primary);
+  border-color: rgba(57, 255, 20, 0.6);
+  background: rgba(57, 255, 20, 0.1);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+}
+
+/* Cuenta atrás: reloj + mini-barra de progreso del dwell. */
+.theia-autopilot__countdown {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.theia-autopilot__clock {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--theia-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+  text-align: right;
+}
+.theia-autopilot__countdown.is-sync .theia-autopilot__clock {
+  animation: theia-ap-sync 0.6s ease-in-out infinite alternate;
+}
+@keyframes theia-ap-sync {
+  from { opacity: 1; }
+  to   { opacity: 0.45; }
+}
+
+.theia-autopilot__prog {
+  width: 96px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(57, 255, 20, 0.12);
+  overflow: hidden;
+}
+.theia-autopilot__prog-fill {
+  display: block;
+  height: 100%;
+  background: var(--theia-primary);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
+}
+
+/* PLAYLIST LANE — WAVE 8305 · Ola C: carril horizontal real.
+ * PERFORM: lane de 96px con tarjetas. DESIGN: línea fina (rail). */
+.theia-playlist-lane {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 96px;
+  padding: 0 16px;
+  border-top: 1px dashed rgba(46, 204, 16, 0.18);
+  color: var(--theia-text-muted);
+  flex-shrink: 0;
+}
+
+.theia-playlist-lane__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: var(--theia-primary-dim);
+  flex-shrink: 0;
+}
+
+.theia-playlist-lane__hint {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.theia-playlist-lane__rail {
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  color: var(--theia-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.theia-playlist-lane__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--theia-text-dim);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.theia-playlist-lane__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: none;
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  border-radius: 3px;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+.theia-playlist-lane__clear:hover {
+  color: var(--theia-primary);
+  border-color: rgba(57, 255, 20, 0.55);
+}
+
+.theia-playlist-lane[data-collapse="rail"] {
+  height: 28px;
+  gap: 8px;
+}
+.theia-playlist-lane[data-collapse="rail"] .theia-playlist-lane__label {
+  font-size: 8px;
+}
+
+/* ── Scroll de tarjetas ── */
+.theia-pl-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 100%;
+  padding: 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(57, 255, 20, 0.3) transparent;
+}
+
+/* Marcador de inserción (drop target). */
+.theia-pl-dropmark {
+  flex: 0 0 2px;
+  height: 56px;
+  background: var(--theia-primary);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.7);
+  border-radius: 1px;
+}
+
+/* ── Tarjeta de playlist ── */
+.theia-pl-card {
+  position: relative;
+  flex: 0 0 auto;
+  width: 120px;
+  height: 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 6px 8px;
+  background:
+    linear-gradient(180deg, rgba(14, 20, 32, 0.9) 0%, rgba(6, 10, 18, 0.9) 100%);
+  border: 1px solid var(--theia-line);
+  border-radius: 5px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.theia-pl-card:hover {
+  border-color: rgba(57, 255, 20, 0.45);
+}
+
+/* ▶ LIVE — borde fósforo sólido + glow. */
+.theia-pl-card.is-live {
+  border-color: var(--theia-primary);
+  box-shadow:
+    0 0 10px rgba(57, 255, 20, 0.3),
+    inset 0 0 12px rgba(57, 255, 20, 0.06);
+}
+
+/* CUE — borde discontinuo fósforo. */
+.theia-pl-card.is-cue {
+  border: 1px dashed var(--theia-primary-dim);
+}
+
+.theia-pl-card.is-skip {
+  opacity: 0.45;
+}
+.theia-pl-card.is-skip .theia-pl-card__name {
+  text-decoration: line-through;
+}
+
+.theia-pl-card__chip {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--theia-primary-dim);
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  border-radius: 2px;
+  padding: 0 3px;
+}
+
+.theia-pl-card__name {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--theia-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.theia-pl-card__badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.theia-pl-card__badge.is-live-badge {
+  color: #04140a;
+  background: var(--theia-primary);
+  border-radius: 2px;
+  padding: 0 4px;
+  align-self: flex-start;
+}
+
+.theia-pl-card__badge.is-cue-badge {
+  color: var(--theia-primary);
+}
+
+/* Herramientas hover: pin / skip / remove. */
+.theia-pl-card__tools {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.theia-pl-card:hover .theia-pl-card__tools,
+.theia-pl-card.is-pinned .theia-pl-card__tools,
+.theia-pl-card.is-skip .theia-pl-card__tools {
+  opacity: 1;
+}
+
+.theia-pl-card__tool {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+}
+.theia-pl-card__tool:hover {
+  color: var(--theia-primary);
+}
+.theia-pl-card__tool.is-del:hover {
+  color: #ff5050;
+}
+
+/* MEDIA BROWSER drawer — PERFORM: plegado a su barra (28px), el body
+ * desmonta el LiveDeck (P5). DESIGN: ocupa el resto de la fila bottom. */
+.theia-browser {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.theia-browser__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  background: rgba(10, 14, 24, 0.85);
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: inherit;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--theia-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.theia-browser__bar:hover {
+  color: var(--theia-primary);
+  background: rgba(57, 255, 20, 0.05);
+}
+
+.theia-browser__tabs-hint {
+  margin-left: auto;
+  font-size: 7.5px;
+  letter-spacing: 1.4px;
+  opacity: 0.55;
+}
+
+.theia-browser__body {
+  min-height: 0;
+  overflow-y: auto;
+  /* PERFORM drawer abierto: tapa hasta 42% del alto sin empujar Program. */
+  max-height: 42vh;
+}
+
+/* DESIGN: el body ocupa el sobrante de la fila bottom. */
+.theia-view.is-mode-design .theia-browser__body {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+/* DESIGN: el deck dentro del browser se comporta como panel — ocupa todo
+ * el body (el cap 430px/46vh y el look de card eran para la stage). */
+.theia-view.is-mode-design .theia-browser__body .theia-live-deck {
+  flex: 1 1 auto;
+  max-height: none;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid rgba(46, 204, 16, 0.18);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Ingest buttons — 🎛️ WAVE 8241 · U3: ghost/outline minimalista,
      icono LuxIcon + texto verde fósforo, sin caja masiva ── */
 .theia-ingest-btn {
   display: flex;
@@ -379,7 +1049,7 @@
   height: 32px;
   padding: 0 14px;
   background: transparent;
-  border: 1px solid rgba(163, 230, 53, 0.35);
+  border: 1px solid rgba(57, 255, 20, 0.35);
   border-radius: 4px;
   color: var(--theia-primary);
   font-family: inherit;
@@ -392,9 +1062,9 @@
 
 .theia-ingest-btn:hover {
   border-color: var(--theia-primary);
-  background: rgba(163, 230, 53, 0.08);
-  box-shadow: 0 0 14px rgba(163, 230, 53, 0.25);
-  text-shadow: 0 0 6px rgba(163, 230, 53, 0.5);
+  background: rgba(57, 255, 20, 0.08);
+  box-shadow: 0 0 14px rgba(57, 255, 20, 0.25);
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
 }
 
 .theia-ingest-btn:active {
@@ -407,23 +1077,46 @@
  * MAIN GRID
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* 🖥️ WAVE 8303 · M2/M3 — layout por workspace (blueprint §3/§4).
+ * PERFORM: "stage masters / bottom bottom" — Program ~62%+, columna de
+ * masters fija a la derecha, fila inferior = playlist + browser drawer.
+ * DESIGN:  "stage masters insp / bottom×3" — Program ~45%, rail de
+ * masters 36px, Inspector como tercera columna, browser expandido abajo. */
 .theia-main {
   display: grid;
-  grid-template-columns: 1fr 0;
-  /* 🌊 WAVE 8255 — la fila implícita `auto` crecía con el contenido del
-   * stage (viewport 16:9 + deck expandido) y rompía el contenedor padre.
-   * `minmax(0,1fr)` fija la fila al alto disponible — los hijos contienen,
-   * nunca empujan. */
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) clamp(240px, 22vw, 320px);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "stage   masters"
+    "bottom  bottom";
+  /* 🌊 WAVE 8255 — `minmax(0,1fr)` fija la fila al alto disponible —
+     los hijos contienen, nunca empujan. */
   min-height: 0;
   min-width: 0;
   transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.theia-view--insp-open .theia-main { grid-template-columns: 1fr 340px; }
-.theia-view--insp-closed .theia-main { grid-template-columns: 1fr 36px; }
+.theia-view.is-mode-design .theia-main {
+  grid-template-columns: minmax(0, 45%) 36px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 55%) minmax(0, 45%);
+  grid-template-areas:
+    "stage   masters  insp"
+    "bottom  bottom   bottom";
+}
 
-/* ── Stage = viewport + transport + asset deck ── */
+/* DESIGN + inspector plegado: la tercera columna encoge a la sliver y el
+ * Program recupera el ancho sobrante. */
+.theia-view.is-mode-design.theia-view--insp-closed .theia-main {
+  grid-template-columns: minmax(0, 1fr) 36px 36px;
+}
+
+.theia-stage { grid-area: stage; }
+.theia-masters { grid-area: masters; }
+.theia-insp { grid-area: insp; }
+.theia-bottom { grid-area: bottom; }
+
+/* ── Stage = viewport + transport (🖥️ WAVE 8303: el deck se movió a la
+   zona bottom — playlist lane + Media Browser drawer) ── */
 /* 🌊 WAVE 8255 — FLEX-LOCK: la stage era un grid de 2 filas (`1fr 180px`)
  * con TRES hijos — el LiveDeck caía en una fila implícita `auto` que crecía
  * con la expansión (~430px) y desbordaba el contenedor, aplastando el deck
@@ -521,8 +1214,8 @@
   height: 22px;
   padding: 0;
   flex-shrink: 0;
-  background: rgba(163, 230, 53, 0.06);
-  border: 1px solid rgba(163, 230, 53, 0.25);
+  background: rgba(57, 255, 20, 0.06);
+  border: 1px solid rgba(57, 255, 20, 0.25);
   border-radius: 4px;
   color: var(--theia-text-dim);
   cursor: pointer;
@@ -533,9 +1226,9 @@
 .theia-vp__fs-btn:hover,
 .theia-vp__fs-btn.is-active {
   color: var(--theia-primary);
-  border-color: rgba(163, 230, 53, 0.55);
-  background: rgba(163, 230, 53, 0.12);
-  box-shadow: 0 0 8px rgba(163, 230, 53, 0.2);
+  border-color: rgba(57, 255, 20, 0.55);
+  background: rgba(57, 255, 20, 0.12);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
 }
 
 /* 🖥️ WAVE 8262 — la sección entera reclama el monitor: el wrap (flex:1)
@@ -555,13 +1248,13 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  border: 1px solid rgba(132, 204, 22, 0.15);
+  border: 1px solid rgba(46, 204, 16, 0.15);
   border-radius: 4px;
   overflow: hidden;
   background: var(--theia-bg-deep);
   box-shadow:
     inset 0 0 80px rgba(0, 0, 0, 0.7),
-    0 0 30px rgba(132, 204, 22, 0.06);
+    0 0 30px rgba(46, 204, 16, 0.06);
 }
 
 .theia-viewport.is-blackout .theia-vp__canvas-wrap {
@@ -576,8 +1269,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(132, 204, 22, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(132, 204, 22, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(46, 204, 16, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 204, 16, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   opacity: 0.6;
@@ -613,12 +1306,12 @@
   width: 100%;
   height: 100%;
   z-index: 1;
-  animation: theia-surface-shift 8s ease-in-out infinite;
-}
-
-@keyframes theia-surface-shift {
-  0%, 100% { filter: hue-rotate(0deg) brightness(1); }
-  50%      { filter: hue-rotate(20deg) brightness(1.1); }
+  /* 🌊 WAVE 8295 — `theia-surface-shift` eliminado: animaba `filter`
+   * (hue-rotate/brightness) sobre el canvas a resolución de viewport, lo que
+   * forzaba un pase de filtro GPU por cada frame del worker (~60fps) sin
+   * poder cachear la salida. Causa principal de los `tick gap=3-6` y del
+   * Render Surface leak en modo HQ. El tinte de color vive ahora solo en el
+   * shader del worker (zero-cost) si se requiere. */
 }
 
 /* ── Author mode video slot ── */
@@ -668,7 +1361,7 @@
   position: absolute;
   width: 16px;
   height: 16px;
-  border-color: rgba(132, 204, 22, 0.4);
+  border-color: rgba(46, 204, 16, 0.4);
   border-style: solid;
   z-index: 5;
   pointer-events: none;
@@ -691,7 +1384,7 @@
     rgba(10, 14, 24, 0.4) 100%
   );
   backdrop-filter: blur(12px) saturate(1.1);
-  border-left: 1px solid rgba(132, 204, 22, 0.18);
+  border-left: 1px solid rgba(46, 204, 16, 0.18);
   overflow: hidden;
   box-shadow:
     inset 1px 0 0 rgba(255, 255, 255, 0.03),
@@ -736,7 +1429,7 @@
 .theia-insp__content::-webkit-scrollbar { width: 5px; }
 .theia-insp__content::-webkit-scrollbar-track { background: transparent; }
 .theia-insp__content::-webkit-scrollbar-thumb {
-  background: rgba(132, 204, 22, 0.25);
+  background: rgba(46, 204, 16, 0.25);
   border-radius: 3px;
 }
 
@@ -810,7 +1503,10 @@
   border: 1px solid;
   border-radius: 4px;
   margin-bottom: 10px;
-  transition: all 0.3s ease;
+  /* 🌊 WAVE 8295 — el rAF del banner escribe borderColor/background cada
+   * frame; con `transition: all` cada escritura reiniciaba una interpolación
+   * de 300ms = repaint perpetuo. Dirty-check en el rAF + transición acotada. */
+  transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
 .theia-insp__section-emoji { font-size: 18px; }
@@ -879,7 +1575,7 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--theia-acid);
-  text-shadow: 0 0 6px rgba(132, 204, 22, 0.3);
+  text-shadow: 0 0 6px rgba(46, 204, 16, 0.3);
 }
 
 /* ── Override buttons ── */
@@ -933,8 +1629,8 @@
   align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(132, 204, 22, 0.04);
-  border: 1px solid rgba(132, 204, 22, 0.15);
+  background: rgba(46, 204, 16, 0.04);
+  border: 1px solid rgba(46, 204, 16, 0.15);
   border-radius: 4px;
   font-size: 9px;
   line-height: 1.5;
@@ -946,7 +1642,7 @@
 
 .theia-insp__footer code {
   font-family: inherit;
-  background: rgba(132, 204, 22, 0.12);
+  background: rgba(46, 204, 16, 0.12);
   color: var(--theia-acid-bright);
   padding: 1px 4px;
   border-radius: 2px;
@@ -968,9 +1664,9 @@
   min-height: 0;
   max-height: min(430px, 46vh);
   background:
-    linear-gradient(180deg, rgba(132, 204, 22, 0.08) 0%, rgba(11, 18, 32, 0.92) 60%),
+    linear-gradient(180deg, rgba(46, 204, 16, 0.08) 0%, rgba(11, 18, 32, 0.92) 60%),
     rgba(8, 11, 20, 0.94);
-  border: 1px solid rgba(132, 204, 22, 0.2);
+  border: 1px solid rgba(46, 204, 16, 0.2);
   border-radius: 8px;
   backdrop-filter: blur(10px) saturate(1.05);
   overflow: hidden;
@@ -997,8 +1693,8 @@
   height: 22px;
   padding: 0;
   flex-shrink: 0;
-  background: rgba(163, 230, 53, 0.06);
-  border: 1px solid rgba(163, 230, 53, 0.25);
+  background: rgba(57, 255, 20, 0.06);
+  border: 1px solid rgba(57, 255, 20, 0.25);
   border-radius: 4px;
   color: var(--theia-text-dim);
   cursor: pointer;
@@ -1008,9 +1704,9 @@
 
 .theia-live-deck__collapse:hover {
   color: var(--theia-primary);
-  border-color: rgba(163, 230, 53, 0.55);
-  background: rgba(163, 230, 53, 0.12);
-  box-shadow: 0 0 8px rgba(163, 230, 53, 0.2);
+  border-color: rgba(57, 255, 20, 0.55);
+  background: rgba(57, 255, 20, 0.12);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
 }
 
 /* nombre del pack activo/expandido visible cuando los slots están plegados */
@@ -1036,13 +1732,41 @@
   font-weight: 800;
   letter-spacing: 3px;
   color: var(--theia-acid-bright);
-  text-shadow: 0 0 10px rgba(132, 204, 22, 0.45);
+  text-shadow: 0 0 10px rgba(46, 204, 16, 0.45);
 }
 
 .theia-live-deck__count {
   font-size: 9px;
   letter-spacing: 1.6px;
   color: var(--theia-text-muted);
+}
+
+/* 🌊 WAVE 8299 — rescan manual de la librería de disco */
+.theia-live-deck__rescan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(57, 255, 20, 0.18);
+  border-radius: 4px;
+  color: var(--theia-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.theia-live-deck__rescan:hover:not(:disabled) {
+  color: var(--theia-primary);
+  border-color: rgba(57, 255, 20, 0.55);
+}
+
+.theia-live-deck__rescan:disabled {
+  opacity: 0.4;
+  cursor: wait;
 }
 
 /* ── Fila de slots ── */
@@ -1053,7 +1777,7 @@
   overflow-x: auto;
   flex: 0 0 auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(132, 204, 22, 0.35) rgba(0, 0, 0, 0.24);
+  scrollbar-color: rgba(46, 204, 16, 0.35) rgba(0, 0, 0, 0.24);
 }
 
 /* 🌊 WAVE 8255 — accordion: slots plegados → la expansión crece */
@@ -1064,12 +1788,12 @@
 .theia-live-deck__slots::-webkit-scrollbar { height: 6px; }
 .theia-live-deck__slots::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.24); }
 .theia-live-deck__slots::-webkit-scrollbar-thumb {
-  background: rgba(132, 204, 22, 0.35);
+  background: rgba(46, 204, 16, 0.35);
   border-radius: 4px;
 }
 
 .theia-pack-slot {
-  --pack-accent: rgba(132, 204, 22, 0.85);
+  --pack-accent: rgba(46, 204, 16, 0.85);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1099,7 +1823,7 @@
 .theia-pack-slot.is-expanded {
   border-color: var(--pack-accent);
   background:
-    linear-gradient(180deg, rgba(132, 204, 22, 0.18) 0%, rgba(132, 204, 22, 0.05) 100%),
+    linear-gradient(180deg, rgba(46, 204, 16, 0.18) 0%, rgba(46, 204, 16, 0.05) 100%),
     rgba(8, 11, 20, 0.92);
 }
 
@@ -1212,12 +1936,17 @@
   color: #ffffff;
   background: rgba(239, 68, 68, 0.55);
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
-  animation: theia-delete-arm 0.6s ease-in-out infinite alternate;
 }
 
-@keyframes theia-delete-arm {
-  from { box-shadow: 0 0 4px rgba(239, 68, 68, 0.4); }
-  to   { box-shadow: 0 0 10px rgba(239, 68, 68, 0.9); }
+/* 🌊 WAVE 8295 — pulso ARM via ::after + opacity (composited) */
+.theia-pack-slot__delete.is-armed::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+  pointer-events: none;
+  animation: theia-glow-breathe 0.6s ease-in-out infinite;
 }
 
 /* ── Expansión: grilla de Atom Tiles ── */
@@ -1232,7 +1961,7 @@
   min-height: 0;
   max-height: min(220px, 26vh);
   overflow: hidden;
-  border-top: 1px solid rgba(132, 204, 22, 0.18);
+  border-top: 1px solid rgba(46, 204, 16, 0.18);
   background: rgba(0, 0, 0, 0.32);
   padding: 10px 16px 14px;
 }
@@ -1319,21 +2048,25 @@
   overflow-x: hidden;
   padding-bottom: 28px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(132, 204, 22, 0.35) rgba(0, 0, 0, 0.24);
+  scrollbar-color: rgba(46, 204, 16, 0.35) rgba(0, 0, 0, 0.24);
 }
 
 .theia-live-deck__tile-grid::-webkit-scrollbar { width: 6px; }
 .theia-live-deck__tile-grid::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.24); }
 .theia-live-deck__tile-grid::-webkit-scrollbar-thumb {
-  background: rgba(132, 204, 22, 0.35);
+  background: rgba(46, 204, 16, 0.35);
   border-radius: 4px;
 }
 
 .theia-atom-tile {
-  --atom-accent: rgba(132, 204, 22, 0.85);
+  --atom-accent: rgba(46, 204, 16, 0.85);
   position: relative;
   display: flex;
   flex-direction: column;
+  /* 🌊 WAVE 8301 — min-width:0: el grid item puede encoger al track
+   * (minmax(128px,1fr)); sin él el nowrap del id largo (glsl_*) forzaba
+   * el tile a desbordar la celda en lugar de truncar con ellipsis. */
+  min-width: 0;
   gap: 5px;
   /* 🌊 WAVE 8255 — tiles compactos: más átomos visibles por fila */
   padding: 8px 10px;
@@ -1353,7 +2086,7 @@
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5), 0 0 14px var(--atom-accent);
   background:
-    linear-gradient(180deg, rgba(132, 204, 22, 0.18) 0%, rgba(132, 204, 22, 0.05) 100%),
+    linear-gradient(180deg, rgba(46, 204, 16, 0.18) 0%, rgba(46, 204, 16, 0.05) 100%),
     rgba(8, 11, 20, 0.92);
 }
 
@@ -1371,7 +2104,18 @@
     linear-gradient(180deg, rgba(251, 191, 36, 0.16) 0%, rgba(251, 191, 36, 0.05) 100%),
     rgba(8, 11, 20, 0.92);
   box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
-  animation: theia-atom-arm 0.9s ease-in-out infinite alternate;
+}
+
+/* 🌊 WAVE 8295 — pulso ARMED via ::before + opacity (composited). El ::after
+   ya se usa para la etiqueta 'ARMED'. */
+.theia-atom-tile.is-armed::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
+  pointer-events: none;
+  animation: theia-glow-breathe 0.9s ease-in-out infinite;
 }
 
 .theia-atom-tile.is-armed::after {
@@ -1385,9 +2129,39 @@
   color: rgba(251, 191, 36, 0.95);
 }
 
-@keyframes theia-atom-arm {
-  from { box-shadow: 0 0 6px rgba(251, 191, 36, 0.22); }
-  to   { box-shadow: 0 0 18px rgba(251, 191, 36, 0.55); }
+/* 🌊 WAVE 8295 — COMPOSITOR-ONLY GLOW: los pulsos de halo viven en
+ * pseudo-elementos con el box-shadow FIJO (rasterizado una sola vez); solo
+ * se anima `opacity`, propiedad acelerada por el compositor. Nunca animar
+ * box-shadow/filter directamente: cada frame era un repaint + re-blur. */
+@keyframes theia-glow-breathe {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 1; }
+}
+
+/* 🩸 WAVE 8294 — átomo VIVO en GPU (verdad del perf-report, no intent).
+   Acento del pack/sistema en verde-lima, fijo (no pulsa: no es una
+   promesa, es el estado real). Gana sobre is-armed cuando coinciden. */
+.theia-atom-tile.is-active {
+  border-color: var(--atom-accent);
+  background:
+    linear-gradient(180deg, rgba(46, 204, 16, 0.14) 0%, rgba(46, 204, 16, 0.04) 100%),
+    rgba(8, 11, 20, 0.92);
+  box-shadow: 0 0 0 1px var(--atom-accent), 0 0 16px rgba(46, 204, 16, 0.30);
+}
+
+.theia-atom-tile.is-active::after {
+  content: '● LIVE';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--atom-accent);
+}
+
+.theia-atom-tile.is-active .theia-atom-tile__thumb {
+  color: var(--atom-accent);
 }
 
 .theia-atom-tile__thumb {
@@ -1406,6 +2180,7 @@
   font-weight: 700;
   letter-spacing: 0.6px;
   color: var(--theia-text);
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1416,6 +2191,12 @@
   letter-spacing: 1px;
   color: var(--theia-text-muted);
   text-transform: uppercase;
+  /* 🌊 WAVE 8301 — misma defensa que __name: meta larga (duración +
+     A/C/O) nunca desborda la tarjeta. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .theia-atom-tile__badges {
@@ -1445,30 +2226,201 @@
   border-color: rgba(244, 114, 182, 0.7);
 }
 
+/* 🌊 WAVE 8302 · M3 — botón ✕ de mutaciones: invisible hasta hover del
+ * tile (como pack-slot__delete, sin arm-confirm — la mutación es barata
+ * de regenerar y el click lleva stopPropagation). */
+.theia-atom-tile__delete {
+  position: absolute;
+  top: 4px;
+  /* 🌊 WAVE 8303 — left, no right: el chip GEN/VID ya ocupa top-right. */
+  left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.14s ease, color 0.14s ease, background 0.14s ease;
+  z-index: 2;
+}
+
+.theia-atom-tile:hover .theia-atom-tile__delete {
+  opacity: 0.85;
+}
+
+.theia-atom-tile__delete:hover {
+  color: rgba(239, 68, 68, 0.95);
+  background: rgba(239, 68, 68, 0.16);
+  opacity: 1;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * 🎛️ TRANSPORT BAR — WAVE 8239 · U1 (Hybrid Deck)
  * Play/Pause · Loop · SeekBar bajo el viewport, encima del LiveDeck.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-.theia-transport {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* 🌊 WAVE 8255 — discreto: ribbon de 28px, flex-shrink:0 en la stage
-   * (nunca crece, nunca cede vertical al deck/viewport). */
-  flex: 0 0 auto;
-  padding: 4px 12px;
+/* ──────────────────────────────────────────────────────────────────────
+   🦎 WAVE 8304 — CONTEXT STRIP (slot camaleónico 56px)
+   Contenedor fijo bajo el Program Viewport; los 3 panes (idle / video /
+   shader) se apilan en absolute y se crossfaden por opacity 150ms —
+   altura constante, cero layout shift al cambiar de medio.
+   ─────────────────────────────────────────────────────────────────── */
+.theia-ctxstrip {
+  position: relative;
+  height: 56px;
+  flex: 0 0 56px;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(9, 14, 24, 0.82) 0%, rgba(5, 10, 18, 0.6) 100%);
-  border-top: 1px solid rgba(163, 230, 53, 0.14);
+  border-top: 1px solid rgba(57, 255, 20, 0.14);
   border-bottom: 1px solid var(--theia-line);
 }
 
-/* 🌊 WAVE 8252 — sin vídeo activo la barra de transporte es peso muerto:
- * colapsa por completo (reclama el renglón para el viewport/deck en vez de
- * ocupar espacio para un control inerte). */
-.theia-transport.is-inactive {
-  display: none;
+.theia-ctxstrip__pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.theia-ctxstrip__pane.is-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* — IDLE — */
+.theia-ctxstrip__pane--idle {
+  justify-content: center;
+  gap: 10px;
+}
+
+.theia-ctxstrip__idle-dot {
+  color: var(--theia-text-dim);
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.theia-ctxstrip__idle-text {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--theia-text-dim);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* — SHADER — faders genéticos compactos ── */
+.theia-ctxstrip__genes {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.theia-ctxstrip__nogenes {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--theia-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theia-ctxstrip__fader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 1 180px;
+}
+
+.theia-ctxstrip__fader-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--theia-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 64px;
+  flex-shrink: 0;
+}
+
+.theia-ctxstrip__fader-input {
+  flex: 1 1 auto;
+  min-width: 48px;
+}
+
+.theia-ctxstrip__fader-value {
+  font-size: 10px;
+  color: var(--theia-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.theia-ctxstrip__darwin {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* El input de los micro-faders comparte la piel de la seek bar. */
+.theia-ctxstrip__fader-input[type='range'] {
+  appearance: none;
+  height: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.theia-ctxstrip__fader-input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, var(--theia-primary) 0%, var(--theia-primary) var(--pct, 0%), rgba(57, 255, 20, 0.15) var(--pct, 0%), rgba(57, 255, 20, 0.15) 100%);
+}
+
+.theia-ctxstrip__fader-input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--theia-primary);
+  margin-top: -2.5px;
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
+}
+
+.theia-ctxstrip__fader-input[type='range']::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(57, 255, 20, 0.15);
+}
+
+.theia-ctxstrip__fader-input[type='range']::-moz-range-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--theia-primary);
+}
+
+.theia-ctxstrip__fader-input[type='range']::-moz-range-thumb {
+  width: 8px;
+  height: 8px;
+  border: none;
+  border-radius: 50%;
+  background: var(--theia-primary);
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
 }
 
 .theia-transport__btn {
@@ -1478,8 +2430,8 @@
   width: 24px;
   height: 24px;
   flex-shrink: 0;
-  background: rgba(163, 230, 53, 0.06);
-  border: 1px solid rgba(163, 230, 53, 0.3);
+  background: rgba(57, 255, 20, 0.06);
+  border: 1px solid rgba(57, 255, 20, 0.3);
   border-radius: 4px;
   color: var(--theia-text-dim);
   cursor: pointer;
@@ -1490,19 +2442,19 @@
 
 .theia-transport__btn:hover:not(:disabled) {
   color: var(--theia-primary);
-  border-color: rgba(163, 230, 53, 0.6);
-  background: rgba(163, 230, 53, 0.12);
-  box-shadow: 0 0 10px rgba(163, 230, 53, 0.25);
+  border-color: rgba(57, 255, 20, 0.6);
+  background: rgba(57, 255, 20, 0.12);
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.25);
 }
 
 .theia-transport__btn.is-active {
   color: var(--theia-primary);
-  border-color: rgba(163, 230, 53, 0.7);
-  background: rgba(163, 230, 53, 0.16);
+  border-color: rgba(57, 255, 20, 0.7);
+  background: rgba(57, 255, 20, 0.16);
   box-shadow:
-    0 0 12px rgba(163, 230, 53, 0.3),
-    inset 0 0 8px rgba(163, 230, 53, 0.08);
-  text-shadow: 0 0 6px rgba(163, 230, 53, 0.6);
+    0 0 12px rgba(57, 255, 20, 0.3),
+    inset 0 0 8px rgba(57, 255, 20, 0.08);
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.6);
 }
 
 .theia-transport__btn:disabled {
@@ -1535,7 +2487,7 @@
   height: 10px;
   border-radius: 50%;
   background: var(--theia-primary);
-  box-shadow: 0 0 8px rgba(163, 230, 53, 0.7);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.7);
   transition: transform 0.1s ease;
 }
 
@@ -1549,7 +2501,7 @@
   border-radius: 50%;
   border: none;
   background: var(--theia-primary);
-  box-shadow: 0 0 8px rgba(163, 230, 53, 0.7);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.7);
 }
 
 .theia-transport__seek:disabled {
@@ -1572,9 +2524,9 @@
 
 /* ── LiveDeck: drag-over affordance (D&D fallback U1) ── */
 .theia-live-deck.is-dragover {
-  outline: 1.5px dashed rgba(163, 230, 53, 0.6);
+  outline: 1.5px dashed rgba(57, 255, 20, 0.6);
   outline-offset: -4px;
-  background: rgba(163, 230, 53, 0.05);
+  background: rgba(57, 255, 20, 0.05);
 }
 
 /* ── Atom tile: media-kind chip (GEN shader / VID video) ── */
@@ -1594,8 +2546,8 @@
 
 .theia-atom-tile.is-shader .theia-atom-tile__kind {
   color: var(--theia-primary);
-  border-color: rgba(163, 230, 53, 0.5);
-  text-shadow: 0 0 6px rgba(163, 230, 53, 0.5);
+  border-color: rgba(57, 255, 20, 0.5);
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1607,7 +2559,7 @@
 .theia-header__spacer { flex: 1; }
 
 .theia-insp__sliver { cursor: pointer; }
-.theia-insp__sliver:hover { background: rgba(163, 230, 53, 0.05); }
+.theia-insp__sliver:hover { background: rgba(57, 255, 20, 0.05); }
 
 .theia-insp__collapse {
   margin-left: 4px;
@@ -1622,49 +2574,25 @@
 }
 .theia-insp__collapse:hover { color: var(--theia-primary); }
 
-/* ── Masters block: sys row + fader rows ── */
-.theia-insp__sys {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.theia-insp__sys .theia-power {
-  flex: 1;
-  height: 34px;
-  padding: 0 10px;
-  justify-content: center;
-  letter-spacing: 2px;
-  font-size: 10px;
-}
-.theia-insp__sys .theia-blackout {
-  height: 34px;
-  padding: 0 10px;
-  font-size: 8px;
-}
-
-/* Faders en fila label|input|value dentro del Inspector */
-.theia-insp__masters {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.theia-insp__masters .theia-master {
+/* ── Masters: filas label|input|value (heredado del antiguo bloque
+   insp__masters — 🖥️ WAVE 8303: ahora vive en la columna MastersPanel) ── */
+.theia-masters__full .theia-master {
   flex-direction: row;
   align-items: center;
   gap: 8px;
   padding: 3px 4px;
 }
-.theia-insp__masters .theia-master__label {
+.theia-masters__full .theia-master__label {
   width: 56px;
   flex-shrink: 0;
   text-align: left;
 }
-.theia-insp__masters .theia-master__input {
+.theia-masters__full .theia-master__input {
   flex: 1;
   width: auto;
 }
-.theia-insp__masters .theia-master__value {
-  width: 40px;
+.theia-masters__full .theia-master__value {
+  width: 44px;
   flex-shrink: 0;
   text-align: right;
 }
@@ -1699,7 +2627,7 @@
 }
 .theia-insp__genome-id.is-live {
   color: var(--theia-primary);
-  text-shadow: 0 0 6px rgba(163, 230, 53, 0.4);
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.4);
 }
 
 .theia-insp__buttons--darwin { grid-template-columns: 1fr 1fr 1fr; }
@@ -1724,7 +2652,7 @@
 .theia-insp__btn--mut:hover:not(:disabled) {
   border-color: var(--theia-primary);
   color: var(--theia-primary);
-  box-shadow: 0 0 12px rgba(163, 230, 53, 0.3);
+  box-shadow: 0 0 12px rgba(57, 255, 20, 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1770,7 +2698,7 @@
   height: 100%;
   border-radius: 2px;
   background: var(--theia-primary);
-  box-shadow: 0 0 6px rgba(163, 230, 53, 0.5);
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
   transition: width 0.4s ease;
 }
 

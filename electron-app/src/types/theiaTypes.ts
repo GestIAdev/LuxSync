@@ -176,6 +176,19 @@ export interface ITheiaPackManifest {
   readonly accentColor?: string
   /** Orden explícito de átomos (slugs). Los no listados quedan al final. */
   readonly atomOrder?: readonly string[]
+  /**
+   * 🌊 WAVE 8299 — ajustes del Inspector persistidos por átomo (atomId →
+   * overrides). El store los hidrata en `atomGeneValues`/`atomParamValues`
+   * al escanear la librería y los reescribe debounced cuando el operador
+   * mueve los faders genéticos o los `@euclid param`.
+   */
+  readonly atomOverrides?: Record<string, ITheiaAtomOverrides>
+}
+
+/** 🌊 WAVE 8299 — ajustes persistidos de un átomo en `pack.theiapack.json`. */
+export interface ITheiaAtomOverrides {
+  readonly genes?: Record<string, number>
+  readonly params?: Record<string, number>
 }
 
 /**
@@ -202,6 +215,46 @@ export interface ITheiaPack {
    * Útil para que la UI distinga "sesión actual" vs "Pack del filesystem".
    */
   readonly pending?: boolean
+}
+
+// ─── WAVE 8299 · LIBRARY SCAN (Main → Renderer payload) ─────────────────────
+
+/** Extensión aceptada por el escáner de packs de disco. */
+export type TheiaScannedFileKind = 'glsl' | 'theia'
+
+/**
+ * Un archivo de átomo encontrado en disco por `theia:library:scan`.
+ * `text` viaja inline (eager): un `.glsl`/`.theia` pesa ~10-30KB — trivial
+ * sobre IPC y evita un segundo round-trip por átomo.
+ */
+export interface ITheiaScannedAtomFile {
+  /** Nombre del archivo con extensión (`mandala.glsl`). */
+  readonly fileName: string
+  /** Ruta relativa al pack root (`media/mandala.glsl`). */
+  readonly relPath: string
+  /** Ruta absoluta en disco — se convierte en `atom.filePath` real. */
+  readonly absPath: string
+  readonly kind: TheiaScannedFileKind
+  /** Contenido UTF-8 del archivo. */
+  readonly text: string
+}
+
+/** Un directorio-pack escaneado dentro de `userData/theia/packs/`. */
+export interface ITheiaScannedPack {
+  /** packId = nombre del directorio (o `loose` para archivos a nivel raíz). */
+  readonly id: string
+  /** Ruta absoluta del directorio del pack. */
+  readonly rootPath: string
+  /** Manifest parseado de `pack.theiapack.json`, null si ausente/malformado. */
+  readonly manifest: ITheiaPackManifest | null
+  readonly files: readonly ITheiaScannedAtomFile[]
+}
+
+/** Resultado completo de `theia:library:scan`. */
+export interface ITheiaLibraryScan {
+  /** Ruta absoluta al root escaneado (`userData/theia/packs`). */
+  readonly packsRoot: string
+  readonly packs: readonly ITheiaScannedPack[]
 }
 
 // ─── RESULTADO DEL MATCHING ───────────────────────────────────────────────────

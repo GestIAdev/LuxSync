@@ -71,12 +71,15 @@ export class TheiaTelemetryPump {
         this.scratchI32 = new Int32Array(this.scratch);
         /**
          * 🔧 WAVE 8277 · F0 — mensaje REUTILIZADO: postMessage serializa por
-         * structured-clone de forma síncrona — basta mutar `seq`.
+         * structured-clone de forma síncrona, así que basta mutar `seq` antes de
+         * cada envío. Elimina el objeto {type,seq,buffer} por tick×link.
          */
         this.msg = { type: THEIA_TELEMETRY_MSG, seq: 0, buffer: this.scratch };
         /**
-         * 🔧 WAVE 8277 · F0 — vistas sobre las fuentes, cacheadas por
-         * IDENTIDAD de SAB: solo re-nacen si el buffer fuente cambia.
+         * 🔧 WAVE 8277 · F0 — vistas sobre las fuentes, cacheadas por IDENTIDAD
+         * de SAB: solo se re-crean cuando `getSources()` devuelve un buffer
+         * distinto (attach/resync del orquestador). En el steady-state @44Hz
+         * `tick()` no ejecuta ningún `new`.
          */
         this.fcSrc = null;
         this.fcView = null;
@@ -185,13 +188,16 @@ export class TheiaTelemetryPump {
                 }
                 continue;
             }
-            // Cabecera: FrameContextRing (16B) verbatim — `fcView` cubre
+            // Cabecera: FrameContextRing (16B) verbatim — el reloj maestro viaja
+            // en la cabecera del wire buffer (amendment 8215). `fcView` cubre
             // exactamente los slots 0..3 → `set` los copia sin subarray.
             dst.fill(0);
             if (this.fcView)
                 dst.set(this.fcView);
-            // Payload: anillo Euclid (496B) + FLAGS/ENUMS en slots 56/57 —
-            // copia seqlock-verificada sobre vistas fijas.
+            // Payload: anillo Euclid (496B) + FLAGS/ENUMS en slots 56/57 — copia
+            // seqlock-verificada sobre vistas fijas. Si colisiona con una
+            // escritura del TickEngine en los 3 intentos, el link omite el tick
+            // (nunca se envía data rasgada).
             if (this.snapshotter && !this.snapshotter.snapshot()) {
                 link.dropped++;
                 continue;

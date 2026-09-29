@@ -261,6 +261,9 @@ export class AudioPipelineManager {
                 // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
                 if (levels.agcGainFactor != null)
                     _d.agcGainFactor = levels.agcGainFactor;
+                // 🩸 WAVE 8292: AGC pumping score → isAGCTrap
+                if (levels.agcPumping != null)
+                    _d.agcPumping = levels.agcPumping;
                 // 🎹 WAVE 8227 · E1: chromagrama 12 bins
                 if (levels.chroma != null)
                     _d.chroma = levels.chroma;
@@ -337,6 +340,9 @@ export class AudioPipelineManager {
                 // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
                 if (levels.agcGainFactor != null)
                     _d.agcGainFactor = levels.agcGainFactor;
+                // 🩸 WAVE 8292: AGC pumping score → isAGCTrap
+                if (levels.agcPumping != null)
+                    _d.agcPumping = levels.agcPumping;
                 // 🎹 WAVE 8227 · E1: chromagrama 12 bins
                 if (levels.chroma != null)
                     _d.chroma = levels.chroma;

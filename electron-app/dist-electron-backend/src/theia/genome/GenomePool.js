@@ -360,6 +360,31 @@ export function atomIdForGenome(genomeId) {
     return _genomeIndex.get(genomeId);
 }
 /**
+ * 🌊 WAVE 8302 · M3 — baja manual de una mutación (`core#seed`).
+ * Libera la contabilidad interna del pool (población del core, fitness,
+ * índices genome↔atom) para que el slot quede realmente libre.
+ *
+ * Deliberadamente NO toca el registry ni el pack store: el llamador es
+ * `useTheiaPackStore.removeAtom`, que ya hace ambas cosas — este helper
+ * existe para que la acción del store pueda limpiar el pool sin conocer
+ * sus mapas privados. Idempotente: átomos que nunca fueron población
+ * (cores de disco, vídeos) salen sin efecto.
+ */
+export function releaseGenomeAtom(atomId) {
+    const coreId = atomId.split('#')[0];
+    // El core (atomId === coreId) es inmortal: conserva su plaza en la
+    // población — solo se limpian fitness/índices si algún día los tuviera.
+    if (atomId !== coreId)
+        _populations.get(coreId)?.delete(atomId);
+    _fitness.delete(atomId);
+    const genomeId = _genomeOfAtom.get(atomId);
+    if (genomeId) {
+        if (_genomeIndex.get(genomeId) === atomId)
+            _genomeIndex.delete(genomeId);
+        _genomeOfAtom.delete(atomId);
+    }
+}
+/**
  * 🧬 WAVE 8235 · G3 — crossover §4.6: hijo de dos individuos del MISMO
  * core (genes homólogos). Los padres pueden ser el core (`core`), una
  * variante (`core#seed`) o cualquier fenotipo registrado — su fenotipo

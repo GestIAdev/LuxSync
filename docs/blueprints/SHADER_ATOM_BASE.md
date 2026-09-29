@@ -10,6 +10,10 @@ falta más contexto del repositorio.
 > `u_activeEffectEnergy` (paridad video↔DMX, §8.1). Incluye la página B
 > física de Liquid (§6.2), `euTimbre()` (§8.2) y la deprecación del
 > estrobo (Fase 5).*
+>
+> *WAVE 8290 añade: `u_speed` obligatorio en los osciladores sobre fases
+> crudas (§3.1) y profundidad relativa a cámara contra el látigo angular
+> (§3.2) — ambas reglas auditadas por `migrate_atoms_v2.js` (R5/R6).*
 
 Los átomos viven en `electron-app/assets/shaders/*.glsl`. El motor compila cada
 archivo como: **preámbulo generado → tus defines/meta → tu cuerpo → epílogo
@@ -25,6 +29,7 @@ generado**. El artista escribe `mainImage()`; el motor posee la salida.
 // @euclid family  ether                 // simple o compuesta: swarm+conformal
 // @euclid genome  aggression=0.40 chaos=0.55 organicity=0.90   // 0..1, opcional
 // @euclid zone    ambient..peak         // silence < valley < ambient < gentle < active < intense < peak
+// @euclid vibes   techno-club+rave       // elegibilidad Selene (compatibleVibes); ausente → generic
 // @euclid seed    123456789             // opcional; 'auto' = hash del nombre
 // @euclid param   u_warpBoost float -1.0 1.0 0.0 "Warp"        // slider de UI
 // @euclid gene    G_SYM   struct int   3    9     5   a:+0.3 c:+0.2 o:-0.4
@@ -78,7 +83,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 | `u_beatTime` | Beats acumulados continuos, **escalados por SPEED**, con re-anclaje de fase al audio (se relaja a <1×). El motor de fase principal. |
 | `u_dt` | Delta del frame (s). |
 | `u_tSec` | Reloj de pared del host (sin gobernar). |
-| `u_bpm`, `u_beatPhase`, `u_barPhase`, `u_beatConfidence` | Reloj musical crudo del tracker. |
+| `u_bpm`, `u_beatPhase`, `u_barPhase`, `u_beatConfidence` | Reloj musical **crudo** del tracker — cicla al BPM real aunque SPEED=0. |
+| `u_speed` | El fader SPEED como **valor** (0 = congelado, 1 = nominal) — gobierna los osciladores crudos (§3.1). |
 | `u_energyTime` | ∫energy·dt — fase continua sin multiplicar señales. |
 | `u_barCount` | Compases absolutos (fronteras de frase). |
 | `iTime`, `iResolution`, `iFrameRate` | Aliases Shadertoy (`u_time`, `u_resolution`, `1/u_dt`). |
@@ -89,6 +95,53 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 float gBeats = u_beatTime + u_time * 0.05;   // ~95% beat, 5% deriva libre
 float gCamZ  = gBeats * 1.1 + u_time * 0.35; // viaje de cámara
 ```
+
+### 3.1 Osciladores cíclicos — `u_speed` obligatorio (WAVE 8290)
+
+`u_time`/`u_beatTime` ya vienen escalados por SPEED — se congelan solos.
+Las fases crudas (`u_beatPhase`, `u_barPhase`, `u_tSec`) **siguen ciclando
+al BPM real aunque el fader esté a 0**, así que **todo `sin`/`cos`
+construido sobre una fase cruda multiplica su desviación por `u_speed`**:
+
+```glsl
+float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase) * u_speed;  // pulso
+float swell = sin(3.1415927 * u_barPhase) * u_speed;              // compás
+```
+
+- `u_speed` escala la **desviación**, no la fase: a `SPEED=0` el
+  oscilador descansa en su centro (`beatP→0.5`, `swell→0`) en vez de
+  seguir orbitando por encima del límite del operador.
+- En expresiones compuestas (`cos(a*fold + fase)`) el fader entra donde
+  vive el término temporal — decídelo caso a caso; el migrador lo marca
+  para revisión manual.
+- Los `sin/cos` sobre `gBeats`/`u_beatTime` ya se congelan solos — **no**
+  llevan `u_speed` extra (el fader ya está dentro del reloj).
+- `migrate_atoms_v2.js` (R5) aplica `× u_speed` automáticamente a los
+  osciladores de fase pura y hace fallar `--check` si falta.
+
+### 3.2 Profundidad relativa a cámara — regla del látigo angular (WAVE 8290)
+
+`p.z`/`q.z` son coordenadas de mundo **absolutas**. Si la cámara vuela
+(`camZ = gBeats * G_VEL` crece sin cota), cualquier término de
+ángulo/torsión alimentado por `z` se enrolla sin límite y acaba licuando
+la geometría — el "látigo angular" que deformaba `aether_serpent` y
+`neon_conduit`:
+
+```glsl
+// ✗ mal — el pitch de la hélice depende de cuánto ha volado la cámara
+float tw = gTwist * p.z + gBeats;
+
+// ✓ bien — profundidad delante de la lente → pitch constante
+float tw = gTwist * (p.z - gCamZ) + gBeats;   // gCamZ = camZ (global, asignada en mainImage)
+```
+
+- Aplica a `rot2(...)`, `atan`, fases de hélice — **cualquier función de
+  ángulo** alimentada por profundidad.
+- `p.z`/`q.z` siguen siendo válidos para atenuación, repetición de
+  dominio, índices de bloque (`floor(p.z * 1.5)`), fog, carriles… — solo
+  la profundidad **angular** debe ser relativa a cámara.
+- El migrador (R6) marca para revisión cuando `p.z`/`q.z` alimenta un
+  término angular sin resta de cámara.
 
 ## 4. Transitorios musicales (tiempo real — INMUNES al SPEED)
 
@@ -258,8 +311,9 @@ geometría — es continua, se congela y describe *intención*, no *hechos*.
 
 - **Movimiento base** → relojes musicales: `u_beatTime`, `u_beatPhase`
   (pulso por beat), `u_barPhase` (respiración por compás), `u_barCount`.
-  Patrones: `beatP = 0.5+0.5*cos(6.2831853*u_beatPhase)` ·
-  `swell = sin(3.1415927*u_barPhase)`.
+  Patrones: `beatP = 0.5+0.5*cos(6.2831853*u_beatPhase)*u_speed` ·
+  `swell = sin(3.1415927*u_barPhase)*u_speed` (fases crudas → la
+  desviación obedece el fader, §3.1).
 - **Bursts / eventos extremos** → `u_activeEffectEnergy` (hold durante la
   duración REAL del clip Hephaestus) esculpida por `u_activeEffectAge`.
   Si una luz DMX no está ejecutando un efecto, el átomo no detona.
@@ -379,7 +433,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // 2. Relojes — continuo gobernado por el BPM; burst = clip físico vivo
   float beats = u_beatTime + u_time * 0.05;
-  float swell = sin(3.1415927 * u_barPhase);            // respiración de compás
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;  // respiración de compás (§3.1)
   float fx    = u_activeEffectEnergy;                   // 🔫 paridad video↔DMX
 
   // 3. Coordenadas centradas con aspecto corregido
@@ -424,9 +478,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 - [ ] Params `@euclid` declarados como `uniform` y neutros a 0.
 - [ ] `mainImage(out vec4 c, in vec2 fragCoord)` — firma exacta.
 - [ ] Movimiento continuo sobre `u_beatTime`/`u_beatPhase`/`u_barPhase`
-      (obedece SPEED); impactos físicos sobre `u_kickPulse`/`u_*Energy`
-      (tiempo real); bursts cognitivos SOLO sobre `u_activeEffectEnergy` —
-      prohibidos `u_approach`/`u_impact`/predicción en geometría (§8.1).
+      (obedece SPEED — todo `sin`/`cos` sobre fases crudas multiplica su
+      desviación por `u_speed`, §3.1); impactos físicos sobre
+      `u_kickPulse`/`u_*Energy` (tiempo real); bursts cognitivos SOLO
+      sobre `u_activeEffectEnergy` — prohibidos `u_approach`/`u_impact`/
+      predicción en geometría (§8.1).
+- [ ] Látigo angular — torsión/`rot2`/fase por profundidad resta la cámara
+      (`p.z - gCamZ`, §3.2); `p.z`/`q.z` sin resta solo para atenuación,
+      bloques, fog…
 - [ ] `euChannels` evaluado una vez (firma de 3 canales); `live`
       multiplica la vida del átomo.
 - [ ] Texturas/morphs por naturaleza del audio via `euTimbre()` (§8.2) —

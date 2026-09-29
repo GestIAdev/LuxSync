@@ -54,9 +54,20 @@
 }
 
 .brain-status.active {
+  position: relative;
   background: rgba(0, 255, 0, 0.2);
   color: #00ff00;
   border: 1px solid rgba(0, 255, 0, 0.4);
+}
+
+/* 🌊 WAVE 8295 — pulso green via ::after + opacity (composited) */
+.brain-status.active::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.55);
+  pointer-events: none;
   animation: pulse-green 2s ease-in-out infinite;
 }
 
@@ -227,9 +238,10 @@
 }
 
 /* Animations */
+/* 🌊 WAVE 8295 — antes animaba box-shadow (repaint por frame) */
 @keyframes pulse-green {
-  0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 0, 0.3); }
-  50% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.6); }
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
 }
 
 @keyframes blink {

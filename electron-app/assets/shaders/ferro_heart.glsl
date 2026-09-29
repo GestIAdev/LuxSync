@@ -3,6 +3,7 @@
 // @euclid family  fluid+field
 // @euclid genome  aggression=0.70 chaos=0.40 organicity=0.80
 // @euclid zone    gentle..peak
+// @euclid vibes   rave+techno-club+fiesta-latina
 // @euclid param   u_field float -1.0 1.0 0.0 "Field"
 // @euclid param   u_gloss float -1.0 1.0 0.0 "Gloss"
 // @euclid gene    G_SHARP   struct int   2    6     4    a:+0.5 o:-0.3
@@ -105,8 +106,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — el campo respira con el beat/compás;
   // la inversión de campo y la torre solo existen con clip físico vivo.
   float fx    = u_activeEffectEnergy;
-  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
-  float swell = sin(3.1415927 * u_barPhase);
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase) * u_speed;
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
 
   // Masa magnética — el BAJO es el campo: altura de los picos.
   gH = (0.12 + 0.55 * u_subBass + 0.35 * u_bass) * live * (1.0 + 0.4 * u_field)

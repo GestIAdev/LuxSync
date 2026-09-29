@@ -341,7 +341,9 @@ export class SeleneLux {
                 bands,
                 sectionType: vibeContext.section,
                 isRealSilence: this.computeIsRealSilence(audioMetrics.avgNormEnergy),
-                isAGCTrap: false,
+                // 🩸 WAVE 8292: cortafuegos real — el detector GodEar de pumping
+                // (hueco dembow + flatness + boost HF) cuarentena la página B.
+                isAGCTrap: (audioMetrics.agcPumping ?? 0) > 0.5,
                 harshness: audioMetrics.harshness,
                 flatness: audioMetrics.spectralFlatness,
                 isKick: audioMetrics.kickDetected ?? false,
@@ -458,7 +460,8 @@ export class SeleneLux {
                 bpm: vibeContext.bpm ?? 120,
                 melodyThreshold: 0.4,
                 isRealSilence: this.computeIsRealSilence(audioMetrics.avgNormEnergy),
-                isAGCTrap: false,
+                // 🩸 WAVE 8292: mismo cortafuegos en el fallback Techno Stereo
+                isAGCTrap: (audioMetrics.agcPumping ?? 0) > 0.5,
                 isKick: audioMetrics.kickDetected ?? false,
                 isPLLBeat: audioMetrics.isPLLBeat ?? false, // 🎯 WAVE 2305: EL CABLE CONECTADO
                 sectionType: vibeContext.section,

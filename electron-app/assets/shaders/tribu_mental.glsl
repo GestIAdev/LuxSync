@@ -3,6 +3,7 @@
 // @euclid family  swarm+conformal
 // @euclid genome  aggression=0.60 chaos=0.75 organicity=0.65
 // @euclid zone    gentle..peak
+// @euclid vibes   psytrance+mental-tribe+techno-industrial
 // @euclid param   u_trails float -1.0 1.0 0.0 "Trails"
 // @euclid param   u_swarm  float -1.0 1.0 0.0 "Swarm"
 // @euclid gene    G_FOLD   struct int   5    12    8    a:+0.4 c:+0.3
@@ -54,11 +55,16 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES (§3.1 — euChannels del preámbulo: Ley de Uniformidad G6)
   float glitch, live, groove;
   euChannels(glitch, live, groove);
-  float beats   = u_beatTime + u_time * 0.04;
+  // 🌊 WAVE 8297 · M1 — doma cinética latina: u_beatTime ya viene
+  // escalado linealmente por masterSpeed (W8259) — con el fader bajo el
+  // Droste seguía corriendo. Doma SUPERLINEAL extra (∝ u_speed², suelo
+  // 0.15): el zoom/spin flota en trance denso al mínimo del fader.
+  float tame    = 0.15 + 0.85 * u_speed * u_speed;
+  float beats   = u_beatTime * tame + u_time * 0.04;
   // 🔫 WAVE 8287 · Clean Shot — el zoom/base fluye con beats+compás; la
   // compresión tribal extrema solo con clip físico vivo.
   float fx      = u_activeEffectEnergy;
-  float swell   = sin(3.1415927 * u_barPhase);
+  float swell   = sin(3.1415927 * u_barPhase) * u_speed;
   float aspect  = u_resolution.x / u_resolution.y;
 
   vec2 fc = fragCoord;

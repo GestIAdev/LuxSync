@@ -3,6 +3,7 @@
 // @euclid family  cellular+bio
 // @euclid genome  aggression=0.55 chaos=0.70 organicity=1.00
 // @euclid zone    gentle..peak
+// @euclid vibes   fiesta-latina+chill-lounge
 // @euclid param   u_hunger float -1.0 1.0 0.0 "Hunger"
 // @euclid param   u_relief float -1.0 1.0 0.0 "Relief"
 // @euclid gene    G_SEEDS struct int   2    6     3      a:+0.5

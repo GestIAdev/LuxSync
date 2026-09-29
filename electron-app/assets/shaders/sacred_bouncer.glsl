@@ -3,6 +3,7 @@
 // @euclid family  kifs+kaleido
 // @euclid genome  aggression=0.65 chaos=0.40 organicity=0.75
 // @euclid zone    gentle..peak
+// @euclid vibes   fiesta-latina+pop-rock
 // @euclid param   u_bounce float -1.0 1.0 0.0 "Bounce"
 // @euclid param   u_bloom  float -1.0 1.0 0.0 "Bloom"
 // @euclid gene    G_SYM      struct int   4    12    8    a:+0.2 c:+0.3 o:+0.2
@@ -58,17 +59,21 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — contracción basal por compás; el haz
   // solo se ensancha de verdad con un clip físico vivo.
   float fx    = u_activeEffectEnergy;
-  float swell = sin(3.1415927 * u_barPhase);
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
   float dir   = mod(G_SEED, 2.0) < 1.0 ? 1.0 : -1.0;
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
 
-  // ── 2. EL REBOTE — transitorios en tiempo real (inmunes a SPEED) ────
-  float gain  = 1.0 + 0.5 * u_bounce;
-  float punch = (0.55 * u_kickPulse + 0.30 * u_bass * live) * gain;
-  uv /= 1.0 + 0.55 * punch;                                  // expansión brusca
-  uv.y *= 1.0 + 0.16 * u_kickPulse * gain;                   // squash & stretch
-  uv.x *= 1.0 - 0.09 * u_kickPulse * gain;
+  // ── 2. EL REBOTE — amortiguado por SPEED (🌊 WAVE 8297 · M1): en
+  //     patrones dembow/kick seco el salto instantáneo temblaba; ahora el
+  //     puño se doma con el fader y ambas deformaciones llevan clamp ────
+  float gain   = 1.0 + 0.5 * u_bounce;
+  float tame   = 0.25 + 0.75 * u_speed;
+  float punch  = min((0.55 * u_kickPulse + 0.30 * u_bass * live) * gain * tame, 0.50);
+  uv /= 1.0 + 0.55 * punch;                                  // expansión amortiguada
+  float squash = min(u_kickPulse * gain * tame, 0.80);
+  uv.y *= 1.0 + 0.16 * squash;                               // squash & stretch clampeado
+  uv.x *= 1.0 - 0.09 * squash;
   uv *= 1.0 + 0.2 * swell + 0.15 * fx;                        // compás respira · disparo abre
 
   // ── 3. CALEIDOSCOPIO — rotación continua al compás (obedece SPEED) ──

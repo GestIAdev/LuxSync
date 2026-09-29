@@ -120,10 +120,13 @@
 
 /* Animations for status-ok cards */
 .data-card.status-ok .card-value {
+  text-shadow: 0 0 14px var(--card-accent);
   animation: glow-pulse 2s ease-in-out infinite;
 }
 
+/* 🌊 WAVE 8295 — antes animaba text-shadow (re-blur del texto por frame).
+   Ahora el halo es estático y respira por opacity (composited). */
 @keyframes glow-pulse {
-  0%, 100% { text-shadow: 0 0 10px var(--card-accent); }
-  50% { text-shadow: 0 0 20px var(--card-accent), 0 0 30px var(--card-accent); }
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
 }

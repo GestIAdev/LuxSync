@@ -88,15 +88,26 @@
 
 /* Dirty state — Yellow warning */
 .patch-save-btn.dirty {
+  position: relative;
   background: rgba(251, 191, 36, 0.12);
   border-color: rgba(251, 191, 36, 0.5);
   color: #fbbf24;
+}
+
+/* 🌊 WAVE 8295 — pulso dirty via ::after + opacity (composited) */
+.patch-save-btn.dirty::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+  pointer-events: none;
   animation: dirty-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes dirty-pulse {
-  0%, 100% { box-shadow: 0 0 4px rgba(251, 191, 36, 0.2); }
-  50% { box-shadow: 0 0 12px rgba(251, 191, 36, 0.4); }
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
 }
 
 .patch-save-btn.dirty:hover:not(:disabled) {

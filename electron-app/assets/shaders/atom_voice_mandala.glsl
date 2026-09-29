@@ -3,6 +3,7 @@
 // @euclid family  kaleido+ether
 // @euclid genome  aggression=0.30 chaos=0.45 organicity=0.90
 // @euclid zone    valley..intense
+// @euclid vibes   pop-rock+chill-lounge+fiesta-latina
 // @euclid param   u_order  float -1.0 1.0 0.0 "Order"
 // @euclid param   u_throat float -1.0 1.0 0.0 "Throat"
 // @euclid gene    G_FOLD   struct int   4    9     6    c:+0.3 o:+0.3
@@ -75,7 +76,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // 🔫 WAVE 8287 · Clean Shot — flash solo con clip físico vivo; la
   // respiración basal del UV late con el compás, no con la predicción.
   float fx    = u_activeEffectEnergy;
-  float swell = sin(3.1415927 * u_barPhase);
+  float fxAge = u_activeEffectAge;                     // 🌊 WAVE 8297: radio de la onda
+  float swell = sin(3.1415927 * u_barPhase) * u_speed;
 
   // Voz = peso convexo de euTimbre × presencia sostenida (una sílaba
   // suelta no basta para ordenar el universo).
@@ -119,34 +121,48 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // WAVE 8284 — ease-in-out cúbico en el plegado: la morfosis 6→12 no
   // arranca ni frena en seco, el mandala "florece" en vez de encajar.
   float foldEase = order * order * (3.0 - 2.0 * order);
-  float foldF = mix(G_FOLD, G_FOLD * 2.0, foldEase);
+  // 🌊 WAVE 8297 · M2 — el disparo fuerza el plegado al máximo aunque la
+  // voz aún no lo haya ordenado (el mandala se dilata con el clip).
+  float foldDrive = max(foldEase, smoothstep(0.25, 0.85, fx));
+  float foldF = mix(G_FOLD, G_FOLD * 2.0, foldDrive);
   float f0 = floor(foldF);
   float spin = a + beats * TAU / 64.0;
   float k  = mix(G_RINGS, G_RINGS * 3.0, u_melodicity);   // más melodía → más armónicos
   float mand = mix(mandala(spin, r, f0, k, vt), mandala(spin, r, f0 + 1.0, k, vt), foldF - f0);
 
-  // Garganta: el anillo principal respira con la frase.
-  float throatR = 0.28 + 0.04 * sin(vt) + 0.06 * u_throat;
+  // Garganta: el anillo principal respira con la frase; el disparo la
+  // dilata drásticamente (🌊 WAVE 8297 · M2).
+  float throatR = 0.28 + 0.04 * sin(vt) + 0.06 * u_throat + 0.25 * fx;
   float throat  = exp(-9.0 * abs(r - throatR));
+
+  // 🌊 WAVE 8297 · M2 — onda de choque expansiva: un anillo nace en la
+  // garganta y FRACTURA el orden a su paso (el radio viaja con la edad
+  // del clip físico). Tras la onda el orden se recompone.
+  float shock   = fx * exp(-abs(r - (throatR + fxAge * 0.9)) * 10.0);
+  float orderFx = clamp(max(order, 0.75 * smoothstep(0.35, 0.9, fx))
+                        * (1.0 - 0.8 * shock), 0.0, 1.0);
 
   vec3 vox = palette(u_chromaHue + G_HUE + 0.08 * sin(vt), vec3(0.5), vec3(0.5),
                      vec3(1.0), vec3(0.0, 0.15, 0.3));
 
   // ── 3. COMPOSICIÓN — el fondo cede el color a la voz ───────────────
   vec3 col = chaos;
-  col = mix(col, vec3(dot(col, LUMA)), 0.5 * order);
-  col *= 1.0 - 0.55 * order;
-  col += order * (throat * 1.4 + mand * 0.55 * exp(-1.4 * r)) * vox;
-  col += order * mand * throat * 0.8 * vox * vox;          // nudos: pétalo × garganta
+  col = mix(col, vec3(dot(col, LUMA)), 0.5 * orderFx);
+  col *= 1.0 - 0.55 * orderFx;
+  col += orderFx * (throat * 1.4 + mand * 0.55 * exp(-1.4 * r)) * vox;
+  col += orderFx * mand * throat * 0.8 * vox * vox;        // nudos: pétalo × garganta
   col += u_vocalOnset * 0.5 * throat * vox;                // entrada de frase: bloom lento
   col += u_vocalOnset * 0.15 * vox * exp(-3.0 * r);
 
   // ── 4. TRANSITORIOS — golpean el caos, respetan la voz ─────────────
-  float hitMask = 1.0 - 0.7 * order;
+  // Donde la onda fractura el orden, los golpes vuelven a entrar.
+  float hitMask = 1.0 - 0.7 * orderFx;
   col += u_kickPulse * 0.45 * hitMask * exp(-abs(r - 0.55 - 0.1 * u_kickPulse) * 10.0) * chaosHue;
   col += u_snareTruePulse * 0.35 * hitMask * fil * fil * vec3(0.8, 0.9, 1.0);
-  col += fx * 0.4 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
-                             vec3(0.0, 0.33, 0.67)) * exp(-2.5 * r);
+  // 🌊 WAVE 8297 · M2 — el flash plano se convierte en el frente de la
+  // onda de choque: brillo complementario SOLO en el anillo fracturado.
+  col += shock * 1.3 * palette(u_chromaHue + 0.5 + 0.08 * sin(vt), vec3(0.5),
+                               vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
   col += step(0.992 - 0.02 * u_ultraAir, hash21(floor(fragCoord * 0.5) + floor(beats * 4.0)))
        * u_hihatEnergy * hitMask * vec3(1.2);
   if (glitch > 0.01) {
@@ -165,7 +181,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     vec2 f = fragCoord / u_resolution.xy;
     vec3 prev = texture(u_prevFrame, f).rgb;
     prev *= prev;                                          // sRGB → lineal (aprox. γ2)
-    float persist = clamp(0.55 + 0.35 * order - 0.25 * glitch, 0.0, 0.92);
+    float persist = clamp(0.55 + 0.35 * orderFx - 0.25 * glitch, 0.0, 0.92);
     col = max(col, prev * persist);
   }
 

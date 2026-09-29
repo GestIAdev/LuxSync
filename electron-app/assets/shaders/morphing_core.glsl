@@ -3,6 +3,7 @@
 // @euclid family  ether+metal
 // @euclid genome  aggression=0.55 chaos=0.60 organicity=0.70
 // @euclid zone    gentle..peak
+// @euclid vibes   techno-club+chill-lounge+rave
 // @euclid param   u_melt   float -1.0 1.0 0.0 "Melt"
 // @euclid param   u_spikes float -1.0 1.0 0.0 "Spikes"
 // @euclid gene    G_OCT   struct int   1    3     2    c:+0.5 o:+0.2
@@ -113,7 +114,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // corre en las luces, no por una predicción que "se acerca".
   float fx    = u_activeEffectEnergy;
   float fxAge = u_activeEffectAge;
-  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase) * u_speed;
 
   // Relojes (obedecen SPEED): rotación lenta + ebullición continua.
   gRotY  = beats * TAU / 64.0 * G_SPIN;

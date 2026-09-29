@@ -130,7 +130,10 @@ function setupTheiaHandlers(deps) {
     // 🔧 WAVE 8277 · F0 — objeto `sources` estable mutado in-place: el pump
     // lo consulta a 44Hz; devolver un literal por tick sería una asignación
     // en el hot path. El pump detecta cambios por IDENTIDAD de SAB.
-    const telSources = { fc: null, tel: null };
+    const telSources = {
+        fc: null,
+        tel: null,
+    };
     const pump = new TheiaTelemetryPump(() => {
         telSources.fc = deps.titanOrchestrator?.getFrameContextSAB() ?? null;
         telSources.tel = deps.titanOrchestrator?.getTelemetryRing() ?? null;

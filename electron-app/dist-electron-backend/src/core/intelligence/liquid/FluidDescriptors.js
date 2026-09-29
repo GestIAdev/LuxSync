@@ -78,8 +78,11 @@ export class FluidDescriptorEngine {
             : this._crest.tick(input.rawEnergy, tSec, dt);
         this._crestEvent = useBands ? this._crestBands.event : this._crest.event;
         this._crestRate = useBands ? this._crestBands.rate : this._crest.rate;
-        // M — Melodicidad: clamp((midPresence - 0.30) / 0.40, 0, 1) — idéntico al morphFactor del Omniliquid
-        const melodicityRaw = clamp01((input.midPresence - 0.30) / 0.40);
+        // M — Melodicidad: clamp((midPresence - 0.22) / 0.48, 0, 1) — morphFactor del Omniliquid
+        // 🔬 WAVE 8282 — recalibrado: el piso era 0.30 y `titanState.mid` en
+        // mezclas masterizadas (Adele: 0.15-0.37) lo rozaba sin cruzarlo → M≡0.
+        // Nuevo mapa 0.22→1.0 en mid=0.70 (mismo techo, pendiente equivalente).
+        const melodicityRaw = clamp01((input.midPresence - 0.22) / 0.48);
         // Δ — Suciedad: harshness × (0.5 + 0.5·flatness)
         const dirtinessRaw = input.harshness * (0.5 + 0.5 * input.spectralFlatness);
         // G — Groove: syncopation directa

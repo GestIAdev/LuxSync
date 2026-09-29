@@ -176,6 +176,9 @@ export class AetherSafetyMiddleware {
      * de universo/visibilidad — un dispositivo muerto ya no puede afectar al
      * throttling ni a la detección de universos virtuales.
      * PATCH TIME — nunca en hot path.
+     *
+     * @param nodeIds — nodeIds del device según el NodeGraph previo al purge
+     *                  (si se omiten, se infieren por prefijo `${deviceId}:`)
      */
     unregisterDevice(deviceId, nodeIds) {
         const prefix = `${deviceId}:`;

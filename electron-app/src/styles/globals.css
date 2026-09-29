@@ -246,13 +246,13 @@ select:focus {
    ANIMATIONS
    ============================================ */
 
+/* 🌊 WAVE 8295 — antes animaba box-shadow (repaint por frame). Ahora el halo
+   es un box-shadow estático en la clase y el pulso es solo `opacity`
+   (composited). El nombre `pulse-glow` también lo define SystemsCheck.css
+   con opacity — ambas versiones quedan coherentes. */
 @keyframes pulse-glow {
-  0%, 100% { 
-    box-shadow: var(--glow-purple);
-  }
-  50% { 
-    box-shadow: var(--glow-purple-intense);
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
 }
 
 @keyframes breathe {
@@ -303,13 +303,13 @@ select:focus {
   100% { background-position: 200% 0; }
 }
 
-@keyframes color-shift {
-  0% { filter: hue-rotate(0deg); }
-  100% { filter: hue-rotate(360deg); }
-}
+/* 🌊 WAVE 8295 — `color-shift` eliminado: animaba `filter: hue-rotate()` a
+   lo largo de todo el ciclo (repaint continuo) y no tenía ningún consumidor
+   en el árbol de componentes. */
 
 /* Animation utilities */
 .animate-pulse-glow {
+  box-shadow: var(--glow-purple);
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
@@ -715,17 +715,20 @@ select:focus {
   height: 6px;
   border-radius: 50%;
   background: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
   animation: pulse-live 2s ease-in-out infinite;
 }
 
+/* 🌊 WAVE 8295 — el anillo expansivo por box-shadow repintaba cada frame;
+   ahora es scale+opacity sobre el propio dot (composited). */
 @keyframes pulse-live {
-  0%, 100% { 
-    opacity: 1; 
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); 
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
   }
-  50% { 
-    opacity: 0.7; 
-    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); 
+  50% {
+    opacity: 0.55;
+    transform: scale(1.4);
   }
 }
 
@@ -852,6 +855,7 @@ select:focus {
    ============================================ */
 
 .state-badge {
+  position: relative; /* 🌊 WAVE 8295 — ancla para el ::after de pulso */
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -874,7 +878,18 @@ select:focus {
   background: rgba(249, 115, 22, 0.2);
   color: var(--state-stalking);
   border: 1px solid rgba(249, 115, 22, 0.3);
-  animation: state-pulse-stalking 2s ease-in-out infinite;
+}
+
+/* 🌊 WAVE 8295 — anillo expansivo via ::after: box-shadow fijo rasterizado
+   una vez; solo `opacity`+`transform` (composited) cada frame. */
+.state-badge--stalking::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.45);
+  pointer-events: none;
+  animation: state-badge-ring 2s ease-out infinite;
 }
 
 .state-badge--evaluating {
@@ -887,7 +902,16 @@ select:focus {
   background: rgba(239, 68, 68, 0.2);
   color: var(--state-striking);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  animation: state-pulse-striking 0.5s ease-in-out infinite;
+}
+
+.state-badge--striking::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5), 0 0 0 2px rgba(239, 68, 68, 0.3);
+  pointer-events: none;
+  animation: state-badge-ring 0.5s ease-out infinite;
 }
 
 .state-badge--learning {
@@ -896,14 +920,10 @@ select:focus {
   border: 1px solid rgba(168, 85, 247, 0.3);
 }
 
-@keyframes state-pulse-stalking {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
-  50% { box-shadow: 0 0 0 4px rgba(249, 115, 22, 0); }
-}
-
-@keyframes state-pulse-striking {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
-  50% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+/* 🌊 WAVE 8295 — keyframe compartido para los anillos ::after de badges */
+@keyframes state-badge-ring {
+  0%   { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.25); }
 }
 
 /* ============================================

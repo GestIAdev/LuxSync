@@ -176,13 +176,14 @@ export {
 } from './genome/GenomePool'
 
 // 🔮 WAVE 8230 — Euclid Oracle · Fase E4: átomo generativo builtin
+// 🌊 WAVE 8300 — el builder queda exportado (tests/demos), pero NO se
+// auto-registra: el Deck vive 100% del scan IPC de userData/theia/packs/.
 export {
   ORACLE_KIFS_SOURCE,
   ORACLE_KIFS_ATOM_ID,
   EUCLID_PACK_ID,
   buildOracleKifsAtom,
 } from './shader/atoms/oracleKifs'
-export { ensureEuclidShaderAtoms } from './shader/atoms'
 export {
   RenderGovernor,
   GOVERNOR_DEFAULTS,
@@ -221,3 +222,12 @@ export {
   getSeleneTheiaBridge,
   type BrainFrameContext,
 } from './SeleneTheiaBridge'
+
+// ✈️ WAVE 8306 — Auto-Pilot: secuenciador mecánico de la playlist (Ola D1)
+export {
+  TheiaAutopilot,
+  getTheiaAutopilot,
+  shuffleBag,
+  type AutopilotTelemetry,
+  type AutopilotDeps,
+} from './TheiaAutopilot'

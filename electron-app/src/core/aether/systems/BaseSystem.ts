@@ -76,6 +76,9 @@ export interface AudioMetrics {
   beatPhase: number
   /** Número de beats desde el inicio de la sesión (para sincronía larga) */
   beatCount: number
+  /** 🩸 WAVE 8292: AGC Pumping score (0-1) — Trust-Zone boost en hueco
+   *  rítmico con flatness alta. Opcional: 0 si la fuente no lo reporta. */
+  agcPumping?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

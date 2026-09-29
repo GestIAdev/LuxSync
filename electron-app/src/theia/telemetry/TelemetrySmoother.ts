@@ -401,6 +401,12 @@ export class TelemetrySmoother {
     this._diagVTPrevMs = nowMs
     const btRate = ((this.beatTime - this._diagBTPrev) * 1000) / el
     this._diagBTPrev = this.beatTime
+    // masterSpeed implícito = tasa real de u_beatTime / bps. Si no es ~1.0
+    // con el fader arriba → gobernador de tiempo roto. Ojo: u_beatPhase /
+    // u_barPhase extrapolan a bps SIN masterSpeed — desvío ≠ bug si el
+    // fader SPEED no está a tope (diagnóstico WAVE 8287-CleanShot).
+    const bpmV = raw[TELEMETRY_SLOT.BPM]
+    const msImpl = bpmV > 1 ? btRate / (bpmV / 60) : 0
 
     // Réplica EXACTA de euTimbre() del preámbulo GLSL (lineal w/s — WAVE
     // 8282: los pesos ya no se elevan al cuadrado).
@@ -426,6 +432,8 @@ export class TelemetrySmoother {
     if ((flags & (1 << TEL_FLAG.NOISE_MODE)) !== 0) fl += ' NZM'
     if ((flags & (1 << TEL_FLAG.KICK_EDGE)) !== 0) fl += ' KCK'
     if ((flags & (1 << TEL_FLAG.PREDICTION_ACTIVE)) !== 0) fl += ' PRD'
+    if ((flags & (1 << TEL_FLAG.PLL_LOCKED)) !== 0) fl += ' PLL'
+    if ((flags & (1 << TEL_FLAG.EFFECT_ACTIVE)) !== 0) fl += ' FXA'
 
     console.info(
       `[TELDIAG] bpm ${f(raw[TELEMETRY_SLOT.BPM])}` +
@@ -438,6 +446,12 @@ export class TelemetrySmoother {
         ` | wn ${f(raw[TELEMETRY_SLOT.WHITE_NOISE])} sd ${f(raw[TELEMETRY_SLOT.SPECTRAL_DENSITY])}` +
         ` | vT ${f(vt)}s (${vtRate >= 0 ? '+' : ''}${vtRate.toFixed(2)}/s)` +
         ` bt ${btRate >= 0 ? '+' : ''}${btRate.toFixed(2)}/s` +
+        ` ms≈${msImpl.toFixed(2)}` +
+        ` ph ${f(out[TELEMETRY_SLOT.BEAT_PHASE - SLOT_PAYLOAD_BASE])}/${f(out[TELEMETRY_SLOT.BAR_PHASE - SLOT_PAYLOAD_BASE])}` +
+        ` | fx E${f(out[TELEMETRY_SLOT.ACTIVE_FX_ENERGY - SLOT_PAYLOAD_BASE])}` +
+        ` A${f(out[TELEMETRY_SLOT.ACTIVE_FX_AGE - SLOT_PAYLOAD_BASE])}` +
+        ` ×${out[TELEMETRY_SLOT.ACTIVE_FX_COUNT - SLOT_PAYLOAD_BASE].toFixed(0)}` +
+        ` h${f(out[TELEMETRY_SLOT.ACTIVE_FX_ID - SLOT_PAYLOAD_BASE])}` +
         ` | void ${f(out[TELEMETRY_SLOT.RHYTHMIC_VOID - SLOT_PAYLOAD_BASE])}` +
         ` hold ${f(raw[TELEMETRY_SLOT.VOID_HOLD])}` +
         ` | timbre ${timbre}` +

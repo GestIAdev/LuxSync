@@ -502,6 +502,9 @@ export class EffectManager extends EventEmitter {
       vibeId,
       degraded: shieldResult.degraded,
       hephEnabled: true,  // ⚡ WAVE 4827: all paths route through SeleneHephBridge
+      // 🔫 WAVE 8287 — duración real del clip .lfx resuelta por el bridge
+      // (Clean Shot: el consumidor puede medir la vida física del disparo).
+      durationMs: route.entry.durationMs,
     })
 
     const shieldStatus = shieldResult.degraded ? '⚠️DEGRADED' : ''

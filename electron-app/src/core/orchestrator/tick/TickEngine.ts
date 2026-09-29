@@ -55,6 +55,13 @@ import {
   stepIntegralClocks,
   type IntegralClockState,
 } from '../../../theia/telemetry/TheiaTelemetryRing'
+// 🔫 WAVE 8287 — Clean Shot: envolvente del clip Hephaestus vivo (slots 96-99)
+import {
+  createEffectEnergyTracker,
+  createFxEnergySample,
+  type EffectEnergyTracker,
+  type FxEnergySample,
+} from '../../../theia/telemetry/EffectEnergyTracker'
 import { getGenomeEvolver } from '../../../theia/genome/GenomeEvolver'
 
 export interface TickContext {
@@ -304,6 +311,10 @@ export class TickEngine {
   private _vocalTimeSec = 0
   private _voidHoldSec = 0
   private _vocalOnsetArmed = true
+  // 🔫 WAVE 8287 · Clean Shot — envolvente del efecto FÍSICO vivo
+  // (HephaestusRuntime.activeClips sondeado cada publish; scratch fijo).
+  private readonly _fxTracker: EffectEnergyTracker = createEffectEnergyTracker()
+  private readonly _euclidFx: FxEnergySample = createFxEnergySample()
 
   /**
    * Fill pre-bound asignado UNA vez — lee los scratch fields y escribe
@@ -433,6 +444,13 @@ export class TickEngine {
     p[S.AGC_STRESS] = agcGain >= 1
       ? 0
       : Math.min(1, Math.max(0, Math.log2(Math.max(1e-6, agcGain)) / -1.5))
+    // 🔫 WAVE 8287 — FX · u_fxVec = u_tel4[23] (slots 96-99): envolvente
+    // del clip Hephaestus dominante, sampleado en publish (Clean Shot §2.4).
+    const fx = this._euclidFx
+    p[S.ACTIVE_FX_ENERGY] = fx.energy
+    p[S.ACTIVE_FX_AGE] = fx.ageN
+    p[S.ACTIVE_FX_ID] = fx.typeId
+    p[S.ACTIVE_FX_COUNT] = fx.count
   }
 
   get brain() { return this.ctx.brain }
@@ -2393,6 +2411,17 @@ export class TickEngine {
       this._vocalOnsetArmed = true
     }
 
+    // 🔫 WAVE 8287 · Clean Shot — sondeo de clips .lfx vivos en
+    // HephaestusRuntime (paridad video↔luces: stops/aborts/expiración se
+    // capturan solos — pertenecer al mapa ES estar encendiendo fixtures).
+    // Corre SIEMPRE como los relojes integrales: la cola de release debe
+    // agotarse aunque el consumidor desaparezca unos ticks.
+    this._fxTracker.sample(
+      now,
+      getHephaestusRuntime().getActiveClips(),
+      this._euclidFx,
+    )
+
     const writer = this.trinity?.getTelemetryWriter()
     if (!writer) return
 
@@ -2441,6 +2470,8 @@ export class TickEngine {
     if ((pt?.gateHealth ?? 1) < 0.1) flags |= 1 << TEL_FLAG.GATE_DEAD
     if (pt?.snareMacdOnset) flags |= 1 << TEL_FLAG.SNARE_TRUE
     if (voidRelease) flags |= 1 << TEL_FLAG.VOID_RELEASE
+    // 🔫 WAVE 8287 — EFFECT_ACTIVE: clip vivo o cola de release aún >0.
+    if (this._euclidFx.energy > 0) flags |= 1 << TEL_FLAG.EFFECT_ACTIVE
 
     // ENUMS empaquetados inline (sin packEnums — evita el objeto arg por tick).
     const enumsPacked =

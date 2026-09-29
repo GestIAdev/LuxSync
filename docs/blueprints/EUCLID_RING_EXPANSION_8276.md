@@ -272,7 +272,17 @@ de engine: se resuelve en cada tick, sin coste).
 | 91 | | RAW_HH_DELTA | `u_hhDelta` | `rhythmic.raw_hh_delta` (≥0) | none |
 | 92 | **MASTER** `u_tel4[22]` | AGC_STRESS | `u_agcStress` | `clamp(log2(agcGainFactor)/3, 0, 1)` (cuánto está inflando el AGC) | linear 0.2/0.05 |
 | 93-95 | | RESERVED (stereo width/corr/balance) | — | requiere que el pipeline retransmita `GodEarSpectrum.stereo` (hoy es `null` en mono) → wave futura | none |
-| 96-127 | 8 vec4 | RESERVED | — | margen para futuras waves (32 slots) | none |
+| 96 | **FX** `u_fxVec` = `u_tel4[23]` 🔫 8287 | ACTIVE_FX_ENERGY | `u_activeEffectEnergy` | envolvente del clip .lfx dominante vivo en `HephaestusRuntime.activeClips`: `intensity` en hold durante `durationMs` real + cola release 250 ms al morir (paridad video↔luces) | none |
+| 97 | | ACTIVE_FX_AGE | `u_activeEffectAge` | edad normalizada 0→1 del dominante (`age/durationMs`; loops → fase fract) | none |
+| 98 | | ACTIVE_FX_ID | `u_activeEffectId` | hash FNV-1a 0..1 del `clip.id` dominante (arquetipo estable del disparo) | none |
+| 99 | | ACTIVE_FX_COUNT | `u_activeEffectCount` | nº de clips físicamente vivos en el runtime | none |
+| 100-127 | 7 vec4 | RESERVED | — | margen para futuras waves (28 slots) | none |
+
+> 🔫 **WAVE 8287 · Clean Shot — `EFFECT_ACTIVE` = flag bit 23**: ON mientras
+> `u_activeEffectEnergy > 0` (clip vivo o cola de release). La fuente es el
+> sondeo de `activeClips` en cada publish — los efectos bloqueados por
+> Shield/cooldown jamás entran al mapa, y stops/aborts se capturan sin
+> eventos. Flag disponible vía `telFlag(23)` / `EFFECT_ACTIVE` en GLSL.
 
 **① `vocalIsolation`: heurística honesta, no separación de fuentes.**
 

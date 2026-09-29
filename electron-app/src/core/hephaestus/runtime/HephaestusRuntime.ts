@@ -145,7 +145,7 @@ interface ResolvedTrack {
 }
 
 /** Active clip being executed */
-interface ActiveHephClip {
+export interface ActiveHephClip {
   /** Unique instance ID */
   instanceId: string
 
@@ -532,6 +532,16 @@ export class HephaestusRuntime {
     if (this.debug) {
       console.log(`[HephRuntime] ⏹️ STOP ALL: ${count} clips stopped`)
     }
+  }
+
+  /**
+   * 🔫 WAVE 8287 (Clean Shot) — Vista read-only de los clips vivos para
+   * el sondeo telemétrico (`EffectEnergyTracker`). Devuelve el Map interno
+   * SIN copiar (zero-alloc): el consumidor solo itera/lee durante su
+   * publish — jamás muta ni retiene referencias fuera del tick.
+   */
+  getActiveClips(): ReadonlyMap<string, ActiveHephClip> {
+    return this.activeClips
   }
   
   // ─────────────────────────────────────────────────────────────────────────

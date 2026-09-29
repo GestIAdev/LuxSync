@@ -359,12 +359,14 @@ describe('G1 — relojes integrales (u_energyTime / u_barCount)', () => {
 describe('🌊 WAVE 8279 · F3 — página B: schema físico Liquid/GodEar', () => {
   it('slots 64-92 tienen nombre real (no RESERVED) y u_tel4 alineados a vec4', () => {
     const pageB = TELEMETRY_SCHEMA.filter((d) => d.slot >= TELEMETRY_PAGE_B_BASE)
-    // 64-92 nombrados + 83 reservado + 93-127 reserva generada
+    // 64-92 nombrados + 83 reservado + 93-95 reserva + 96-99 FX (🔫 8287)
+    // + 100-127 reserva generada
     const named = pageB.filter((d) => !d.name.startsWith('RESERVED_'))
-    expect(named.length).toBe(28) // 64-92 menos RESERVED_83
+    expect(named.length).toBe(32) // 64-92 menos RESERVED_83, más FX 96-99
     // Los grupos semánticos están alineados a frontera vec4 (idx%4==0):
-    // vocal=64, void=68, snare=72, zoneA=76, zoneB=80, texture=84, delta=88, master=92
-    for (const base of [64, 68, 72, 76, 80, 84, 88, 92]) {
+    // vocal=64, void=68, snare=72, zoneA=76, zoneB=80, texture=84, delta=88,
+    // master=92, fx=96
+    for (const base of [64, 68, 72, 76, 80, 84, 88, 92, 96]) {
       expect((base - SLOT_PAYLOAD_BASE) % 4).toBe(0)
     }
     // Lookup nombre→slot
@@ -390,6 +392,14 @@ describe('🌊 WAVE 8279 · F3 — página B: schema físico Liquid/GodEar', () 
     expect(TELEMETRY_SLOT.RAW_MID_DELTA).toBe(88)
     expect(TELEMETRY_SLOT.RAW_HH_DELTA).toBe(91)
     expect(TELEMETRY_SLOT.AGC_STRESS).toBe(92)
+    // 🔫 WAVE 8287 — FX group (u_tel4[23]): Clean Shot parity channel
+    expect(TELEMETRY_SLOT.ACTIVE_FX_ENERGY).toBe(96)
+    expect(TELEMETRY_SLOT.ACTIVE_FX_AGE).toBe(97)
+    expect(TELEMETRY_SLOT.ACTIVE_FX_ID).toBe(98)
+    expect(TELEMETRY_SLOT.ACTIVE_FX_COUNT).toBe(99)
+    const fx = pageB.filter((d) => d.slot >= 96 && d.slot <= 99)
+    expect(fx.every((d) => d.kind === 'none')).toBe(true)
+    expect(TEL_FLAG.EFFECT_ACTIVE).toBe(23)
   })
 
   it('flags página B 17-22 declarados + STROBE_ACTIVE sigue existiendo (deprecated)', () => {

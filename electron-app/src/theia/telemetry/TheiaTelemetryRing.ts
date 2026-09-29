@@ -82,6 +82,9 @@ export const TEL_FLAG = {
   GATE_DEAD: 20,         // nivel — gateHealth < 0.1 (caja sintética / AND-gate muerta)
   SNARE_TRUE: 21,        // flanco — onset MACD; fallback: edge de crack_flux > 0.25
   VOID_RELEASE: 22,      // flanco — el vacío termina tras VOID_HOLD ≥ 2 s
+  // 🔫 WAVE 8287 — Clean Shot: hay clip .lfx vivo en HephaestusRuntime o
+  // la envolvente ACTIVE_FX aún está en cola de release (§2.4).
+  EFFECT_ACTIVE: 23,
 } as const
 
 export type TelFlagBit = (typeof TEL_FLAG)[keyof typeof TEL_FLAG]
@@ -258,11 +261,24 @@ export const TELEMETRY_SCHEMA: readonly TelemetrySlotDescriptor[] = [
   // MASTER — u_tel4[22]
   { slot: 92, name: 'AGC_STRESS',        uniform: 'u_agcStress',      kind: 'linear', attack: 0.2, release: 0.05 },
   // 93-95: reserva stereo width/corr/balance (wave futura — el pipeline
-  // aún no retransmite GodEarSpectrum.stereo). 96-127: margen, generados.
+  // aún no retransmite GodEarSpectrum.stereo).
+  { slot: 93, name: 'RESERVED_93',       uniform: '',                   kind: 'none' },
+  { slot: 94, name: 'RESERVED_94',       uniform: '',                   kind: 'none' },
+  { slot: 95, name: 'RESERVED_95',       uniform: '',                   kind: 'none' },
+  // 🔫 WAVE 8287 — FX · u_fxVec = u_tel4[23] (Clean Shot §2.4): energía
+  // del clip .lfx vivo dominante en HephaestusRuntime — paridad exacta
+  // video↔luces físicas (hold = clip corriendo, release 250 ms al morir).
+  // kind 'none': la envolvente ya nace exacta del tracker — resuavizarla
+  // corrompería la paridad temporal.
+  { slot: 96, name: 'ACTIVE_FX_ENERGY',  uniform: 'u_activeEffectEnergy', kind: 'none' },
+  { slot: 97, name: 'ACTIVE_FX_AGE',     uniform: 'u_activeEffectAge',    kind: 'none' },
+  { slot: 98, name: 'ACTIVE_FX_ID',      uniform: 'u_activeEffectId',     kind: 'none' },
+  { slot: 99, name: 'ACTIVE_FX_COUNT',   uniform: 'u_activeEffectCount',  kind: 'none' },
+  // 100-127: margen, generados.
   ...Array.from(
-    { length: TELEMETRY_RING_SLOTS - 93 },
+    { length: TELEMETRY_RING_SLOTS - 100 },
     (_, i): TelemetrySlotDescriptor => {
-      const slot = 93 + i
+      const slot = 100 + i
       return { slot, name: `RESERVED_${slot}`, uniform: '', kind: 'none' }
     },
   ),

@@ -109,19 +109,23 @@ float density(vec3 p, out float fil, out float ang) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES (§3.1 — euChannels del preámbulo: Ley de Uniformidad G6)
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   gLive  = live;
   gBeats = u_beatTime + u_time * 0.05;        // Ley de Integración: reloj del host
   gCamZ  = gBeats * 1.1 + u_time * 0.35;
-  float rel = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — la serpiente respira con el compás; la
+  // expansión extrema solo mientras un clip físico corre en las luces.
+  float fx    = u_activeEffectEnergy;
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
+  float swell = sin(3.1415927 * u_barPhase);
 
-  gRadius  = 2.3 + 0.5 * u_subBass * gLive - 1.1 * tc + 1.6 * rel + 0.8 * td;
-  gWarp    = G_WARP * max(0.35 + 0.9 * u_bass + 0.4 * u_warpBoost, 0.05) * (1.0 + tc);
+  gRadius  = 2.3 + 0.5 * u_subBass * gLive - 0.6 * beatP + 1.6 * fx;
+  gWarp    = G_WARP * max(0.35 + 0.9 * u_bass + 0.4 * u_warpBoost, 0.05) * (1.0 + 0.6 * beatP);
   gOct     = mix(2.0, 5.0, u_morphFactor);                       // complejidad ← Omniliquid
   gHurst   = clamp(mix(0.42, 0.68, u_flatness) + 0.15 * u_harshness, 0.3, 0.8);
-  gTwist   = 0.06 + 0.7 * tc;
-  gDensity = max(0.6 + 0.8 * u_energy + 0.5 * u_densityBoost, 0.05) * (1.0 - 0.7 * td) * gLive;
+  gTwist   = 0.06 + 0.35 * swell;
+  gDensity = max(0.6 + 0.8 * u_energy + 0.5 * u_densityBoost, 0.05) * gLive;
 
   // ── 2. GLITCH DIGITAL (régimen discreto, solo con APOCALYPSE) ───────
   vec2 fc = fragCoord;
@@ -139,14 +143,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   vec3 fw = normalize(ta - ro);
   vec3 rt = normalize(cross(vec3(0.0, 1.0, 0.0), fw));
   vec3 up = cross(fw, rt);
-  float focal = 1.1 + 0.9 * tc - 0.5 * rel;
+  float focal = 1.1 + 0.4 * beatP - 0.5 * fx;
   vec3 rd = normalize(uv.x * rt + uv.y * up + focal * fw);
 
   // ── 4. INTEGRAL DE EMISIÓN-ABSORCIÓN (Beer-Lambert, front-to-back) ──
   vec3  col     = vec3(0.0);
   float trans   = 1.0;
   float t       = 0.2;
-  float hueBase = u_chromaHue + 0.5 * rel;                     // impacto → complementario
+  float hueBase = u_chromaHue + 0.5 * fx;                     // disparo → complementario
   float sat     = 0.5 * (0.35 + 0.65 * u_saturation);
   vec3  phase   = vec3(0.0, 0.33, 0.67) + 0.15 * u_brightnessSpec;  // centroide → temperatura
   for (int i = 0; i < MAX_STEPS; i++) {
@@ -177,8 +181,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 5. CONSERVACIÓN DE LA TENSIÓN — color ───────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum), 0.65 * tc);                        // la tensión drena el color
-  col += rel * 0.35 * palette(hueBase, vec3(0.5), vec3(0.5), vec3(1.0), phase)
+  col = mix(col, vec3(lum), 0.45 * fx);                        // el disparo drena el color
+  col += fx * 0.35 * palette(hueBase, vec3(0.5), vec3(0.5), vec3(1.0), phase)
        * exp(-3.0 * length(uv));                               // estallido LOCAL, no full-field
   if (ACID) col *= 0.75 + 0.25 * sin(vec3(0.0, 2.1, 4.2) + length(uv) * 18.0 - gBeats * PI);
 

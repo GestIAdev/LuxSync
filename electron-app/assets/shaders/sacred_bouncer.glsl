@@ -52,10 +52,13 @@ float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_voc
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   float beats = u_beatTime + u_time * 0.04;
-  float rel   = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — contracción basal por compás; el haz
+  // solo se ensancha de verdad con un clip físico vivo.
+  float fx    = u_activeEffectEnergy;
+  float swell = sin(3.1415927 * u_barPhase);
   float dir   = mod(G_SEED, 2.0) < 1.0 ? 1.0 : -1.0;
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
@@ -66,7 +69,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   uv /= 1.0 + 0.55 * punch;                                  // expansión brusca
   uv.y *= 1.0 + 0.16 * u_kickPulse * gain;                   // squash & stretch
   uv.x *= 1.0 - 0.09 * u_kickPulse * gain;
-  uv *= 1.0 + 0.35 * tc - 0.25 * td;                          // tensión contrae · breakdown abre
+  uv *= 1.0 + 0.2 * swell + 0.15 * fx;                        // compás respira · disparo abre
 
   // ── 3. CALEIDOSCOPIO — rotación continua al compás (obedece SPEED) ──
   float r = length(uv);
@@ -98,7 +101,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     s *= sc;
     // Filamentos: distancia a los ejes del pliegue, en espacio original.
     float line = min(abs(q.x), abs(q.y)) / s;
-    float width = 0.0025 * (1.0 + 2.0 * td);
+    float width = 0.0025 * (1.0 + 2.0 * fx);
     vec3 hue = palette(u_chromaHue + float(i) * G_HUE_STEP,
                        vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
     col += hue * width / (line + width) * (0.35 + 0.08 * float(i));
@@ -118,8 +121,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float seam = min(a, 0.5 * seg - a) * r;
   col += u_kickPulse * 1.1 * exp(-seam * 90.0) * smoothstep(0.02, 0.2, r) * exp(-r * 1.3)
        * palette(u_chromaHue + 0.15, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
-  // Impact: halo complementario (nota dominante → su opuesta).
-  col += rel * 0.8 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
+  // Disparo: halo complementario (nota dominante → su opuesta).
+  col += fx * 0.8 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                              vec3(0.0, 0.33, 0.67)) * exp(-2.5 * r);
   // Hi-hat: destellos en las puntas del fractal.
   col += step(0.992 - 0.02 * u_ultraAir, hash21(floor(fragCoord * 0.5) + floor(beats * 4.0)))
@@ -129,7 +132,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 6. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(1.05, 0.95, 1.1), 0.55 * tc);
+  col = mix(col, vec3(lum) * vec3(1.05, 0.95, 1.1), 0.5 * fx);
   if (ACID) col *= 0.75 + 0.25 * sin(vec3(0.0, 2.1, 4.2) + r * 16.0 - beats * PI);
   col *= euVoidGate(0.4);
   col *= 1.0 + 0.6 * u_energy;

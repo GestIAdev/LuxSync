@@ -105,12 +105,13 @@ void mainState(out vec4 s, in vec2 fragCoord) {
 
   // La MÚSICA gobierna la química:
   //   energía/hambre → alimentación ↑ (crecen, se dividen, devoran)
-  //   tensión        → muerte ↑ (inanición antes del drop)
+  //   disparo real   → muerte ↑ (inanición durante el efecto físico)
   //   bajo           → muerte ↓ (las células se estiran en gusanos)
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
-  float F = G_FEED + 0.006 * u_energy * live + 0.004 * u_hunger - 0.004 * tc;
-  float k = G_KILL + 0.0035 * tc - 0.0015 * u_bass + 0.03 * euSnare() * snareStripe(cuv);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
+  float fx = u_activeEffectEnergy;                          // 🔫 Clean Shot (WAVE 8287)
+  float F = G_FEED + 0.006 * u_energy * live + 0.004 * u_hunger - 0.004 * fx;
+  float k = G_KILL + 0.0035 * fx - 0.0015 * u_bass + 0.03 * euSnare() * snareStripe(cuv);
 
   float uvv = u * v * v;
   float du = 1.0 * lap.x - uvv + F * (1.0 - u);
@@ -127,8 +128,8 @@ void mainState(out vec4 s, in vec2 fragCoord) {
       if (length(cuv - cp) < 0.03) { u = 0.5; v = 0.25; }
     }
   }
-  // DROP: esporas por todas partes — explosión demográfica.
-  if (u_impact > 0.7) {
+  // DROP: esporas por todas partes — solo si un clip físico fuerte vive.
+  if (fx > 0.7) {
     vec2 g = floor(fragCoord / cellPx);
     vec2 f = fract(fragCoord / cellPx) - 0.5;
     if (hash21(g + floor(u_beatTime) * 7.3) > 0.9 && length(f) < 0.3) { u = 0.5; v = 0.25; }
@@ -140,10 +141,10 @@ void mainState(out vec4 s, in vec2 fragCoord) {
 
 // ═══ VISUAL — tejido vivo con relieve húmedo ════════════════════════════
 void mainImage(out vec4 c, in vec2 fragCoord) {
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   float beats = u_beatTime + u_time * 0.05;
-  float rel = u_impact;
+  float fx = u_activeEffectEnergy;                          // 🔫 Clean Shot (WAVE 8287)
 
   vec2 fc = fragCoord;
   if (glitch > 0.01) {
@@ -185,14 +186,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   col += grow * hunger * (0.4 + 1.8 * u_energy) * live;
   // DROP: bioluminiscencia — todos los núcleos se encienden a la vez.
   vec3 comp = palette(u_chromaHue + G_HUE + 0.5, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
-  col += rel * 2.2 * smoothstep(0.22, 0.42, v) * comp;
+  col += fx * 2.2 * smoothstep(0.22, 0.42, v) * comp;
   // SNARE: el filo de la guadaña deja un destello frío al pasar.
   col += euSnare() * snareStripe(cuv) * vec3(0.5, 0.7, 1.0) * 0.6;
   // HI-HAT: cilios chispeando en las membranas.
   col += membrane * u_hihatEnergy * step(0.8, hash21(floor(fragCoord * 0.5) + floor(beats * 8.0))) * 1.5;
 
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(0.9, 1.0, 1.1), 0.5 * tc);        // inanición: se apaga el color
+  col = mix(col, vec3(lum) * vec3(0.9, 1.0, 1.1), 0.5 * fx);        // inanición: se apaga el color
   if (glitch > 0.01) col = mix(col, col.brg, 0.5 * glitch);
   col *= euVoidGate(0.45);
   col *= 1.0 + 0.5 * u_energy;

@@ -51,7 +51,7 @@ float euVoidGate(float k) { return mix(1.0, k, euVoidAmt()) * (1.0 + 0.6 * u_voi
 float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_vocalIsolation)); }
 
 // ── Canales globales (una evaluación por píxel) ─────────────────────────
-float gBeats, gGlitch, gLinkGain, gTc;
+float gBeats, gGlitch, gLinkGain, gBeatP;
 
 vec2 hash22(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
@@ -114,7 +114,7 @@ vec3 swarmLayer(vec2 uv, float layer) {
 
   // Sinapsis: enlaces desde la luciérnaga más cercana a sus vecinas.
   float link = 0.0;
-  float lmax = G_LINK * (1.0 - 0.35 * gTc);
+  float lmax = G_LINK * (1.0 - 0.35 * gBeatP);
   for (int m = 0; m < 9; m++) {
     vec2 pk = pts[m];
     float L = length(pk - p0);
@@ -152,26 +152,28 @@ vec3 swarm(vec2 suv) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   gBeats   = u_beatTime + u_time * 0.05;
   gGlitch  = glitch;
-  gTc      = tc;
-  float rel = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — condensación basal por beat/compás; el
+  // colapso de la red solo con clip físico vivo (fx).
+  float fx    = u_activeEffectEnergy;
+  gBeatP      = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
+  float swell = sin(3.1415927 * u_barPhase);
   // Kick: descarga sináptica — toda la red de enlaces dispara a la vez.
-  gLinkGain = (0.6 + 0.4 * u_links) * (1.0 + 3.0 * rel + 0.8 * euSnare() + 2.0 * u_kickPulse);
+  gLinkGain = (0.6 + 0.4 * u_links) * (1.0 + 3.0 * fx + 0.8 * euSnare() + 2.0 * u_kickPulse);
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
   float r = length(uv);
 
   // ── 2. DINÁMICA DEL ENJAMBRE — dominio radial ─────────────────────
-  // Tensión: el enjambre se condensa y enrosca hacia el centro.
+  // Beat/compás: el enjambre se condensa y enrosca con el pulso musical.
   // Bombo: estalla hacia fuera (transitorio — golpea a cualquier SPEED).
-  float contract = 1.0 + 2.2 * tc;
+  float contract = 1.0 + 0.8 * gBeatP + 1.4 * fx;
   float burst    = 1.0 + 1.5 * u_kickPulse + 0.35 * u_bass * live;
   vec2 suv = uv * contract / burst;
-  suv = rot2(gBeats * TAU / 64.0 + 2.0 * tc * r + 0.5 * td) * suv;
-  suv *= 1.0 - 0.4 * td;                                            // breakdown: se dispersa
+  suv = rot2(gBeats * TAU / 64.0 + 0.8 * gBeatP * r + 0.3 * swell) * suv;
 
   // ── 3. RENDER — con separación RGB cuántica bajo glitch ───────────
   vec3 col;
@@ -185,12 +187,12 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 4. TRANSITORIOS GLOBALES ──────────────────────────────────────
   vec3 comp = palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
-  col += comp * rel * 0.6 * exp(-r * 3.0);
+  col += comp * fx * 0.6 * exp(-r * 3.0);
   col += comp * comp * 0.03 * (0.3 + u_subBass) / (r + 0.08) * live;     // núcleo gravitatorio
 
   // ── 5. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.15), 0.45 * tc);
+  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.15), 0.45 * fx);
   col *= euVoidGate(0.4);
   col *= 1.0 + 0.6 * u_energy;
   col *= 1.0 - 0.25 * dot(uv, uv);
@@ -198,7 +200,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 6. MEMORIA — estelas de las luciérnagas (deriva con el estallido)
   if (u_hasPrev > 0.5) {
     vec2 st = fragCoord / u_resolution.xy - 0.5;
-    st *= 0.994 - 0.02 * u_kickPulse + 0.01 * tc;                   // estalla fuera · implosiona
+    st *= 0.994 - 0.02 * u_kickPulse + 0.01 * fx;                   // estalla fuera · implosiona
     vec3 prev = texture(u_prevFrame, st + 0.5).rgb;
     prev *= prev;                                                   // sRGB → lineal (aprox. γ2)
     float persist = clamp(0.78 + 0.12 * u_trails - 0.3 * glitch, 0.0, 0.93);

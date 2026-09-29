@@ -101,11 +101,13 @@ vec3 envMap(vec3 r) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   gBeats = u_beatTime + u_time * 0.05;
   gET    = u_energyTime;
-  float rel = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — fx = clip físico vivo; swell respira al compás.
+  float fx    = u_activeEffectEnergy;
+  float swell = sin(3.1415927 * u_barPhase);
 
   // EL parámetro de fase: pads → mercurio (1), percusión seca → cristal (0).
   float visc = smoothstep(0.15, 0.75, u_synthSustain) * (1.0 - 0.8 * u_percussiveness);
@@ -121,9 +123,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   }
   vec2 uv = (fc - 0.5 * u_resolution.xy) / u_resolution.y;
 
-  // ── 2. CÁMARA — órbita lenta (obedece SPEED); la tensión acerca ────
+  // ── 2. CÁMARA — órbita lenta (obedece SPEED); el compás respira ────
   float az   = gBeats * TAU / 96.0;
-  float camR = 4.6 - 0.9 * tc + 0.3 * u_kickPulse;
+  float camR = 4.6 - 0.5 * swell + 0.3 * u_kickPulse;
   vec3 ro = vec3(camR * sin(az), 0.9 + 0.3 * sin(u_time * 0.11), -camR * cos(az));
   vec3 ww = normalize(-ro);
   vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
@@ -190,17 +192,17 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
     col = mix(col, bg, 1.0 - exp(-t * 0.04));
   }
-  col += glow * disp * (0.2 + 1.2 * u_kickPulse + 0.8 * rel) * (0.4 + 0.6 * gVisc);
+  col += glow * disp * (0.2 + 1.2 * u_kickPulse + 0.8 * fx) * (0.4 + 0.6 * gVisc);
 
   // ── 4. TRANSITORIOS GLOBALES ──────────────────────────────────────
   float r = length(uv);
-  col += rel * 0.45 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
+  col += fx * 0.45 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                               vec3(0.0, 0.33, 0.67)) * exp(-2.5 * r);
   if (glitch > 0.01) col = mix(col, col.gbr, 0.5 * glitch * step(0.6, hash21(vec2(floor(fc.y / 4.0), floor(gBeats * 8.0)))));
 
   // ── 5. TENSIÓN + VACÍO (v2: rampa suave + rebote ∝ al vacío) ───────
   float lum = dot(col, LUMA);
-  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.45 * tc);
+  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.45 * fx);
   col *= mix(1.0, 0.4, smoothstep(0.6, 0.9, u_rhythmicVoid));
   col *= 1.0 + 0.6 * u_voidRelease;
 

@@ -10,17 +10,18 @@
  *   u_morphFactor    → complejidad del fractal (Omniliquid)
  *   u_beatTime       → rotación global en rejilla de beats (PLL)
  *   u_kickPulse      → empuje de cámara + pulso emisivo (kick)
- *   tc (euChannels)  → torsión/compresión/FOV pre-drop (Cassandra, §3.4)
- *   u_impact         → expansión radial + destello en el drop
+ *   u_beatPhase/barPhase → torsión/compresión/FOV basal (reloj BPM, §3.4)
+ *   u_activeEffectEnergy → expansión radial + destello SOLO con clip
+ *                          físico vivo — paridad video↔luces (WAVE 8287)
  *   u_chromaHue      → paleta desde la tonalidad (ChromaCoupler)
  *   glitch (euCh.)   → glitch de línea solo en APOCALYPSE (§3.5)
  *   u_hihatEnergy    → destellos especulares granulares
  *   u_lqAmbient/subBass → niebla que respira
  *
- * 🧬 WAVE 8237 · G6 — los canales TENSIÓN/GLITCH se toman de
- * `euChannels()` (preámbulo §3.1): la curva perceptual u_approach², la
- * rama breakdown y la compuerta APOCALYPSE son IDÉNTICAS en todos los
- * cores por construcción.
+ * 🧬 WAVE 8237 · G6 + 🔫 WAVE 8287 · Clean Shot — los canales se toman de
+ * `euChannels()` (preámbulo §3.1): tc/td fueron extirpados — la aproximación
+ * cognitiva (u_approach/u_impact) ya no gobierna geometría; el movimiento
+ * base vive en el reloj musical y los bursts en la envolvente del efecto.
  *
  * El cuerpo es verbatim §5 del EUCLID_ORACLE_BLUEPRINT — el ensamblador
  * E3 le inyecta preámbulo + epílogo de seguridad.
@@ -41,7 +42,7 @@ export const ORACLE_KIFS_LABEL = 'Oracle KIFS'
 /**
  * Cuerpo GLSL del artista — verbatim blueprint §5 (hello-world generativo).
  * El preámbulo ya declara: u_time, u_resolution, u_tel[] + macros,
- * u_beatTime, u_kickPulse, u_approach, u_impact, u_predictiveETA,
+ * u_beatTime, u_beatPhase, u_barPhase, u_kickPulse, u_activeEffectEnergy,
  * telFlag(), rot2(), palette(), hash21(), noise3(), MAX_STEPS.
  */
 export const ORACLE_KIFS_SOURCE = `// @euclid name    "Oracle KIFS — Hello World Generativo"
@@ -53,22 +54,22 @@ export const ORACLE_KIFS_SOURCE = `// @euclid name    "Oracle KIFS — Hello Wor
 
 uniform float u_twist;
 
-// ─── Canales estándar (§3.1 — euChannels, G6) ─────────────────────────
+// ─── Canales estándar (§3.1 — euChannels, G6) + relojes Clean Shot ────
 // Evaluados UNA vez por píxel en mainImage; helpers los leen vía globals.
-float g_tc, g_td, g_glitch, g_live, g_groove;
+float g_glitch, g_live, g_groove;
+float g_beatP, g_swell, g_fx;   // pulso beat · respiración compás · clip físico
 
 // ─── SDF: fractal KIFS ──────────────────────────────────────────────────
 // morphFactor → profundidad armónica = profundidad geométrica.
 float mapFractal(vec3 p) {
-    // ORACLE: la torsión crece a medida que Cassandra ve venir el drop.
-    // tc = u_approach² ya viene ponderado por predictionProb × confidence:
-    // si Selene no está segura, la geometría no miente.
-    float twist = u_twist + g_tc * 2.5;
+    // ORACLE: la torsión respira con el compás; el clip físico la exagera
+    // (la geometría solo miente cuando las luces de verdad disparan).
+    float twist = u_twist + g_swell * 0.8 + g_fx * 1.5;
     p.xy *= rot2(p.z * twist * 0.15);
 
-    // Compresión pre-drop: el espacio se contrae (muelle cargándose)...
-    // ...y u_impact lo libera en el instante del evento.
-    float squeeze = 1.0 - 0.25 * g_tc + 0.45 * u_impact;
+    // Compresión por beat: el espacio late (muelle rítmico)...
+    // ...y u_activeEffectEnergy lo libera mientras el clip físico vive.
+    float squeeze = 1.0 - 0.12 * g_beatP + 0.45 * g_fx;
     p /= squeeze;
 
     float scale  = mix(1.75, 2.35, u_morphFactor);           // pliegue más fino con armonía
@@ -110,7 +111,11 @@ float march(vec3 ro, vec3 rd, out int steps) {
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Canales estándar §3.1 — una evaluación por píxel (G6).
-    euChannels(g_tc, g_td, g_glitch, g_live, g_groove);
+    euChannels(g_glitch, g_live, g_groove);
+    // 🔫 Clean Shot (WAVE 8287): reloj musical + envolvente de efecto real.
+    g_beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
+    g_swell = sin(3.1415927 * u_barPhase);
+    g_fx    = u_activeEffectEnergy;
 
     vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
 
@@ -121,21 +126,21 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     }
 
     // ─── Cámara ────────────────────────────────────────────────────────
-    // Órbita en rejilla de beats; kick empuja; el oráculo hace dolly-in
-    // durante la anticipación (la cámara "se inclina hacia" el drop).
+    // Órbita en rejilla de beats; kick empuja; el clip físico hace dolly-in
+    // (la cámara "cae hacia" el fractal solo mientras las luces disparan).
     float orbit = u_beatTime * 0.125;
-    float dist  = 5.0 - 1.6 * g_tc - 0.35 * u_kickPulse + 1.2 * u_impact;
+    float dist  = 5.0 - 0.6 * g_swell - 0.35 * u_kickPulse + 1.2 * g_fx;
     vec3 ro = vec3(sin(orbit) * dist, 0.6 * sin(u_time * 0.1), cos(orbit) * dist);
     vec3 ta = vec3(0.0);
     vec3 ww = normalize(ta - ro);
     vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
     vec3 vv = cross(uu, ww);
-    float fov = 1.6 + 0.4 * g_tc;                     // túnel: el FOV se cierra antes del drop
+    float fov = 1.6 + 0.15 * g_swell + 0.25 * g_fx;   // túnel: respira con el compás, abre en el disparo
     vec3 rd = normalize(uv.x * uu + uv.y * vv + fov * ww);
 
     // ─── Paleta desde la tonalidad ─────────────────────────────────────
-    // Desaturación pre-drop: el color se retira mientras la tensión carga.
-    float sat = 1.0 - 0.6 * g_tc + 0.6 * u_impact;
+    // El color respira con el beat; el clip físico lo satura al máximo.
+    float sat = 1.0 - 0.25 * g_beatP + 0.6 * g_fx;
 
     int steps;
     float t = march(ro, rd, steps);
@@ -161,8 +166,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec3 fogCol = palette(u_chromaHue + 0.5, vec3(0.05), vec3(0.08), vec3(1.0), vec3(0.2, 0.1, 0.3));
     col = mix(col, fogCol * (0.4 + u_subBass), fog);
 
-    // Destello radial en el impacto (el limitador del epílogo lo mantiene seguro)
-    col += u_impact * 0.6 * exp(-4.0 * length(uv));
+    // Destello radial mientras el clip físico vive (el limitador del epílogo lo mantiene seguro)
+    col += g_fx * 0.6 * exp(-4.0 * length(uv));
 
     fragColor = vec4(col, 1.0);
 }

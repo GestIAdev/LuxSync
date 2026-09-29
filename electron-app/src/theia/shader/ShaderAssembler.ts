@@ -239,18 +239,15 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
   // Uniformidad por construcción): los 5 canales derivados que consumen
   // las matemáticas de las familias, calculados IDÉNTICOS en todos los
   // cores. Una evaluación por píxel, O(1), sin estado.
-  lines.push('// ── Canales estándar §3.1 (G6 — euChannels) ──')
-  lines.push('//   tc     — tensión·contracción: curva perceptual u_approach² (§3.4)')
-  lines.push('//   td     — tensión·disolución: breakdown inminente (u_enums.y==3)')
+  lines.push('// ── Canales estándar §3.1 (G6 — euChannels · Clean Shot 8287) ──')
   lines.push('//   glitch — ruptura digital con compuerta APOCALYPSE (§3.5)')
   lines.push('//   live   — factor de vida: audio vivo vs. latido libre')
   lines.push('//   groove — swing solo con pulso fiable (PLL_LOCKED)')
+  lines.push('//   🔫 WAVE 8287 — tc/td extirpados: la aproximación cognitiva ya no')
+  lines.push('//   gobierna geometría. El movimiento base vive en u_beatPhase/')
+  lines.push('//   u_barPhase/u_beatTime; los bursts solo via u_activeEffectEnergy.')
   lines.push(
-    'void euChannels(out float tc, out float td, out float glitch,',
-    '                out float live, out float groove) {',
-    '  bool breakNx = (u_enums.y == 3);',
-    '  tc     = breakNx ? 0.0 : u_approach * u_approach;',
-    '  td     = breakNx ? u_approach : 0.0;',
+    'void euChannels(out float glitch, out float live, out float groove) {',
     '  glitch = APOCALYPSE ? u_harshness : 0.0;',
     '  live   = AUDIO_LIVE ? 1.0 : 0.3;',
     '  groove = PLL_LOCKED ? u_beatConfidence : 0.25;',

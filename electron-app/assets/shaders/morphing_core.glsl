@@ -105,10 +105,15 @@ vec3 envMap(vec3 r) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   float beats = u_beatTime + u_time * 0.05;
-  float rel   = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — la fusión extrema escala con la VIDA del
+  // clip físico (fxAge): el núcleo se derrite solo mientras el disparo
+  // corre en las luces, no por una predicción que "se acerca".
+  float fx    = u_activeEffectEnergy;
+  float fxAge = u_activeEffectAge;
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
 
   // Relojes (obedecen SPEED): rotación lenta + ebullición continua.
   gRotY  = beats * TAU / 64.0 * G_SPIN;
@@ -117,9 +122,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   gMorph = clamp(G_MORPH + 0.25 * sin(beats * PI / 32.0), 0.0, 1.0);
 
   // Transitorios (tiempo real): amplitudes de la deformación.
-  gAmp   = max(0.0, (0.08 + 0.38 * u_kickPulse + 0.22 * rel + 0.10 * u_bass) * live);
-  gSpike = max(0.0, 0.03 + 0.45 * rel + 0.22 * euSnare() + 0.18 * tc + 0.2 * u_spikes);
-  gMelt  = max(0.0, 0.3 * u_melt + 0.6 * td);
+  gAmp   = max(0.0, (0.08 + 0.38 * u_kickPulse + 0.22 * fx + 0.10 * u_bass) * live);
+  gSpike = max(0.0, 0.03 + 0.45 * fx + 0.22 * euSnare() + 0.12 * beatP + 0.2 * u_spikes);
+  gMelt  = max(0.0, 0.3 * u_melt + 0.7 * fx * fxAge);
 
   vec2 fc = fragCoord;
   if (glitch > 0.01) {
@@ -129,7 +134,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   vec2 uv = (fc - 0.5 * u_resolution.xy) / u_resolution.y;
 
   // ── 2. CÁMARA ─────────────────────────────────────────────────────
-  float camD = 4.6 - 0.9 * tc + 0.4 * u_kickPulse;               // la tensión acerca
+  float camD = 4.6 - 0.6 * fx + 0.4 * u_kickPulse;               // el disparo acerca
   vec3 ro = vec3(0.0, 0.25, -camD);
   vec3 rd = normalize(vec3(uv, 1.5));
 
@@ -175,22 +180,22 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
     // Magma: las cavidades brillan al rojo con bombo e impacto.
     float heat = smoothstep(0.15, 0.8, boil(lp * G_FREQ + vec3(0.0, gPhase, G_SEED)));
-    col += heat * (u_kickPulse * 0.9 + rel * 1.4) * vec3(2.4, 0.65, 0.15);
-    // Puntas de los pinchos: incandescencia blanca con el impacto.
-    col += smoothstep(0.55, 0.95, ridge(lp)) * (rel * 2.5 + euSnare() * 0.8) * vec3(1.0, 0.95, 0.9);
+    col += heat * (u_kickPulse * 0.9 + fx * 1.4) * vec3(2.4, 0.65, 0.15);
+    // Puntas de los pinchos: incandescencia blanca con el disparo.
+    col += smoothstep(0.55, 0.95, ridge(lp)) * (fx * 2.5 + euSnare() * 0.8) * vec3(1.0, 0.95, 0.9);
     // Destellos del hi-hat sobre el metal.
     col += step(0.993 - 0.02 * u_ultraAir, hash21(floor(fc * 0.5) + floor(beats * 6.0)))
          * u_hihatEnergy * fres * vec3(2.0);
   }
-  col += glow * halo * (0.25 + 1.6 * u_kickPulse + 0.8 * rel);
+  col += glow * halo * (0.25 + 1.6 * u_kickPulse + 0.8 * fx);
 
   // ── 4. TRANSITORIOS GLOBALES ──────────────────────────────────────
-  col += rel * 0.5 * halo * exp(-r * 3.0);
+  col += fx * 0.5 * halo * exp(-r * 3.0);
   if (glitch > 0.01) col = mix(col, col.brg, 0.5 * glitch * step(0.55, hash21(vec2(floor(fc.y / 4.0), floor(beats * 4.0)))));
 
   // ── 5. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum), 0.45 * tc);
+  col = mix(col, vec3(lum), 0.45 * fx);
   if (ACID) col *= 0.75 + 0.25 * sin(vec3(0.0, 2.1, 4.2) + r * 14.0 - beats * PI);
   col *= euVoidGate(0.4);
   col *= (1.0 + 0.6 * u_energy) * (0.5 + 0.5 * live);

@@ -79,12 +79,16 @@ float mapScene(vec3 p, out float rib) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   gGlitch = glitch;
   gBeats  = u_beatTime + u_time * 0.05;
-  gTwist  = 0.035 + 0.05 * u_twist + 0.06 * tc;
-  float rel = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — el conduit late al beat; el estallido
+  // del punto de fuga solo cuando un clip físico corre en las luces.
+  float fx    = u_activeEffectEnergy;
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
+  float swell = sin(3.1415927 * u_barPhase);
+  gTwist  = 0.035 + 0.05 * u_twist + 0.04 * beatP;
 
   // Scanline tear (glitch agresivo) antes de construir el rayo.
   vec2 fc = fragCoord;
@@ -97,7 +101,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 2. CÁMARA — avanza con el reloj musical (obedece SPEED) ─────────
   float camZ = gBeats * G_VEL;
   vec3 ro = vec3(0.0, 0.0, camZ);
-  float fov = 1.25 - 0.45 * tc + 0.25 * rel;                // tensión = teleobjetivo
+  float fov = 1.25 - 0.2 * swell + 0.35 * fx;              // disparo = teleobjetivo
   vec3 rd = normalize(vec3(uv, fov));
   rd.xy = rot2(0.15 * sin(gBeats * PI * 0.125)) * rd.xy;    // alabeo lento
 
@@ -144,15 +148,15 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 5. TRANSITORIOS — tiempo real ─────────────────────────────────
   // Snare: barrido horizontal blanco.
   col += euSnare() * 0.5 * exp(-abs(uv.y - (0.5 - euSnare())) * 18.0) * vec3(0.9, 0.95, 1.0);
-  // Impact: estallido complementario en el punto de fuga.
-  col += rel * 1.2 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
+  // Disparo: estallido complementario en el punto de fuga.
+  col += fx * 1.2 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                              vec3(0.0, 0.33, 0.67)) * exp(-length(uv) * 4.0);
   // Glitch: aberración cromática por separación de canales.
   if (glitch > 0.01) col = mix(col, col.brg, 0.5 * glitch * step(0.5, hash21(fc * 0.01 + gBeats)));
 
   // ── 6. CONSERVACIÓN DE LA TENSIÓN + EXPOSICIÓN LINEAL ──────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum), 0.5 * tc);
+  col = mix(col, vec3(lum), 0.5 * fx);
   col *= euVoidGate(0.35);
   col *= (1.0 + 0.7 * u_energy) * live;
   col *= 1.0 - 0.3 * dot(uv, uv);

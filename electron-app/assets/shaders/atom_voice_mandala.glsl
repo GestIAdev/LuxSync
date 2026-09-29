@@ -69,10 +69,13 @@ float mandala(float a, float r, float n, float k, float vt) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   float beats = u_beatTime + u_time * 0.05;
-  float rel   = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — flash solo con clip físico vivo; la
+  // respiración basal del UV late con el compás, no con la predicción.
+  float fx    = u_activeEffectEnergy;
+  float swell = sin(3.1415927 * u_barPhase);
 
   // Voz = peso convexo de euTimbre × presencia sostenida (una sílaba
   // suelta no basta para ordenar el universo).
@@ -94,7 +97,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float vt    = u_vocalTime * G_BREATH;                 // ∫voz·dt — Ley 1
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
-  uv *= 1.0 + 0.3 * tc - 0.2 * td;                      // tensión contrae · breakdown abre
+  uv *= 1.0 + 0.15 * swell;                             // respiración por compás
 
   // ── 2. LA VOZ ORDENA — el warp se relaja con la presencia vocal ────
   float wa = (1.0 - order) * G_WARP * (0.6 + 0.4 * live);
@@ -142,7 +145,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float hitMask = 1.0 - 0.7 * order;
   col += u_kickPulse * 0.45 * hitMask * exp(-abs(r - 0.55 - 0.1 * u_kickPulse) * 10.0) * chaosHue;
   col += u_snareTruePulse * 0.35 * hitMask * fil * fil * vec3(0.8, 0.9, 1.0);
-  col += rel * 0.4 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
+  col += fx * 0.4 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                              vec3(0.0, 0.33, 0.67)) * exp(-2.5 * r);
   col += step(0.992 - 0.02 * u_ultraAir, hash21(floor(fragCoord * 0.5) + floor(beats * 4.0)))
        * u_hihatEnergy * hitMask * vec3(1.2);
@@ -153,7 +156,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 5. TENSIÓN + VACÍO (v2: rampa suave + rebote ∝ al vacío) ───────
   float lum = dot(col, LUMA);
-  col = mix(col, vec3(lum) * vec3(1.05, 0.95, 1.1), 0.45 * tc);
+  col = mix(col, vec3(lum) * vec3(1.05, 0.95, 1.1), 0.4 * fx);
   col *= mix(1.0, 0.4, smoothstep(0.6, 0.9, u_rhythmicVoid));
   col *= 1.0 + 0.6 * u_voidRelease;
 

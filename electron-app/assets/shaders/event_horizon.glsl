@@ -92,13 +92,18 @@ vec3 starfield(vec3 d) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   gBeats = u_beatTime + u_time * 0.05;
-  float rel = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — el colapso SOLO existe mientras un clip
+  // físico corre en Hephaestus; la órbita basal respira con el compás.
+  float fx    = u_activeEffectEnergy;
+  float swell = sin(3.1415927 * u_barPhase);
 
-  // Masa: el DROP es una oleada gravitatoria — el cielo entero se dobla.
-  float M = clamp((1.0 + 0.25 * u_mass) * (1.0 + 0.55 * rel) + 0.25 * tc, 0.6, 1.75);
+  // Masa: el DISPARO de efecto es una oleada gravitatoria — el cielo
+  // entero se dobla durante los ms exactos del clip DMX. Sin fuego real,
+  // la masa es la nominal → el disco de acreción siempre visible.
+  float M = clamp((1.0 + 0.25 * u_mass) * (1.0 + 0.55 * fx), 0.6, 1.75);
 
   vec2 fc = fragCoord;
   if (glitch > 0.01) {                                             // desgarro del espacio-tiempo
@@ -107,15 +112,15 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   }
   vec2 uv = (fc - 0.5 * u_resolution.xy) / u_resolution.y;
 
-  // ── 2. CÁMARA — órbita; la TENSIÓN nos hace caer hacia el horizonte ─
+  // ── 2. CÁMARA — órbita; el DISPARO nos hace caer hacia el horizonte ─
   float az   = gBeats * TAU / 128.0;
   float incl = G_TILT + 0.08 * sin(u_time * 0.05);
-  float D    = 15.0 - 6.0 * tc;
+  float D    = 15.0 - 1.5 * swell - 4.5 * fx;
   vec3 ro = D * vec3(cos(incl) * cos(az), sin(incl), cos(incl) * sin(az));
   vec3 ww = normalize(-ro);
   vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
   vec3 vv = cross(uu, ww);
-  vec3 rd = normalize(uv.x * uu + uv.y * vv + (1.5 + 0.4 * tc) * ww);
+  vec3 rd = normalize(uv.x * uu + uv.y * vv + (1.5 + 0.4 * fx) * ww);
 
   // ── 3. GEODÉSICAS — fotón en Schwarzschild (aprox. newtoniana) ────
   // a = −1.5·M·h²·p / r⁵ con h = |p×v| conservado: reproduce la esfera de
@@ -188,7 +193,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 4. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(0.9, 1.0, 1.15), 0.4 * tc);
+  col = mix(col, vec3(lum) * vec3(0.9, 1.0, 1.15), 0.4 * fx);
   if (glitch > 0.01) col = mix(col, col.brg, 0.5 * glitch * step(0.6, hash21(vec2(floor(fc.y / 4.0), floor(gBeats * 4.0)))));
   col *= euVoidGate(0.4);
   col *= 1.0 + 0.5 * u_energy;

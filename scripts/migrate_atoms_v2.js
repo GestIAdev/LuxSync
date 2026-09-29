@@ -28,6 +28,9 @@
  *   · Invariancia del arte — toda línea original que difiere fue tocada
  *     por una regla (el resto es byte-idéntico)
  *   · Contrato — mainImage canónico, cero u_tel[ / strobo en código
+ *   · 🔫 WAVE 8287 · Clean Shot — geometría libre de aproximación
+ *     cognitiva: prohibido u_approach/u_impact/predicción y la firma
+ *     v1 de euChannels (≥4 args); movimiento base = BPM, bursts = fx
  *   · Compilación REAL — se ensambla con el ShaderAssembler del repo
  *     (preámbulo v2: UBO EuclidTel, euTimbre, pulsos) con los genes por
  *     defecto y se compila con glslangValidator (GLSL ES 3.00, pase
@@ -355,6 +358,14 @@ function validate(A, glslang, src) {
   if (!MAIN_SIG.test(code)) errs.push('falta `void mainImage(out vec4 c, in vec2 fragCoord)`')
   if (/\bu_tel\s*\[/.test(code)) errs.push('queda acceso plano u_tel[ (v1)')
   if (/\bu_strobeGate\b|\bSTROBE_ACTIVE\b/.test(code)) errs.push('queda estrobo deprecado en código')
+  // 🔫 WAVE 8287 · Clean Shot — la geometría no puede depender de la
+  // aproximación cognitiva: ni la firma v1 de euChannels ni los canales
+  // de predicción/impacto. El movimiento base vive en u_beatPhase/
+  // u_barPhase/u_beatTime; los bursts solo via u_activeEffectEnergy.
+  if (/\beuChannels\s*\(\s*[\w.]+\s*,\s*[\w.]+\s*,\s*[\w.]+\s*,/.test(code))
+    errs.push('euChannels() con firma v1 (≥4 args) — migrar a (glitch, live, groove)')
+  if (/\bu_(approach|impact|predictiveETA|predictionProb|selEtaMs|selEtaBeats|seleneConfidence|tension|beauty|zScoreN|spectralBuildup|glassBreak|strobeGate)\b/.test(code))
+    errs.push('canal cognitivo prohibido en átomos (Clean Shot) — usa u_activeEffectEnergy/Age para bursts')
   if (!src.includes(MARKER)) errs.push(`falta el marcador "${MARKER}"`)
   const meta = A.parseEuclidMeta(src)
   if (!meta.name) errs.push('cabecera @euclid sin name')

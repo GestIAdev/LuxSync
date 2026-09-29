@@ -99,14 +99,17 @@ vec3 cellNormal(vec3 p, vec2 id, float h) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   gBeats   = u_beatTime + u_time * 0.05;
   gBeatIdx = floor(u_beatTime);
   gGlitch  = glitch;
   gLive    = live;
   gExtrude = 1.0 + 0.6 * u_extrude;
-  float rel = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — la cámara respira con el compás; el picado
+  // sobre la ciudad y el relámpago solo ocurren con clip físico vivo.
+  float fx    = u_activeEffectEnergy;
+  float swell = sin(3.1415927 * u_barPhase);
 
   vec2 fc = fragCoord;
   if (glitch > 0.01) {
@@ -118,11 +121,11 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 2. CÁMARA — vuelo rasante sobre la placa base (obedece SPEED) ───
   float camZ = gBeats * G_VEL;
   vec3 ro = vec3(1.6 * sin(gBeats * PI / 32.0),
-                 5.6 - 1.0 * tc + 0.3 * sin(u_time * 0.21),   // la tensión hace picar
+                 5.6 - 0.4 * swell - 0.6 * fx + 0.3 * sin(u_time * 0.21),  // compás mece · disparo pica
                  camZ);
   gCamXZ = ro.xz + vec2(0.0, 9.0);                            // punto de mira en el suelo
-  vec3 rd = normalize(vec3(uv, 1.35 - 0.3 * tc + 0.2 * rel));
-  rd.yz = rot2(-0.55 - 0.12 * tc) * rd.yz;                    // cabeceo hacia la ciudad
+  vec3 rd = normalize(vec3(uv, 1.35 - 0.15 * swell + 0.35 * fx));
+  rd.yz = rot2(-0.55 - 0.06 * swell - 0.06 * fx) * rd.yz;     // cabeceo hacia la ciudad
   float bank = 0.1 * sin(gBeats * PI / 16.0);
   rd.xy = rot2(bank) * rd.xy;
   rd.xz = rot2(bank * 0.8) * rd.xz;
@@ -200,14 +203,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   }
 
   // ── 5. TRANSITORIOS GLOBALES ──────────────────────────────────────
-  // Impact: relámpago complementario sobre el horizonte.
-  col += rel * 1.4 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
+  // Disparo: relámpago complementario sobre el horizonte.
+  col += fx * 1.4 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                              vec3(0.0, 0.33, 0.67)) * exp(-abs(rd.y + 0.05) * 10.0);
   if (glitch > 0.01) col = mix(col, col.gbr, 0.6 * glitch * step(0.6, hash21(vec2(floor(fc.y / 3.0), gBeatIdx))));
 
   // ── 6. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum), 0.5 * tc);
+  col = mix(col, vec3(lum), 0.5 * fx);
   col *= euVoidGate(0.35);
   col *= 1.0 + 0.6 * u_energy;
   col *= 1.0 - 0.3 * dot(uv, uv);

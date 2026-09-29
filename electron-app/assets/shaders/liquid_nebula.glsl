@@ -62,20 +62,24 @@ float fbm(vec3 p) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
-  float rel = u_impact;
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
+  // 🔫 WAVE 8287 · Clean Shot — marea de luz solo con clip físico vivo;
+  // el fluido respira su fase con el compás, nunca con la predicción.
+  float fx    = u_activeEffectEnergy;
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
+  float swell = sin(3.1415927 * u_barPhase);
 
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
   vec2 p  = uv * G_SCALE + G_SEED;
 
   // ── 2. RELOJ DEL FLUIDO — evolución sedosa sobre u_time (obedece SPEED)
-  // Ley de Integración: `live` y `tc` NO multiplican el reloj (saltaría la
-  // fase cuando cambian); se SUMAN a la fase → aceleración real durante la
-  // subida, sin saltos. `live` respira la amplitud del warp.
+  // Ley de Integración: `live` y `swell` NO multiplican el reloj (saltaría
+  // la fase cuando cambian); se SUMAN a la fase → la nebulosa late con el
+  // compás sin saltos. `live` respira la amplitud del warp.
   float flow = u_time * G_FLOW * (1.0 - 0.5 * u_viscosity) + 0.02 * u_beatTime;
-  float t    = flow + 1.2 * tc + 0.6 * td;
-  float turb = G_WARP * (0.55 + 0.45 * live) * (1.0 + 0.9 * tc + 0.3 * u_bass);
+  float t    = flow + 0.6 * swell;
+  float turb = G_WARP * (0.55 + 0.45 * live) * (1.0 + 0.5 * beatP + 0.3 * u_bass);
 
   // ── 3. DOMAIN WARPING DOBLE (IQ) — plasma sin bordes ──────────────
   vec2 q = vec2(fbm(vec3(p, t)),
@@ -102,8 +106,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 5. TRANSITORIOS — ondas suaves, sin bordes duros ──────────────
   // Kick: relámpago interno — solo las nubes más densas se iluminan.
   col += gas * u_kickPulse * smoothstep(0.55, 0.95, f) * 1.1;
-  // Impact: marea de luz complementaria desde el centro.
-  col += rel * 0.7 * palette(hue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
+  // Disparo: marea de luz complementaria desde el centro (clip físico vivo).
+  col += fx * 0.7 * palette(hue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                              vec3(0.0, 0.33, 0.67)) * exp(-1.8 * length(uv)) * f;
   // Hi-hat / aire: polvo estelar suave (gaussiano, no píxel duro).
   vec2 cell = floor(uv * 60.0);
@@ -114,7 +118,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 6. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.4 * tc); // la subida blanquea
+  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.4 * fx); // el disparo blanquea
   col *= euVoidGate(0.5);
   col *= (1.0 + 0.5 * u_energy) * (0.45 + 0.55 * live);
   col *= 1.0 - 0.25 * dot(uv, uv);

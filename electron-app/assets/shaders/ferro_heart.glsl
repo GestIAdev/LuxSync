@@ -98,19 +98,23 @@ vec3 envMap(vec3 r) {
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES ─────────────────────────────────────────────────────
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   gBeats  = u_beatTime + u_time * 0.05;
   gGlitch = glitch;
-  float rel = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — el campo respira con el beat/compás;
+  // la inversión de campo y la torre solo existen con clip físico vivo.
+  float fx    = u_activeEffectEnergy;
+  float beatP = 0.5 + 0.5 * cos(6.2831853 * u_beatPhase);
+  float swell = sin(3.1415927 * u_barPhase);
 
   // Masa magnética — el BAJO es el campo: altura de los picos.
   gH = (0.12 + 0.55 * u_subBass + 0.35 * u_bass) * live * (1.0 + 0.4 * u_field)
      + 0.45 * u_kickPulse;                                         // bombo = picos que saltan
-  gK     = G_LATTICE + 2.0 * tc;                                   // tensión: red más fina
-  gEnvK  = 0.12 + 0.5 * tc;                                        // tensión: se agolpa al centro
-  gTower = 1.6 * tc;                                               // el imán baja → torre central
-  gFlip  = 1.0 - 2.0 * smoothstep(0.35, 0.9, rel);                 // DROP: inversión de campo
+  gK     = G_LATTICE + 0.8 * beatP;                                // latido: red respira por beat
+  gEnvK  = 0.12 + 0.3 * swell;                                     // compás: se agolpa al centro
+  gTower = 0.9 * fx;                                               // disparo → torre central
+  gFlip  = 1.0 - 2.0 * smoothstep(0.35, 0.9, fx);                  // DISPARO: inversión de campo
   gRot   = gBeats * TAU / 96.0;
   float ta = hash21(vec2(floor(u_beatTime * 2.0), G_SEED)) * TAU;
   gTilt  = vec2(cos(ta), sin(ta)) * 0.35 * euSnare();           // snare: latigazo del campo
@@ -119,9 +123,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 2. CÁMARA — órbita lenta alrededor del corazón (obedece SPEED) ──
   float az = gBeats * G_ORBIT * TAU / 32.0;
-  float camR = 6.2 - 1.2 * tc;
-  vec3 ro = vec3(camR * cos(az), 3.0 - 0.8 * tc + 0.25 * sin(u_time * 0.13), camR * sin(az));
-  vec3 ta3 = vec3(0.0, 0.55 + 0.4 * tc, 0.0);
+  float camR = 6.2 - 0.8 * swell;
+  vec3 ro = vec3(camR * cos(az), 3.0 - 0.5 * fx + 0.25 * sin(u_time * 0.13), camR * sin(az));
+  vec3 ta3 = vec3(0.0, 0.55 + 0.3 * fx, 0.0);
   vec3 ww = normalize(ta3 - ro);
   vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
   vec3 vv = cross(uu, ww);
@@ -164,15 +168,15 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     float s = spikeField(p.xz) * exp(-dot(p.xz, p.xz) * gEnvK);
     vec3 hot = palette(u_chromaHue + G_HUE + 0.15, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
     col += hot * hot * pow(s, 3.0) * (0.15 * live + 3.0 * u_kickPulse);
-    // DROP: los cráteres invertidos exhalan luz blanca del fondo del pozo.
-    col += vec3(1.2, 1.1, 1.0) * rel * smoothstep(0.2, 0.9, s) * (1.0 - gFlip) * 0.8;
+    // DISPARO: los cráteres invertidos exhalan luz blanca del fondo del pozo.
+    col += vec3(1.2, 1.1, 1.0) * fx * smoothstep(0.2, 0.9, s) * (1.0 - gFlip) * 0.8;
 
     col = mix(col, envMap(rd) * 0.35, 1.0 - exp(-t * 0.03));
   }
 
   // ── 5. TENSIÓN + EXPOSICIÓN LINEAL ─────────────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.5 * tc);
+  col = mix(col, vec3(lum) * vec3(0.95, 1.0, 1.1), 0.5 * fx);
   if (glitch > 0.01) col = mix(col, col.gbr, 0.5 * glitch * step(0.6, hash21(vec2(floor(fragCoord.y / 4.0), floor(gBeats * 8.0)))));
   col *= euVoidGate(0.4);
   col *= 1.0 + 0.5 * u_energy;

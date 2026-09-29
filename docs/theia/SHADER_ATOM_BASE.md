@@ -97,11 +97,15 @@ temblores; usa los relojes para movimiento continuo.
 |---|---|---|
 | `u_kickPulse` | `exp(-t/τ)` desde flanco de bombo (τ=¼ beat) | KICK_EDGE |
 | `u_snarePulse` | Ídem caja/redoblante | SNARE |
-| `u_impact` | Pulso en el instante del evento (τ=220ms) | ETA del oráculo cruza 0 |
 | `u_crestPulse` | `exp(-t/τ)` desde cresta CF>2 — **latencia cero**, τ=110ms absoluto (más rápido que kick/snare, sin tempo) | CREST_EVENT |
 | `u_glassBreak` | Pulso de ruptura soberana (τ=380ms) — el drop llegó ANTES de agotar el countdown | GLASS_BREAK |
-| `u_approach` | Rampa 0→1 tensando el espacio antes del drop | Predicción + confianza, horizonte 8 beats |
-| `u_predictiveETA` | Cuenta atrás al evento (s) | Selene |
+| `u_activeEffectEnergy` 🔫 | Envolvente del clip físico vivo: hold a la `intensity` exacta durante `durationMs` reales + release ~250ms — **paridad video↔DMX** | EFFECT_ACTIVE (pág. B, slots 96-99) |
+| `u_activeEffectAge` 🔫 | Progreso normalizado 0→1 del clip (`elapsed/durationMs`) — curva tu propio ataque/final | slot 97 |
+| `u_activeEffectId` 🔫 | Hash estable del arquetipo de efecto (0..1) | slot 98 |
+| `u_activeEffectCount` 🔫 | Nº de clips concurrentes vivos | slot 99 |
+| ~~`u_impact`~~ | ⛔ DEPRECADO en átomos (WAVE 8287) — pulso cognitivo congelable; usar `u_activeEffectEnergy` | — |
+| ~~`u_approach`~~ | ⛔ DEPRECADO en átomos (WAVE 8287) — aproximación continua prohibida en geometría | — |
+| ~~`u_predictiveETA`~~ | ⛔ DEPRECADO en átomos (WAVE 8287) | — |
 | `u_vocalOnset` 🌊 | `exp(-t/600ms)` — la voz APARECE: respiración lenta, no un golpe | VOCAL_ONSET (pág. B) |
 | `u_snareTruePulse` 🌊 | `exp(-t/¼beat)` — caja confirmada por el detector MACD (cero falsos positivos vocales) | SNARE_TRUE (pág. B) |
 | `u_voidRelease` 🌊 | `A·exp(-t/450ms)` — rebote al salir del vacío rítmico; **A ∝ lo que duró** (0.25 → hold≥2s, 1.0 → hold≥8s) | VOID_RELEASE (pág. B) |
@@ -209,20 +213,34 @@ indetectable). **Flancos** — `VOCAL_ONSET` (la voz entra), `SNARE_TRUE`
 `u_vocalOnset` · `u_snareTruePulse` · `u_voidRelease` — **usa siempre el
 pulso**, el bit es solo el tick del evento.
 
-## 8. `euChannels` — los 5 canales derivados (evaluar UNA vez por píxel)
+## 8. `euChannels` — los 3 canales derivados (evaluar UNA vez por píxel)
 
 ```glsl
-float tc, td, glitch, live, groove;
-euChannels(tc, td, glitch, live, groove);
+float glitch, live, groove;
+euChannels(glitch, live, groove);
 ```
 
 | Canal | Fórmula | Uso canónico |
 |---|---|---|
-| `tc` | `u_approach²` (0 si breakdown) | Tensión·contracción: acelera zoom, drena color (`mix(col,lum,0.6*tc)`), torsión |
-| `td` | `u_approach` si breakdown inminente | Disolución: abre el fractal, esparce |
 | `glitch` | `u_harshness` solo si `APOCALYPSE` | Desgarro digital: desplaza scanlines, cuantiza ángulos |
 | `live` | 1.0 si `AUDIO_LIVE`, si no 0.3 | Factor de vida global — sin audio el átomo respira suave |
 | `groove` | `u_beatConfidence` si `PLL_LOCKED`, si no 0.25 | Swing solo con pulso fiable |
+
+### 8.1 🔫 Doctrina Clean Shot (WAVE 8287)
+
+`tc`/`td` fueron **extirpados** de la firma: la aproximación cognitiva de
+Selene (`u_approach`, `u_impact`, `u_predictiveETA`…) ya no gobierna
+geometría — es continua, se congela y describe *intención*, no *hechos*.
+
+- **Movimiento base** → relojes musicales: `u_beatTime`, `u_beatPhase`
+  (pulso por beat), `u_barPhase` (respiración por compás), `u_barCount`.
+  Patrones: `beatP = 0.5+0.5*cos(6.2831853*u_beatPhase)` ·
+  `swell = sin(3.1415927*u_barPhase)`.
+- **Bursts / eventos extremos** → `u_activeEffectEnergy` (hold durante la
+  duración REAL del clip Hephaestus) esculpida por `u_activeEffectAge`.
+  Si una luz DMX no está ejecutando un efecto, el átomo no detona.
+- **Transitorios físicos** (kick, caja, voz, vacío, cresta) siguen
+  permitidos — son audio, no cognición.
 
 ### 8.2 `euTimbre()` — mezcla de texturas físicas (WAVE 8279 · F4)
 
@@ -275,8 +293,8 @@ float sdSphere(vec3 p, float r);  float sdBox(vec3 p, vec3 b);
 float sdTorus(vec3 p, vec2 t);    float smin(float a, float b, float k);
 vec3 opRep(vec3 p, vec3 c);                             // repetición de dominio
 vec4 euTimbre();                                        // §8.2 — 4 texturas Σ=1
-void euChannels(out float tc, out float td, out float glitch,
-                out float live, out float groove);      // §8 — canales §3.1
+void euChannels(out float glitch, out float live,
+                out float groove);                      // §8 — Clean Shot 8287
 #define MAX_STEPS N    // del hint @euclid steps (def. 64)
 #define iTime iResolution iFrameRate                    // compat Shadertoy
 ```
@@ -331,13 +349,14 @@ uniform float u_pulseGain;   // Regla del Cero Neutro: 0 = diseño canónico
 #define TAU 6.28318530718
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
-  // 1. Canales derivados (una sola evaluación)
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  // 1. Canales derivados (una sola evaluación) — firma Clean Shot
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
 
-  // 2. Relojes — continuo gobernado; transitorios a tiempo real
+  // 2. Relojes — continuo gobernado por el BPM; burst = clip físico vivo
   float beats = u_beatTime + u_time * 0.05;
-  float rel   = u_impact;
+  float swell = sin(3.1415927 * u_barPhase);            // respiración de compás
+  float fx    = u_activeEffectEnergy;                   // 🔫 paridad video↔DMX
 
   // 3. Coordenadas centradas con aspecto corregido
   vec2 uv = (fragCoord - 0.5 * u_resolution.xy) / u_resolution.y;
@@ -346,19 +365,19 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // 4. Geometría — la fase avanza con beats (obedece SPEED)
   float fold  = G_FOLD;
-  float phase = beats * TAU * G_SPEED + 0.8 * tc + 0.6 * rel;
+  float phase = beats * TAU * G_SPEED + 0.8 * swell + 0.6 * fx;
   float mand  = 0.5 + 0.5 * cos(a * fold + phase + noise3(vec3(uv * 2.0, beats * 0.3)));
 
-  // 5. Color — hue del chromagrama; la tensión drena a gris
+  // 5. Color — hue del chromagrama; el disparo drena a gris
   vec3 col = palette(u_chromaHue + mand * 0.3,
                      vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67));
   col *= mand * (0.25 + 0.75 * u_energy) * live;
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum), 0.5 * tc);
+  col = mix(col, vec3(lum), 0.5 * fx);
 
   // 6. Transitorios — TIEMPO REAL: golpean igual a cualquier SPEED
   col += u_kickPulse * 0.6 * exp(-abs(r - 0.4) * 8.0);            // anillo
-  col += rel * 0.3 * palette(u_chromaHue + 0.5,
+  col += fx * 0.3 * palette(u_chromaHue + 0.5,
          vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0)) * exp(-2.0 * r);
   col += step(0.985 - 0.02 * u_ultraAir, hash21(uv + beats)) *
          u_hihatEnergy * vec3(1.2);                               // chispas
@@ -380,9 +399,12 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 - [ ] Cabecera `@euclid` completa (name + family; genes con guardia `#ifndef`).
 - [ ] Params `@euclid` declarados como `uniform` y neutros a 0.
 - [ ] `mainImage(out vec4 c, in vec2 fragCoord)` — firma exacta.
-- [ ] Movimiento continuo sobre `u_beatTime`/`u_time` (obedece SPEED);
-      impactos sobre `u_kickPulse`/`u_impact`/`u_*Energy` (tiempo real).
-- [ ] `euChannels` evaluado una vez; `live` multiplica la vida del átomo.
+- [ ] Movimiento continuo sobre `u_beatTime`/`u_beatPhase`/`u_barPhase`
+      (obedece SPEED); impactos físicos sobre `u_kickPulse`/`u_*Energy`
+      (tiempo real); bursts cognitivos SOLO sobre `u_activeEffectEnergy` —
+      prohibidos `u_approach`/`u_impact`/predicción en geometría (§8.1).
+- [ ] `euChannels` evaluado una vez (firma de 3 canales); `live`
+      multiplica la vida del átomo.
 - [ ] Texturas/morphs por naturaleza del audio via `euTimbre()` (§8.2) —
       pulsos físicos con `u_vocalOnset`/`u_snareTruePulse`/`u_voidRelease`,
       no con los flags crudos.

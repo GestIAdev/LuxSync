@@ -926,30 +926,33 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 describe('G6 — euChannels: biblioteca estándar de canales (§3.1)', () => {
   const pre = buildPreamble()
 
-  it('el preámbulo inyecta euChannels() con la firma canónica', () => {
+  it('el preámbulo inyecta euChannels() con la firma Clean Shot (3 canales)', () => {
     expect(pre).toContain(
-      'void euChannels(out float tc, out float td, out float glitch,\n' +
-        '                out float live, out float groove) {',
+      'void euChannels(out float glitch, out float live, out float groove) {',
     )
   })
 
   it('los canales se derivan de las fuentes estándar (idénticos en todos los cores)', () => {
-    // tc/td: curva perceptual u_approach² + rama breakdown (u_enums.y == 3).
-    expect(pre).toContain('u_enums.y == 3')
-    expect(pre).toContain('u_approach * u_approach')
     // glitch: compuerta APOCALYPSE × harshness.
     expect(pre).toContain('APOCALYPSE ? u_harshness : 0.0')
     // live/groove: AUDIO_LIVE / PLL_LOCKED × beatConfidence.
     expect(pre).toContain('AUDIO_LIVE ? 1.0 : 0.3')
     expect(pre).toContain('PLL_LOCKED ? u_beatConfidence : 0.25')
+    // 🔫 WAVE 8287 · Clean Shot — tc/td extirpados de la firma: la
+    // aproximación cognitiva ya no se calcula en el canal estándar.
+    expect(pre).not.toContain('u_approach * u_approach')
   })
 
   it('el shader de referencia Oracle KIFS consume euChannels (§6, G6)', () => {
-    expect(ORACLE_KIFS_SOURCE).toContain('euChannels(g_tc, g_td, g_glitch')
+    expect(ORACLE_KIFS_SOURCE).toContain('euChannels(g_glitch, g_live, g_groove)')
     expect(ORACLE_KIFS_SOURCE).not.toContain('telFlag(9)') // glitch a mano → canal
+    // Clean Shot: el átomo de referencia solo usa reloj BPM + clip físico.
+    expect(ORACLE_KIFS_SOURCE).toContain('u_activeEffectEnergy')
+    expect(ORACLE_KIFS_SOURCE).not.toContain('u_impact')
+    expect(ORACLE_KIFS_SOURCE).not.toContain('u_approach')
     const asm = assembleFragmentShader(ORACLE_KIFS_SOURCE)
     expect(asm.fragSource).toContain('void euChannels(')
-    expect(asm.fragSource).toContain('euChannels(g_tc, g_td, g_glitch, g_live, g_groove)')
+    expect(asm.fragSource).toContain('euChannels(g_glitch, g_live, g_groove)')
   })
 })
 

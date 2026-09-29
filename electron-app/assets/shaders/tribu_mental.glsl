@@ -52,10 +52,13 @@ float euSnare() { return max(u_snareTruePulse, u_snarePulse * (1.0 - 0.7 * u_voc
 
 void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 1. CANALES (§3.1 — euChannels del preámbulo: Ley de Uniformidad G6)
-  float tc, td, glitch, live, groove;
-  euChannels(tc, td, glitch, live, groove);
+  float glitch, live, groove;
+  euChannels(glitch, live, groove);
   float beats   = u_beatTime + u_time * 0.04;
-  float rel     = u_impact;
+  // 🔫 WAVE 8287 · Clean Shot — el zoom/base fluye con beats+compás; la
+  // compresión tribal extrema solo con clip físico vivo.
+  float fx      = u_activeEffectEnergy;
+  float swell   = sin(3.1415927 * u_barPhase);
   float aspect  = u_resolution.x / u_resolution.y;
 
   vec2 fc = fragCoord;
@@ -69,14 +72,14 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 2. ESPACIO CONFORME: log-polar + zoom infinito (Droste) ─────────
   float r  = max(length(uv), 1e-4);
   float th = atan(uv.y, uv.x);
-  // Ley de la Derivada: sumar tc (= a²) a la FASE acelera el zoom mientras
-  // la tensión sube (velocidad extra = da²/dt) — jamás un salto.
-  float zoom = beats * G_ZOOM + 0.8 * tc + 0.6 * rel;
+  // Ley de la Derivada: la fase del zoom suma la respiración del compás y
+  // acelera bajo disparo real — jamás un salto (integración, no reloj×señal).
+  float zoom = beats * G_ZOOM + 0.5 * swell + 0.6 * fx;
   float lz   = log(r) - zoom;
   float ring = floor(lz / G_PERIOD);                    // profundidad del anillo
   float lw   = mod(lz, G_PERIOD) - 0.5 * G_PERIOD;      // [-P/2, P/2)
   float dir  = mod(ring, 2.0) * 2.0 - 1.0;              // contrarrotación tribal
-  float spin = dir * (beats * TAU / 16.0 + 1.5 * tc) + euSnare() * 0.15;
+  float spin = dir * (beats * TAU / 16.0 + 0.6 * swell) + euSnare() * 0.15;
   float seg  = TAU / G_FOLD;
   float ta   = abs(mod(th + spin, seg) - 0.5 * seg);    // grupo diédrico D_n
   if (glitch > 0.01) ta = mix(ta, floor(ta * 24.0) / 24.0, glitch);  // desgarro polar
@@ -84,7 +87,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 3. ENJAMBRE: N cargas sobre nudos de Lissajous ──────────────────
   float nLive  = mix(8.0, float(SWARM_MAX), clamp(u_morphFactor + 0.5 * u_swarm, 0.0, 1.0));
-  float spread = (1.0 - 0.8 * tc) * (1.0 + 1.8 * rel) * (1.0 + 0.3 * u_kickPulse) * (1.0 + 0.6 * td);
+  float spread = (1.0 - 0.4 * swell) * (1.0 + 1.8 * fx) * (1.0 + 0.3 * u_kickPulse);
   vec2  center = vec2(0.0, 0.25 * seg);
   vec2  ext    = vec2(0.42 * G_PERIOD, 0.25 * seg);
   float sat    = 0.5 * (0.35 + 0.65 * u_saturation);
@@ -101,7 +104,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     vec2  dv    = s - (center + knot * ext * spread);
     int   pitch = i % 12;                                  // cada carga canta una nota
     float q     = w * (0.25 + 1.6 * u_chroma(pitch)) * (0.0009 + 0.0022 * u_energy) * live;
-    float g     = q / (dot(dv, dv) + 0.00035 + 0.0015 * td);
+    float g     = q / (dot(dv, dv) + 0.00035 + 0.0015 * fx);
     pot  += g;
     float hue = u_chromaHue + mod(float(pitch) * 7.0, 12.0) / 12.0;  // círculo de quintas
     glow += g * palette(hue, vec3(0.5), vec3(sat), vec3(1.0), vec3(0.0, 0.33, 0.67));
@@ -131,8 +134,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
 
   // ── 5. CONSERVACIÓN DE LA TENSIÓN — color ───────────────────────────
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(col, vec3(lum) * vec3(1.0, 0.95, 1.1), 0.6 * tc);
-  col += rel * 0.3 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
+  col = mix(col, vec3(lum) * vec3(1.0, 0.95, 1.1), 0.5 * fx);
+  col += fx * 0.3 * palette(u_chromaHue + 0.5, vec3(0.5), vec3(0.5), vec3(1.0),
                              vec3(0.0, 0.33, 0.67)) * exp(-2.0 * r);
   col *= 1.2;  // exposición lineal — el epílogo posee ACES + sRGB (WAVE 8256)
   col *= euVoidGate(0.4);                          // el silencio rítmico deja eco
@@ -141,7 +144,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   if (u_hasPrev > 0.5) {
     vec2 f = fragCoord / u_resolution.xy - 0.5;           // uv normalizado: paridad Modo A/B
     f.x *= aspect;
-    f *= 0.992 - 0.03 * rel + 0.012 * tc;                 // <1 estela expansiva · >1 implosiva
+    f *= 0.992 - 0.03 * fx;                               // <1 estela expansiva · disparo implosivo
     f  = rot2(0.006 * (1.0 + u_bass) * dir) * f;
     f.x /= aspect;
     vec3 prev = texture(u_prevFrame, f + 0.5).rgb;

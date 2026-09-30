@@ -158,6 +158,23 @@ function clamp01(x: number): number {
   return x
 }
 
+/**
+ * 🔥 HOTFIX 8312 — factor de ducking para `u_impact` durante transiciones.
+ * El flash del impacto es ADITIVO dentro del shader: si coincide con el
+ * crossfade (Auto-Pilot dispara en downbeat = justo cuando cae un drop),
+ * su luz se suma sobre la mezcla y satura el HDR→ACES, disparando falsos
+ * positivos del limitador/AGC.
+ *
+ * Devuelve 0 mientras la transición está viva — incluye el hold
+ * `pending-anchor` (blend=0 pero transición real) y el tick `finished` —
+ * y 1 en reposo. Mute total, no rampa: el pico problemático ocurre en
+ * blend≈0 (arranque del fade), donde cualquier curva ponderada por blend
+ * seguiría dejando pasar el flash.
+ */
+export function impactDuckFor(step: CrossfadeStep, waitingAnchor: boolean): number {
+  return step.active || waitingAnchor ? 0 : 1
+}
+
 function applyCurve(t: number, curve: CrossfadeCurve): number {
   switch (curve) {
     case 'linear':

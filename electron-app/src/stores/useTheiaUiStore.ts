@@ -37,6 +37,15 @@ interface TheiaUiState {
   readonly mode: TheiaWorkspaceMode
   /** Drawer del Media Browser en modo PERFORM (en DESIGN siempre abierto). */
   readonly browserOpen: boolean
+  /**
+   * 🔥 HOTFIX 8314 — espejo GLOBAL de `theta.getStatus().isRunning`.
+   * El botón LIVE del header lo lee de aquí (no de useState local): al
+   * desmontar/remontar la vista el store conserva la verdad del motor y el
+   * botón vuelve reflejándolo — cero flicker a OFF, cero evento espurio.
+   * Lo hidrata la vista en mount (lectura directa del orquestador) y lo
+   * reconcilian los eventos `onWorkerEpoch` / el settle de start()/stop().
+   */
+  readonly engineLive: boolean
 }
 
 interface TheiaUiActions {
@@ -44,6 +53,8 @@ interface TheiaUiActions {
   toggleMode(): void
   setBrowserOpen(open: boolean): void
   toggleBrowser(): void
+  /** Canal UI↔motor: la vista escribe el valor REAL del orquestador. */
+  setEngineLive(live: boolean): void
 }
 
 export type TheiaUiStore = TheiaUiState & TheiaUiActions
@@ -51,6 +62,7 @@ export type TheiaUiStore = TheiaUiState & TheiaUiActions
 export const useTheiaUiStore = create<TheiaUiStore>()((set, get) => ({
   mode: 'perform',
   browserOpen: false,
+  engineLive: false,
 
   setMode(mode) {
     if (mode === get().mode) return
@@ -67,6 +79,10 @@ export const useTheiaUiStore = create<TheiaUiStore>()((set, get) => ({
 
   toggleBrowser() {
     set({ browserOpen: !get().browserOpen })
+  },
+
+  setEngineLive(live) {
+    if (live !== get().engineLive) set({ engineLive: live })
   },
 }))
 

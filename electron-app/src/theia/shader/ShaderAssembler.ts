@@ -205,6 +205,12 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
     'uniform sampler2D u_flashState;',
     'uniform float u_hasPrev;',
     'uniform float u_blend;',
+    '// 🎨 WAVE 8401 — textura de artista (`@euclid tex0 <nombre>`): RGBA8',
+    '// PREMULTIPLICADA (color sRGB codificado — ver UserTextures.ts),',
+    '// mipmapped, origen abajo-izq.',
+    '// u_hasTex0 = 1.0 cuando está lista (0.0 mientras carga → degradar).',
+    'uniform sampler2D u_tex0;',
+    'uniform float u_hasTex0;',
     'uniform float u_flashGuard;',
     'uniform float u_flashMaxDelta;',
     'uniform float u_flashBudget;',
@@ -741,6 +747,8 @@ export interface EuclidMeta {
   genes: EuclidGene[]
   /** Hint de raymarching para el governor (§4.5). */
   steps?: number
+  /** 🎨 WAVE 8401 — textura de artista pedida para `u_tex0`. */
+  tex0?: string
 }
 
 /**
@@ -808,6 +816,11 @@ export function parseEuclidMeta(source: string): EuclidMeta {
       case 'steps': {
         const n = parseInt(rest, 10)
         if (Number.isFinite(n) && n > 0) meta.steps = n
+        break
+      }
+      case 'tex0': {
+        const t = /^([\w.-]+)/.exec(rest)
+        if (t) meta.tex0 = t[1]
         break
       }
       // ── 🧬 WAVE 8233 · G1 — gramática Infinite Genome (§4.2) ──
@@ -920,6 +933,15 @@ export function parseStepsHint(source: string): number | null {
   if (!m) return null
   const n = parseInt(m[1], 10)
   return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/**
+ * 🎨 WAVE 8401 — hint `// @euclid tex0 <nombre>`: textura de artista que el
+ * motor bindea en `u_tex0` (registro en `UserTextures.ts`). null = sin textura.
+ */
+export function parseTex0Hint(source: string): string | null {
+  const m = /^\s*\/\/\s*@euclid\s+tex0\s+([\w.-]+)/m.exec(source)
+  return m ? m[1] : null
 }
 
 /** Pre-check: el cuerpo debe exponer la firma Shadertoy (§4.1). */

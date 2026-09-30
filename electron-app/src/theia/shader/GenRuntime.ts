@@ -27,6 +27,7 @@ import {
   hasMainState,
   hashSource,
   parseStepsHint,
+  parseTex0Hint,
   GEN_VERTEX_SRC,
   BLIT_VERTEX_SRC,
   BLIT_FRAG_SRC,
@@ -42,6 +43,8 @@ import {
 } from './ShaderAssembler'
 // 🧬 WAVE 8237 · G5 — Materia Viva: ping-pong RGBA16F por programa.
 import { FloatStatePool } from './FloatStatePool'
+// 🎨 WAVE 8401 — sampler `u_tex0` (texturas de artista, Pack Latino).
+import { UserTextureCache, USER_TEX0_UNIT } from './UserTextures'
 import { TEL_FLAG } from '../telemetry/TheiaTelemetryRing'
 import type { TelemetrySmoother } from '../telemetry/TelemetrySmoother'
 
@@ -57,7 +60,7 @@ const GEN_STD_UNIFORMS = new Set([
   'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_flashBudgetRate',
-  'u_gene', 'u_state', 'u_stateInit',
+  'u_gene', 'u_state', 'u_stateInit', 'u_tex0', 'u_hasTex0',
 ])
 
 export interface GenRuntimeStatus {
@@ -110,6 +113,9 @@ interface GenLocs {
   /** 🧬 WAVE 8237 · G5 — estado RGBA16F del autómata + flag de siembra. */
   state: WebGLUniformLocation | null
   stateInit: WebGLUniformLocation | null
+  /** 🎨 WAVE 8401 — sampler de artista + flag de disponibilidad. */
+  tex0: WebGLUniformLocation | null
+  hasTex0: WebGLUniformLocation | null
 }
 
 /** Subconjunto de uniforms que consume el pase de simulación (G5). */
@@ -203,6 +209,9 @@ export class GenRuntime {
   private readonly pending = new Map<string, GenPending>()
   /** shaderId → fenotipo+programKey (para resolver `activate`). */
   private readonly sources = new Map<string, GenSourceSpec>()
+  /** 🎨 WAVE 8401 — shaderId → textura `@euclid tex0` + caché de este GL. */
+  private readonly tex0ByShader = new Map<string, string>()
+  private readonly userTextures = new UserTextureCache()
   /** 🖥️ WAVE 8268 — activaciones diferidas por programKey (multi-intent).
    *  `seq` descarta intents superados: triggers rápidos de Selene no se
    *  pisan entre sí y el último pedido es el que toma la pantalla. */
@@ -360,6 +369,8 @@ export class GenRuntime {
       gene: gl.getUniformLocation(prog, 'u_gene[0]'),
       state: gl.getUniformLocation(prog, 'u_state'),
       stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
+      tex0: gl.getUniformLocation(prog, 'u_tex0'),
+      hasTex0: gl.getUniformLocation(prog, 'u_hasTex0'),
     }
   }
 
@@ -468,6 +479,9 @@ export class GenRuntime {
     }
     const asm = assembleFragmentShader(source, maxSteps, genes, exprGenes)
     const programKey = hashSource(asm.fragSource)
+    const tex0 = parseTex0Hint(source)
+    if (tex0) this.tex0ByShader.set(shaderId, tex0)
+    else this.tex0ByShader.delete(shaderId)
     this.sources.set(shaderId, {
       source,
       steps: maxSteps,
@@ -914,6 +928,9 @@ export class GenRuntime {
       this.fadeDur = 0
       this.fadeT0 = -1
     }
+    // 🔥 HOTFIX 8312 — u_impact mute mientras el fade está vivo (el flash
+    // aditivo no puede sumar sobre la mezcla → AGC/HDR a salvo).
+    const impactDuck = blend < 1 ? 0 : 1
 
     // ── 🧬 WAVE 8237 · G5 — pase de SIMULACIÓN (Materia Viva) ────────
     // Ping-pong RGBA16F propio del programa — lineal, sin epílogo.
@@ -940,7 +957,7 @@ export class GenRuntime {
       gl.uniform1f(SL.snarePulse, sm.snarePulse)
       gl.uniform1f(SL.predictiveETA, sm.predictiveEtaSec)
       gl.uniform1f(SL.approach, sm.approach)
-      gl.uniform1f(SL.impact, sm.impact)
+      gl.uniform1f(SL.impact, sm.impact * impactDuck)
       gl.uniform1f(SL.crestPulse, sm.crestPulse)
       gl.uniform1f(SL.strobeGate, sm.strobeGate)
       gl.uniform1f(SL.glassBreak, sm.glassBreak)
@@ -984,6 +1001,11 @@ export class GenRuntime {
       gl.TEXTURE_2D,
       (pool && pool.ready ? pool.readTexture : this.dummyTex) ?? this.dummyTex,
     )
+    // 🎨 WAVE 8401 — u_tex0 (textura de artista del átomo activo).
+    const tex0Name = this.tex0ByShader.get(this.activeId)
+    const tex0 = tex0Name ? this.userTextures.acquire(gl, tex0Name) : null
+    gl.activeTexture(gl.TEXTURE0 + USER_TEX0_UNIT)
+    gl.bindTexture(gl.TEXTURE_2D, tex0 ?? this.dummyTex)
 
     const L = ent.locs
     gl.uniform1i(L.flags, sm.flags)
@@ -1003,7 +1025,7 @@ export class GenRuntime {
     gl.uniform1f(L.snarePulse, sm.snarePulse)
     gl.uniform1f(L.predictiveETA, sm.predictiveEtaSec)
     gl.uniform1f(L.approach, sm.approach)
-    gl.uniform1f(L.impact, sm.impact)
+    gl.uniform1f(L.impact, sm.impact * impactDuck)
     gl.uniform1f(L.crestPulse, sm.crestPulse)
     gl.uniform1f(L.strobeGate, sm.strobeGate)
     gl.uniform1f(L.glassBreak, sm.glassBreak)
@@ -1019,6 +1041,8 @@ export class GenRuntime {
     gl.uniform1i(L.prevFrame, 0)
     gl.uniform1i(L.flashState, 1)
     gl.uniform1i(L.state, 2)
+    gl.uniform1i(L.tex0, USER_TEX0_UNIT)
+    gl.uniform1f(L.hasTex0, tex0 ? 1 : 0)
     gl.uniform1f(L.stateInit, stateInitF)
     gl.uniform1f(L.hasPrev, this.prevValid ? 1 : 0)
     gl.uniform1f(L.blend, blend)
@@ -1111,6 +1135,7 @@ export class GenRuntime {
     this.programs.clear()
     this.pending.clear()
     this.pendingActivates.clear()
+    this.userTextures.dispose(gl)
     for (const obj of [
       this.fbo,
       this.statsFboA,

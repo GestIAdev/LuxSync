@@ -20,11 +20,14 @@ import { getThetaOrchestrator } from '../theia/ThetaOrchestrator'
 import { resetGenomePool } from '../theia/genome/GenomePool'
 import { useTheiaPackStore } from './useTheiaPackStore'
 import {
+  atomDragPayload,
+  packDragPayloads,
   parseTheiaAtomPayload,
+  parseTheiaAtomPayloads,
   THEIA_ATOM_MIME,
   useTheiaPlaylistStore,
 } from './useTheiaPlaylistStore'
-import type { ITheiaAtom } from '../types/theiaTypes'
+import type { ITheiaAtom, ITheiaPack } from '../types/theiaTypes'
 
 const CORE_GLSL = `// @euclid name    Playlist Core
 // @euclid gene    G_FOLD struct int   5   12   8    a:+0.4 c:+0.3
@@ -258,5 +261,132 @@ describe('WAVE 8305 — useTheiaPlaylistStore', () => {
     expect(
       parseTheiaAtomPayload(mk({ [THEIA_ATOM_MIME]: '{"kind":"shader"}' })),
     ).toBeNull()
+  })
+})
+
+/**
+ * 🌊 WAVE 8313 — Playlist Ergonomics & Bulk Operations.
+ * - atomDragPayload: referencias + genoma `core#seed` para mutaciones.
+ * - packDragPayloads: expansión de pack ordenada por manifest.atomOrder
+ *   (los no listados al final, en orden visible estable).
+ * - parseTheiaAtomPayloads: acepta single `{atom}` y sobre `{items:[]}`.
+ * - insertItems: lote en un solo set() con desplazamiento de active/cue.
+ */
+describe('WAVE 8313 — bulk payloads + insertItems', () => {
+  beforeEach(() => {
+    resetAll()
+    vi.restoreAllMocks()
+    vi.spyOn(getThetaOrchestrator(), 'playAtom').mockResolvedValue(undefined)
+  })
+
+  const mkDT = (data: Record<string, string>) =>
+    ({ getData: (t: string) => data[t] ?? '' }) as unknown as DataTransfer
+
+  it('atomDragPayload serializa atomId/kind y genoma para mutaciones', () => {
+    const plain = atomDragPayload(makeAtom('atom_plain'))
+    expect(plain).toEqual({
+      atomId: 'atom_plain',
+      label: 'atom_plain',
+      kind: 'shader',
+    })
+
+    const mut = atomDragPayload(makeAtom('core_x#42'))
+    expect(mut.genome).toEqual({ coreId: 'core_x', seed: 42 })
+    expect(mut.atomId).toBe('core_x#42')
+  })
+
+  it('packDragPayloads ordena por manifest.atomOrder y manda restos al final', () => {
+    const pack: ITheiaPack = {
+      id: 'pack_x',
+      rootPath: '/tmp/pack_x',
+      atoms: [
+        makeAtom('a_extra'),
+        makeAtom('b_second'),
+        makeAtom('c_first'),
+      ],
+      manifest: {
+        schemaVersion: 1,
+        displayName: 'Pack X',
+        atomOrder: ['c_first', 'b_second'], // a_extra no listado → final
+      },
+      scannedAt: 0,
+    }
+    expect(packDragPayloads(pack).map((p) => p.atomId)).toEqual([
+      'c_first',
+      'b_second',
+      'a_extra',
+    ])
+  })
+
+  it('packDragPayloads sin atomOrder conserva el orden visible', () => {
+    const pack: ITheiaPack = {
+      id: 'pack_y',
+      rootPath: '/tmp/pack_y',
+      atoms: [makeAtom('x1'), makeAtom('x2')],
+      manifest: null,
+      scannedAt: 0,
+    }
+    expect(packDragPayloads(pack).map((p) => p.atomId)).toEqual(['x1', 'x2'])
+  })
+
+  it('parseTheiaAtomPayloads acepta single, sobre {items} y basura', () => {
+    const single = mkDT({
+      [THEIA_ATOM_MIME]: JSON.stringify({ atomId: 'a', kind: 'shader' }),
+    })
+    expect(parseTheiaAtomPayloads(single).map((p) => p.atomId)).toEqual(['a'])
+
+    const multi = mkDT({
+      [THEIA_ATOM_MIME]: JSON.stringify({
+        items: [
+          { atomId: 'a', label: 'A', kind: 'shader' },
+          { atomId: 'b#7', kind: 'shader', genome: { coreId: 'b', seed: 7 } },
+          { kind: 'shader' }, // inválido — sin atomId, se filtra
+        ],
+      }),
+    })
+    const list = parseTheiaAtomPayloads(multi)
+    expect(list.map((p) => p.atomId)).toEqual(['a', 'b#7'])
+    expect(list[1].genome).toEqual({ coreId: 'b', seed: 7 })
+
+    // Basura y MIME ausente → lista vacía (no null — el caller hace bulk).
+    expect(parseTheiaAtomPayloads(mkDT({}))).toEqual([])
+    expect(parseTheiaAtomPayloads(mkDT({ [THEIA_ATOM_MIME]: 'not json' }))).toEqual([])
+    expect(
+      parseTheiaAtomPayloads(mkDT({ [THEIA_ATOM_MIME]: '{"items":"nope"}' })),
+    ).toEqual([])
+  })
+
+  it('insertItems inserta el lote en orden y desplaza active/cue N posiciones', () => {
+    const s = useTheiaPlaylistStore.getState()
+    s.insertItem(draft('pre_a'))
+    s.insertItem(draft('pre_b'))
+    s.setActiveIndex(0)
+    s.setCueIndex(1)
+
+    const created = useTheiaPlaylistStore.getState().insertItems(
+      [draft('m1'), draft('m2'), draft('m3')],
+      1,
+    )
+    const st = useTheiaPlaylistStore.getState()
+    expect(st.items.map((i) => i.atomId)).toEqual([
+      'pre_a', 'm1', 'm2', 'm3', 'pre_b',
+    ])
+    expect(created).toHaveLength(3)
+    expect(new Set(created.map((c) => c.id)).size).toBe(3)
+    // active (idx0) queda antes del hueco; cue (idx1) se desplaza +3.
+    expect(st.items[st.activeIndex].atomId).toBe('pre_a')
+    expect(st.items[st.cueIndex].atomId).toBe('pre_b')
+    expect(st.cueIndex).toBe(4)
+  })
+
+  it('insertItems sin índice añade al final y siembra cueIndex en lista vacía', () => {
+    const created = useTheiaPlaylistStore.getState().insertItems([
+      draft('p1'),
+      draft('p2'),
+    ])
+    const st = useTheiaPlaylistStore.getState()
+    expect(st.items.map((i) => i.atomId)).toEqual(['p1', 'p2'])
+    expect(created[0].id).not.toBe(created[1].id)
+    expect(st.cueIndex).toBe(0)
   })
 })

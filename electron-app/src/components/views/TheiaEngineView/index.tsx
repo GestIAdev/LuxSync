@@ -91,7 +91,12 @@ const TELEMETRY_STALE_MS = 750
 
 const TheiaEngineView: React.FC = () => {
   // ── Master controls ───────────────────────────────────────────────────
-  const [enginePower, setEnginePower] = useState(false)
+  // 🔥 HOTFIX 8314 — enginePower ya NO es useState local: vive en el UI
+  // store global (`engineLive`), hidratado desde `theta.getStatus()` en
+  // mount y reconciliado por onWorkerEpoch. Navegar entre vistas no puede
+  // resetear el botón a OFF mientras el motor sigue corriendo.
+  const enginePower = useTheiaUiStore((s) => s.engineLive)
+  const setEngineLive = useTheiaUiStore((s) => s.setEngineLive)
   const [blackout, setBlackout] = useState(false)
   // 🌊 WAVE 8259 — BRIGHT/SPEED/CONTRAST ya NO viven en la raíz: cada `input`
   // del fader re-renderizaba el árbol entero (Viewport+Deck+Inspector) a
@@ -112,11 +117,15 @@ const TheiaEngineView: React.FC = () => {
   // marcador "armed" ya cumplió su función visual.
   useEffect(() => {
     const theta = getThetaOrchestrator()
+    // 🔥 HOTFIX 8314 — hidratación INMEDIATA en mount: si el motor ya
+    // corre (volvimos de otra vista), el botón refleja LIVE sin esperar
+    // al próximo evento de epoch.
+    setEngineLive(theta.getStatus().isRunning)
     return theta.onWorkerEpoch(() => {
-      setEnginePower(theta.getStatus().isRunning)
+      setEngineLive(theta.getStatus().isRunning)
       useTheiaPackStore.getState().setArmedAtom(null)
     })
-  }, [])
+  }, [setEngineLive])
 
   useEffect(() => () => {
     if (blackoutRafRef.current !== null) cancelAnimationFrame(blackoutRafRef.current)
@@ -198,17 +207,22 @@ const TheiaEngineView: React.FC = () => {
     // side-effect queda fuera del updater y cualquier fallo aterriza en el
     // .catch(), nunca en la fase síncrona de React.
     const next = !enginePower
-    setEnginePower(next)
+    // Optimista para feedback instantáneo; el settle reconcilia con la
+    // verdad del orquestador (start() es idempotente si ya corría).
+    setEngineLive(next)
+    const reconcile = () => setEngineLive(theta.getStatus().isRunning)
     if (next) {
-      theta.start().catch((err: unknown) => {
+      theta.start().then(reconcile).catch((err: unknown) => {
         console.error('[Theia UI] start() failed:', err)
+        reconcile()
       })
     } else {
-      theta.stop().catch((err: unknown) => {
+      theta.stop().then(reconcile).catch((err: unknown) => {
         console.error('[Theia UI] stop() failed:', err)
+        reconcile()
       })
     }
-  }, [enginePower])
+  }, [enginePower, setEngineLive])
 
   // �️ WAVE 8240 · U2 — MANUAL OVERRIDES demolido: los forceState manuales
   // quedan reemplazados por Ecosystem Control (Darwin). El bridge Selene→
@@ -297,7 +311,13 @@ const TheiaEngineView: React.FC = () => {
 
   // ✈️ WAVE 8306 — Auto-Pilot: conecta el motor a los stores mientras la
   // vista Theia está montada (rAF propio + SAB de telemetría, fuera de React).
-  useEffect(() => getTheiaAutopilot().init(), [])
+  // 🔥 HOTFIX 8314 — el Auto-Pilot es un singleton del proceso, no una
+  // dependencia de vista: NO usamos el dispose que devuelve init() como
+  // cleanup, o navegar a otra pestaña silenciaría a Selene aunque el motor
+  // siguiera emitiendo vídeo. init() es idempotente; vive con la app.
+  useEffect(() => {
+    getTheiaAutopilot().init()
+  }, [])
 
   // 🎬 WAVE 8307 — atajos 1–9: disparo manual del slot N de la playlist
   // (solo PERFORM). `playAt` sin `auto` ⇒ take-over: el Director pasa a HOLD.

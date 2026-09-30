@@ -297,15 +297,10 @@
 }
 
 /* ── Master sliders ── */
-.theia-masters {
-  display: flex;
-  gap: 10px;
-  padding: 0 12px;
-  border-left: 1px solid var(--theia-line);
-  border-right: 1px solid var(--theia-line);
-  height: 40px;
-  align-items: center;
-}
+/* 🔥 HOTFIX 8308 — la regla `.theia-masters` que vivía aquí era un fósil
+ * de la tira horizontal pre-8303 (`height: 40px`, dirección row). Como la
+ * regla nueva (más abajo) no redefinía `height`, el panel quedaba clavado
+ * a 40px y truncaba los 6 faders. Eliminada; el panel gobierna solo. */
 
 .theia-master {
   display: flex;
@@ -494,15 +489,19 @@
   min-height: 0;
   overflow-y: auto;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 10px;
+  /* 🔥 HOTFIX 8310 — mesa de mezclas: 6 tiras verticales lado a lado,
+   * cada una reclama el ALTO completo de la columna (label ↑ groove ↕ valor ↓). */
+  flex-direction: row;
+  gap: 4px;
+  padding: 8px 4px;
   scrollbar-width: thin;
 }
 
 .theia-masters__blackout {
   flex-shrink: 0;
-  margin: 10px 12px 12px;
+  /* margin-top:auto → pineado al fondo; si __full desborda, el scroll es
+   * de los faders, no del blackout. */
+  margin: auto 12px 12px;
   justify-content: center;
 }
 
@@ -845,11 +844,34 @@
 }
 
 .theia-playlist-lane__label {
+  display: flex;
+  align-items: center;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 2.5px;
   color: var(--theia-primary-dim);
   flex-shrink: 0;
+}
+
+/* 🌊 WAVE 8313 · M2 — toggle fila ⇄ grid. */
+.theia-playlist-lane__grid-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 7px;
+  background: none;
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  border-radius: 3px;
+  color: var(--theia-text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+.theia-playlist-lane__grid-toggle:hover,
+.theia-playlist-lane__grid-toggle.is-on {
+  color: var(--theia-primary);
+  border-color: rgba(57, 255, 20, 0.55);
 }
 
 .theia-playlist-lane__hint {
@@ -903,6 +925,31 @@
 }
 .theia-playlist-lane[data-collapse="rail"] .theia-playlist-lane__label {
   font-size: 8px;
+}
+
+/* 🌊 WAVE 8313 · M2 — vista GRID: el lane crece en alto (flex-wrap en el
+   scroller) y empuja el Media Browser hacia abajo dentro de .theia-bottom.
+   Acotado (max-height) para no comerse el stage con playlists enormes. */
+.theia-playlist-lane.is-grid {
+  height: auto;
+  max-height: 288px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.theia-playlist-lane.is-grid .theia-pl-scroll {
+  height: auto;
+  max-height: 240px;
+  align-items: flex-start;
+  align-content: flex-start;
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* La marca de inserción en grid sigue siendo una barra vertical en el
+   hueco de la tarjeta — el flex-wrap la trata como un ítem más. */
+.theia-playlist-lane.is-grid .theia-pl-dropmark {
+  height: 60px;
 }
 
 /* ── Scroll de tarjetas ── */
@@ -2233,6 +2280,31 @@
   color: var(--atom-accent);
 }
 
+/* 🌊 WAVE 8313 · M1 — miembro de la multi-selección del Media Browser.
+   Acento cyan: selección transitoria de UI, distinta del ámbar ARMED y del
+   verde LIVE. */
+.theia-atom-tile.is-selected {
+  border-color: rgba(56, 189, 248, 0.9);
+  background:
+    linear-gradient(180deg, rgba(56, 189, 248, 0.16) 0%, rgba(56, 189, 248, 0.05) 100%),
+    rgba(8, 11, 20, 0.92);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45), 0 0 12px rgba(56, 189, 248, 0.25);
+}
+/* Sin ::before/::after propios: ::before es el halo de is-armed y ::after
+   las etiquetas ARMED/LIVE — un badge SEL aquí les robaría el pseudo. */
+
+/* 🌊 WAVE 8313 · M1 — contador de multi-selección en la cabecera del pack. */
+.theia-live-deck__selcount {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(56, 189, 248, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
 .theia-atom-tile__thumb {
   display: flex;
   align-items: center;
@@ -2643,24 +2715,91 @@
 }
 .theia-insp__collapse:hover { color: var(--theia-primary); }
 
-/* ── Masters: filas label|input|value (heredado del antiguo bloque
-   insp__masters — 🖥️ WAVE 8303: ahora vive en la columna MastersPanel) ── */
+/* ── Masters: 🔥 HOTFIX 8310 — tiras verticales estilo mesa de mezclas
+   (GrandMA/Resolume): etiqueta arriba, groove vertical creciendo en el
+   centro, valor abajo. El Inspector (insp__masters) conserva las filas
+   horizontales label|input|value de siempre. ── */
 .theia-masters__full .theia-master {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+}
+.theia-masters__full .theia-master__label {
+  width: 100%;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 7px;
+  letter-spacing: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* El range va en vertical vía writing-mode (Chromium ≥124, Electron 32).
+ * direction:rtl → el mínimo queda ABAJO y el fill crece hacia arriba,
+ * como un fader físico. El groove se pinta como columna centrada de 4px
+ * sobre un input de ancho completo → área de agarre generosa. */
+.theia-masters__full .theia-master__input {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  background-image: linear-gradient(
+    0deg,
+    var(--accent) 0%,
+    var(--accent) var(--pct, 50%),
+    rgba(255, 255, 255, 0.08) var(--pct, 50%),
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  background-size: 4px 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.theia-masters__full .theia-master__input::-webkit-slider-thumb {
+  /* cap de fader: pastilla horizontal ancha */
+  width: 18px;
+  height: 10px;
+  border-radius: 2px;
+}
+.theia-masters__full .theia-master__input::-moz-range-thumb {
+  width: 18px;
+  height: 10px;
+  border-radius: 2px;
+}
+.theia-masters__full .theia-master__value {
+  width: 100%;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 8px;
+}
+
+/* ── Inspector: filas label|input|value (genes GENETIC PARAMETERS) ── */
+.theia-insp__masters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.theia-insp__masters .theia-master {
   flex-direction: row;
   align-items: center;
   gap: 8px;
   padding: 3px 4px;
+  flex-shrink: 0;
 }
-.theia-masters__full .theia-master__label {
+.theia-insp__masters .theia-master__label {
   width: 56px;
   flex-shrink: 0;
   text-align: left;
 }
-.theia-masters__full .theia-master__input {
+.theia-insp__masters .theia-master__input {
   flex: 1;
   width: auto;
 }
-.theia-masters__full .theia-master__value {
+.theia-insp__masters .theia-master__value {
   width: 44px;
   flex-shrink: 0;
   text-align: right;

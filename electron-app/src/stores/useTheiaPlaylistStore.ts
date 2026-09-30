@@ -36,7 +36,7 @@ import { getThetaOrchestrator } from '../theia/ThetaOrchestrator'
 import { spawnGenomeVariant } from '../theia/genome/GenomePool'
 import { getTheiaRegistry } from '../core/theia/TheiaRegistry'
 import { useTheiaAutopilotStore } from './useTheiaAutopilotStore'
-import type { ITheiaAtom } from '../types/theiaTypes'
+import type { ITheiaAtom, ITheiaPack } from '../types/theiaTypes'
 
 /** MIME propio del payload interno de átomos (DnD deck → playlist). */
 export const THEIA_ATOM_MIME = 'application/x-theia-atom'
@@ -173,6 +173,9 @@ export interface TheiaPlaylistState {
   readonly cueIndex: number
 
   insertItem: (draft: TheiaPlaylistDraft, index?: number) => TheiaPlaylistItem
+  /** 🌊 WAVE 8313 — inserción en lote (multi-drop / pack drop): un solo
+   *  set() — los índices active/cue desplazan N posiciones. */
+  insertItems: (drafts: readonly TheiaPlaylistDraft[], index?: number) => TheiaPlaylistItem[]
   removeItem: (itemId: string) => void
   reorderItems: (fromIndex: number, toIndex: number) => void
   setActiveIndex: (index: number) => void
@@ -223,6 +226,28 @@ export const useTheiaPlaylistStore = create<TheiaPlaylistState>((set, get) => ({
       }
     })
     return item
+  },
+
+  insertItems: (drafts, index) => {
+    const created = drafts.map((draft): TheiaPlaylistItem => ({
+      id: uid(),
+      atomId: draft.atomId,
+      genome: draft.genome,
+      filePath: draft.filePath,
+      label: draft.label,
+      kind: draft.kind,
+      flags: { skip: draft.flags?.skip ?? false, pinned: draft.flags?.pinned ?? false },
+    }))
+    if (created.length === 0) return created
+    set((s) => {
+      const at = index === undefined ? s.items.length : Math.max(0, Math.min(s.items.length, index))
+      const items = [...s.items.slice(0, at), ...created, ...s.items.slice(at)]
+      const shift = (i: number) => (i >= at ? i + created.length : i)
+      const cueIndex =
+        s.cueIndex < 0 && s.items.length === 0 ? 0 : shift(s.cueIndex)
+      return { items, activeIndex: shift(s.activeIndex), cueIndex }
+    })
+    return created
   },
 
   removeItem: (itemId) => {
@@ -337,25 +362,83 @@ export interface TheiaAtomDragPayload {
   readonly genome?: TheiaPlaylistGenomeRef
 }
 
+/**
+ * 🌊 WAVE 8313 — payload de un átomo del deck (compartido por AtomTile y
+ * PackSlot). Las mutaciones viajan como `{coreId, seed}` (inmortalidad §6.1).
+ */
+export function atomDragPayload(atom: ITheiaAtom): TheiaAtomDragPayload {
+  const isShader = atom.source?.kind === 'shader'
+  const genome = atom.id.includes('#')
+    ? {
+        coreId: atom.id.split('#')[0],
+        seed: Number(atom.id.split('#')[1]),
+      }
+    : undefined
+  return {
+    atomId: atom.id,
+    label: atom.id,
+    kind: isShader ? 'shader' : 'video',
+    ...(genome && Number.isFinite(genome.seed) ? { genome } : {}),
+  }
+}
+
+/**
+ * 🌊 WAVE 8313 — payload de un PACK completo (drag de la tarjeta de slot):
+ * expande a todos sus átomos en el orden de `manifest.atomOrder`; los no
+ * listados quedan al final en su orden visible (sort estable).
+ */
+export function packDragPayloads(pack: ITheiaPack): TheiaAtomDragPayload[] {
+  const order = pack.manifest?.atomOrder
+  const atoms =
+    order && order.length > 0
+      ? [...pack.atoms].sort((a, b) => {
+          const ia = order.indexOf(a.id)
+          const ib = order.indexOf(b.id)
+          return (ia < 0 ? order.length : ia) - (ib < 0 ? order.length : ib)
+        })
+      : pack.atoms
+  return atoms.map(atomDragPayload)
+}
+
+/** Sanitiza un objeto suelto del payload; null si no es válido. */
+function sanitizeAtomPayload(p: unknown): TheiaAtomDragPayload | null {
+  if (!p || typeof p !== 'object') return null
+  const o = p as Record<string, unknown>
+  if (typeof o.atomId !== 'string' || !o.atomId) return null
+  const g = o.genome as Record<string, unknown> | undefined
+  return {
+    atomId: o.atomId,
+    label: typeof o.label === 'string' && o.label ? o.label : o.atomId,
+    kind: o.kind === 'video' ? 'video' : 'shader',
+    genome:
+      g && typeof g.coreId === 'string' && Number.isFinite(g.seed)
+        ? { coreId: g.coreId, seed: g.seed as number }
+        : undefined,
+  }
+}
+
+/** 🌊 WAVE 8313 — lista de payloads: acepta el objeto suelto (`{atomId…}`)
+ *  o el sobre múltiple (`{items:[…]}`) de multi-selección / pack drop. */
+export function parseTheiaAtomPayloads(dt: DataTransfer): TheiaAtomDragPayload[] {
+  const raw = dt.getData(THEIA_ATOM_MIME)
+  if (!raw) return []
+  try {
+    const p = JSON.parse(raw) as { items?: unknown[] } | unknown
+    const list =
+      p && typeof p === 'object' && Array.isArray((p as { items?: unknown[] }).items)
+        ? (p as { items: unknown[] }).items
+        : [p]
+    return list
+      .map(sanitizeAtomPayload)
+      .filter((x): x is TheiaAtomDragPayload => x !== null)
+  } catch {
+    return []
+  }
+}
+
 /** Parsea un payload de drag interno; null si no es nuestro MIME. */
 export function parseTheiaAtomPayload(
   dt: DataTransfer,
 ): TheiaAtomDragPayload | null {
-  const raw = dt.getData(THEIA_ATOM_MIME)
-  if (!raw) return null
-  try {
-    const p = JSON.parse(raw) as TheiaAtomDragPayload
-    if (typeof p.atomId !== 'string' || !p.atomId) return null
-    return {
-      atomId: p.atomId,
-      label: typeof p.label === 'string' && p.label ? p.label : p.atomId,
-      kind: p.kind === 'video' ? 'video' : 'shader',
-      genome:
-        p.genome && typeof p.genome.coreId === 'string' && Number.isFinite(p.genome.seed)
-          ? { coreId: p.genome.coreId, seed: p.genome.seed }
-          : undefined,
-    }
-  } catch {
-    return null
-  }
+  return parseTheiaAtomPayloads(dt)[0] ?? null
 }

@@ -21,9 +21,11 @@
  *          frontera 'beat' | 'bar' | 'phrase' (=4 compases) detectada por
  *          flanco de fase/contador del ring. Guardia anti-glitch: si el
  *          overshoot supera dwell+4 bars (u 8 s), dispara igual.
- * DROP   — con dropSnap activo, un `drop_incoming` (enums.predictionType=1)
- *          o CREST_EVENT arma el corte anticipado al próximo downbeat
- *          (bar edge) ignorando el dwell restante.
+ * DROP   — con dropSnap activo, el FLANCO de `drop_incoming`
+ *          (enums.predictionType=1) o CREST_EVENT —solo con audio vivo—
+ *          arma el corte anticipado al próximo downbeat (bar edge)
+ *          ignorando el dwell restante. Si la predicción cae antes del
+ *          downbeat, el snap se desarma (🔥 HOTFIX 8309).
  *
  * Disparo: `playAt(target, xFadeSec*1000)` del playlist store — misma vía
  * que el click manual, por lo que STRICT LIVE GATE y la resurrección de
@@ -106,6 +108,9 @@ interface SeqState {
   firedItemIndex: number
   syncWaiting: boolean
   dropArmed: boolean
+  /** 🔥 HOTFIX 8309 — nivel de la señal drop en el tick anterior (arming
+   *  por flanco: un `predictionType` latched no re-arma tras cada corte). */
+  prevDropSignal: boolean
   bag: number[]
   exhausted: boolean
   started: boolean
@@ -127,6 +132,7 @@ function freshSeq(): SeqState {
     firedItemIndex: -1,
     syncWaiting: false,
     dropArmed: false,
+    prevDropSignal: false,
     bag: [],
     exhausted: false,
     started: false,
@@ -428,13 +434,30 @@ export class TheiaAutopilot {
     const dwellDone = elapsedBars >= dwellBars
 
     // ── DROP SNAP — arma corte anticipado al próximo downbeat ──
+    // 🔥 HOTFIX 8309 — dos errores de señal producían avance ~cada compás:
+    // (a) la señal contaba con DSP muerto, y `wantFire` incluía
+    //     `|| !audioAlive` → el corte se ejecutaba EN EL MISMO tick del arm;
+    // (b) el arm era por NIVEL: `predictionType`/`CREST_EVENT` son estados
+    //     persistentes del ring — un drop_incoming latched re-armaba tras
+    //     cada disparo y forzaba un corte en CADA barEdge (~2 s @120 BPM).
+    // Ahora: señal = audio vivo ∧ (dropIncoming ∨ crestEvent); el arm es
+    // por FLANCO (prev low→high) y se desarma si la predicción cae antes
+    // del downbeat.
+    const dropSignal =
+      audioAlive && !!tel && (tel.dropIncoming || tel.crestEvent)
     if (
       ap.dropSnap &&
+      dropSignal &&
       !this.seq.dropArmed &&
-      (tel?.dropIncoming || tel?.crestEvent)
+      !this.seq.prevDropSignal
     ) {
       this.seq.dropArmed = true
       this.seq.syncWaiting = true
+    }
+    this.seq.prevDropSignal = dropSignal
+    if (this.seq.dropArmed && !dropSignal) {
+      this.seq.dropArmed = false
+      this.seq.syncWaiting = false // se re-evalúa abajo según dwellDone
     }
 
     // ── Frontera quant ──

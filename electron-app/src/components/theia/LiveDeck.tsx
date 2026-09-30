@@ -35,7 +35,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isSupportedMediaFile, useTheiaPackStore } from '../../stores/useTheiaPackStore'
-import { THEIA_ATOM_MIME } from '../../stores/useTheiaPlaylistStore'
+import {
+  atomDragPayload,
+  packDragPayloads,
+  THEIA_ATOM_MIME,
+} from '../../stores/useTheiaPlaylistStore'
 import { useTheiaAutopilotStore } from '../../stores/useTheiaAutopilotStore'
 import { getThetaOrchestrator } from '../../theia'
 import type { ITheiaAtom, ITheiaPack } from '../../types/theiaTypes'
@@ -68,6 +72,16 @@ const LiveDeck: React.FC = () => {
   // 11+ tiles la expansión se comía el vertical del Viewport; un click en la
   // cabecera del pack expandido la oculta y el deck se encoge a su título.
   const [atomsCollapsed, setAtomsCollapsed] = useState(false)
+  // 🌊 WAVE 8313 — multi-selección del Media Browser: `selOrder` guarda el
+  // orden de selección (click order para Ctrl, orden visual para Shift);
+  // `anchorRef` es el extremo fijo del rango de Shift+Click.
+  const [selOrder, setSelOrder] = useState<string[]>([])
+  const anchorRef = useRef<string | null>(null)
+  // Cambiar de pack expandido → la selección anterior ya no es visible.
+  useEffect(() => {
+    setSelOrder([])
+    anchorRef.current = null
+  }, [expandedPackId])
 
   // 🩸 WAVE 8294 — verdad absoluta del deck: el átomo vivo llega del
   // perf-report del motor (~1 Hz, `activeShader` = genActiveId real), no
@@ -156,6 +170,70 @@ const LiveDeck: React.FC = () => {
       console.error('[LiveDeck] playAtom failed:', err)
     }
   }, [setArmedAtom])
+
+  // 🌊 WAVE 8313 — click de tile con modificadores: Shift=rango desde el
+  // ancla, Ctrl/Cmd=toggle individual, click limpio = dispara + selecciona
+  // solo ese. Los clicks con modificador NO disparan (seleccionar no debe
+  // encender un átomo en pantalla).
+  const handleTileClick = useCallback(
+    (atom: ITheiaAtom, e: React.MouseEvent) => {
+      if (!expandedPack) return
+      const ids = expandedPack.atoms.map((a) => a.id)
+      if (e.shiftKey) {
+        const anchor = anchorRef.current ?? atom.id
+        const ia = ids.indexOf(anchor)
+        const ib = ids.indexOf(atom.id)
+        if (ia >= 0 && ib >= 0) {
+          const [lo, hi] = ia <= ib ? [ia, ib] : [ib, ia]
+          setSelOrder(ids.slice(lo, hi + 1))
+        } else {
+          setSelOrder([atom.id])
+          anchorRef.current = atom.id
+        }
+        return
+      }
+      if (e.ctrlKey || e.metaKey) {
+        anchorRef.current = atom.id
+        setSelOrder((prev) =>
+          prev.includes(atom.id)
+            ? prev.filter((id) => id !== atom.id)
+            : [...prev, atom.id],
+        )
+        return
+      }
+      // Click limpio: dispara el átomo y colapsa la selección a él.
+      setSelOrder([atom.id])
+      anchorRef.current = atom.id
+      void handleAtomTrigger(atom)
+    },
+    [expandedPack, handleAtomTrigger],
+  )
+
+  /** Payload DnD del tile: si arrastra un ítem de la selección múltiple,
+   *  viaja el array completo (en orden de selección); si no, va solo. */
+  const handleTileDragStart = useCallback(
+    (e: React.DragEvent, atom: ITheiaAtom) => {
+      const inSel = selOrder.includes(atom.id)
+      const items =
+        inSel && selOrder.length > 1 && expandedPack
+          ? selOrder
+              .map((id) => expandedPack.atoms.find((a) => a.id === id))
+              .filter((a): a is ITheiaAtom => !!a)
+              .map(atomDragPayload)
+          : [atomDragPayload(atom)]
+      if (!inSel) {
+        // Arrastrar un no-seleccionado lo convierte en la selección (std OS).
+        setSelOrder([atom.id])
+        anchorRef.current = atom.id
+      }
+      e.dataTransfer.setData(
+        THEIA_ATOM_MIME,
+        JSON.stringify(items.length > 1 ? { items } : items[0]),
+      )
+      e.dataTransfer.effectAllowed = 'copy'
+    },
+    [selOrder, expandedPack],
+  )
 
   // ── 🎛️ WAVE 8239 · U1 — Drag & Drop fallback (misma vía que LOAD ASSETS) ──
 
@@ -272,6 +350,14 @@ const LiveDeck: React.FC = () => {
                 {expandedPack.manifest?.displayName ?? expandedPack.id}
               </span>
             </span>
+            {selOrder.length > 1 && (
+              <span
+                className="theia-live-deck__selcount"
+                title="Multi-selección — arrastra cualquiera para insertarlos todos"
+              >
+                {selOrder.length} SEL
+              </span>
+            )}
             <span className="theia-live-deck__expansion-count">
               {expandedPack.atoms.length} ATOM{expandedPack.atoms.length === 1 ? '' : 'S'}
             </span>
@@ -291,7 +377,9 @@ const LiveDeck: React.FC = () => {
                   accent={expandedPack.manifest?.accentColor}
                   isArmed={atom.id === armedAtomId}
                   isActive={atom.id === activeAtomId}
-                  onTrigger={handleAtomTrigger}
+                  isSelected={selOrder.includes(atom.id)}
+                  onTileClick={handleTileClick}
+                  onTileDragStart={handleTileDragStart}
                   onDelete={handleDeleteAtom}
                 />
               ))}
@@ -347,10 +435,24 @@ const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, 
     onDelete(pack.id)
   }
 
+  // 🌊 WAVE 8313 — el slot es origen DnD masivo: arrastrar el pack a la
+  // playlist inserta TODOS sus átomos en el orden de manifest.atomOrder.
+  const handlePackDragStart = (e: React.DragEvent) => {
+    const items = packDragPayloads(pack)
+    if (items.length === 0) return // pack vacío → no arrastra nada
+    e.dataTransfer.setData(
+      THEIA_ATOM_MIME,
+      JSON.stringify(items.length > 1 ? { items } : items[0]),
+    )
+    e.dataTransfer.effectAllowed = 'copy'
+  }
+
   return (
     <div
       role="button"
       tabIndex={0}
+      draggable={pack.atoms.length > 0}
+      onDragStart={handlePackDragStart}
       className={className}
       style={accent ? { ['--pack-accent' as string]: accent } : undefined}
       onClick={() => onClick(pack.id)}
@@ -359,7 +461,7 @@ const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, 
       data-midi-bind={`theia.live.pack.${pack.id}`}
       title={pack.pending
         ? `${pack.id} (pending export)\nClick: expand · Double-click: set ●live`
-        : `${pack.id}\n${pack.atoms.length} atoms\nClick: expand · Double-click: set ●live`
+        : `${pack.id}\n${pack.atoms.length} atoms\nClick: expand · Double-click: set ●live · Drag → playlist`
       }
     >
       <button
@@ -398,12 +500,18 @@ interface AtomTileProps {
   isArmed?: boolean
   /** 🩸 WAVE 8294 — átomo realmente vivo en GPU (perf-report → store). */
   isActive?: boolean
-  onTrigger: (atom: ITheiaAtom) => void
+  /** 🌊 WAVE 8313 — miembro de la multi-selección del browser. */
+  isSelected?: boolean
+  /** 🌊 WAVE 8313 — click con modificadores lo decide el padre
+   *  (Shift=rango / Ctrl=toggle / limpio=trigger+select). */
+  onTileClick: (atom: ITheiaAtom, e: React.MouseEvent) => void
+  /** 🌊 WAVE 8313 — el payload (single o array) lo construye el padre. */
+  onTileDragStart: (e: React.DragEvent, atom: ITheiaAtom) => void
   /** 🌊 WAVE 8302 · M3 — baja de mutaciones de la sesión. */
   onDelete?: (atom: ITheiaAtom) => void
 }
 
-const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, isArmed, isActive, onTrigger, onDelete }) => {
+const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, isArmed, isActive, isSelected, onTileClick, onTileDragStart, onDelete }) => {
   const isShader = atom.source?.kind === 'shader'
   // 🌊 WAVE 8302 · M3 — mutación = id dinámico `core#seed` (spawnGenomeVariant).
   const isMutation = atom.id.includes('#')
@@ -413,39 +521,14 @@ const AtomTile: React.FC<AtomTileProps> = ({ atom, accent, isArmed, isActive, on
   const durLabel = isShader ? '∞' : durMs > 0 ? `${Math.round(durMs / 1000)}s` : '—'
   const kindLabel = isShader ? 'GEN' : 'VID'
 
-  // 🌊 WAVE 8305 · M3 — el tile es origen DnD para el Playlist Lane.
-  // Mutaciones viajan como {coreId, seed} (referencia inmortal §6.1): el
-  // playlist puede respawnear el átomo aunque se borre del deck/sesión.
-  const handleDragStart = useCallback(
-    (e: React.DragEvent) => {
-      const genome = isMutation
-        ? {
-            coreId: atom.id.split('#')[0],
-            seed: Number(atom.id.split('#')[1]),
-          }
-        : undefined
-      e.dataTransfer.setData(
-        THEIA_ATOM_MIME,
-        JSON.stringify({
-          atomId: atom.id,
-          label: atom.id,
-          kind: isShader ? 'shader' : 'video',
-          ...(genome && Number.isFinite(genome.seed) ? { genome } : {}),
-        }),
-      )
-      e.dataTransfer.effectAllowed = 'copy'
-    },
-    [atom.id, isShader, isMutation],
-  )
-
   return (
     <button
       type="button"
       draggable
-      onDragStart={handleDragStart}
-      className={`theia-atom-tile${isShader ? ' is-shader' : ''}${isArmed ? ' is-armed' : ''}${isActive ? ' is-active' : ''}`}
+      onDragStart={(e) => onTileDragStart(e, atom)}
+      className={`theia-atom-tile${isShader ? ' is-shader' : ''}${isArmed ? ' is-armed' : ''}${isActive ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}`}
       style={accent ? { ['--atom-accent' as string]: accent } : undefined}
-      onClick={() => onTrigger(atom)}
+      onClick={(e) => onTileClick(atom, e)}
       data-midi-bind={`theia.live.atom.${atom.packId}.${atom.id}`}
       title={`${atom.id}\n${kindLabel} · A${atom.aggression.toFixed(2)} · C${atom.chaos.toFixed(2)} · O${atom.organicity.toFixed(2)}\nzone ${atom.energyZone.min}→${atom.energyZone.max}${isArmed ? '\nARMED — fires on LIVE' : ''}`}
     >

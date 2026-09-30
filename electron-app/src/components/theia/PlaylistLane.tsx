@@ -18,7 +18,7 @@
 
 import React, { useCallback, useRef, useState } from 'react'
 import {
-  parseTheiaAtomPayload,
+  parseTheiaAtomPayloads,
   THEIA_ATOM_MIME,
   useTheiaPlaylistStore,
   type TheiaPlaylistItem,
@@ -41,6 +41,8 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   /** Índice de inserción visual durante un dragover (null = fuera). */
   const [dropIndex, setDropIndex] = useState<number | null>(null)
+  /** 🌊 WAVE 8313 · M2 — vista grid (multi-fila) del lane en PERFORM. */
+  const [gridView, setGridView] = useState(false)
 
   // ── DnD ────────────────────────────────────────────────────────────────
 
@@ -59,6 +61,37 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
     return cards.length
   }, [])
 
+  /** 🌊 WAVE 8313 — versión 2D para la vista grid (wrap): las tarjetas van
+   *  en orden visual row-major; el cursor antes del centro X dentro de su
+   *  fila inserta ahí, por encima de la fila inserta antes de ella, y por
+   *  debajo de todo → final. */
+  const insertionIndexFromXY = useCallback(
+    (clientX: number, clientY: number): number => {
+      const scroller = scrollRef.current
+      if (!scroller) return useTheiaPlaylistStore.getState().items.length
+      const cards = Array.from(
+        scroller.querySelectorAll<HTMLElement>('.theia-pl-card'),
+      )
+      for (let i = 0; i < cards.length; i++) {
+        const r = cards[i].getBoundingClientRect()
+        // Por encima de la banda de su fila → insertar antes de ella.
+        if (clientY < r.top) return i
+        // Dentro de la banda de su fila → manda la X vs su centro.
+        if (clientY <= r.bottom && clientX < r.left + r.width / 2) return i
+        // (a la derecha de su centro → la siguiente tarjeta decide;
+        //  si era la última de la fila, cae a la fila siguiente)
+      }
+      return cards.length
+    },
+    [],
+  )
+
+  const insertionIndex = useCallback(
+    (clientX: number, clientY: number): number =>
+      gridView ? insertionIndexFromXY(clientX, clientY) : insertionIndexFromX(clientX),
+    [gridView, insertionIndexFromX, insertionIndexFromXY],
+  )
+
   const isForeignDrag = useCallback(
     (e: React.DragEvent) =>
       e.dataTransfer.types.includes(THEIA_ATOM_MIME) ||
@@ -71,9 +104,9 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
       if (!isForeignDrag(e)) return
       e.preventDefault()
       e.dataTransfer.dropEffect = 'copy'
-      setDropIndex(insertionIndexFromX(e.clientX))
+      setDropIndex(insertionIndex(e.clientX, e.clientY))
     },
-    [isForeignDrag, insertionIndexFromX],
+    [isForeignDrag, insertionIndex],
   )
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -85,7 +118,7 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
     (e: React.DragEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      const at = insertionIndexFromX(e.clientX)
+      const at = insertionIndex(e.clientX, e.clientY)
       setDropIndex(null)
       const store = useTheiaPlaylistStore.getState()
 
@@ -101,21 +134,22 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
         return
       }
 
-      // 2) Átomo del Media Browser (tile draggable).
-      const payload = parseTheiaAtomPayload(e.dataTransfer)
-      if (payload) {
-        store.insertItem(
-          {
-            atomId: payload.atomId,
-            genome: payload.genome,
-            label: payload.label,
-            kind: payload.kind,
-          },
+      // 2) Átomos del Media Browser — 🌊 WAVE 8313: single tile,
+      //    multi-selección o pack completo llegan como lista.
+      const payloads = parseTheiaAtomPayloads(e.dataTransfer)
+      if (payloads.length > 0) {
+        store.insertItems(
+          payloads.map((p) => ({
+            atomId: p.atomId,
+            genome: p.genome,
+            label: p.label,
+            kind: p.kind,
+          })),
           at,
         )
       }
     },
-    [insertionIndexFromX],
+    [insertionIndex],
   )
 
   // ── Interacciones de tarjeta ──────────────────────────────────────────
@@ -168,7 +202,7 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
 
   return (
     <div
-      className="theia-playlist-lane"
+      className={`theia-playlist-lane${gridView && !isRail ? ' is-grid' : ''}`}
       data-collapse={collapse}
       data-empty={items.length === 0 || undefined}
       onDragOver={handleDragOver}
@@ -176,7 +210,26 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
       onDrop={handleDrop}
       title="Playlist — arrastra átomos del Media Browser"
     >
-      <span className="theia-playlist-lane__label">PLAYLIST</span>
+      <span className="theia-playlist-lane__label">
+        PLAYLIST
+        {/* 🌊 WAVE 8313 · M2 — fila ⇄ grid multi-fila (oculto en rail). */}
+        {!isRail && (
+          <button
+            type="button"
+            className={`theia-playlist-lane__grid-toggle${gridView ? ' is-on' : ''}`}
+            onClick={() => setGridView((v) => !v)}
+            title={
+              gridView
+                ? 'Vista fila — scroll horizontal'
+                : 'Vista grid — varias filas, ocupa más alto'
+            }
+            aria-pressed={gridView}
+            aria-label="Alternar vista grid de la playlist"
+          >
+            <LuxIcon name={gridView ? 'shrink' : 'expand'} size={9} />
+          </button>
+        )}
+      </span>
 
       {isRail ? (
         <span className="theia-playlist-lane__rail">
@@ -190,7 +243,10 @@ const PlaylistLane: React.FC<PlaylistLaneProps> = ({ collapse }) => {
           )}
         </span>
       ) : (
-        <div className="theia-pl-scroll" ref={scrollRef}>
+        <div
+          className={`theia-pl-scroll${gridView ? ' is-grid' : ''}`}
+          ref={scrollRef}
+        >
           {items.length === 0 ? (
             <span className="theia-playlist-lane__hint">
               DRAG ATOMS HERE — NEXT/PREV disparan la lista (manual · Ola D = autopilot)

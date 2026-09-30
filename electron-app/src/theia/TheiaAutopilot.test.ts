@@ -228,6 +228,63 @@ describe('WAVE 8306 — TheiaAutopilot', () => {
     expect(rig.fired).toEqual([1])
   })
 
+  it('🔥 HOTFIX 8309 — drop latched: un solo snap, NO un corte por compás', () => {
+    // predictionType es un enum persistente en el ring: si queda
+    // drop_incoming durante barras, el nivel alto NO debe re-armar el
+    // snap tras cada disparo (eso daba ~1 corte/bar ≈ 2 s @120 BPM).
+    const rig = makeRig()
+    seedItems(4)
+    useTheiaAutopilotStore.getState().setMode('loop')
+    useTheiaAutopilotStore.getState().setDwell({ unit: 'bars', value: 32 })
+    useTheiaPlaylistStore.setState({ activeIndex: 0 })
+    rig.engine.tick() // ancla
+    rig.tel.dropIncoming = true // señal LATCHED — nunca baja
+    for (let bar = 1; bar <= 10; bar++) {
+      rig.tel.barCount = bar
+      rig.tel.barPhase = 0
+      rig.engine.tick()
+    }
+    // Solo el primer downbeat tras el flanco corta (snap legítimo);
+    // los 9 compases siguientes con señal alta no disparan nada más.
+    expect(rig.fired).toEqual([1])
+  })
+
+  it('🔥 HOTFIX 8309 — DSP muerto: crest/drop stale no arma el snap', () => {
+    // Con audioLive=false las banderas del ring son residuales: el engine
+    // no debe ni armar ni cortar instantáneo — el dwell manda.
+    const rig = makeRig()
+    seedItems(2)
+    rig.tel.audioLive = false
+    rig.tel.crestEvent = true // residuo del último frame publicado
+    useTheiaAutopilotStore.getState().setMode('loop')
+    useTheiaAutopilotStore.getState().setDwell({ unit: 'sec', value: 10 })
+    useTheiaPlaylistStore.setState({ activeIndex: 0 })
+    rig.engine.tick() // ancla now=0 — sin fix disparaba AQUÍ mismo
+    expect(rig.fired).toEqual([])
+    rig.setNow(5000)
+    rig.engine.tick()
+    expect(rig.fired).toEqual([]) // 5 s < 10 s de dwell
+    rig.setNow(10001)
+    rig.engine.tick()
+    expect(rig.fired).toEqual([1]) // corta por dwell, no por snap
+  })
+
+  it('🔥 HOTFIX 8309 — la predicción cae antes del downbeat: snap se desarma', () => {
+    const rig = makeRig()
+    seedItems(2)
+    useTheiaAutopilotStore.getState().setMode('loop')
+    useTheiaAutopilotStore.getState().setDwell({ unit: 'bars', value: 32 })
+    useTheiaPlaylistStore.setState({ activeIndex: 0 })
+    rig.engine.tick() // ancla
+    rig.tel.dropIncoming = true
+    rig.engine.tick() // arma (flanco)
+    rig.tel.dropIncoming = false // la predicción se retira
+    rig.engine.tick() // desarma — sin bar edge aún
+    rig.advanceBar(1) // bar edge llega ya desarmado
+    rig.engine.tick()
+    expect(rig.fired).toEqual([]) // ningún corte: dwell sigue vigente
+  })
+
   it('audio muerto: dwell en segundos y corte sin frontera', () => {
     const rig = makeRig()
     seedItems(2)

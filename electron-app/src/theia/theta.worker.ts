@@ -54,13 +54,14 @@ import {
 } from './protocol'
 // 🎬 WAVE 4864: Phase 4 — Asset State Machine + Crossfade Unit
 import { AssetStateMachine, type AssetStateId } from './AssetStateMachine'
-import { CrossfadeUnit, type CrossfadeCurve, type CrossfadeStep } from './CrossfadeUnit'
+import { CrossfadeUnit, impactDuckFor, type CrossfadeCurve, type CrossfadeStep } from './CrossfadeUnit'
 // 🔮 WAVE 8229 — Euclid Oracle · E3: Shader Contract & Governor (§4.x)
 import {
   assembleFragmentShader,
   assembleSimFragmentShader,
   exprGeneValues,
   parseStepsHint,
+  parseTex0Hint,
   hasMainImage,
   hasMainState,
   hashSource,
@@ -81,6 +82,8 @@ import {
 import { RenderGovernor } from './shader/RenderGovernor'
 // 🧬 WAVE 8237 · G5 — Materia Viva: ping-pong RGBA16F por programa.
 import { FloatStatePool } from './shader/FloatStatePool'
+// 🎨 WAVE 8401 — sampler `u_tex0` (texturas de artista, Pack Latino).
+import { UserTextureCache, USER_TEX0_UNIT } from './shader/UserTextures'
 // � WAVE 8215 — Glass Bridge: transferable frame writers (ping-pong pool)
 import {
   createVideoFrameBuffer,
@@ -355,6 +358,10 @@ interface WorkerState {
   genPrograms: Map<string, GenProgram>
   /** Fuentes de artista por shaderId — rebuild tras context-loss (§4.5). */
   genSources: Map<string, GenSourceSpec>
+  /** 🎨 WAVE 8401 — shaderId → nombre de textura (`@euclid tex0`). */
+  shaderTex0: Map<string, string>
+  /** 🎨 WAVE 8401 — caché de texturas de artista de ESTE contexto GL. */
+  userTextures: UserTextureCache
   /** Compilaciones en vuelo (KHR_parallel_shader_compile). Clave = programKey. */
   genPending: Map<string, PendingGenCompile>
   /** Programa generativo activo — null = plasma interno (Modo A legacy). */
@@ -532,6 +539,8 @@ const state: WorkerState = {
   glIsWebGL2: false,
   genPrograms: new Map(),
   genSources: new Map(),
+  shaderTex0: new Map(),
+  userTextures: new UserTextureCache(),
   genPending: new Map(),
   genActive: null,
   genActiveId: 'builtin',
@@ -620,6 +629,9 @@ interface GenUniformLocs {
   /** 🧬 WAVE 8237 · G5 — estado RGBA16F del autómata + flag de siembra. */
   state: WebGLUniformLocation | null
   stateInit: WebGLUniformLocation | null
+  /** 🎨 WAVE 8401 — sampler de artista + flag de disponibilidad. */
+  tex0: WebGLUniformLocation | null
+  hasTex0: WebGLUniformLocation | null
 }
 
 /** Subconjunto de uniforms que consume el pase de simulación (G5). */
@@ -1129,6 +1141,7 @@ function teardownGL(): void {
       if (state.videoTex) gl.deleteTexture(state.videoTex)
       if (state.prevTex) gl.deleteTexture(state.prevTex)
       if (state.dummyTex) gl.deleteTexture(state.dummyTex)
+      state.userTextures.dispose(gl as WebGL2RenderingContext)
       if (state.glVbo) gl.deleteBuffer(state.glVbo)
       if (state.glProgram) gl.deleteProgram(state.glProgram)
       // 🔮 WAVE 8229 · E3 — recursos del path generativo
@@ -1281,7 +1294,7 @@ const GEN_STD_UNIFORMS = new Set([
   'u_brightness', 'u_contrast', 'u_blackout',
   'u_renderScale', 'u_prevFrame', 'u_flashState', 'u_hasPrev', 'u_blend',
   'u_flashGuard', 'u_flashMaxDelta', 'u_flashBudget', 'u_gene',
-  'u_state', 'u_stateInit',
+  'u_state', 'u_stateInit', 'u_tex0', 'u_hasTex0',
 ])
 
 function emitShaderStatus(payload: ThetaShaderStatusPayload): void {
@@ -1342,6 +1355,8 @@ function cacheGenLocs(prog: WebGLProgram): GenUniformLocs {
     // 🧬 WAVE 8237 · G5 — estado RGBA16F (u_state/u_stateInit).
     state: gl.getUniformLocation(prog, 'u_state'),
     stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
+    tex0: gl.getUniformLocation(prog, 'u_tex0'),
+    hasTex0: gl.getUniformLocation(prog, 'u_hasTex0'),
   }
 }
 
@@ -1636,6 +1651,11 @@ function handleLoadShader(p: ThetaLoadShaderPayload): void {
   }
   const genes = p.meta?.genes
   const exprGenes = p.meta?.exprGenes
+  // 🎨 WAVE 8401 — `@euclid tex0 <nombre>`: se resuelve por frame contra la
+  // caché (la carga async arranca en el primer render del átomo activo).
+  const tex0 = parseTex0Hint(p.source)
+  if (tex0) state.shaderTex0.set(p.shaderId, tex0)
+  else state.shaderTex0.delete(p.shaderId)
   loadShaderSource(p.shaderId, p.source, steps, genes, exprGenes)
   // 🔮 WAVE 8231 · E5 — Modo B: la ventana HDMI compila su copia nativa.
   // 🧬 WAVE 8233 · G1 — con el mismo fenotipo (genes) que el worker.
@@ -1896,6 +1916,9 @@ function renderGenerativeFrame(
   const gl = state.gl as WebGL2RenderingContext
   const ent = state.genActive
   if (!ent || !state.blitProgram) return
+  // 🔥 HOTFIX 8312 — u_impact mute durante la transición (flash aditivo
+  // sobre la mezcla → saturación HDR→ACES → falso positivo del AGC).
+  const impactDuck = impactDuckFor(xfStep, state.crossfade.isWaitingAnchor())
   // 🌊 WAVE 8256 — FBO de escena ADAPTATIVO (el pin a 64×64 de WAVE 8231
   // dejaba el preview irreconocible — un upscale bilineal del thumb). Con
   // preview mirror adjunto, la escena se rinde al tamaño FÍSICO del canvas
@@ -1968,7 +1991,7 @@ function renderGenerativeFrame(
     gl.uniform1f(SL.snarePulse, sm.snarePulse)
     gl.uniform1f(SL.predictiveETA, sm.predictiveEtaSec)
     gl.uniform1f(SL.approach, sm.approach)
-    gl.uniform1f(SL.impact, sm.impact)
+    gl.uniform1f(SL.impact, sm.impact * impactDuck)
     gl.uniform1f(SL.crestPulse, sm.crestPulse)
     gl.uniform1f(SL.strobeGate, sm.strobeGate)
     gl.uniform1f(SL.glassBreak, sm.glassBreak)
@@ -2013,6 +2036,14 @@ function renderGenerativeFrame(
     gl.TEXTURE_2D,
     (pool && pool.ready ? pool.readTexture : state.dummyTex) ?? state.dummyTex,
   )
+  // 🎨 WAVE 8401 — u_tex0: textura de artista del átomo activo (o dummy +
+  // u_hasTex0=0 mientras carga / si el átomo no la pide).
+  const tex0Name = state.shaderTex0.get(state.genActiveId)
+  const tex0 = tex0Name
+    ? state.userTextures.acquire(gl as WebGL2RenderingContext, tex0Name)
+    : null
+  gl.activeTexture(gl.TEXTURE0 + USER_TEX0_UNIT)
+  gl.bindTexture(gl.TEXTURE_2D, tex0 ?? state.dummyTex)
 
   const L = ent.locs
   gl.uniform1i(L.flags, sm.flags)
@@ -2025,7 +2056,7 @@ function renderGenerativeFrame(
   gl.uniform1f(L.snarePulse, sm.snarePulse)
   gl.uniform1f(L.predictiveETA, sm.predictiveEtaSec)
   gl.uniform1f(L.approach, sm.approach)
-  gl.uniform1f(L.impact, sm.impact)
+  gl.uniform1f(L.impact, sm.impact * impactDuck)
   gl.uniform1f(L.crestPulse, sm.crestPulse)
   gl.uniform1f(L.strobeGate, sm.strobeGate)
   gl.uniform1f(L.glassBreak, sm.glassBreak)
@@ -2041,6 +2072,8 @@ function renderGenerativeFrame(
   gl.uniform1i(L.prevFrame, 0)
   gl.uniform1i(L.flashState, 1)
   gl.uniform1i(L.state, 2)
+  gl.uniform1i(L.tex0, USER_TEX0_UNIT)
+  gl.uniform1f(L.hasTex0, tex0 ? 1 : 0)
   gl.uniform1f(L.stateInit, stateInitF)
   gl.uniform1f(L.hasPrev, state.genPrevValid ? 1 : 0)
   // 🧬 WAVE 8232 · G0 (H1): `genPrevValid` queda true permanente (feedback
@@ -2452,7 +2485,13 @@ function renderCurrentFrame(timestampMs: number): void {
   if (state.euSnarePulse) gl.uniform1f(state.euSnarePulse, sm.snarePulse)
   if (state.euPredictiveETA) gl.uniform1f(state.euPredictiveETA, sm.predictiveEtaSec)
   if (state.euApproach) gl.uniform1f(state.euApproach, sm.approach)
-  if (state.euImpact) gl.uniform1f(state.euImpact, sm.impact)
+  // 🔥 HOTFIX 8312 — mismo duck que el path generativo (xfStep vivo aquí).
+  if (state.euImpact) {
+    gl.uniform1f(
+      state.euImpact,
+      sm.impact * impactDuckFor(xfStep, state.crossfade.isWaitingAnchor()),
+    )
+  }
   if (state.euCrestPulse) gl.uniform1f(state.euCrestPulse, sm.crestPulse)
   if (state.euStrobeGate) gl.uniform1f(state.euStrobeGate, sm.strobeGate)
   if (state.euGlassBreak) gl.uniform1f(state.euGlassBreak, sm.glassBreak)

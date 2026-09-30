@@ -8,6 +8,7 @@
 // @euclid param   u_heat   float -1.0 1.0 0.0 "Heat"
 // @euclid gene    G_BOIL    expr float 0.1 3.0 1.0 o:+0.4 c:+0.2
 // @euclid gene    G_FLAME   expr float 0.1 3.0 1.0 a:+0.5 o:+0.2
+// @euclid gene    G_SEED    expr float 0.0 100.0 0.0
 // @euclid gene    G_OCT     struct int  3   6   3  o:+0.4
 // Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
@@ -19,6 +20,9 @@ uniform float u_heat;
 #endif
 #ifndef G_FLAME
 #define G_FLAME 1.0
+#endif
+#ifndef G_SEED
+#define G_SEED 0.0
 #endif
 #ifndef G_OCT
 #define G_OCT 3
@@ -74,6 +78,11 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float gBeats = u_beatTime + u_time * 0.05;
   float bass   = u_bass, kick = u_kickPulse;
 
+  // 🌱 8406-C — semilla del genoma: vector de desplazamiento del dominio
+  // FBM aplicado a las tres capas (superficie/corona/disco) → cada mutante
+  // `core#seed` es una estrella topológicamente única.
+  vec3 SD = vec3(G_SEED * 43.1, G_SEED * -17.3, G_SEED * 99.2);
+
   // Ebullición pesada (lava/miel); en el colapso la turbulencia va x5.
   // Ambos relojes obedecen al fader SPEED (u_speed): t la superficie (gen
   // G_BOIL), tc la eyección de la corona (gen G_FLAME).
@@ -114,9 +123,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float z    = sqrt(max(1.0 - rr * rr, 0.0));
   vec3  nrm  = vec3(sp / R, z);
   nrm.xz     = rot2(t * 0.35) * nrm.xz;
-  float gran = ridgeFbm(nrm * 7.5 + vec3(0.0, 0.0, t));             // celdas + filamentos
-  float fine = noise3(nrm * 34.0 + vec3(t * 2.0));                   // granito fino
-  float spot = smoothstep(0.62, 0.80, noise3(nrm * 2.2 + vec3(9.0, 3.0, t * 0.4)));  // manchas
+  float gran = ridgeFbm(nrm * 7.5 + vec3(0.0, 0.0, t) + SD);         // celdas + filamentos
+  float fine = noise3(nrm * 34.0 + vec3(t * 2.0) + SD);              // granito fino
+  float spot = smoothstep(0.62, 0.80, noise3(nrm * 2.2 + vec3(9.0, 3.0, t * 0.4) + SD));  // manchas
   float limb = 0.30 + 0.70 * sqrt(z);                                // oscurecimiento al limbo
   // Idle = lava densa: pow(gran,1.5) hunde los valles térmicos a casi negro
   // y deja solo las crestas en naranja. Sin música el techo es ~0.55 (naranja).
@@ -129,7 +138,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   heatS *= (0.6 + 1.8 * pulse) * (1.0 - 0.9 * k);                    // el núcleo colapsa
 
   // Espículas del borde: crestas finas que rompen la silueta (nada de gelatina).
-  float spic = ridgeFbm(vec3(dir * 9.0, t * 1.4 + 20.0));
+  float spic = ridgeFbm(vec3(dir * 9.0, t * 1.4 + 20.0) + SD);
   float d    = r - R - 0.022 * spic;
   float body = smoothstep(0.006, -0.006, d);
 
@@ -137,13 +146,13 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // Coordenadas polares sin costura: dirección (xy) + altura h. La fase
   // radial (h·k − tc) VIAJA hacia fuera: el fuego sale despedido.
   float h  = max(r - R, 0.0);
-  vec2  wq = dir + 0.45 * vec2(noise3(vec3(dir * 2.3, h * 3.0 - tc)) - 0.5,
-                               noise3(vec3(dir * 2.3 + 7.1, h * 3.0 - tc)) - 0.5);
-  float fil = ridgeFbm(vec3(wq * 3.4, h * 6.0 - tc * 1.6));
+  vec2  wq = dir + 0.45 * vec2(noise3(vec3(dir * 2.3, h * 3.0 - tc) + SD) - 0.5,
+                               noise3(vec3(dir * 2.3 + 7.1, h * 3.0 - tc) + SD) - 0.5);
+  float fil = ridgeFbm(vec3(wq * 3.4, h * 6.0 - tc * 1.6) + SD);
 
   // Protuberancias gigantes: una máscara lenta alarga el alcance en
   // sectores concretos (las llamaradas grandes no son uniformes).
-  float prom  = smoothstep(0.50, 0.82, noise3(vec3(dir * 1.4, t * 0.5 + 40.0)));
+  float prom  = smoothstep(0.50, 0.82, noise3(vec3(dir * 1.4, t * 0.5 + 40.0) + SD));
   float reach = reachMax / 3.2 * (1.0 + 2.2 * prom);
   float alpha = exp(-h / max(reach, 0.01));                          // desvanecido radial
   float heatC = fil * fil * 1.5 * alpha * (0.7 + 0.8 * pulse)
@@ -171,8 +180,8 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     // (rq·2.2 → arcos largos a lo largo del giro) y RÁPIDO con el radio
     // (dr·18 → vetas finas). Un segundo tap retrasado en el giro promedia la
     // estela: gas girando a velocidad relativista, no partículas sueltas.
-    float dN  = ridgeFbm(vec3(rq * 2.2, dr * 18.0 - t * 3.0 + 60.0));
-    dN = 0.5 * (dN + ridgeFbm(vec3(rot2(-0.22) * rq * 2.2, dr * 18.0 - t * 3.0 + 60.0)));
+    float dN  = ridgeFbm(vec3(rq * 2.2, dr * 18.0 - t * 3.0 + 60.0) + SD);
+    dN = 0.5 * (dN + ridgeFbm(vec3(rot2(-0.22) * rq * 2.2, dr * 18.0 - t * 3.0 + 60.0) + SD));
     // Caída suave (3.0) + arranque más externo: el disco barre hasta los
     // bordes de la pantalla — cataclismo cegador, no solo geométrico.
     float band = smoothstep(Rh * 0.80, Rh * 1.20, dr) * exp(-(dr - Rh) * 3.0);
@@ -193,7 +202,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     // hueco con un fundido, no con una línea horizontal.
     float front = smoothstep(0.14, -0.14, dq.y);
     float photon = exp(-abs(r - Rh * 1.04) * 90.0);         // anillo de fotones
-    float lensed = exp(-abs(r - Rh * 1.22) * 30.0) * (0.4 + 0.8 * ridgeFbm(vec3(dir * 5.0, t * 2.0)));
+    float lensed = exp(-abs(r - Rh * 1.22) * 30.0) * (0.4 + 0.8 * ridgeFbm(vec3(dir * 5.0, t * 2.0) + SD));
 
     vec3 bh = mix(C_BG, bleed, hole)
             + disk * mix(1.0 - hole, 1.0, front)

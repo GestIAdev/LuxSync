@@ -12,6 +12,7 @@
 // @euclid gene    G_BIO    expr   float 0.0  2.5  1.0  o:+0.4
 // @euclid gene    G_BIO_HUE expr  float 0.0  1.0  0.5  o:+0.4 c:+0.2
 // @euclid gene    G_SWIRL  expr   float 0.3  3.0  1.0  c:+0.5 a:+0.3
+// @euclid gene    G_SEED   expr   float 0.0  100.0 0.0
 // @euclid gene    G_LAYERS struct int   2    4    3    o:+0.3
 // Theia 2.0 · contract v2 — migrated by scripts/migrate_atoms_v2.js (WAVE 8279)
 
@@ -35,6 +36,9 @@ uniform float u_glow;
 #endif
 #ifndef G_SWIRL
 #define G_SWIRL 1.0
+#endif
+#ifndef G_SEED
+#define G_SEED 0.0
 #endif
 #ifndef G_LAYERS
 #define G_LAYERS 3
@@ -105,6 +109,11 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float t  = u_beatTime * 0.055 * G_FLOW * (1.0 + 3.0 * k); // corriente
   float t2 = u_beatTime * 0.021 * G_FLOW;                   // marejada lenta
 
+  // 🌱 8406-C — semilla del genoma: desplaza el DOMINIO de muestreo del
+  // ruido y del Voronoi (NO la geometría de pantalla: remolino y viñeta
+  // siguen centrados). Mutate (core#seed) → océano topológicamente nuevo.
+  vec2 sd = vec2(G_SEED * 137.5);
+
   // ── Flujo sinuoso: el agua se MECE, nunca golpea ──
   float tideAmp = 1.0 + 0.45 * u_tide;
   vec2 w = st;
@@ -112,12 +121,12 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     sin(1.8 * st.y + t * 0.9),
     sin(2.1 * st.x - t * 0.7));
   w += 0.10 * tideAmp * vec2(
-    noise3(vec3(st * 0.8, t * 0.8)),
-    noise3(vec3(st * 0.8 + vec2(9.17, 4.41), t * 0.8)));
+    noise3(vec3(st * 0.8 + sd, t * 0.8)),
+    noise3(vec3(st * 0.8 + sd + vec2(9.17, 4.41), t * 0.8)));
   // swing del groove: la corriente respira con la seguridad del pulso
   w += 0.05 * groove * vec2(
-    noise3(vec3(st * 0.5, t * 1.4 + 3.0)),
-    noise3(vec3(st * 0.5 + vec2(6.3, 1.9), t * 1.4)));
+    noise3(vec3(st * 0.5 + sd, t * 1.4 + 3.0)),
+    noise3(vec3(st * 0.5 + sd + vec2(6.3, 1.9), t * 1.4)));
   // vaivén de compás — fase CRUDA → la desviación obedece SPEED (§3.1)
   w.y += 0.02 * sin(TAU * u_barPhase) * u_speed * tideAmp;
 
@@ -143,7 +152,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   for (int i = 0; i < 4; i++) {
     if (i >= int(G_LAYERS)) break;
     float fi = float(i);
-    vec3 v = voroSwim(wp * (3.6 * G_SCALE) + fi * vec2(17.31, 9.77),
+    vec3 v = voroSwim(wp * (3.6 * G_SCALE) + sd + fi * vec2(17.31, 9.77),
                       t + fi * 0.73, jit);
     float ed = v.y - v.x;
     // línea solar refractada: proximidad al borde afilada por G_SHARP
@@ -159,7 +168,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   edge /= wsum;
 
   // ── Cuerpo de agua: profundidad casi negra → turquesa oscuro ──
-  float swell = 0.5 + 0.5 * noise3(vec3(st * 0.45, t2));
+  float swell = 0.5 + 0.5 * noise3(vec3(st * 0.45 + sd, t2));
   swell += 0.22 * u_bass;                       // el bajo hincha la marea
   vec3 col = mix(C_ABYSS, C_DEEP, clamp(swell * 0.85, 0.0, 1.0));
   col = mix(col, C_SHALLOW, 0.30 * smoothstep(0.55, 0.95, swell));
@@ -176,10 +185,16 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // + bombo. Sin percusión el agua queda oscura y misteriosa.
   float pulse   = exp(-4.0 * u_barPhase) * u_speed;
   float bioGate = pulse + 0.40 * u_kickPulse;
+  // 🌱 8406-C — twinkle orgánico: cada celda desfasa su respuesta al bombo
+  // por su hash Voronoi → el downbeat enciende MUCHAS, nunca todas igual.
+  bioGate *= 0.5 + 0.5 * sin(u_time * 2.0 + bioId * 6.28);
   float plankton = exp(-bioF1 * bioF1 * 30.0);          // puntos de luz vivos
   float bioAmt = (0.85 * plankton + 0.25 * clamp(edge, 0.0, 1.0))
                * bioGate * G_BIO * (1.0 + 0.6 * u_glow);
-  col += bioPalette(bioId * 0.61 + G_BIO_HUE) * bioAmt * 1.4;
+  // 🌱 8406-C — puente Master Hue: el gen del plancton se suma al fader
+  // global de performance (u_masterHue, 0..1 → rotación viva en el post-fx).
+  float finalHue = fract(G_BIO_HUE + u_masterHue);
+  col += bioPalette(bioId * 0.61 + finalHue) * bioAmt * 1.4;
 
   // ── Cataclismo: saturación a cian eléctrico radiactivo ──
   if (k > 0.001) {

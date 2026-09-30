@@ -31,12 +31,12 @@ describe('WAVE 8402 — cabecera del átomo', () => {
   })
 
   it('genes con guardia #ifndef y params neutros (Cero Neutro)', () => {
-    expect(meta.genes.map((g) => g.name)).toEqual(['G_BOIL', 'G_FLAME', 'G_OCT'])
+    expect(meta.genes.map((g) => g.name)).toEqual(['G_BOIL', 'G_FLAME', 'G_SEED', 'G_OCT'])
     expect(meta.params.map((p) => [p.name, p.defaultValue])).toEqual([
       ['u_flare', 0],
       ['u_heat', 0],
     ])
-    for (const g of ['G_BOIL', 'G_FLAME', 'G_OCT']) {
+    for (const g of ['G_BOIL', 'G_FLAME', 'G_SEED', 'G_OCT']) {
       expect(DEMBOW_SRC).toContain(`#ifndef ${g}`)
     }
   })

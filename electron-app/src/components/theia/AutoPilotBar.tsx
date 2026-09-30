@@ -44,7 +44,6 @@ const AutoPilotBar: React.FC = () => {
   const dwell = useTheiaAutopilotStore((s) => s.dwell)
   const quant = useTheiaAutopilotStore((s) => s.quant)
   const xFadeSec = useTheiaAutopilotStore((s) => s.xFadeSec)
-  const dropSnap = useTheiaAutopilotStore((s) => s.dropSnap)
   const countdownLabel = useTheiaAutopilotStore((s) => s.countdownLabel)
   const dwellFrac = useTheiaAutopilotStore((s) => s.dwellFrac)
   const syncWaiting = useTheiaAutopilotStore((s) => s.syncWaiting)
@@ -58,7 +57,6 @@ const AutoPilotBar: React.FC = () => {
   const setDwell = useTheiaAutopilotStore((s) => s.setDwell)
   const setQuant = useTheiaAutopilotStore((s) => s.setQuant)
   const setXFadeSec = useTheiaAutopilotStore((s) => s.setXFadeSec)
-  const setDropSnap = useTheiaAutopilotStore((s) => s.setDropSnap)
 
   const dwellPresets =
     dwell.unit === 'bars' ? DWELL_PRESETS_BARS : DWELL_PRESETS_SEC
@@ -190,18 +188,6 @@ const AutoPilotBar: React.FC = () => {
         </select>
         <span className="theia-autopilot__val">bars</span>
       </label>
-
-      {/* ── DROP SNAP ── */}
-      <button
-        type="button"
-        className={`theia-autopilot__snap${dropSnap ? ' is-active' : ''}`}
-        onClick={() => setDropSnap(!dropSnap)}
-        data-midi-bind="theia.pilot.dropsnap"
-        title="DROP SNAP — adelanta el corte al downbeat si hay drop inminente"
-        aria-pressed={dropSnap}
-      >
-        ◆ SNAP
-      </button>
 
       {/* ── Countdown ── */}
       <div

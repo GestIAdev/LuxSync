@@ -231,9 +231,17 @@ export const TELEMETRY_SCHEMA = [
     { slot: 97, name: 'ACTIVE_FX_AGE', uniform: 'u_activeEffectAge', kind: 'none' },
     { slot: 98, name: 'ACTIVE_FX_ID', uniform: 'u_activeEffectId', kind: 'none' },
     { slot: 99, name: 'ACTIVE_FX_COUNT', uniform: 'u_activeEffectCount', kind: 'none' },
-    // 100-127: margen, generados.
-    ...Array.from({ length: TELEMETRY_RING_SLOTS - 100 }, (_, i) => {
-        const slot = 100 + i;
+    // ⏱️ WAVE 8404 — RELOJES MAESTROS ABSOLUTOS (Master Time Refactor).
+    // El pump (TickEngine) es el ÚNICO integrador: worker y preview son dumb
+    // readers — ambos suben el MISMO valor al shader → fotogramas
+    // matemáticamente idénticos entre renders, cero deriva por asimetría
+    // de dt. Transport-only (uniform ''): los motores los leen del scratch
+    // y los inyectan a `u_time`/`u_beatTime` fuera del array u_tel.
+    { slot: 100, name: 'ABS_SHADER_TIME', uniform: '', kind: 'none' },
+    { slot: 101, name: 'ABS_BEAT_TIME', uniform: '', kind: 'none' },
+    // 102-127: margen, generados.
+    ...Array.from({ length: TELEMETRY_RING_SLOTS - 102 }, (_, i) => {
+        const slot = 102 + i;
         return { slot, name: `RESERVED_${slot}`, uniform: '', kind: 'none' };
     }),
 ];
@@ -264,6 +272,64 @@ export function stepIntegralClocks(st, nowMs, energy, beatCount) {
     const barNow = Math.floor(Math.max(0, beatCount) / 4);
     if (barNow > st.barCount)
         st.barCount = barNow;
+}
+// ───────────── ⏱️ WAVE 8404 — Master Clock (reloj absoluto) ─────────────
+/**
+ * Wrap de `ABS_SHADER_TIME` (segundos). 3600 s = 1 h — misma convención que
+ * T_SEC (slot 4). El salto es determinista y compartido: ambos renders
+ * saltan a la vez (nunca divergen), y float32 conserva precisión plena
+ * en cualquier argumento `t*f` razonable.
+ */
+export const MASTER_TIME_WRAP_S = 3600;
+/**
+ * Wrap de `ABS_BEAT_TIME` (beats). 2^15 = 32768 beats ≈ 4.5 h @120 BPM.
+ * Es potencia de dos → la resta es exacta en float32 y la fracción
+ * (anclada a BEAT_PHASE) no se contamina.
+ */
+export const MASTER_BEAT_WRAP = 32768;
+/** Fuerza de la corrección de fase — histórica del smoother (§3.4). */
+const MASTER_BEAT_CORRECT_K = 0.15;
+export function createMasterClock() {
+    return { shaderTimeSec: 0, beatTime: 0, timeScale: 0.5, prevNowMs: 0 };
+}
+/**
+ * Avanza el reloj maestro un tick del pump. Replica EXACTA de la
+ * semántica que vivía dispersa en los dos renderers (WAVE 8250/8259/8261):
+ * gobernador exponencial audio-vivo + fader, integral gobernada con wrap,
+ * y beatTime con corrector de fase atenuado cúbico por masterSpeed.
+ * dt clamp [0, 0.5 s]: un stall jamás produce un salto del integral.
+ */
+export function stepMasterClock(st, nowMs, audioLive, masterSpeed, bpm, beatPhase) {
+    const dtMs = st.prevNowMs > 0
+        ? Math.min(500, Math.max(0, nowMs - st.prevNowMs))
+        : 0;
+    st.prevNowMs = nowMs;
+    const dtS = dtMs / 1000;
+    const dtF = dtS * 60;
+    const target = (audioLive ? 1.0 : 0.5) * masterSpeed;
+    st.timeScale += (target - st.timeScale) * (1 - Math.exp(-dtMs / 160));
+    st.shaderTimeSec = (st.shaderTimeSec + dtS * st.timeScale) % MASTER_TIME_WRAP_S;
+    const bps = bpm > 0 ? bpm / 60 : 0;
+    st.beatTime += dtS * bps * masterSpeed;
+    let phaseErr = beatPhase - (st.beatTime - Math.floor(st.beatTime));
+    phaseErr -= Math.round(phaseErr);
+    const s = masterSpeed;
+    const kcorr = (1 - Math.pow(1 - MASTER_BEAT_CORRECT_K, dtF)) * s * s * s;
+    st.beatTime += phaseErr * kcorr;
+    st.beatTime %= MASTER_BEAT_WRAP;
+    if (st.beatTime < 0)
+        st.beatTime += MASTER_BEAT_WRAP;
+}
+// ─── Bus del fader SPEED (renderer → pump) ───
+// `u_speed` nace en la UI y viaja por ThetaOrchestrator.setUniform hacia
+// el worker. El pump (mismo proceso renderer) lo lee de este singleton —
+// una sola escritura canónica, cero IPC extra.
+let theiaMasterSpeed = 1.0;
+export function setTheiaMasterSpeed(v) {
+    theiaMasterSpeed = Number.isFinite(v) ? Math.max(0, v) : theiaMasterSpeed;
+}
+export function getTheiaMasterSpeed() {
+    return theiaMasterSpeed;
 }
 // ─────────────────────────── Construcción ───────────────────────────
 export function createTelemetryRing() {

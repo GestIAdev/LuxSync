@@ -216,6 +216,10 @@ void main() {
   vec3 current = mix(plasma, texture2D(u_videoTex, v_uv).rgb, step(0.5, u_hasVideo));
   vec3 prev = texture2D(u_prevTex, v_uv).rgb;
   vec3 col = mix(current, prev, clamp((1.0 - u_blend) * u_hasPrev, 0.0, 1.0));
+  // 🌊 WAVE 8405 · M3 — dip-to-black parabólico en el punto medio del fade
+  // (misma curva que el epílogo generativo): la transición cruza por un
+  // valle de exposición en vez de saturar.
+  col *= 1.0 - 0.3 * sin(clamp(u_blend, 0.0, 1.0) * 3.14159265) * u_hasPrev;
   // Master epilogue — applies to plasma AND video alike.
   col = (col - 0.5) * u_contrast + 0.5;
   col *= u_brightness;
@@ -1679,9 +1683,9 @@ function handleActivateShader(p: ThetaActivateShaderPayload): void {
       // (mecanismo crossfade 8207) — la salida no parpadea.
       captureCurrentSnapshot()
       if (fadeMs > 0) {
-        state.crossfade.start({
-          totalTicks: Math.max(2, Math.round(fadeMs / 16.7)),
-        })
+        // ⏱️ WAVE 8405 · M2 — wall-clock: fadeMs llega ya en ms; el unit
+        // avanza por tiempo real, no por ticks de render.
+        state.crossfade.start({ durationMs: fadeMs })
       }
     }
     state.genActive = null
@@ -1794,7 +1798,7 @@ function activateGenProgram(ent: GenProgram, id: string, fadeMs: number): void {
   else state.genGeneValues.fill(0)
   ent.lastUsed = state.renderSeq
   if (fadeMs > 0) {
-    state.crossfade.start({ totalTicks: Math.max(2, Math.round(fadeMs / 16.7)) })
+    state.crossfade.start({ durationMs: fadeMs })
   } else {
     state.crossfade.abort()
     state.prevSnapshotValid = false
@@ -2150,7 +2154,11 @@ function renderGenerativeFrame(
 
   // Prev-frame continuo para el limitador fotosensible (mip 1×1) y el
   // crossfade de activaciones — el canvas completo pasa a genPrevTex.
-  captureGenPrevFrame()
+  // ⏱️ WAVE 8405 · M2 — FREEZE durante la transición: capturar cada frame
+  // reescribía u_prevFrame con el COMPOSITE ya mezclado → el fade se
+  // cerraba exponencialmente en ~2 frames (crossfade invisible). Mientras
+  // el unit no esté en idle, prevTex conserva el frame saliente congelado.
+  if (state.crossfade.isDone()) captureGenPrevFrame()
 }
 
 /**
@@ -2342,8 +2350,10 @@ function renderCurrentFrame(timestampMs: number): void {
   )
 
   // Crossfade step (only meaningful if a crossfade is in progress) —
-  // we step it BEFORE drawing so we know the alphas for THIS tick.
-  const xfStep = state.crossfade.step()
+  // we step it BEFORE drawing so we know the alphas for THIS frame.
+  // ⏱️ WAVE 8405 · M2 — wall-clock: el paso usa el timestamp real del
+  // frame; la duración del fade es exacta a 60 Hz, 144 Hz o poll 44 Hz.
+  const xfStep = state.crossfade.step({ nowMs: perfNow })
 
   // 🌊 WAVE 8242 · U4 — BLACKOUT total: con u_blackout≈1 el epílogo ya
   // multiplica por ~0 (`col *= 1-u_blackout`) — saltamos el pase pesado
@@ -2799,7 +2809,7 @@ function handleForceState(payload: ThetaForceStatePayload): void {
     // Snapshot the current canvas BEFORE we change anything.
     captureCurrentSnapshot()
     state.crossfade.start({
-      totalTicks: payload.totalTicks,
+      durationMs: payload.crossfadeMs,
       curve: (payload.curve as CrossfadeCurve | undefined) ?? 'easeInOut',
       waitAnchor: !!payload.waitAnchor,
     })
@@ -2835,16 +2845,16 @@ function handleSeek(payload: ThetaSeekPayload): void {
   captureCurrentSnapshot()
   const snapshotOk = state.prevSnapshotValid
 
-  // Traducir crossfadeMs → ticks. pollIntervalMs ~ 22ms = 1 tick.
-  // Mínimo 1 tick (corte casi duro), máximo 200 ticks (~4.4s) por seguridad.
-  const ms = Number.isFinite(payload.crossfadeMs) ? Math.max(0, payload.crossfadeMs) : 500
-  const totalTicks = Math.min(200, Math.max(1, Math.round(ms / Math.max(1, state.pollIntervalMs))))
-
-  // Curva acorde a la urgencia: cortes duros = lineal; transiciones suaves = easeInOut.
-  const curve: CrossfadeCurve = totalTicks <= 4 ? 'linear' : 'easeInOut'
+  // ⏱️ WAVE 8405 · M2 — el fade es wall-clock: crossfadeMs viaja directo
+  // al unit (máximo 4 s por seguridad). Curva por urgencia: cortes duros
+  // = lineal; transiciones suaves = easeInOut.
+  const ms = Number.isFinite(payload.crossfadeMs)
+    ? Math.min(4000, Math.max(1, payload.crossfadeMs))
+    : 500
+  const curve: CrossfadeCurve = ms <= 90 ? 'linear' : 'easeInOut'
 
   if (snapshotOk) {
-    state.crossfade.start({ totalTicks, curve, waitAnchor: false })
+    state.crossfade.start({ durationMs: ms, curve, waitAnchor: false })
   } else {
     // Sin snapshot válido (primer cue del show, canvas vacío) → corte duro.
     state.crossfade.abort()
@@ -2860,7 +2870,7 @@ function handleSeek(payload: ThetaSeekPayload): void {
     atomId: payload.atomId,
     latencyMs: latency,
     snapshotOk,
-    crossfadeTicks: snapshotOk ? totalTicks : 0,
+    crossfadeMs: snapshotOk ? ms : 0,
   }
   send('theia:seek-ack', ack)
 }

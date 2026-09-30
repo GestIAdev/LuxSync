@@ -629,7 +629,7 @@ export class ThetaOrchestrator {
     state: TheiaAssetStateId,
     opts: {
       curve?: 'linear' | 'easeInOut' | 'cosine'
-      totalTicks?: number
+      crossfadeMs?: number
       waitAnchor?: boolean
       manual?: boolean
     } = {},
@@ -645,7 +645,7 @@ export class ThetaOrchestrator {
     const payload: ThetaForceStatePayload = {
       state,
       curve: opts.curve,
-      totalTicks: opts.totalTicks,
+      crossfadeMs: opts.crossfadeMs,
       waitAnchor: opts.waitAnchor,
       manual: opts.manual ?? true, // UI calls are manual by default
     }

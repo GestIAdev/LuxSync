@@ -3,38 +3,47 @@
  *
  * El flash aditivo del impacto no puede sumar sobre la mezcla del crossfade:
  * duck = 0 mientras la unidad no está en reposo (running, pending-anchor y
- * el tick finished), 1 en idle.
+ * el frame finished), 1 en idle.
+ *
+ * ⏱️ WAVE 8405 · M2 — wall-clock: reloj falso inyectado por constructor.
  */
 
 import { describe, expect, it } from 'vitest'
 import { CrossfadeUnit, impactDuckFor } from './CrossfadeUnit'
 
+function makeClocked() {
+  const clock = { now: 0 }
+  const xf = new CrossfadeUnit(() => clock.now)
+  return { xf, clock }
+}
+
 describe('HOTFIX 8312 — impactDuckFor', () => {
   it('idle → 1: el impacto llega intacto sin transición', () => {
-    const u = new CrossfadeUnit()
+    const { xf: u } = makeClocked()
     const step = u.step()
     expect(step.active).toBe(false)
     expect(impactDuckFor(step, u.isWaitingAnchor())).toBe(1)
   })
 
-  it('running → 0 durante TODA la rampa (incl. el tick finished)', () => {
-    const u = new CrossfadeUnit()
-    u.start({ totalTicks: 5 })
+  it('running → 0 durante TODA la rampa (incl. el frame finished)', () => {
+    const { xf: u, clock } = makeClocked()
+    u.start({ durationMs: 50 })
     const ducks: number[] = []
     for (let i = 0; i < 6; i++) {
+      clock.now += 10
       const s = u.step()
       ducks.push(impactDuckFor(s, u.isWaitingAnchor()))
       if (s.finished) break
     }
-    // Los 5 ticks del fade mutean; solo tras terminar vuelve a 1.
+    // Los 50 ms del fade mutean; solo tras terminar vuelve a 1.
     expect(ducks.slice(0, 5)).toEqual([0, 0, 0, 0, 0])
     expect(u.isDone()).toBe(true)
     expect(impactDuckFor(u.step(), u.isWaitingAnchor())).toBe(1)
   })
 
   it('pending-anchor → 0: el hold con blend=0 también es transición', () => {
-    const u = new CrossfadeUnit()
-    u.start({ totalTicks: 4, waitAnchor: true })
+    const { xf: u } = makeClocked()
+    u.start({ durationMs: 40, waitAnchor: true })
     const s = u.step() // sigue en hold: active=false pero transición viva
     expect(s.active).toBe(false)
     expect(u.isWaitingAnchor()).toBe(true)
@@ -46,8 +55,9 @@ describe('HOTFIX 8312 — impactDuckFor', () => {
   })
 
   it('abort durante la transición → duck vuelve a 1', () => {
-    const u = new CrossfadeUnit()
-    u.start({ totalTicks: 10 })
+    const { xf: u, clock } = makeClocked()
+    u.start({ durationMs: 100 })
+    clock.now += 10
     u.step()
     u.abort()
     expect(impactDuckFor(u.step(), u.isWaitingAnchor())).toBe(1)

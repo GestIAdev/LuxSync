@@ -15,7 +15,7 @@ import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 // only overrides top-level fields (stableEmotion, thermalTemperature, ai, vibe),
 // so the nested defaults can be shared by reference safely.
 const _cachedDefaultCognitive = createDefaultCognitive();
-import { SCHEMA_VERSION, TEL_FLAG, TELEMETRY_SLOT, createIntegralClocks, stepIntegralClocks, } from '../../../theia/telemetry/TheiaTelemetryRing';
+import { SCHEMA_VERSION, TEL_FLAG, TELEMETRY_SLOT, createIntegralClocks, stepIntegralClocks, createMasterClock, stepMasterClock, getTheiaMasterSpeed, } from '../../../theia/telemetry/TheiaTelemetryRing';
 // 🔫 WAVE 8287 — Clean Shot: envolvente del clip Hephaestus vivo (slots 96-99)
 import { createEffectEnergyTracker, createFxEnergySample, } from '../../../theia/telemetry/EffectEnergyTracker';
 import { getGenomeEvolver } from '../../../theia/genome/GenomeEvolver';
@@ -184,6 +184,11 @@ export class TickEngine {
         // El paso vive en `stepIntegralClocks` (puro, testeable) — aquí solo
         // persiste el estado entre ticks.
         this._euclidClocks = createIntegralClocks();
+        // ⏱️ WAVE 8404 — Master Time Refactor: este objeto es el ÚNICO
+        // integrador de u_time/u_beatTime del sistema. Worker y preview son
+        // dumb readers de los slots 100/101 — fotogramas idénticos, sin deriva
+        // por asimetría de dt ni colapso float32 por integral infinita.
+        this._masterClock = createMasterClock();
         this._euclidM = {
             beatPhase: 0, isBeat: false, beatCount: 0, bpm: 0, beatConfidence: 0,
             energy: 0, bass: 0, mid: 0, high: 0,
@@ -282,6 +287,9 @@ export class TickEngine {
             // 🧬 WAVE 8233 · G1 — relojes integrales (slots 58/59, kind 'none').
             p[S.ENERGY_TIME] = this._euclidClocks.energyTime;
             p[S.BAR_COUNT] = this._euclidClocks.barCount;
+            // ⏱️ WAVE 8404 — slots 100/101: la hora absoluta del mundo shader.
+            p[S.ABS_SHADER_TIME] = this._masterClock.shaderTimeSec;
+            p[S.ABS_BEAT_TIME] = this._masterClock.beatTime;
             // ── 🌊 PÁGINA B (64-92) — WAVE 8279 · F3: física Liquid + GodEar ──
             // `pt` = referencia viva al physicsTel del engine activo (o null si
             // stale >500 ms → ceros). Todo escalar, cero allocs, §2.2.
@@ -2111,6 +2119,9 @@ export class TickEngine {
         // 🧬 WAVE 8233 · G1 — ∫energy·dt corre SIEMPRE (incluso sin writer:
         // el integral debe seguir continuo para cuando el consumidor vuelva).
         stepIntegralClocks(this._euclidClocks, now, m.energy, m.beatCount);
+        // ⏱️ WAVE 8404 — el reloj maestro corre SIEMPRE (mismo patrón que los
+        // integrales: continuidad aunque el consumidor desaparezca).
+        stepMasterClock(this._masterClock, now, this.audioPipeline.hasRealAudio, getTheiaMasterSpeed(), context?.bpm ?? m.bpm, m.beatPhase);
         // 🌊 WAVE 8279 · F3 — física Liquid + relojes/gates host. Corren
         // SIEMPRE como _euclidClocks: continuidad del integral aunque el
         // consumidor desaparezca. `pt.now` es el stamp del último applyBands

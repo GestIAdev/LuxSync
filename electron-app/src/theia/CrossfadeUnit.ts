@@ -4,17 +4,19 @@
  * Genera la curva de blending entre el frame "primario" (estado anterior) y el
  * "secundario" (estado nuevo) durante una transición de la AssetStateMachine.
  *
+ * ⏱️ WAVE 8405 · M2 — WALL-CLOCK: la unidad ya no cuenta ticks. El worker
+ * renderiza a cadencia variable (rAF 60–144 Hz, poll ~44 Hz de fallback) y
+ * `totalTicks = ms/16.7` producía fades 0.4×–2.4× fuera de tiempo. Ahora la
+ * rampa avanza por ms de reloj (`performance.now` inyectable), igual que el
+ * `fadeT0/fadeDur` del GenRuntime — Render A y Render B funden al milisegundo.
+ *
  * Anclaje musical (downbeat) — ver blueprint WAVE-4850 §2.4:
  *  - El crossfade puede arrancar en `pending-anchor` esperando al siguiente
- *    downbeat. En ausencia de señal de beat (FrameContextRing actual sólo
- *    transporta tickId), el `step()` lo lanza inmediatamente cuando se le
- *    indique con `releaseAnchor=true`.
- *  - Cuando llegue el bus de `MusicalContext` con `beatPhase`, basta con que
- *    el caller compruebe `beatPhase < 0.05` y pase `releaseAnchor=true`.
+ *    downbeat. `step({ releaseAnchor: true })` lo libera; el timeout es en ms.
  *
  * Curvas: linear, easeInOut (cosine), cosine.
  *
- * Esta clase es lógica pura. El consumidor la llama una vez por tick, recibe
+ * Esta clase es lógica pura. El consumidor la llama una vez por frame, recibe
  * `[αPrimary, αSecondary]` y los aplica en el render del worker.
  */
 
@@ -22,15 +24,17 @@ export type CrossfadeCurve = 'linear' | 'easeInOut' | 'cosine'
 export type CrossfadeState = 'idle' | 'pending-anchor' | 'running'
 
 export interface CrossfadeStartOptions {
-  /** Duración total en ticks (default 22 ≈ 500 ms a 44 Hz). */
-  totalTicks?: number
+  /** Duración total en ms de reloj de pared (default 500 ms). */
+  durationMs?: number
   /** Curva de blending. Default 'easeInOut'. */
   curve?: CrossfadeCurve
   /** Si true, el crossfade espera a que el caller pase `releaseAnchor=true` en step(). */
   waitAnchor?: boolean
-  /** Tras cuántos ticks de espera abandonar el anclaje y arrancar igualmente.
-   *  Default 88 (~2 s). Solo aplica si waitAnchor=true. */
-  anchorTimeoutTicks?: number
+  /** Ms de espera del ancla antes de arrancar igualmente. Default 2000.
+   *  Solo aplica si waitAnchor=true. */
+  anchorTimeoutMs?: number
+  /** Marca temporal del arranque — default: reloj inyectado. */
+  nowMs?: number
 }
 
 export interface CrossfadeStep {
@@ -44,17 +48,20 @@ export interface CrossfadeStep {
   active: boolean
 }
 
-const DEFAULT_TOTAL_TICKS = 22
-const DEFAULT_ANCHOR_TIMEOUT = 88
+const DEFAULT_DURATION_MS = 500
+const DEFAULT_ANCHOR_TIMEOUT_MS = 2000
 
 export class CrossfadeUnit {
   private _state: CrossfadeState = 'idle'
-  private _ticksRemaining = 0
-  private _ticksTotal = 0
+  /** Inicio de la rampa (post-ancla). */
+  private _startMs = 0
+  /** Inicio de la espera de ancla. */
+  private _armedAtMs = 0
+  private _durationMs = DEFAULT_DURATION_MS
   private _curve: CrossfadeCurve = 'easeInOut'
-  private _waitAnchor = false
-  private _anchorTicksWaited = 0
-  private _anchorTimeoutTicks = DEFAULT_ANCHOR_TIMEOUT
+  private _anchorTimeoutMs = DEFAULT_ANCHOR_TIMEOUT_MS
+
+  constructor(private readonly _now: () => number = () => performance.now()) {}
 
   get state(): CrossfadeState {
     return this._state
@@ -70,8 +77,8 @@ export class CrossfadeUnit {
 
   /** Progreso 0..1 — útil para telemetría. */
   progress(): number {
-    if (this._state !== 'running' || this._ticksTotal <= 0) return 0
-    return 1 - this._ticksRemaining / this._ticksTotal
+    if (this._state !== 'running' || this._durationMs <= 0) return 0
+    return clamp01((this._now() - this._startMs) / this._durationMs)
   }
 
   /**
@@ -79,21 +86,19 @@ export class CrossfadeUnit {
    * hasta que `step({ releaseAnchor: true })` lo libere o se agote el timeout.
    */
   start(opts: CrossfadeStartOptions = {}): void {
-    this._ticksTotal = opts.totalTicks && opts.totalTicks > 0 ? opts.totalTicks : DEFAULT_TOTAL_TICKS
-    this._ticksRemaining = this._ticksTotal
+    this._durationMs =
+      opts.durationMs && opts.durationMs > 0 ? opts.durationMs : DEFAULT_DURATION_MS
     this._curve = opts.curve ?? 'easeInOut'
-    this._waitAnchor = opts.waitAnchor ?? false
-    this._anchorTicksWaited = 0
-    this._anchorTimeoutTicks = opts.anchorTimeoutTicks ?? DEFAULT_ANCHOR_TIMEOUT
-    this._state = this._waitAnchor ? 'pending-anchor' : 'running'
+    this._anchorTimeoutMs = opts.anchorTimeoutMs ?? DEFAULT_ANCHOR_TIMEOUT_MS
+    const now = opts.nowMs ?? this._now()
+    this._armedAtMs = now
+    this._startMs = now
+    this._state = opts.waitAnchor ? 'pending-anchor' : 'running'
   }
 
   /** Aborta el crossfade y vuelve a idle. El caller decide qué frame mostrar. */
   abort(): void {
     this._state = 'idle'
-    this._ticksRemaining = 0
-    this._ticksTotal = 0
-    this._anchorTicksWaited = 0
   }
 
   /**
@@ -114,41 +119,44 @@ export class CrossfadeUnit {
   }
 
   /**
-   * Llamado una vez por tick. `releaseAnchor=true` dispara el arranque si
-   * estaba en pending-anchor.
+   * Llamado una vez por frame de render. `releaseAnchor=true` dispara el
+   * arranque si estaba en pending-anchor.
    *
    * Devuelve los alfas a aplicar en el frame actual:
    *   - idle      → [1, 0] (solo primario)
    *   - pending   → [1, 0]
-   *   - running   → curva
-   *   - finished  → [0, 1] (último tick — el caller debe promover secondary→primary)
+   *   - running   → curva sobre t = elapsed/duration
+   *   - finished  → [0, 1] (último frame — el caller promueve secondary→primary)
    */
-  step(opts: { releaseAnchor?: boolean } = {}): CrossfadeStep {
+  step(opts: { releaseAnchor?: boolean; nowMs?: number } = {}): CrossfadeStep {
     if (this._state === 'idle') {
       return { alphaPrimary: 1, alphaSecondary: 0, finished: false, active: false }
     }
 
+    const now = opts.nowMs ?? this._now()
+
     if (this._state === 'pending-anchor') {
-      this._anchorTicksWaited++
-      if (opts.releaseAnchor || this._anchorTicksWaited >= this._anchorTimeoutTicks) {
+      if (opts.releaseAnchor || now - this._armedAtMs >= this._anchorTimeoutMs) {
         this._state = 'running'
+        this._startMs = now
       } else {
         return { alphaPrimary: 1, alphaSecondary: 0, finished: false, active: false }
       }
     }
 
-    // running
-    const t = 1 - this._ticksRemaining / this._ticksTotal
+    // running — wall-clock: idéntico a cualquier cadencia de render.
+    const t = clamp01((now - this._startMs) / this._durationMs)
     const eased = applyCurve(t, this._curve)
-    const alphaSecondary = clamp01(eased)
-    const alphaPrimary = clamp01(1 - eased)
-
-    this._ticksRemaining--
-    if (this._ticksRemaining <= 0) {
+    if (t >= 1) {
       this._state = 'idle'
       return { alphaPrimary: 0, alphaSecondary: 1, finished: true, active: true }
     }
-    return { alphaPrimary, alphaSecondary, finished: false, active: true }
+    return {
+      alphaPrimary: clamp01(1 - eased),
+      alphaSecondary: clamp01(eased),
+      finished: false,
+      active: true,
+    }
   }
 }
 
@@ -166,7 +174,7 @@ function clamp01(x: number): number {
  * positivos del limitador/AGC.
  *
  * Devuelve 0 mientras la transición está viva — incluye el hold
- * `pending-anchor` (blend=0 pero transición real) y el tick `finished` —
+ * `pending-anchor` (blend=0 pero transición real) y el frame `finished` —
  * y 1 en reposo. Mute total, no rampa: el pico problemático ocurre en
  * blend≈0 (arranque del fade), donde cualquier curva ponderada por blend
  * seguiría dejando pasar el flash.

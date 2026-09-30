@@ -21,11 +21,10 @@
  *          frontera 'beat' | 'bar' | 'phrase' (=4 compases) detectada por
  *          flanco de fase/contador del ring. Guardia anti-glitch: si el
  *          overshoot supera dwell+4 bars (u 8 s), dispara igual.
- * DROP   — con dropSnap activo, el FLANCO de `drop_incoming`
- *          (enums.predictionType=1) o CREST_EVENT —solo con audio vivo—
- *          arma el corte anticipado al próximo downbeat (bar edge)
- *          ignorando el dwell restante. Si la predicción cae antes del
- *          downbeat, el snap se desarma (🔥 HOTFIX 8309).
+ *
+ * 🧹 WAVE 8405 · M1 — THE GREAT PURGE: la función DROP SNAP está extinta.
+ * La automatización SOLO responde a DWELL/HOLD — nunca anticipa un corte
+ * por predicción de drop. El piloto ya no produce saltos fantasma.
  *
  * Disparo: `playAt(target, xFadeSec*1000)` del playlist store — misma vía
  * que el click manual, por lo que STRICT LIVE GATE y la resurrección de
@@ -39,9 +38,7 @@ import {
   TELEMETRY_SLOT,
   TEL_FLAG,
   telFlag,
-  unpackEnums,
   TelemetryWireReader,
-  type TelemetryEnums,
 } from './telemetry/TheiaTelemetryRing'
 import {
   resolvePlaylistAtom,
@@ -70,8 +67,6 @@ export interface AutopilotTelemetry {
   readonly barCount: number
   readonly audioLive: boolean
   readonly onBeat: boolean
-  readonly dropIncoming: boolean
-  readonly crestEvent: boolean
   // 🧠 WAVE 8307 — features del proxy ACO de Selene (0..1).
   readonly energy: number
   readonly harshness: number
@@ -107,10 +102,6 @@ interface SeqState {
   firedBarFloat: number
   firedItemIndex: number
   syncWaiting: boolean
-  dropArmed: boolean
-  /** 🔥 HOTFIX 8309 — nivel de la señal drop en el tick anterior (arming
-   *  por flanco: un `predictionType` latched no re-arma tras cada corte). */
-  prevDropSignal: boolean
   bag: number[]
   exhausted: boolean
   started: boolean
@@ -131,8 +122,6 @@ function freshSeq(): SeqState {
     firedBarFloat: 0,
     firedItemIndex: -1,
     syncWaiting: false,
-    dropArmed: false,
-    prevDropSignal: false,
     bag: [],
     exhausted: false,
     started: false,
@@ -170,12 +159,6 @@ export class TheiaAutopilot {
   private timerHandle: ReturnType<typeof setInterval> | null = null
   private ticking = false
   private unsubscribe: (() => void)[] = []
-  private readonly enumsOut: TelemetryEnums = {
-    schemaVersion: 0,
-    predictionType: 0,
-    huntState: 0,
-    energyZone: 0,
-  }
 
   constructor(deps: AutopilotDeps = {}) {
     // Default telemetry: reader propio sobre el SAB del orquestador.
@@ -187,7 +170,6 @@ export class TheiaAutopilot {
         reader.read() // consume si hay frame nuevo; scratch persiste si no
         const s = reader.getScratch()
         if (!s) return null
-        const enums = unpackEnums(reader.enums, this.enumsOut)
         return {
           bpm: s[TELEMETRY_SLOT.BPM] || 0,
           beatPhase: s[TELEMETRY_SLOT.BEAT_PHASE] || 0,
@@ -195,8 +177,6 @@ export class TheiaAutopilot {
           barCount: s[TELEMETRY_SLOT.BAR_COUNT] || 0,
           audioLive: telFlag(reader.flags, TEL_FLAG.AUDIO_LIVE),
           onBeat: telFlag(reader.flags, TEL_FLAG.ON_BEAT),
-          dropIncoming: enums.predictionType === 1,
-          crestEvent: telFlag(reader.flags, TEL_FLAG.CREST_EVENT),
           energy: s[TELEMETRY_SLOT.ENERGY] || 0,
           harshness: s[TELEMETRY_SLOT.HARSHNESS] || 0,
           flatness: s[TELEMETRY_SLOT.FLATNESS] || 0,
@@ -352,7 +332,6 @@ export class TheiaAutopilot {
     this.seq.firedAtMs = this.deps.now()
     this.seq.firedBarFloat = -1 // se re-ancla en el próximo tick con fase real
     this.seq.syncWaiting = false
-    this.seq.dropArmed = false
     this.seq.exhausted = false
     this.seq.started = true
   }
@@ -433,32 +412,9 @@ export class TheiaAutopilot {
       : (now - this.seq.firedAtMs) / 1000 / barSec
     const dwellDone = elapsedBars >= dwellBars
 
-    // ── DROP SNAP — arma corte anticipado al próximo downbeat ──
-    // 🔥 HOTFIX 8309 — dos errores de señal producían avance ~cada compás:
-    // (a) la señal contaba con DSP muerto, y `wantFire` incluía
-    //     `|| !audioAlive` → el corte se ejecutaba EN EL MISMO tick del arm;
-    // (b) el arm era por NIVEL: `predictionType`/`CREST_EVENT` son estados
-    //     persistentes del ring — un drop_incoming latched re-armaba tras
-    //     cada disparo y forzaba un corte en CADA barEdge (~2 s @120 BPM).
-    // Ahora: señal = audio vivo ∧ (dropIncoming ∨ crestEvent); el arm es
-    // por FLANCO (prev low→high) y se desarma si la predicción cae antes
-    // del downbeat.
-    const dropSignal =
-      audioAlive && !!tel && (tel.dropIncoming || tel.crestEvent)
-    if (
-      ap.dropSnap &&
-      dropSignal &&
-      !this.seq.dropArmed &&
-      !this.seq.prevDropSignal
-    ) {
-      this.seq.dropArmed = true
-      this.seq.syncWaiting = true
-    }
-    this.seq.prevDropSignal = dropSignal
-    if (this.seq.dropArmed && !dropSignal) {
-      this.seq.dropArmed = false
-      this.seq.syncWaiting = false // se re-evalúa abajo según dwellDone
-    }
+    // 🧹 WAVE 8405 · M1 — DROP SNAP extirpado: la automatización solo
+    // responde al dwell programado + frontera quant (o anti-glitch). Los
+    // cortes fantasma por drop_incoming/CREST_EVENT ya no existen.
 
     // ── Frontera quant ──
     const boundaryHit =
@@ -471,10 +427,7 @@ export class TheiaAutopilot {
       this.seq.syncWaiting &&
       (overshootBars > MAX_OVERSHOOT_BARS || overshootSec > MAX_OVERSHOOT_SEC)
 
-    const wantFire =
-      this.seq.dropArmed
-        ? barEdge || !audioAlive || forced // drop snap → próximo downbeat
-        : dwellDone && (boundaryHit || !audioAlive || forced)
+    const wantFire = dwellDone && (boundaryHit || !audioAlive || forced)
 
     if (dwellDone && !this.seq.syncWaiting) this.seq.syncWaiting = true
 
@@ -485,7 +438,6 @@ export class TheiaAutopilot {
           this.seq.firedAtMs = now
           this.seq.firedBarFloat = barFloat
           this.seq.syncWaiting = false
-          this.seq.dropArmed = false
         }
         return
       }
@@ -503,9 +455,7 @@ export class TheiaAutopilot {
 
     // ── Readout ──
     const remain = Math.max(0, dwellBars - elapsedBars)
-    if (this.seq.dropArmed) {
-      this.report('DROP ▸', 1, true, true)
-    } else if (this.seq.syncWaiting) {
+    if (this.seq.syncWaiting) {
       this.report('SYNC ▸', 1, true, true)
     } else if (ap.dwell.unit === 'bars' && audioAlive) {
       this.report(`${remain.toFixed(1)} bars`, elapsedBars / dwellBars, false, true)
@@ -533,7 +483,6 @@ export class TheiaAutopilot {
     this.seq.firedAtMs = now
     this.seq.firedBarFloat = -1 // se re-ancla en el próximo tick con fase real
     this.seq.syncWaiting = false
-    this.seq.dropArmed = false
     this.seq.exhausted = false
     this.seq.started = true
   }
@@ -624,7 +573,6 @@ export class TheiaAutopilot {
     this.seq.firedAtMs = now
     this.seq.firedBarFloat = tel ? tel.barCount + tel.barPhase : -1
     this.seq.syncWaiting = false
-    this.seq.dropArmed = false
     this.seq.lastSeleneAtomId = pick.atomId
     this.seq.lastPeekMs = -Infinity
     return true
@@ -714,7 +662,6 @@ export class TheiaAutopilot {
     this.seq.firedAtMs = this.deps.now()
     this.seq.firedBarFloat = tel ? tel.barCount + tel.barPhase : -1
     this.seq.syncWaiting = false
-    this.seq.dropArmed = false
     // El cue del lane refleja lo que dispararía el PRÓXIMO ciclo del piloto —
     // peek sin consumir la bolsa shuffle.
     const pl = useTheiaPlaylistStore.getState()

@@ -92,7 +92,6 @@ function resetStores() {
     dwell: { unit: 'bars', value: 4 },
     quant: 'bar',
     xFadeSec: 2,
-    dropSnap: true,
     director: 'manual',
     resumeDirector: null,
     holdBars: 16,

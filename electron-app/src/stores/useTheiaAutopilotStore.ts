@@ -21,11 +21,13 @@
  *   - mode ≠OFF ⇒ director manual pasa a playlist.
  *   - director playlist con mode OFF ⇒ mode LOOP (default sensato).
  *
- * dwell / quant / xFade / dropSnap:
+ * dwell / quant / xFade:
  *   dwell    : permanencia por ítem — {unit:'bars'|'sec', value}
  *   quant    : frontera de corte — 'beat' | 'bar' | 'phrase' (4 compases)
  *   xFadeSec : crossfade del disparo automático (0–8 s)
- *   dropSnap : drop inminente ⇒ corte al próximo downbeat ignorando dwell.
+ *
+ * 🧹 WAVE 8405 · M1 — DROP SNAP extinto: la automatización solo responde
+ * al dwell programado. No hay cortes anticipados por predicción de drop.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -56,7 +58,6 @@ export interface TheiaAutopilotState {
   readonly quant: AutopilotQuant
   /** Crossfade del disparo automático en segundos (0–8). */
   readonly xFadeSec: number
-  readonly dropSnap: boolean
 
   // ── Director (Ola D2) ──
   readonly director: TheiaDirector
@@ -83,7 +84,6 @@ export interface TheiaAutopilotState {
   setDwell: (dwell: AutopilotDwell) => void
   setQuant: (quant: AutopilotQuant) => void
   setXFadeSec: (sec: number) => void
-  setDropSnap: (on: boolean) => void
 
   /** Selección explícita del operador (cancela cualquier HOLD). */
   setDirector: (director: TheiaDirectorChoice) => void
@@ -113,7 +113,6 @@ export const useTheiaAutopilotStore = create<TheiaAutopilotState>((set, get) => 
   dwell: { unit: 'bars', value: 32 },
   quant: 'phrase',
   xFadeSec: 2,
-  dropSnap: true,
 
   director: 'manual',
   resumeDirector: null,
@@ -140,7 +139,6 @@ export const useTheiaAutopilotStore = create<TheiaAutopilotState>((set, get) => 
   setDwell: (dwell) => set({ dwell }),
   setQuant: (quant) => set({ quant }),
   setXFadeSec: (sec) => set({ xFadeSec: Math.max(0, Math.min(8, sec)) }),
-  setDropSnap: (on) => set({ dropSnap: on }),
 
   setDirector: (director) => {
     const { mode } = get()

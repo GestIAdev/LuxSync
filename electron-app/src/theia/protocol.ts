@@ -178,8 +178,10 @@ export interface ThetaForceStatePayload {
   waitAnchor?: boolean
   /** Curva del crossfade. Default 'easeInOut'. */
   curve?: 'linear' | 'easeInOut' | 'cosine'
-  /** Duración total del crossfade en ticks (default 22 ≈ 500ms). */
-  totalTicks?: number
+  /** ⏱️ WAVE 8405 · M2 — duración del crossfade en ms de reloj de pared
+   *  (default 500). Antes `totalTicks`: el worker ya no cuenta ticks — el
+   *  CrossfadeUnit avanza por tiempo real a cualquier cadencia de render. */
+  crossfadeMs?: number
   /** Marca este intent como manual del operador — puede romper drop-lock. */
   manual?: boolean
 }
@@ -277,8 +279,9 @@ export interface ThetaSeekAckPayload {
   latencyMs: number
   /** Snapshot capturado correctamente. False si el canvas estaba vacío. */
   snapshotOk: boolean
-  /** Total de ticks programados para el crossfade. */
-  crossfadeTicks: number
+  /** ⏱️ WAVE 8405 · M2 — duración programada del crossfade en ms
+   *  (antes `crossfadeTicks`: el fade es wall-clock, no tick-count). */
+  crossfadeMs: number
 }
 
 // ──────────────────────────────────────────────────────────────────

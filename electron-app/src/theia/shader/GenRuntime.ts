@@ -899,18 +899,21 @@ export class GenRuntime {
     // `u_beatTime` idem (slot ABS_BEAT_TIME). Cero integración local.
     const shaderTimeSec = sm.shaderTimeSec
 
-    // Rampa de crossfade temporal (0→1 sobre fadeDur).
-    const blend =
+    // Rampa de crossfade temporal (0→1 sobre fadeDur, wall-clock).
+    // ⏱️ WAVE 8405 · M2 — misma curva easeInOut que el CrossfadeUnit del
+    // worker (smoothstep): Render A y Render B funden con rampa idéntica.
+    const fadeT =
       this.fadeDur > 0 && this.fadeT0 >= 0
         ? Math.min(1, (nowMs - this.fadeT0) / this.fadeDur)
         : 1
-    if (this.fadeDur > 0 && blend >= 1) {
+    if (this.fadeDur > 0 && fadeT >= 1) {
       this.fadeDur = 0
       this.fadeT0 = -1
     }
+    const blend = fadeT * fadeT * (3 - 2 * fadeT)
     // 🔥 HOTFIX 8312 — u_impact mute mientras el fade está vivo (el flash
     // aditivo no puede sumar sobre la mezcla → AGC/HDR a salvo).
-    const impactDuck = blend < 1 ? 0 : 1
+    const impactDuck = fadeT < 1 ? 0 : 1
 
     // ── 🧬 WAVE 8237 · G5 — pase de SIMULACIÓN (Materia Viva) ────────
     // Ping-pong RGBA16F propio del programa — lineal, sin epílogo.
@@ -1096,7 +1099,11 @@ export class GenRuntime {
     gl.drawArrays(gl.TRIANGLES, 0, 3)
 
     // Prev-frame para el crossfade de activaciones — el canvas completo.
-    this.capturePrev()
+    // ⏱️ WAVE 8405 · M2 — FREEZE durante el fade: capturar cada frame
+    // reescribía prevTex con el composite ya mezclado → el fundido se
+    // colapsaba exponencialmente (velo + corte casi duro). Con fade vivo,
+    // prevTex conserva el frame saliente congelado.
+    if (this.fadeDur <= 0) this.capturePrev()
   }
 
   /** Libera todos los objetos GL (unmount / contexto descartado). */

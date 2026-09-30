@@ -499,3 +499,98 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
       `u_flashState` (interno, no tocar).
 - [ ] Aspecto corregido con `u_resolution.y` (o `.xy` normalizando) — el
       preview y la salida HDMI tienen aspectos distintos.
+
+---
+
+## 13. Filosofía de Diseño & Prácticas Premium (obligatorio para IAs)
+
+> Un átomo que compila pero ignora esta sección se ve *amateur*: mecánico,
+> velado y sordo a la mesa. Estas reglas son lecciones extraídas de los
+> átomos de referencia del Pack Latino (`dembow_solar_corona`,
+> `marea_caribena` — WAVEs 8402/8406). No son sugerencias.
+
+### 13.1 Semillas — `G_SEED` desplaza el DOMINIO, no la pantalla
+
+`G_SEED` (gen `expr float 0.0 100.0 0.0`) es la semilla del genoma:
+cada `Mutate` re-sierra su valor vía `u_gene[k]` **sin recompilar**
+(`spawnGenomeVariant` → `expandGenome`).
+
+**Nunca** sumes la semilla a las coordenadas de pantalla completas
+(`st`, `uv`, `p`): las viñetas, remolinos y túneles centrados quedarían
+desplazados fuera del encuadre y el mutante sale negro/roto.
+Súmala — multiplicada por primos altos — **exclusivamente dentro del
+argumento** de las funciones de ruido, FBM o Voronoi:
+
+```glsl
+vec2 sd = vec2(G_SEED * 137.5);                // dominio de muestreo
+noise3(vec3(st * 0.8 + sd, t));                // ✔ tap desplazado
+voroSwim(wp * (3.6 * G_SCALE) + sd, t, jit);   // ✔ cada capa lo hereda
+// ✗ st += sd → viñeta/remolino centrados en (137.5, 137.5) = pantalla vacía
+```
+
+Dominio volumétrico (estrellas, raymarching): usa un vector anisotrópico
+`vec3(G_SEED * 43.1, G_SEED * -17.3, G_SEED * 99.2)` y aplícalo a **todos**
+los taps de ruido que definen la topología (superficie, corona, disco) —
+sembrar solo una capa deja al resto correlacionada entre mutantes.
+
+### 13.2 Puentes de color — el gen nunca manda solo
+
+Si el átomo declara un gen de color propio (`G_*_HUE`), el tono final
+**siempre** suma el puente global para que la mesa mantenga el control:
+
+```glsl
+float finalHue = fract(G_BIO_HUE + u_masterHue);   // fader del VJ, 0..1
+col += palette(bioId * 0.61 + finalHue) * amt;
+```
+
+Dos puentes disponibles — elige conscientemente (o suma ambos):
+- `u_masterHue` — fader manual de performance del operador (post-fx
+  master hue). Es EL control del VJ.
+- `u_chromaHue` — tonalidad detectada del tema (ChromaCoupler, circular):
+  armoniza el átomo con la canción automáticamente.
+
+### 13.3 Cataclismo DMX — `u_activeEffectEnergy` es un override absoluto
+
+No es "un poco más de brillo" ni un fogonazo blanco: cuando el operador
+dispara el efecto, el átomo debe **colapsar a otra bestia**:
+
+- **Espacio**: cizalladura diferencial (`rot2(k·k_s / (r + ε))`), inversión
+  radial, jitter ×2–3 que desgarra las mallas (Voronoi, FBM).
+- **Color**: extremos HDR — cian eléctrico, magenta radiactivo > 1.0 que
+  ACES rola con gracia en el epílogo.
+- **Modulación**: acelera los relojes de dominio (`t *= 1.0 + k·3.0`) y
+  rompe la geometría estable; el estado `k=0` debe seguir existiendo como
+  forma plácida reconocible.
+
+Referencia canónica: remolino 1/r de `marea_caribena` y agujero negro de
+acreción de `dembow_solar_corona` (§6 de cada archivo).
+
+### 13.4 Encendidos estocásticos — nada de flashes mecánicos
+
+Un `u_kickPulse`/downbeat que enciende TODAS las celdas o partículas a la
+vez se ve a 8-bit. Desfasa la respuesta por el ID matemático de cada
+elemento (hash de celda Voronoi, índice de partícula, `fract(sin(id)·…)`):
+
+```glsl
+bioGate *= 0.5 + 0.5 * sin(u_time * 2.0 + bioId * 6.28);
+```
+
+El bombo enciende **muchas** — nunca todas igual: respiración orgánica.
+El gate en reposo sigue siendo cero: sin percusión no hay luz (la
+estocasticidad modula la respuesta al golpe, no crea luz estática).
+
+### 13.5 Relojes obedientes al fader — `u_speed`
+
+Todo oscilador sobre fase cruda (`u_time`, `u_beatPhase`, `u_barPhase`)
+multiplica su **desviación** por `u_speed`: a SPEED=0 el movimiento se
+congela progresivamente, no se para de golpe (§3.1).
+
+```glsl
+w.y += 0.02 * sin(TAU * u_barPhase) * u_speed;    // vaivén obediente
+float pulse = exp(-4.0 * u_barPhase) * u_speed;   // downbeat gobernado
+```
+
+Regla de oro: la fase avanza libre (es el reloj maestro); la *amplitud*
+del gesto es la que obedece al fader. Los relojes integrados del anillo
+(`u_beatTime`, `u_time`) ya vienen gobernados — úsalos para la corriente
+de fondo y reserva las fases crudas para gestos musicales discretos.

@@ -18,9 +18,15 @@
 import { describe, it, expect } from 'vitest'
 import {
   createIntegralClocks,
+  createMasterClock,
   createTelemetryRing,
   packEnums,
   stepIntegralClocks,
+  stepMasterClock,
+  getTheiaMasterSpeed,
+  setTheiaMasterSpeed,
+  MASTER_TIME_WRAP_S,
+  MASTER_BEAT_WRAP,
   SCHEMA_VERSION,
   SLOT_ENUMS,
   SLOT_FLAGS,
@@ -356,13 +362,107 @@ describe('G1 — relojes integrales (u_energyTime / u_barCount)', () => {
   })
 })
 
+describe('⏱️ WAVE 8404 — Master Clock (relojes absolutos)', () => {
+  it('schema: slots 100/101 transport-only (sin uniform, kind none)', () => {
+    const at = TELEMETRY_SCHEMA.find((d) => d.name === 'ABS_SHADER_TIME')
+    const bt = TELEMETRY_SCHEMA.find((d) => d.name === 'ABS_BEAT_TIME')
+    expect(at?.slot).toBe(100)
+    expect(at?.uniform).toBe('')
+    expect(at?.kind).toBe('none')
+    expect(bt?.slot).toBe(101)
+    expect(bt?.kind).toBe('none')
+    expect(TELEMETRY_SLOT.ABS_SHADER_TIME).toBe(100)
+    expect(TELEMETRY_SLOT.ABS_BEAT_TIME).toBe(101)
+  })
+
+  it('shaderTimeSec integra dt·timeScale y gobierna audioLive/speed', () => {
+    const st = createMasterClock()
+    stepMasterClock(st, 1000, true, 1.0, 120, 0.5) // dt=0 primer tick
+    expect(st.shaderTimeSec).toBe(0)
+    // 1 s de ticks a 22ms con audio vivo, speed 1 → timeScale→1.
+    for (let i = 1; i <= 45; i++) stepMasterClock(st, 1000 + i * 22, true, 1.0, 120, 0.5)
+    expect(st.shaderTimeSec).toBeGreaterThan(0.5)
+    expect(st.shaderTimeSec).toBeLessThan(1.5)
+    // Sordo (audioLive=false) → el gobernador apunta a 0.5×speed.
+    for (let i = 1; i <= 200; i++) stepMasterClock(st, 2000 + i * 22, false, 1.0, 120, 0.5)
+    expect(st.timeScale).toBeCloseTo(0.5, 1)
+    // Fader a la mitad → target 0.25.
+    for (let i = 1; i <= 200; i++) stepMasterClock(st, 6500 + i * 22, false, 0.5, 120, 0.5)
+    expect(st.timeScale).toBeCloseTo(0.25, 1)
+  })
+
+  it('wrap: shaderTimeSec nunca supera 3600 y beatTime es [0, 2^15)', () => {
+    const st = createMasterClock()
+    st.shaderTimeSec = MASTER_TIME_WRAP_S - 0.001
+    stepMasterClock(st, 1000, true, 1.0, 120, 0)
+    stepMasterClock(st, 1022, true, 1.0, 120, 0) // cruza el wrap
+    expect(st.shaderTimeSec).toBeGreaterThanOrEqual(0)
+    expect(st.shaderTimeSec).toBeLessThan(MASTER_TIME_WRAP_S)
+    st.beatTime = MASTER_BEAT_WRAP - 0.01
+    stepMasterClock(st, 1044, true, 1.0, 120, 0)
+    stepMasterClock(st, 1066, true, 1.0, 120, 0.1)
+    expect(st.beatTime).toBeGreaterThanOrEqual(0)
+    expect(st.beatTime).toBeLessThan(MASTER_BEAT_WRAP)
+  })
+
+  it('beatTime integra bps·speed y su fase se ancla a beatPhase', () => {
+    const st = createMasterClock()
+    // 120 BPM → 2 beats/s. 2 s de ticks; la fase del PLL AVANZA cada
+    // tick (en producción m.beatPhase barre 0→1 — fase constante sería
+    // un "tiempo detenido" legítimo, no un test de integración).
+    stepMasterClock(st, 1000, true, 1.0, 120, 0)
+    for (let i = 1; i <= 90; i++) {
+      const t = 1000 + i * 22 // 22 ms por tick
+      const phase = (t * 0.002) % 1 // 2 beats/s
+      stepMasterClock(st, t, true, 1.0, 120, phase)
+    }
+    expect(st.beatTime).toBeGreaterThan(3)
+    expect(st.beatTime).toBeLessThan(5)
+    // La fracción converge a la fase del PLL (±wrap).
+    const lastPhase = ((1000 + 90 * 22) * 0.002) % 1
+    const frac = st.beatTime - Math.floor(st.beatTime)
+    let d = Math.abs(frac - lastPhase)
+    if (d > 0.5) d = 1 - d
+    expect(d).toBeLessThan(0.15)
+    // Stall de 60 s → dt clamp 0.5 s: el integral no explota.
+    const bt = st.beatTime
+    stepMasterClock(st, 100000, true, 1.0, 120, 0.25)
+    expect(st.beatTime).toBeLessThanOrEqual(bt + 1.5)
+  })
+
+  it('bus u_speed: setter/getter canónicos con clamp a ≥0 y NaN-safe', () => {
+    const prev = getTheiaMasterSpeed()
+    setTheiaMasterSpeed(0.75)
+    expect(getTheiaMasterSpeed()).toBe(0.75)
+    setTheiaMasterSpeed(-4)
+    expect(getTheiaMasterSpeed()).toBe(0)
+    setTheiaMasterSpeed(NaN)
+    expect(getTheiaMasterSpeed()).toBe(0) // NaN no toca el valor
+    setTheiaMasterSpeed(prev)
+  })
+
+  it('round-trip: writer publica 100/101 y el reader los recibe verbatim', () => {
+    const sab = createTelemetryRing()
+    const writer = new TelemetryWriter(sab)
+    const reader = new TelemetryReader(sab)
+    writer.publish(3, 0, 0, (p) => {
+      p[TELEMETRY_SLOT.ABS_SHADER_TIME] = 987.654
+      p[TELEMETRY_SLOT.ABS_BEAT_TIME] = 321.5
+    })
+    const snap = reader.read()
+    expect(snap).not.toBeNull()
+    expect(snap![TELEMETRY_SLOT.ABS_SHADER_TIME]).toBeCloseTo(987.654, 4)
+    expect(snap![TELEMETRY_SLOT.ABS_BEAT_TIME]).toBeCloseTo(321.5, 4)
+  })
+})
+
 describe('🌊 WAVE 8279 · F3 — página B: schema físico Liquid/GodEar', () => {
   it('slots 64-92 tienen nombre real (no RESERVED) y u_tel4 alineados a vec4', () => {
     const pageB = TELEMETRY_SCHEMA.filter((d) => d.slot >= TELEMETRY_PAGE_B_BASE)
     // 64-92 nombrados + 83 reservado + 93-95 reserva + 96-99 FX (🔫 8287)
-    // + 100-127 reserva generada
+    // + 100-101 relojes absolutos (⏱️ 8404) + 102-127 reserva generada
     const named = pageB.filter((d) => !d.name.startsWith('RESERVED_'))
-    expect(named.length).toBe(32) // 64-92 menos RESERVED_83, más FX 96-99
+    expect(named.length).toBe(34) // 64-92 menos RESERVED_83, +FX 96-99, +ABS 100-101
     // Los grupos semánticos están alineados a frontera vec4 (idx%4==0):
     // vocal=64, void=68, snare=72, zoneA=76, zoneB=80, texture=84, delta=88,
     // master=92, fx=96

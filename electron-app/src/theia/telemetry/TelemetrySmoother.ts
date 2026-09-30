@@ -74,9 +74,6 @@ const APPROACH_HORIZON_BEATS = 8
  *  inputs lo hagan — §3.4 "ponderada", no binaria). */
 const APPROACH_K = 0.3
 
-/** Fuerza de la corrección suave de u_beatTime hacia BEAT_PHASE (§3.4). */
-const BEATTIME_CORRECT_K = 0.15
-
 // ─────────────────────────── 🔬 WAVE 8281-RECON — diag ─────────────────────────
 //
 // Monitor de diagnóstico en vivo (~10 Hz). Se activa en runtime — sin build:
@@ -119,13 +116,18 @@ export class TelemetrySmoother {
   readonly outV1 = this.out.subarray(0, TELEMETRY_PAYLOAD_SLOTS_V1)
 
   // ── Derivados del oráculo (§3.4) — escalares, se suben como uniforms ──
-  /** Beats acumulados continuos, re-anclados a BEAT_PHASE suavemente. */
+  /**
+   * ⏱️ WAVE 8404 — Beats acumulados absolutos. DUMB READER: el valor llega
+   * integrado del pump (slot ABS_BEAT_TIME); aquí solo se extrapola con la
+   * tasa observada ENTRE publicaciones y se re-ancla en cada frame fresco.
+   * Cero integración local → worker y preview comparten el mismo reloj.
+   */
   beatTime = 0
-  /** 🌊 WAVE 8259 — escala del master SPEED sobre el reloj musical. El host
-   *  la escribe desde `u_speed` antes de cada `step()`; el anclaje suave a
-   *  BEAT_PHASE se conserva (los flancos siguen en el beat real — lo que
-   *  se ralentiza es la evolución continua entre beats). */
-  masterSpeed = 1.0
+  /**
+   * ⏱️ WAVE 8404 — u_time gobernado absoluto (slot ABS_SHADER_TIME).
+   * Mismo patrón dumb-reader + extrapolación acotada que `beatTime`.
+   */
+  shaderTimeSec = 0
   /** exp(−t_since_edge / τ) disparado por el flanco KICK_EDGE. */
   kickPulse = 0
   /** Ídem con el flanco SNARE. */
@@ -187,6 +189,15 @@ export class TelemetrySmoother {
   private _voidReleaseMs = -1
   private _voidReleaseAmp = 0
   private _lastVoidHold = 0
+
+  // ⏱️ WAVE 8404 — tasas observadas de los relojes maestros (EMA entre
+  // publicaciones, para extrapolación acotada). No son integración: el
+  // valor siempre se re-ancla al slot absoluto en cada frame fresco.
+  private _beatRate = 0
+  private _timeRate = 0
+  private _prevAbsBeat = 0
+  private _prevAbsTime = 0
+  private _prevFreshMs = -1
 
   // 🔬 WAVE 8281-RECON — estado del monitor de diagnóstico (~10 Hz).
   private _diagLastMs = -1
@@ -338,6 +349,7 @@ export class TelemetrySmoother {
 
       this._stepExtrapolated(raw, fresh, dtMs, dtS, bps)
       this._stepDerived(raw, dtF, dtS, bps, nowMs)
+      this._stepMasterClocks(raw, fresh, dtS, nowMs)
     }
 
     // 🔬 WAVE 8281-RECON — monitor de diagnóstico (off = 1 lectura de prop).
@@ -574,22 +586,51 @@ export class TelemetrySmoother {
       : 0
     const ka = 1 - Math.pow(1 - APPROACH_K, dtF)
     this.approach += (rampTarget - this.approach) * ka
+  }
 
-    // u_beatTime — beats acumulados continuos; re-ancla suave a BEAT_PHASE.
-    // 🌊 WAVE 8259 — × masterSpeed: el fader SPEED escala el diferencial de
-    // tiempo musical (paridad con el gobernador de u_time).
-    this.beatTime += dtS * bps * this.masterSpeed
-    const phaseTarget = out[TELEMETRY_SLOT.BEAT_PHASE - SLOT_PAYLOAD_BASE]
-    let phaseErr = phaseTarget - (this.beatTime - Math.floor(this.beatTime))
-    phaseErr -= Math.round(phaseErr)
-    // 🌊 WAVE 8261 — Opción B (clean slow-mo): la autoridad del corrector se
-    // atenúa cúbica con masterSpeed. Lineal (×s) dejaba pelea residual: a
-    // 0.25× el corrector saturado (cap ≈0.019 beats/frame) casi empataba el
-    // drift (0.028) → yo-yo elástico en la frontera del wrap. Con s³ la
-    // fase fluye libre bajo ~0.65× y recupera anclaje pleno al volver a 1×.
-    const s = this.masterSpeed
-    const kcorr =
-      (1 - Math.pow(1 - BEATTIME_CORRECT_K, dtF)) * s * s * s
-    this.beatTime += phaseErr * kcorr
+  // ────────────── ⏱️ WAVE 8404 — dumb readers de relojes maestros ──────────
+
+  /**
+   * Lee ABS_SHADER_TIME / ABS_BEAT_TIME del scratch. En frame FRESCO se
+   * hace snap al valor absoluto (fuente de verdad única del pump) y se
+   * actualiza la tasa observada (EMA) para extrapolar entre publicaciones.
+   * Entre publicaciones los campos avanzan por `dtS × tasa` — error acotado
+   * a un intervalo del pump (~22 ms), jamás deriva acumulada.
+   *
+   * Guardas: un salto negativo enorme (wrap del pump) o un delta absurdo
+   * no contamina la tasa — solo se hace snap.
+   */
+  private _stepMasterClocks(
+    raw: Float32Array,
+    fresh: boolean,
+    dtS: number,
+    nowMs: number,
+  ): void {
+    if (fresh) {
+      const absTime = raw[TELEMETRY_SLOT.ABS_SHADER_TIME]
+      const absBeat = raw[TELEMETRY_SLOT.ABS_BEAT_TIME]
+      if (this._prevFreshMs >= 0) {
+        const pubDtS = (nowMs - this._prevFreshMs) / 1000
+        if (pubDtS > 1e-3 && pubDtS < 1.0) {
+          const dT = absTime - this._prevAbsTime
+          const dB = absBeat - this._prevAbsBeat
+          // Wrap/salto: un wrap del pump es un salto negativo enorme
+          // (−3600 s / −32768 beats) — jamás entra en la EMA. Un gap
+          // legítimo (tab suspendida, stall) sí puede actualizarla.
+          if (dT >= -10 && dT <= 10)
+            this._timeRate += (dT / pubDtS - this._timeRate) * 0.3
+          if (dB >= -10 && dB <= 50)
+            this._beatRate += (dB / pubDtS - this._beatRate) * 0.3
+        }
+      }
+      this._prevFreshMs = nowMs
+      this._prevAbsTime = absTime
+      this._prevAbsBeat = absBeat
+      this.shaderTimeSec = absTime
+      this.beatTime = absBeat
+      return
+    }
+    this.shaderTimeSec += dtS * this._timeRate
+    this.beatTime += dtS * this._beatRate
   }
 }

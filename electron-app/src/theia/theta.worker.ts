@@ -102,10 +102,7 @@ import {
 // 🎬 WAVE 4867: Phase 6 — Thumb SAB writer (64×64 → AetherCanvasManager twin-output)
 import { ThumbFrameWriter } from './TheiaThumbBuffer'
 // 🔮 WAVE 8228 — Euclid Oracle · E2: Uniform Bridge (reader wire + smoother)
-import {
-  TEL_FLAG,
-  TelemetryWireReader,
-} from './telemetry/TheiaTelemetryRing'
+import { TelemetryWireReader } from './telemetry/TheiaTelemetryRing'
 import { TelemetrySmoother } from './telemetry/TelemetrySmoother'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -388,9 +385,8 @@ interface WorkerState {
   genPrevW: number
   genPrevH: number
   genPrevValid: boolean
-  /** 🌊 WAVE 8250 — reloj gobernado (AUDIO_LIVE ? 1.0 : 0.5, exponencial). */
-  genShaderTimeSec: number
-  genTimeScale: number
+  // ⏱️ WAVE 8404 — genShaderTimeSec/genTimeScale eliminados: el reloj
+  // gobernado del path generativo lo integra el pump (slot ABS_SHADER_TIME).
   /** 🌊 WAVE 8257 — master speed suavizado + relojes acumulados del path
    *  builtin (fase plasma + u_time) — el fader SPEED gobierna ambos sin
    *  saltos temporales. */
@@ -555,8 +551,6 @@ const state: WorkerState = {
   genPrevW: 0,
   genPrevH: 0,
   genPrevValid: false,
-  genShaderTimeSec: 0,
-  genTimeScale: 0.5,
   speedScale: 1.0,
   builtinTimeSec: 0,
   builtinPhase: 0,
@@ -1952,20 +1946,10 @@ function renderGenerativeFrame(
     gl.bufferSubData(gl.UNIFORM_BUFFER, 0, sm.out)
   }
 
-  // 🌊 WAVE 8250 — gobernador de tiempo acumulativo (paridad con
-  // GenRuntime): `u_time` crece a la velocidad del audio — AUDIO_LIVE →
-  // 1.0, sordo → 0.5 — suavizado exponencial independiente del frame-rate
-  // (τ=160ms ≈ 10%/frame @60fps). `u_dt` sigue siendo el dt físico.
-  // 🌊 WAVE 8257 — MASTER SPEED: el fader multiplica el TARGET del
-  // gobernador — autoridad absoluta sobre el reloj sin romper el
-  // suavizado exponencial (mover el slider no produce time-jumps).
-  const audioLive = (sm.flags & (1 << TEL_FLAG.AUDIO_LIVE)) !== 0
-  const masterSpeed = state.uniforms.get('u_speed') ?? 1.0
-  const speedTarget = (audioLive ? 1.0 : 0.5) * masterSpeed
-  state.genTimeScale +=
-    (speedTarget - state.genTimeScale) * (1 - Math.exp(-dtMs / 160))
-  state.genShaderTimeSec += dtMs * 0.001 * state.genTimeScale
-  const shaderTimeSec = state.genShaderTimeSec
+  // ⏱️ WAVE 8404 — Master Time: `u_time`/`u_beatTime` llegan ABSOLUTOS del
+  // pump (slots 100/101 vía smoother). El worker ya no integra relojes —
+  // mismo valor que el preview, cero deriva por asimetría de dt.
+  const shaderTimeSec = sm.shaderTimeSec
 
   // ── 🧬 WAVE 8237 · G5 — pase de SIMULACIÓN (Materia Viva) ──────────
   // Si el shader declara `mainState`, el autómata itera un paso sobre su
@@ -2338,9 +2322,6 @@ function renderCurrentFrame(timestampMs: number): void {
   state.lastRenderPerfMs = perfNow
   const tel = state.telReader
   const telFresh = tel !== null && tel.read()
-  // 🌊 WAVE 8259 — el fader SPEED gobierna también el reloj musical:
-  // se escribe ANTES del step para que beatTime lo integre este frame.
-  state.smoother.masterSpeed = state.uniforms.get('u_speed') ?? 1.0
   state.smoother.step(
     tel !== null ? tel.scratch : null,
     tel !== null ? tel.flags : 0,
@@ -2421,7 +2402,10 @@ function renderCurrentFrame(timestampMs: number): void {
     const masterSpeed = state.uniforms.get('u_speed') ?? 1.0
     state.speedScale +=
       (masterSpeed - state.speedScale) * (1 - Math.exp(-dtMs / 160))
-    state.builtinTimeSec += dtMs * 0.001 * state.speedScale
+    // ⏱️ WAVE 8404 — wrap %3600: el reloj builtin es local al worker (sin
+    // gemelo), pero comparte la misma higiene float32 que el master clock.
+    state.builtinTimeSec =
+      (state.builtinTimeSec + dtMs * 0.001 * state.speedScale) % 3600
     state.builtinPhase =
       (state.builtinPhase + dtMs * (TAU / PLASMA_PERIOD_MS) * state.speedScale) % TAU
   }

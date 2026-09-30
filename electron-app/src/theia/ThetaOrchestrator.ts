@@ -54,6 +54,8 @@ import {
   isTelemetryMessage,
   TelemetryMirror,
 } from './TheiaTelemetryRing'
+// ⏱️ WAVE 8404 — bus del fader SPEED hacia el master clock del pump.
+import { setTheiaMasterSpeed } from './telemetry/TheiaTelemetryRing'
 // 🩺 WAVE 8253 — sonda de gap de llegada del port (main-thread stall probe)
 import { noteTelemetryArrival } from '../core/diagnostics/MainThreadMonitor'
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
@@ -1102,6 +1104,9 @@ export class ThetaOrchestrator {
    */
   setUniform(name: string, value: number): void {
     this.desiredUniforms.set(name, value)
+    // ⏱️ WAVE 8404 — el fader SPEED también alimenta el master clock del
+    // pump (mismo proceso renderer): una sola fuente canónica.
+    if (name === 'u_speed') setTheiaMasterSpeed(value)
     if (!this.worker) return
     try {
       this.worker.postMessage(makeThetaMessage('theia:set-uniform', { name, value }))

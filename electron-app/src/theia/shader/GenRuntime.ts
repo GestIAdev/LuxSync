@@ -45,7 +45,7 @@ import {
 import { FloatStatePool } from './FloatStatePool'
 // 🎨 WAVE 8401 — sampler `u_tex0` (texturas de artista, Pack Latino).
 import { UserTextureCache, USER_TEX0_UNIT } from './UserTextures'
-import { TEL_FLAG } from '../telemetry/TheiaTelemetryRing'
+
 import type { TelemetrySmoother } from '../telemetry/TelemetrySmoother'
 
 export const BUILTIN_SHADER_ID = 'builtin'
@@ -80,8 +80,6 @@ interface GenLocs {
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
   dt: WebGLUniformLocation | null
-  /** 🌊 WAVE 8290 — timeScale gobernado (doma de beatP/swell en átomos). */
-  speed: WebGLUniformLocation | null
   resolution: WebGLUniformLocation | null
   beatTime: WebGLUniformLocation | null
   kickPulse: WebGLUniformLocation | null
@@ -124,7 +122,6 @@ interface SimLocs {
   enums: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
   dt: WebGLUniformLocation | null
-  speed: WebGLUniformLocation | null
   resolution: WebGLUniformLocation | null
   beatTime: WebGLUniformLocation | null
   kickPulse: WebGLUniformLocation | null
@@ -255,15 +252,12 @@ export class GenRuntime {
   private fadeT0 = -1
   private fadeDur = 0
 
-  // 🌊 WAVE 8250 — gobernador de tiempo acumulativo (anti "Electric
-  // Sheep"): `u_time` crece a la velocidad del audio — AUDIO_LIVE → 1.0,
-  // sordo → 0.5 — con suavizado exponencial independiente del frame-rate
-  // (τ=160ms ≈ 10%/frame @60fps). Acumulativo y jamás reseteado por
-  // activate/deactivate → continuidad total, sin saltos al volver el audio.
-  // `u_dt` se mantiene físico: los autómatas (mainState) integran con dt
-  // real, no con el reloj gobernado.
-  private shaderTimeSec = 0
-  private timeScale = 0.5
+  // ⏱️ WAVE 8404 — Master Time Refactor: `shaderTimeSec`/`timeScale`
+  // eliminados. El reloj gobernado lo integra el pump (slot
+  // ABS_SHADER_TIME); este runtime es dumb reader del smoother —
+  // misma hora que el worker, fotogramas matemáticamente idénticos.
+  // `u_dt` se mantiene físico: los autómatas (mainState) integran con
+  // dt real, no con el reloj gobernado.
 
   /** 🔮 WAVE 8278 · F2 — UBO EuclidTel (496B, DYNAMIC_DRAW): una sola
    *  subida `bufferSubData` por frame alimenta main + sim + todo el caché. */
@@ -354,7 +348,6 @@ export class GenRuntime {
       vocalOnset: gl.getUniformLocation(prog, 'u_vocalOnset'),
       snareTruePulse: gl.getUniformLocation(prog, 'u_snareTruePulse'),
       voidRelease: gl.getUniformLocation(prog, 'u_voidRelease'),
-      speed: gl.getUniformLocation(prog, 'u_speed'),
       brightness: gl.getUniformLocation(prog, 'u_brightness'),
       contrast: gl.getUniformLocation(prog, 'u_contrast'),
       blackout: gl.getUniformLocation(prog, 'u_blackout'),
@@ -397,7 +390,6 @@ export class GenRuntime {
       vocalOnset: gl.getUniformLocation(prog, 'u_vocalOnset'),
       snareTruePulse: gl.getUniformLocation(prog, 'u_snareTruePulse'),
       voidRelease: gl.getUniformLocation(prog, 'u_voidRelease'),
-      speed: gl.getUniformLocation(prog, 'u_speed'),
       gene: gl.getUniformLocation(prog, 'u_gene[0]'),
       state: gl.getUniformLocation(prog, 'u_state'),
       stateInit: gl.getUniformLocation(prog, 'u_stateInit'),
@@ -902,22 +894,10 @@ export class GenRuntime {
       gl.bufferSubData(gl.UNIFORM_BUFFER, 0, sm.out)
     }
 
-    // 🌊 WAVE 8250 — governor de tiempo: leer AUDIO_LIVE del smoother y
-    // acumular el reloj gobernado UNA vez por frame (compartido por el
-    // pase de sim y la escena visual).
-    const audioLive = (sm.flags & (1 << TEL_FLAG.AUDIO_LIVE)) !== 0
-    // 🌊 WAVE 8257 — MASTER SPEED: el fader multiplica el target del
-    // gobernador — autoridad absoluta sobre el reloj del gemelo HDMI
-    // sin romper el suavizado exponencial (sin time-jumps).
-    const masterSpeed = uniforms.get('u_speed') ?? 1.0
-    this.timeScale +=
-      ((audioLive ? 1.0 : 0.5) * masterSpeed - this.timeScale) *
-      (1 - Math.exp(-dtMs / 160))
-    // 🌊 WAVE 8259 — y el reloj musical del smoother del gemelo (se aplica
-    // al beatTime del PRÓXIMO frame — el step ya corrió en el caller).
-    sm.masterSpeed = masterSpeed
-    this.shaderTimeSec += dtMs * 0.001 * this.timeScale
-    const shaderTimeSec = this.shaderTimeSec
+    // ⏱️ WAVE 8404 — Master Time: dumb reader. `u_time` llega ya
+    // integrado del pump vía smoother (compartido por sim y escena);
+    // `u_beatTime` idem (slot ABS_BEAT_TIME). Cero integración local.
+    const shaderTimeSec = sm.shaderTimeSec
 
     // Rampa de crossfade temporal (0→1 sobre fadeDur).
     const blend =
@@ -950,7 +930,6 @@ export class GenRuntime {
       )
       gl.uniform1f(SL.time, shaderTimeSec)
       gl.uniform1f(SL.dt, dtMs * 0.001)
-      gl.uniform1f(SL.speed, this.timeScale)
       gl.uniform3f(SL.resolution, sw, sh, 1)
       gl.uniform1f(SL.beatTime, sm.beatTime)
       gl.uniform1f(SL.kickPulse, sm.kickPulse)
@@ -1016,9 +995,10 @@ export class GenRuntime {
       sm.huntState,
       sm.energyZone,
     )
+    // ⏱️ WAVE 8404 — u_speed ya no se escribe aquí: su única fuente
+    // canónica es el fader crudo vía param loop (idéntico al worker).
     gl.uniform1f(L.time, shaderTimeSec)
     gl.uniform1f(L.dt, dtMs * 0.001)
-    gl.uniform1f(L.speed, this.timeScale)
     gl.uniform3f(L.resolution, sw, sh, 1)
     gl.uniform1f(L.beatTime, sm.beatTime)
     gl.uniform1f(L.kickPulse, sm.kickPulse)

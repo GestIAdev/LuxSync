@@ -312,20 +312,80 @@ describe('TelemetrySmoother — derivados §3.4', () => {
     expect(sm.impact).toBeCloseTo(1, 2)
   })
 
-  it('u_beatTime — integra bpm/60·dt y re-ancla suave a BEAT_PHASE', () => {
+  // ⏱️ WAVE 8404 — u_beatTime/u_time ya NO se integran aquí: el pump los
+  // publica absolutos (slots 100/101) y el smoother es dumb reader con
+  // extrapolación acotada por tasa observada.
+  const ABS_TIME = TELEMETRY_SLOT.ABS_SHADER_TIME
+  const ABS_BEAT = TELEMETRY_SLOT.ABS_BEAT_TIME
+
+  it('u_beatTime/u_time — dumb reader: snap al valor absoluto del pump', () => {
     const sm = new TelemetrySmoother()
-    const raw = rawScratch({ [BPM]: 120, [BEAT_PHASE]: 0.5 }) // 2 beats/s
-    for (let i = 0; i <= 120; i++) {
-      sm.step(raw, 0, 0, i === 0, 1000 / 60, i * (1000 / 60))
+    const raw = rawScratch({
+      [BPM]: 120, [ABS_TIME]: 123.456, [ABS_BEAT]: 789.25,
+    })
+    sm.step(raw, 0, 0, true, 16.7, 1000)
+    expect(sm.shaderTimeSec).toBeCloseTo(123.456)
+    expect(sm.beatTime).toBeCloseTo(789.25)
+    // Re-publicación → snap al nuevo absoluto (no se suma ni deriva).
+    const raw2 = rawScratch({
+      [BPM]: 120, [ABS_TIME]: 124.0, [ABS_BEAT]: 790.0,
+    })
+    sm.step(raw2, 0, 0, true, 16.7, 1022)
+    expect(sm.shaderTimeSec).toBeCloseTo(124.0)
+    expect(sm.beatTime).toBeCloseTo(790.0)
+  })
+
+  it('u_beatTime — extrapola con la tasa observada ENTRE publicaciones', () => {
+    const sm = new TelemetrySmoother()
+    // ~8 publicaciones del pump (~22ms) con beatTime avanzando a 2 b/s —
+    // dejan la EMA de tasa convergida (~2 beats/s).
+    let t = 1000
+    for (let i = 0; i <= 8; i++) {
+      sm.step(
+        rawScratch({ [BPM]: 120, [ABS_BEAT]: 10.0 + i * 0.044 }),
+        0, 0, true, 16.7, t,
+      )
+      t += 22
     }
-    // ~2s → ~4 beats acumulados (la corrección suave ajusta la fase).
-    expect(sm.beatTime).toBeGreaterThan(3)
-    expect(sm.beatTime).toBeLessThan(6)
-    // La fase de beatTime converge a BEAT_PHASE (0.5 ± wrap).
-    const frac = sm.beatTime - Math.floor(sm.beatTime)
-    let d = Math.abs(frac - 0.5)
-    if (d > 0.5) d = 1 - d
-    expect(d).toBeLessThan(0.15)
+    // Frames stale: el campo avanza por la tasa observada.
+    const before = sm.beatTime
+    for (let i = 1; i <= 30; i++) {
+      sm.step(
+        rawScratch({ [BPM]: 120, [ABS_BEAT]: 10.352 }),
+        0, 0, false, 1000 / 60, t + i * (1000 / 60),
+      )
+    }
+    // 500ms extrapolados → ~+1 beat (tasa observada ≈ 2 b/s).
+    expect(sm.beatTime).toBeGreaterThan(before + 0.5)
+    expect(sm.beatTime).toBeLessThan(before + 1.5)
+    // Y el siguiente snap vuelve al absoluto — nunca deriva.
+    sm.step(rawScratch({ [BPM]: 120, [ABS_BEAT]: 11.0 }), 0, 0, true, 16.7, t + 2000)
+    expect(sm.beatTime).toBeCloseTo(11.0)
+  })
+
+  it('u_time — el wrap del pump hace snap limpio sin contaminar la tasa', () => {
+    const sm = new TelemetrySmoother()
+    // Tasa ya establecida (~1 s/s) antes del wrap.
+    let t = 1000
+    for (let i = 0; i <= 8; i++) {
+      sm.step(
+        rawScratch({ [BPM]: 120, [ABS_TIME]: 100.0 + i * 0.022 }),
+        0, 0, true, 16.7, t,
+      )
+      t += 22
+    }
+    // Wrap 3600→0 del pump: salto negativo enorme → snap limpio, la EMA
+    // de tasa NO se contamina (guarda de salto).
+    sm.step(rawScratch({ [BPM]: 120, [ABS_TIME]: 0.2 }), 0, 0, true, 16.7, t + 22)
+    expect(sm.shaderTimeSec).toBeCloseTo(0.2)
+    for (let i = 1; i <= 30; i++) {
+      sm.step(
+        rawScratch({ [BPM]: 120, [ABS_TIME]: 0.2 }),
+        0, 0, false, 16.7, t + 22 + i * 16.7,
+      )
+    }
+    expect(sm.shaderTimeSec).toBeGreaterThan(0.4) // sigue avanzando
+    expect(sm.shaderTimeSec).toBeLessThan(2.0)
   })
 
   it('enums empaquetados se exponen descompuestos; scratch null → derived decay safe', () => {

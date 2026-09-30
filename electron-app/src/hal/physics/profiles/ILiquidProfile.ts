@@ -78,6 +78,14 @@ export interface ILiquidProfile {
    */
   readonly airTrebleWeight?: number
   readonly airHighMidWeight?: number
+  /**
+   * ⚒️ WAVE 8410: AIR MID WEIGHT — peso opcional de la banda `mid`
+   * (voces/sintetizadores, 500Hz-2kHz) en la mezcla del envAir.
+   * Default 0 = comportamiento legacy (treble + highMid solamente).
+   * > 0 convierte el aire en un "pad" cantante alimentado por la voz.
+   * Latino lo usa para que el haz cante con el autotune/dembow melódico.
+   */
+  readonly airMidWeight?: number
 
   // ═══════════════════════════════════════════════════════════════
   // BACK R: SCHWARZENEGGER — Aislamiento percusivo de agudos

@@ -83,6 +83,19 @@ const FIXTURE_DIMMER_LOCK_EXEMPT_FAMILIES = new Set([
     'petal-c',
     'petal-r',
 ]);
+// ── WAVE 8409: L2 VIRTUAL DIMMER OVERRIDE — emisión cromática reclamada ────
+// Si L2 toca uno de estos canales sin declarar intensidad, el árbitro inyecta
+// 'brightness: 1.0' en el mismo override (ver setManualOverride). En nodos
+// COLOR sin dimmer físico la intensidad vive EN el nodo como 'brightness'
+// (WAVE 8269) — sin reclamarla, L0 conservaba el socket de corriente y el
+// color manual quedaba multiplicado por el envelope rítmico (≈0).
+// 'color_wheel' EXCLUIDO deliberadamente: es un selector mecánico de slot,
+// no un canal de mezcla — elegir un slot no es reclamar la corriente.
+const L2_COLOR_EMISSION_CHANNELS = new Set([
+    'r', 'g', 'b', 'w', 'a',
+    'red', 'green', 'blue', 'white', 'amber', 'uv',
+    'cyan', 'magenta', 'yellow',
+]);
 // ── WAVE 4871: L3 LUMINANCE GAG — canales de luminancia del fixture padre ─────
 // Si L3 (effect/hephaestus) escribe en CUALQUIER canal de un nodo :impact o
 // :color, TODOS estos canales quedan dominados en _l3DominatedChannels para
@@ -360,21 +373,41 @@ export class NodeArbiter {
             }
         }
         const existing = this._manualOverrides.get(nodeId);
+        // 🩸 WAVE 8409 (Fase 1): VIRTUAL DIMMER OVERRIDE — propiedad integral.
+        // Si L2 reclama emisión cromática sin reclamar intensidad (ni 'dimmer' ni
+        // 'brightness' en el intent ni ya presentes en el override acumulado),
+        // inyectar 'brightness: 1.0' en la misma capa L2. La clave entra en
+        // _manualOverrides → el Smart Gate bloquea el 'brightness' de L0 en este
+        // nodo y el Hard Lock lo reasegura post-L3. virtualDim pasa a 1.0.
+        // Inerte en nodos CON dimmer físico (virtualDim ya es 1.0 por contrato
+        // Forge; default 1.0 en _translateColor clásico) y en nodos no-COLOR.
+        let effectiveChannels = channels;
+        if (incomingKeys.some(k => L2_COLOR_EMISSION_CHANNELS.has(k))) {
+            const inc = channels;
+            const claimsIntensity = isFiniteChannelValue(inc['dimmer']) ||
+                isFiniteChannelValue(inc['brightness']) ||
+                (existing !== undefined &&
+                    (isFiniteChannelValue(existing['dimmer']) ||
+                        isFiniteChannelValue(existing['brightness'])));
+            if (!claimsIntensity) {
+                effectiveChannels = { ...inc, brightness: 1.0 };
+            }
+        }
         const hasSpatial = incomingKeys.some(k => IK_POISON_KEYS.has(k));
         if (existing !== undefined) {
             // Merge in-place: los canales entrantes actualizan los existentes sin borrar otros.
             // Garantiza que KineticsBridge (anchor pan_base/tilt_base) y ProgrammerAetherBridge
             // (speed) no se destruyan mutuamente al escribir el mismo nodo :kinetic.
             const mutable = existing;
-            for (const key in channels) {
-                mutable[key] = channels[key];
+            for (const key in effectiveChannels) {
+                mutable[key] = effectiveChannels[key];
             }
             if (hasSpatial || IK_POISON_KEYS.has(incomingKeys[0] || '')) {
                 console.log(`[ZOMBIE-DIAG] setManualOverride MERGE ${nodeId}: incoming=[${incomingKeys.join(',')}] postKeys=[${Object.keys(mutable).join(',')}]`);
             }
         }
         else {
-            this._manualOverrides.set(nodeId, channels);
+            this._manualOverrides.set(nodeId, effectiveChannels);
             if (hasSpatial) {
                 console.log(`[ZOMBIE-DIAG] setManualOverride NEW ${nodeId}: keys=[${incomingKeys.join(',')}]`);
             }

@@ -336,11 +336,12 @@ export const TECHNO_PROFILE = {
     // El fade de apagado (<0.001→0) garantiza caída a 0.000 absoluto sin
     // brillos residuales cuando el DJ corta la mezcla.
     ambientCrushExponent: 1.2,
-    // ⚒️ WAVE 7750: AIR SPECTRAL — haces centrales de puro ruido blanco.
-    // treble×1.0 + highMid×0.0 = cuchillos espectrales sin contaminación del
-    // snare body (2-6kHz). Los LEDs RGBW responden instantáneo al contraste.
-    airTrebleWeight: 1.0,
-    airHighMidWeight: 0.0,
+    // ⚒️ WAVE 8409 (Fase 2): AIR RESCUE — el veto 1.0/0.0 de WAVE 7750 dejaba
+    // el input en treble puro (~0.10 post-AGC), imposible de cruzar el gate.
+    // Se restaura highMid a 0.45 (claps cerrados + sintes de club alimentan
+    // los haces) y airTrebleWeight pasa a heredar el base 0.75.
+    // El carácter "cuchilla" lo preserva envAir (decay 0.08, gate velocity).
+    airHighMidWeight: 0.45,
     // ⚒️ WAVE 7750: FLOOR TERREMOTO HÍBRIDO — inyecta subgrave continuo en el
     // input del envFloor. bassDelta*2.0 da el pulso transitorio; subBass*0.5
     // da el baño de luz de suelo sostenido. La compuerta del envelope (gate

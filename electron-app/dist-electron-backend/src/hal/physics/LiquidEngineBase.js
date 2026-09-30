@@ -1978,19 +1978,21 @@ export class LiquidEngineBase {
         ambientIntensity = Math.min(1.0, ambientIntensity * _breather);
         // ⚒️ WAVE 7749.52: Air — envAir processed (zero-attack, fast decay).
         // The old _airEMA soft-follower is replaced by envAir (LiquidEnvelope).
-        // Input: treble × 0.6 + highMid × 0.4 (same spectral source as before,
-        // but now with strict gate + crush instead of soft EMA).
+        // Input: treble × 0.75 + highMid × 0.65 (WAVE 8409 Fase 2 — antes
+        // 0.6/0.4: con el treble capado a RMS 0.10 por AGC la mezcla entregaba
+        // ~0.16, bajo el gate efectivo ~0.40. Ahora ~0.24, en el rango del
+        // gate 0.22 recalibrado — stabs pasan, el ruido de fondo no).
         // envAir gives zero-attack (riseRate=1.0), fast decay (0.08, ~45-65ms),
-        // high gate (0.35), high crush (2.5). Spectrally isolated above the snare
-        // body (2-6kHz). Ideal for aerial laser stabs and sharp beams.
+        // gate moderado (0.22), crush suavizado (1.4). Spectrally isolated above
+        // the snare body (2-6kHz). Ideal for aerial laser stabs and sharp beams.
         //
         // ⚒️ WAVE 7750: PARAMETRIZACIÓN ESPECTRAL — la mezcla treble/highMid ya
         // no está hardcodeada. airTrebleWeight / airHighMidWeight vienen del
-        // perfil (defaults 0.6/0.4 = retrocompatibilidad). Techno usa 1.0/0.0
-        // para haces centrales de puro ruido blanco (sin highMid del snare body).
-        const _airTrebleW = p.airTrebleWeight ?? 0.6;
-        const _airHighMidW = p.airHighMidWeight ?? 0.4;
-        const _airInput = bands.treble * _airTrebleW + bands.highMid * _airHighMidW;
+        // perfil (defaults 0.75/0.65 post-WAVE-8409). Rave sobreescribe ambas.
+        const _airTrebleW = p.airTrebleWeight ?? 0.75;
+        const _airHighMidW = p.airHighMidWeight ?? 0.65;
+        const _airMidW = p.airMidWeight ?? 0.0;
+        const _airInput = bands.treble * _airTrebleW + bands.highMid * _airHighMidW + bands.mid * _airMidW;
         const airIntensity = this.envAir.process(_airInput, morphFactor, now, isBreakdown);
         const frame = {
             bands,
@@ -2308,13 +2310,20 @@ LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR = {
 };
 LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
     name: 'Air',
-    gateOn: 0.35, // high — only sharp treble transients pass
+    // 🩸 WAVE 8409 (Fase 2): BASE AIR RESUSCITATION.
+    // El treble llega capado por el AGC a targetRMS 0.10 (veto estroboscópico
+    // deliberado de WAVE 7760). Con gateOn 0.35 el dynamicGate efectivo
+    // (~0.40) exigía un transitorio de 5× el piso RMS — el aire estaba muerto
+    // en todos los perfiles heredados. Recalibrado a la realidad post-AGC:
+    // gate 0.22 + crush 1.4 + squelch 0.25 — sigue siendo stab-driven
+    // (decay 0.08, velocity gate, piso duro signal>0.15) pero alcanzable.
+    gateOn: 0.22, // WAVE 8409: 0.35→0.22 — umbral alcanzable post-AGC
     boost: 4.0, // amplify gated signal
-    crushExponent: 2.5, // very selective — aerial lasers need crisp stabs
+    crushExponent: 1.4, // WAVE 8409: 2.5→1.4 — menos convexo, stabs medios pasan
     decayBase: 0.08, // very fast decay (~45ms) — laser stabs are instantaneous
     decayRange: 0.03, // minimal morph influence
     maxIntensity: 1.0,
-    squelchBase: 0.40,
+    squelchBase: 0.25, // WAVE 8409: 0.40→0.25 — ignición viable sin matar el corte
     squelchSlope: 0.20,
     ghostCap: 0.01, // minimal ghost glow — air should be dark between stabs
     gateMargin: 0.05, // moderate hysteresis — prevents flicker

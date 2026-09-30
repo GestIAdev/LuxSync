@@ -21,6 +21,12 @@
  *      - Nodo sin dimmer físico: los canales RGBW se zeran (son su dimmer virtual).
  *      - Nodo con dimmer: solo el dimmer se zera (color preservado para el return).
  *
+ *   D) FORGE COLOR-BRIDGE (WAVE 8408-B):
+ *      - {r,g,b,w} abstractos (ColorAdapter L1) → red/green/blue/white físicos.
+ *      - Dual-alias: el nombre físico gana sobre el alias en el mismo frame.
+ *      - El virtualDim (brightness) sigue escalando los alias traducidos.
+ *      - Solo nodos COLOR forjados — IMPACT/KINETIC no traducen.
+ *
  * AXIOMA ANTI-SIMULACIÓN: Sin Math.random(). Entradas deterministas.
  *
  * @module core/aether/__tests__/node-resolver-virtual-dimmer.test
@@ -424,6 +430,112 @@ describe('🌊 NodeResolver — Virtual Dimmer & Forge Governors (WAVE 8269)', (
       expect(out[5]).toBe(255)    // color preservado (return suave)
       expect(out[6]).toBe(255)
       expect(out[7]).toBe(255)
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════
+  // D — WAVE 8408-B: FORGE COLOR-BRIDGE (alias abstracto → canal físico)
+  //     El ColorAdapter L1 emite {r,g,b,w}; el inputMap solo conoce los
+  //     nombres físicos. El puente los traduce antes del filtro, dentro
+  //     de _accumulateForgeNodeValues.
+  // ════════════════════════════════════════════════════════════════════
+
+  describe('D — WAVE 8408-B: Forge Color-Bridge', () => {
+
+    test('D1 — {r,g,b} abstractos aterrizan en canales físicos red/green/blue', () => {
+      const node   = makeOrphanRgbwNode()
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      // Esto es lo que emitía el ColorAdapter L1 y moría en el inputMap.
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 0, b: 0, brightness: 1 }),
+      )
+      const ch = packets[0]!.channels
+      expect(ch[11]).toBe(255)   // red   ← 'r' puenteado
+      expect(ch[12]).toBe(0)     // green ← 'g' = 0
+      expect(ch[13]).toBe(0)     // blue  ← 'b' = 0
+      expect(ch[14]).toBe(0)
+    })
+
+    test('D2 — alias w→white + virtualDim: brightness=0.5 escala los alias', () => {
+      const node   = makeOrphanRgbwNode()
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 1, b: 1, w: 1, brightness: 0.5 }),
+      )
+      const ch = packets[0]!.channels
+      for (const off of [11, 12, 13, 14]) {
+        expect(ch[off]).toBe(128)   // round(255 × 1 × 0.5)
+      }
+    })
+
+    test('D3 — dual-alias: el canal físico gana sobre el alias', () => {
+      // SeleneAetherAdapter (L3) emite r/g/b Y red/green/blue en el mismo
+      // frame. Determinismo: el nombre físico (el del wire) siempre manda.
+      const node   = makeOrphanRgbwNode()
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, red: 0.25, brightness: 1 }),
+      )
+      expect(packets[0]!.channels[11]).toBe(64)   // round(0.25 × 255)
+    })
+
+    test('D4 — fail-closed intacto: brightness=0 apaga los alias puenteados', () => {
+      const node   = makeOrphanRgbwNode()
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 1, b: 1, w: 1, brightness: 0 }),
+      )
+      for (const off of [11, 12, 13, 14]) {
+        expect(packets[0]!.channels[off]).toBe(0)
+      }
+    })
+
+    test('D5 — nodo no-COLOR no traduce alias (gating por familia)', () => {
+      // Un IMPACT con canal dimmer: recibir {r:1} no debe inventar 'red'.
+      const impactNode = {
+        nodeId:   'dev-01:wash-impact',
+        family:   NodeFamily.IMPACT,
+        deviceId: 'dev-01',
+        zoneId:   'ambient',
+        channels: [{ type: 'dimmer', dmxOffset: 7, defaultValue: 0 }],
+      } as unknown as IColorNodeData
+      const device = makeDevice()
+      const impactGraph: CompiledForgeGraph = {
+        ...makeBeamForgeGraph(),
+        inputMap: new Map([['wash-impact:dimmer', 0]]),
+        outputs:  [{ wireIndex: 0, dmxOffset: 7, defaultDmxValue: 0, is16bit: false }],
+      }
+      const resolver = new NodeResolver(makeGraph([impactNode], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', impactGraph)
+
+      const packets = resolver.resolve(
+        makeArbitrated(impactNode.nodeId, { dimmer: 0.5, r: 1 }),
+      )
+      const ch = packets[0]!.channels
+      expect(ch[7]).toBe(128)    // dimmer passthrough intacto
+      expect(ch[11]).toBe(0)     // 'r' NO traducido — ningún wire escrito
     })
   })
 })

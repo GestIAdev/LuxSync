@@ -284,6 +284,29 @@ export const LATINO_PROFILE = {
     // 0.20-0.35 → aporta 0.08-0.14 al input, justo sobre el gate 0.08).
     floorSubWeight: 0.4,
     // ═══════════════════════════════════════════════════════════════
+    // ⚒️ WAVE 8410: AIR "CANTA" — Pad continuo alimentado por la voz.
+    // Topología stab→pad: decayBase 0.85, crushExponent 0.85 (cóncavo),
+    // gateOn 0.12, squelchBase 0.10. Mezcla: airMidWeight 0.6 (banda
+    // nueva WAVE 8410) + airHighMidWeight 0.9 — la voz autotuneada vive
+    // en mid+highMid; el haz canta continuo en lugar de dar destellos.
+    // ═══════════════════════════════════════════════════════════════
+    envelopeAir: {
+        name: 'Air (El Cantante)',
+        gateOn: 0.12,          // WAVE 8410: 0.22→0.12 — la voz cruza a medio volumen
+        boost: 4.0,
+        crushExponent: 0.85,   // WAVE 8410: cóncavo — voces suaves ya generan luz
+        decayBase: 0.85,       // WAVE 8410: stab→pad — half-life ~4f, la luz canta
+        decayRange: 0.05,
+        maxIntensity: 1.0,
+        squelchBase: 0.10,     // WAVE 8410: 0.25→0.10 — re-disparo con frases modestas
+        squelchSlope: 0.10,
+        ghostCap: 0.00,        // WAVE 7749.57: sin ghostcaps en ningún perfil
+        gateMargin: 0.02,
+        attackSlopeMin: 0.0,   // señal sostenida pasa — pad sin filo exigido
+    },
+    airHighMidWeight: 0.9,   // WAVE 8410: sintes/armónicos de voz alimentan el haz
+    airMidWeight: 0.6,       // WAVE 8410: voz autotuneada = canto continuo
+    // ═══════════════════════════════════════════════════════════════
     // WAVE 7573: AMBIENT INTENSITY BOOST — Washer Tungsten necesita LUZ
     //
     // PROBLEMA: La doble guillotina ^2.0 + ^1.3 (hardcoded WAVE 4814/4826.3)

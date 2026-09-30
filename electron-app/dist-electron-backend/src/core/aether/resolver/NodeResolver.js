@@ -156,6 +156,20 @@ const ELECTRONIC_COLOR_CHANNELS = new Set([
     CH_AMBER,
     CH_UV,
 ]);
+// 🌉 WAVE 8408-B: THE FORGE COLOR-BRIDGE — alias abstracto → canal físico.
+// Los intents continuos de color (ColorAdapter L1, telemetría) usan claves
+// abstractas (r/g/b/w/a), pero el inputMap de un grafo Forge solo conoce los
+// nombres físicos declarados por el fixture (red/green/blue/white/amber).
+// Sin este puente, esos intents morían en el inputMap y un nodo COLOR forjado
+// sin dimmer físico quedaba negro fuera de L3 (caso: beam-color del Tungsten
+// en zona 'air'). 'uv' ya es el nombre físico — no necesita puente.
+const FORGE_COLOR_ALIAS = {
+    [CH_R]: CH_RED,
+    [CH_G]: CH_GREEN,
+    [CH_B]: CH_BLUE,
+    w: CH_WHITE,
+    a: CH_AMBER,
+};
 // ── Orientación IK por defecto — ceiling mount, sin rotación custom ───────
 const DEFAULT_IK_ORIENTATION = {
     installation: 'ceiling',
@@ -999,25 +1013,47 @@ export class NodeResolver {
         const compiled = this._forgeGraphs.get(deviceId);
         const colonIdx = nodeId.indexOf(':');
         const cellSuffix = colonIdx >= 0 ? nodeId.substring(colonIdx + 1) : '';
+        // 🌉 WAVE 8408-B: el puente de alias solo aplica a nodos COLOR forjados —
+        // un IMPACT/KINETIC/BEAM nunca declara canales de emisión cromática.
+        const isForgeColorNode = node.family === NodeFamily.COLOR;
         for (const key in channelValues) {
             let value = channelValues[key];
             if (!Number.isFinite(value))
                 continue;
+            // WAVE 8408-B — COLOR-BRIDGE: resuelve el alias abstracto al nombre
+            // físico ANTES de consultar el inputMap (que filtra por canal real).
+            // Reglas:
+            //   1. Si la clave física ya vino en este frame (escritores dual-alias
+            //      como SeleneAetherAdapter emiten r/g/b + red/green/blue), el
+            //      físico manda y el alias queda inerte en el record.
+            //   2. Solo se traduce si el destino físico existe en el inputMap
+            //      (prefixed o bare) — un alias sin wire real no inventa canales.
+            let resolvedKey = key;
+            if (isForgeColorNode && compiled) {
+                const physical = FORGE_COLOR_ALIAS[key];
+                if (physical !== undefined && channelValues[physical] === undefined) {
+                    const prefixedPhysical = cellSuffix ? `${cellSuffix}:${physical}` : physical;
+                    if (compiled.inputMap.has(prefixedPhysical) || compiled.inputMap.has(physical)) {
+                        resolvedKey = physical;
+                    }
+                }
+            }
             // Virtual dimming: scale emission color channels by 'brightness'.
             // color_wheel is excluded — it's a slot selector, not intensity;
             // scaling it would jump to a wrong slot (classic _translateColor
-            // doesn't scale it either).
-            if (virtualDim !== 1.0 && key !== CH_COLOR_WHEEL && ELECTRONIC_COLOR_CHANNELS.has(key)) {
+            // doesn't scale it either). resolvedKey: el alias puenteado también
+            // escala (w→white forma parte de la mezcla electrónica).
+            if (virtualDim !== 1.0 && resolvedKey !== CH_COLOR_WHEEL && ELECTRONIC_COLOR_CHANNELS.has(resolvedKey)) {
                 value *= virtualDim;
             }
             if (cellSuffix && compiled) {
-                const prefixedKey = `${cellSuffix}:${key}`;
+                const prefixedKey = `${cellSuffix}:${resolvedKey}`;
                 if (compiled.inputMap.has(prefixedKey)) {
                     record[prefixedKey] = value;
                     continue;
                 }
             }
-            record[key] = value;
+            record[resolvedKey] = value;
         }
         if (this._safetyMiddleware?.isManualNode(nodeId)) {
             this._forgeManualDevices.add(deviceId);

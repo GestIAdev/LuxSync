@@ -462,7 +462,7 @@ describe('🌊 WAVE 8279 · F3 — página B: schema físico Liquid/GodEar', () 
     // 64-92 nombrados + 83 reservado + 93-95 reserva + 96-99 FX (🔫 8287)
     // + 100-101 relojes absolutos (⏱️ 8404) + 102-127 reserva generada
     const named = pageB.filter((d) => !d.name.startsWith('RESERVED_'))
-    expect(named.length).toBe(34) // 64-92 menos RESERVED_83, +FX 96-99, +ABS 100-101
+    expect(named.length).toBe(35) // 64-92 menos RESERVED_83, +MID_TIME 93 (8418-C), +FX 96-99, +ABS 100-101
     // Los grupos semánticos están alineados a frontera vec4 (idx%4==0):
     // vocal=64, void=68, snare=72, zoneA=76, zoneB=80, texture=84, delta=88,
     // master=92, fx=96

@@ -83,13 +83,16 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // `core#seed` es una estrella topológicamente única.
   vec3 SD = vec3(G_SEED * 43.1, G_SEED * -17.3, G_SEED * 99.2);
 
-  // Ebullición pesada (lava/miel); en el colapso la turbulencia va x5.
-  // 8418: u_speed fuera del dominio temporal — gBeats/u_time ya llegan
-  // gobernados por el master clock; re-multiplicar por el fader saltaba la
-  // fase en proporción al tiempo acumulado (espasmos crecientes).
-  float boil = (0.65 + 0.55 * u_mid + 0.25 * u_energy) * G_BOIL * (1.0 + 4.0 * k);
-  float t    = gBeats * 0.030 * boil;
-  float tc   = gBeats * 0.070 * G_FLAME;
+  // Ebullición pesada (lava/miel). 🧬 8418-C — Ley 1 de verdad:
+  //   t = ∫0.060·G_BOIL·(0.65 + 0.55·mid + 0.25·energy) dt
+  // como combinación lineal de integrales host (u_midTime/u_energyTime):
+  // las bandas modulan la VELOCIDAD del reloj sin tocar jamás su fase — el
+  // kick ya no teletransporta la rotación en proporción al tiempo acumulado.
+  // El colapso (k) suma un offset acotado, no un multiplicador.
+  float t  = 0.045 * G_BOIL
+           * (0.65 * u_time + 0.55 * u_midTime + 0.25 * u_energyTime)
+           + k * 7.0;
+  float tc = gBeats * 0.070 * G_FLAME;
 
   // Destello de frase (sin u_impact, 8287): arranque de u_barPhase, cegado
   // por u_blend durante el X-FADE (paridad HOTFIX 8312).

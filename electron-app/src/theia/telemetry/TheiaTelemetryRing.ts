@@ -260,9 +260,12 @@ export const TELEMETRY_SCHEMA: readonly TelemetrySlotDescriptor[] = [
   { slot: 91, name: 'RAW_HH_DELTA',      uniform: 'u_hhDelta',        kind: 'none' },
   // MASTER — u_tel4[22]
   { slot: 92, name: 'AGC_STRESS',        uniform: 'u_agcStress',      kind: 'linear', attack: 0.2, release: 0.05 },
-  // 93-95: reserva stereo width/corr/balance (wave futura — el pipeline
+  // 94-95: reserva stereo width/corr/balance (wave futura — el pipeline
   // aún no retransmite GodEarSpectrum.stereo).
-  { slot: 93, name: 'RESERVED_93',       uniform: '',                   kind: 'none' },
+  // 🧬 WAVE 8418-C — MID_TIME = ∫(mid post-Vibe)·dt — Ley 1 para el clock
+  // modulado por bandas: los átomos construyen `t = Σwᵢ·xᵢTime` y obtienen
+  // ∫(Σwᵢ·xᵢ)dt continuo — jamás tiempo·señal (salto ∝ acumulado).
+  { slot: 93, name: 'MID_TIME',          uniform: 'u_midTime',        kind: 'none' },
   { slot: 94, name: 'RESERVED_94',       uniform: '',                   kind: 'none' },
   { slot: 95, name: 'RESERVED_95',       uniform: '',                   kind: 'none' },
   // 🔫 WAVE 8287 — FX · u_fxVec = u_tel4[23] (Clean Shot §2.4): energía

@@ -24,9 +24,10 @@ import { AtmosphereCueDriver } from '../../aether/atmosphere/AtmosphereCueDriver
 import { LiquidAetherAdapter } from '../../aether/adapters/LiquidAetherAdapter';
 import { KineticStateStore } from '../../aether/KineticStateStore';
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine';
-// 🌫️ WAVE 8416: canal mínimo por tipo cuando no hay perfil resuelto.
-// Los ingenios obtienen su actuador real — nunca 'dimmer' (nodo IMPACT
-// fantasma: pulso rítmico en canvas + escritura DMX en el slot de la bomba).
+// 🌫️ WAVE 8416: canal mínimo por tipo de fixture cuando no hay perfil
+// resuelto. Los ingenios obtienen su actuador real (nunca 'dimmer' — eso
+// crearía un nodo IMPACT fantasma que pulsa con el beat y escribe el byte
+// DMX de la bomba). 'generic' y fotónicos conservan el dimmer histórico.
 const MINIMAL_CHANNEL_FOR_TYPE = {
     'fog': { type: 'smoke_pump', name: 'Smoke Pump' },
     'pyro': { type: 'fire_valve', name: 'Fire Valve' },
@@ -434,13 +435,15 @@ export class FixtureHydrationEngine {
                     if (!profileId && !fixture.profileId && !fixture.id)
                         continue;
                     const normalizedType = ctx.profileResolver.normalizeFixtureType(fixture.type);
-                    // 🌫️ WAVE 8416: los ingenios atmosféricos NUNCA reciben
-                    // 'dimmer' sintético — un nodo IMPACT fantasma proyecta
-                    // telemetría rítmica al canvas y escribe el byte DMX de la
-                    // bomba/válvula (puerta trasera del bug de WAVE 8413).
+                    // 🌫️ WAVE 8416: los ingenios atmosféricos NUNCA reciben 'dimmer'
+                    // sintético — un dimmer fantasma crea un nodo IMPACT que (a) proyecta
+                    // telemetría rítmica al icono del canvas (pulso gris con el beat) y
+                    // (b) escribe el byte DMX del slot físico de la bomba/válvula →
+                    // disparo por automatización, la puerta trasera del bug de WAVE 8413.
+                    // El canal mínimo honesto es el actuador del ingenio.
                     const minimalChannel = {
                         index: 1,
-                        ...(MINIMAL_CHANNEL_FOR_TYPE[normalizedType] ?? MINIMAL_CHANNEL_FOR_TYPE.generic),
+                        ...MINIMAL_CHANNEL_FOR_TYPE[normalizedType] ?? MINIMAL_CHANNEL_FOR_TYPE.generic,
                         defaultValue: 0,
                         is16bit: false,
                     };

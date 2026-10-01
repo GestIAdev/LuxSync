@@ -59,8 +59,11 @@ const ATMOSPHERE_EMISSION_KEYS = [
 ];
 /** Canal 'custom' con nombre de emisión ('Smoke', 'Fog Output'…). */
 const ATMO_EMISSION_NAME_RE = /smoke|fog|haze|pump|emissi|flame|spark/i;
-// Tipos de fixture no-fotónicos: su icono táctico solo refleja emisión real.
-// 'fan' queda FUERA a propósito — el Tungsten multicelular declara type='fan'.
+/**
+ * Tipos de fixture no-fotónicos: su icono táctico solo puede reflejar la
+ * emisión real del actuador. 'fan' queda FUERA a propósito — el Tungsten
+ * multicelular declara type='fan' y tiene sub-zonas RGB que sí emiten luz.
+ */
 const ATMOSPHERIC_FIXTURE_TYPES = new Set([
     'fog', 'haze', 'smoke', 'pyro', 'spark', 'sparker', 'mirror-ball', 'snow', 'bubble',
 ]);
@@ -99,15 +102,16 @@ export class AetherUIProjector {
             if (!deviceId)
                 continue;
             // 🌫️ WAVE 8416: fixtures atmosféricos — clamp absoluto post-loop.
-            // atmoEmission acumula la emisión real de sus nodos :atmosphere;
-            // la fotónica de nodos IMPACT fantasma o del path legado se
-            // descarta al final — el projector es el último escritor del frame.
+            // `atmoEmission` acumula la emisión real de sus nodos :atmosphere;
+            // la fotónica (dimmer/rgb/sub-zonas) de nodos IMPACT fantasma o del
+            // path legado se descarta al final — el projector es el último
+            // escritor antes del pack Glass.
             const isAtmoFixture = ATMOSPHERIC_FIXTURE_TYPES.has((fixture.type ?? '').toLowerCase().trim());
             let atmoEmission = 0;
             const nodeIds = graph.getDeviceNodes(deviceId);
             if (!nodeIds || nodeIds.length === 0) {
-                // Ingenio huérfano (rack sin grafo): su única verdad visual es
-                // el canal phantom/safety — el clamp mata el dimmer legado.
+                // Ingenio huérfano (rack sin grafo): su única verdad visual es el
+                // canal phantom/safety — el clamp mata cualquier dimmer legado.
                 if (isAtmoFixture)
                     this._clampAtmosphericFixture(fixture, 0);
                 continue;
@@ -290,10 +294,13 @@ export class AetherUIProjector {
                     fixture.uv = Math.max(fixture.uv, toDmx(uvNorm * strobeMask));
                 }
             }
-            // 🌫️ WAVE 8416 — ATMOSPHERIC CLAMP: el projector es el ÚLTIMO
-            // escritor de FixtureState antes del pack Glass — barrera
-            // matemática absoluta. Fotónica proyectada (IMPACT fantasma,
-            // path legado) se descarta: dimmer/rgb/sub-zonas := emisión/0.
+            // 🌫️ WAVE 8416 — ATMOSPHERIC CLAMP: el projector es el ÚLTIMO escritor
+            // de FixtureState antes del pack Glass, así que esta barrera es
+            // matemáticamente absoluta. Para fixtures atmosféricos la fotónica
+            // proyectada (nodos IMPACT fantasma de perfiles/runtime, path legado
+            // Hephaestus) se descarta: dimmer/rgb/sub-zonas := emisión real / 0.
+            // En fixtures NO atmosféricos con nodo :atmosphere (híbridos), la
+            // emisión se suma por HTP como antes — sin regresión.
             if (isAtmoFixture) {
                 this._clampAtmosphericFixture(fixture, atmoEmission);
             }
@@ -308,10 +315,22 @@ export class AetherUIProjector {
         }
     }
     /**
-     * 🌫️ WAVE 8416 — CLAMP ATMOSFÉRICO: el único escalar que puede alterar
-     * el icono es la emisión real: nodos :atmosphere, phantomChannels (path
-     * huérfano setExtra → IPC → byte DMX real), safetyChannels (L4) y
-     * rotation (motor de mirror-ball). Fotónica → 0. Emisión 0 → roca inerte.
+     * 🌫️ WAVE 8416 — CLAMP ATMOSFÉRICO (autoridad final del estado visual).
+     *
+     * Para un fixture de tipo atmosférico, el único escalar que puede alterar
+     * el icono del canvas es la EMISIÓN REAL del actuador:
+     *   1. `nodeEmission` — max de las keys canónicas del record arbitrado
+     *      de sus nodos :atmosphere (smoke_pump, fire_valve, emission_gate…).
+     *   2. `fixture.phantomChannels` — el path de escritura huérfano:
+     *      ExtrasAggregator/BURST → setExtra → IPC → state.phantomChannels.
+     *      Es el byte DMX real que sale por la Aduana (FixtureMapper lo lee).
+     *   3. `fixture.safetyChannels` — hard-safety L4 (emission_gate…), misma
+     *      fuente fail-closed que gobierna el hardware.
+     *   4. `fixture.rotation` — motor de mirror-ball (actividad legítima,
+     *      no es fotónica).
+     *
+     * Todo lo demás se fuerza a 0: un ingenio con emisión 0 es una roca
+     * inerte. Ninguna métrica rítmica puede encenderlo.
      */
     _clampAtmosphericFixture(fixture, nodeEmission) {
         let emission = nodeEmission;

@@ -28,11 +28,12 @@ const ZONE_MAP = {
     'LASER': 'effects', 'UV': 'effects',
 };
 const DMX_OUTPUT_ZEROS = Object.freeze(new Array(512).fill(0));
-// 🌫️ WAVE 8416: tipos de fixture no-fotónicos. Su FixtureState.dimmer solo
-// porta EMISIÓN real (clamp del projector). El peak-hold captura dimmer
-// PRE-proyección (telemetría legada en fixtures sin nodos) → se excluyen
-// para no reintroducir el bleed en el truth feed a 11Hz. 'fan' fuera:
-// el Tungsten multicelular declara type='fan'.
+// 🌫️ WAVE 8416: tipos de fixture no-fotónicos. Sus FixtureState.dimmer solo
+// puede portar EMISIÓN real (smoke_pump/fire_valve/…) — el AetherUIProjector
+// la clampa post-resolve. El peak-hold captura dimmer PRE-proyección
+// (telemetría legada Hephaestus en fixtures sin nodos), así que se excluyen
+// del peakHold para no reintroducir el bleed en el truth feed a 11Hz.
+// 'fan' fuera a propósito: el Tungsten multicelular declara type='fan'.
 const ATMOSPHERIC_FIXTURE_TYPES = new Set([
     'fog', 'haze', 'smoke', 'pyro', 'spark', 'sparker', 'mirror-ball', 'snow', 'bubble',
 ]);
@@ -213,6 +214,7 @@ export class TickEngine {
         this._euclidMsPerBar = 0;
         this._liquidClockPrevMs = 0;
         this._vocalTimeSec = 0;
+        this._midTimeSec = 0;
         this._voidHoldSec = 0;
         this._vocalOnsetArmed = true;
         // 🔫 WAVE 8287 · Clean Shot — envolvente del efecto FÍSICO vivo
@@ -246,15 +248,17 @@ export class TickEngine {
             // (silencio real / noise floor), los slots reciben 0.0 matemático real —
             // paridad luces↔pantallas nativa. pt = null (engine stale >500 ms) → ceros.
             const pt = this._euclidPhys;
+            // u_energy = actividad total del rig: máximo de los envelopes de zona +
+            // los agregados floor/ambient/air (lf guardado por la frescura de pt).
             p[S.ENERGY] = pt === null ? 0 : Math.max(pt.zFrontL, pt.zFrontR, pt.zBackL, pt.zBackR, pt.zMoverL, pt.zMoverR, pt.zSnareAttack, lf?.floorIntensity ?? 0, lf?.ambientIntensity ?? 0, lf?.airIntensity ?? 0);
             // GODEAR→LIQUID — 7 bandas tácticas post-Vibe (outputs de envelope):
-            p[S.SUB_BASS] = pt?.zFrontL ?? 0;
-            p[S.BASS] = pt?.zFrontR ?? 0;
-            p[S.LOW_MID] = pt?.cleanMid ?? 0;
-            p[S.MID] = pt?.zMoverR ?? 0;
-            p[S.HIGH_MID] = pt?.zBackL ?? 0;
-            p[S.TREBLE] = pt?.zMoverL ?? 0;
-            p[S.ULTRA_AIR] = pt === null ? 0 : (lf?.airIntensity ?? 0);
+            p[S.SUB_BASS] = pt?.zFrontL ?? 0; // envSubBass (front L)
+            p[S.BASS] = pt?.zFrontR ?? 0; // envKick (front R — región grave/bombo)
+            p[S.LOW_MID] = pt?.cleanMid ?? 0; // medios limpios post-EQ vocal
+            p[S.MID] = pt?.zMoverR ?? 0; // envVocal (mover R — región mid/vocal)
+            p[S.HIGH_MID] = pt?.zBackL ?? 0; // envHighMid (back L)
+            p[S.TREBLE] = pt?.zMoverL ?? 0; // envTreble (mover L)
+            p[S.ULTRA_AIR] = pt === null ? 0 : (lf?.airIntensity ?? 0); // envAir post-gate
             // GODEAR — métricas perceptuales
             p[S.CENTROID_N] = Math.min(1, Math.max(0, m.spectralCentroid / 8000));
             p[S.FLATNESS] = m.spectralFlatness;
@@ -301,6 +305,7 @@ export class TickEngine {
             }
             // 🧬 WAVE 8233 · G1 — relojes integrales (slots 58/59, kind 'none').
             p[S.ENERGY_TIME] = this._euclidClocks.energyTime;
+            p[S.MID_TIME] = this._midTimeSec;
             p[S.BAR_COUNT] = this._euclidClocks.barCount;
             // ⏱️ WAVE 8404 — slots 100/101: la hora absoluta del mundo shader.
             p[S.ABS_SHADER_TIME] = this._masterClock.shaderTimeSec;
@@ -1396,8 +1401,8 @@ export class TickEngine {
                 const _f = fixtureStates[_pi];
                 if (!_f)
                     continue; // WAVE 7749.77: skip holes from unpatched/virtual fixtures
-                // 🌫️ WAVE 8416: los ingenios no acumulan peak — su dimmer
-                // pre-proyección puede ser telemetría legada, no emisión.
+                // 🌫️ WAVE 8416: los ingenios no acumulan peak — su dimmer pre-
+                // proyección puede contener telemetría legada, no emisión real.
                 if (ATMOSPHERIC_FIXTURE_TYPES.has((_f.type ?? '').toLowerCase()))
                     continue;
                 const _id = this.fixtures[_pi]?.id;
@@ -1907,8 +1912,9 @@ export class TickEngine {
                 }
                 const _mappedZone = ZONE_MAP[_f.zone] || _f.zone || 'center';
                 let _broadcastDimmer;
-                // 🌫️ WAVE 8416: un ingenio nunca reporta "pico" — su dimmer ya
-                // es emisión pura post-clamp. El peak sería telemetría legada.
+                // 🌫️ WAVE 8416: un ingenio nunca reporta "pico" — su dimmer ya es
+                // emisión pura post-clamp. El peak-hold contendría dimmer PRE-project
+                // (telemetría legada) → reinyectaría el pulso rítmico al truth feed.
                 const _isAtmo = ATMOSPHERIC_FIXTURE_TYPES.has((_f.type ?? '').toLowerCase());
                 if (chronosPlaying || _isAtmo) {
                     _broadcastDimmer = _f.dimmer;
@@ -2161,6 +2167,8 @@ export class TickEngine {
         const vocalIsoNow = pt?.vocalIsolation ?? 0;
         // Ley-1: ∫vocalIsolation·dt — reloj propio de la voz; si calla, se para.
         this._vocalTimeSec += vocalIsoNow * dtSec;
+        // 🧬 8418-C — ∫(mid post-Vibe)·dt — misma señal que slot MID.
+        this._midTimeSec += (pt?.zMoverR ?? 0) * dtSec;
         // VOID_HOLD: segundos continuos con rhythmic_void ≥0.75. VOID_RELEASE
         // es el flanco de salida tras ≥2 s de hold (la amplitud del pulso la
         // deriva el worker a partir del hold acumulado).

@@ -84,14 +84,19 @@ describe('WAVE 8402 — contrato de autor', () => {
   })
 
   it('ebullición pesada: multiplicador del reloj ≤ 0.05 (lava/miel)', () => {
-    const m = code.match(/float t\s*=\s*gBeats \* ([0-9.]+)/)
+    const m = code.match(/float t\s*=\s*([0-9.]+) \* G_BOIL/)
     expect(m).not.toBeNull()
     expect(parseFloat(m![1])).toBeLessThanOrEqual(0.05)
   })
 
-  it('relojes gobernados: t y tc obedecen a u_speed y a sus genes (8402-E)', () => {
-    expect(code).toMatch(/float t\s*= gBeats \* 0\.030 \* boil \* u_speed/)
-    expect(code).toMatch(/float tc\s*= gBeats \* 0\.070 \* G_FLAME \* u_speed/)
+  it('relojes Ley-1: t es combinación de integrales host — nunca tiempo×señal (8418-C)', () => {
+    // t = ∫rate·dt construido como Σwᵢ·xᵢTime — las bandas modulan la
+    // VELOCIDAD del reloj sin tocar su fase (adiós al snap ∝ acumulado).
+    expect(code).toMatch(/u_midTime/)
+    expect(code).toMatch(/u_energyTime/)
+    const t = code.match(/float t\s*=[^;]*;/)![0]
+    expect(t).not.toMatch(/gBeats|u_speed|u_mid\b|u_energy\b/)
+    expect(code).toMatch(/float tc\s*= gBeats \* 0\.070 \* G_FLAME/) // tc: reloj puro
   })
 
   it('contraste dinámico: lava idle con pow(gran,1.5) + emisión × percusión (8402-F)', () => {
@@ -133,7 +138,7 @@ describe('WAVE 8402 — contrato de autor', () => {
   it('colapso DMX: agujero negro de acreción anclado a u_activeEffectEnergy', () => {
     expect(code).toMatch(/u_activeEffectEnergy/)
     expect(code).not.toMatch(/u_flashState/)              // es el limitador, no un trigger
-    expect(code).toMatch(/\(1\.0 \+ 4\.0 \* k\)/)         // turbulencia x5
+    expect(code).toMatch(/k \* 7\.0/)                      // colapso: offset acotado (8418-C)
     expect(code).toMatch(/float hole/)                    // núcleo a negro absoluto
     expect(code).toMatch(/\/ \(dr \+ 0\.06\)/)            // rotación diferencial kepleriana
     expect(code).toMatch(/photon/)

@@ -219,7 +219,7 @@ export const TELEMETRY_SCHEMA = [
     { slot: 92, name: 'AGC_STRESS', uniform: 'u_agcStress', kind: 'linear', attack: 0.2, release: 0.05 },
     // 93-95: reserva stereo width/corr/balance (wave futura — el pipeline
     // aún no retransmite GodEarSpectrum.stereo).
-    { slot: 93, name: 'RESERVED_93', uniform: '', kind: 'none' },
+    { slot: 93, name: 'MID_TIME', uniform: 'u_midTime', kind: 'none' },
     { slot: 94, name: 'RESERVED_94', uniform: '', kind: 'none' },
     { slot: 95, name: 'RESERVED_95', uniform: '', kind: 'none' },
     // 🔫 WAVE 8287 — FX · u_fxVec = u_tel4[23] (Clean Shot §2.4): energía

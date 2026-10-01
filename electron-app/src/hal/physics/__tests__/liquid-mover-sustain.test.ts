@@ -162,6 +162,8 @@ describe('Mover sustain audit — física real (LiquidEngine41)', () => {
       const engineNew = new LiquidEngine41(profile)
       drive(engineNew, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
       const grooveNew = drive(engineNew, 4 * FRAMES_PER_SECOND, (f) => grooveDynamicInput(f, f % 11 === 0))
+      // morphFactor efectivo — capturado AL FINAL DEL GROOVE (pre-silencio)
+      const avgMidGroove = (engineNew as unknown as { avgMidProfiler: number }).avgMidProfiler
       const afterNew = drive(engineNew, 2 * FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
 
       // B: perfil con el rango morph pre-8410-B (resto idéntico)
@@ -172,9 +174,18 @@ describe('Mover sustain audit — física real (LiquidEngine41)', () => {
       const grooveOld = drive(engineOld, 4 * FRAMES_PER_SECOND, (f) => grooveDynamicInput(f, f % 11 === 0))
       const afterOld = drive(engineOld, 2 * FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
 
+      // morphFactor efectivo en ambos regímenes, evaluado sobre el avgMid
+      // que el groove dejó acumulado (el EMA decae 0.98/frame — mide el
+      // régimen activo, no el reposo).
+      const morphNew = Math.min(1, Math.max(0, (avgMidGroove - profile.morphFloor) / Math.max(0.0001, profile.morphCeiling - profile.morphFloor)))
+      const morphOld = old
+        ? Math.min(1, Math.max(0, (avgMidGroove - old.morphFloor) / Math.max(0.0001, old.morphCeiling - old.morphFloor)))
+        : NaN
+
       console.log(
         `[${vibe}] NEW mean=${grooveNew.mean.toFixed(3)} p10=${grooveNew.p10.toFixed(3)} p25=${grooveNew.p25.toFixed(3)} p50=${grooveNew.p50.toFixed(3)} dark=${(grooveNew.darkFrac * 100).toFixed(1)}%` +
         ` | OLD mean=${grooveOld.mean.toFixed(3)} p10=${grooveOld.p10.toFixed(3)} dark=${(grooveOld.darkFrac * 100).toFixed(1)}%` +
+        ` | avgMid=${avgMidGroove.toFixed(3)} morph new=${morphNew.toFixed(2)} old=${morphOld.toFixed(2)}` +
         ` | silence end new=${afterNew.last.toFixed(4)} old=${afterOld.last.toFixed(4)}`,
       )
       // Sanity: tras silencio real ambos deben llegar a ~0
@@ -201,6 +212,40 @@ describe('Mover sustain audit — física real (LiquidEngine41)', () => {
         ` | old mean=${softOld.mean.toFixed(3)} last=${softOld.last.toFixed(3)}`,
       )
       expect.soft(softNew.mean).toBeLessThan(0.15)
+    })
+
+    // 🔥 APOCALYPSE PROBE — harshness/flatness por encima del umbral de RaveX
+    // (0.34/0.30) pero BAJO techno (0.55) y latino/poprock (0.65-0.70).
+    // Si isApocalypse dispara: min(moverL,moverR) ≥ max(mid,treble) → ambos
+    // diamantes encendidos a la vez — la firma del reporte del usuario.
+    test(`${vibe}: harshness 0.45 / flatness 0.40 sostenidos → ¿ambos movers clavados?`, () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(0)
+      const engine = new LiquidEngine41(profile)
+      drive(engine, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
+
+      let bothPinned = 0
+      let frames = 0
+      let minBoth = Infinity
+      for (let f = 0; f < 4 * FRAMES_PER_SECOND; f++) {
+        const res = engine.applyBands({
+          ...grooveDynamicInput(f, f % 11 === 0),
+          // Zona "rave-on, resto-off": flatness 0.40 > rave 0.30 pero < techno 0.55
+          harshness: 0.45,
+          flatness: 0.40,
+        })
+        const both = Math.min(res.moverLeftIntensity, res.moverRightIntensity)
+        if (both < minBoth) minBoth = both
+        if (both > 0.20) bothPinned++
+        frames++
+        vi.advanceTimersByTime(FRAME_MS)
+      }
+      const pct = (bothPinned / frames) * 100
+      console.log(
+        `[${vibe}] APO-PROBE frames con AMBOS movers >0.20: ${pct.toFixed(1)}% | min(min(moverL,moverR))=${minBoth.toFixed(3)}`,
+      )
+      // Reporte informativo — el assert pertenece a la decisión de diseño.
+      expect(frames).toBeGreaterThan(0)
     })
   }
 })

@@ -328,6 +328,7 @@ export class TickEngine {
   private _euclidMsPerBar = 0
   private _liquidClockPrevMs = 0
   private _vocalTimeSec = 0
+  private _midTimeSec = 0
   private _voidHoldSec = 0
   private _vocalOnsetArmed = true
   // 🔫 WAVE 8287 · Clean Shot — envolvente del efecto FÍSICO vivo
@@ -425,6 +426,7 @@ export class TickEngine {
     // 🧬 WAVE 8233 · G1 — relojes integrales (slots 58/59, kind 'none').
     p[S.ENERGY_TIME] = this._euclidClocks.energyTime
     p[S.BAR_COUNT] = this._euclidClocks.barCount
+    p[S.MID_TIME] = this._midTimeSec
     // ⏱️ WAVE 8404 — slots 100/101: la hora absoluta del mundo shader.
     p[S.ABS_SHADER_TIME] = this._masterClock.shaderTimeSec
     p[S.ABS_BEAT_TIME] = this._masterClock.beatTime
@@ -2447,6 +2449,10 @@ export class TickEngine {
     const vocalIsoNow = pt?.vocalIsolation ?? 0
     // Ley-1: ∫vocalIsolation·dt — reloj propio de la voz; si calla, se para.
     this._vocalTimeSec += vocalIsoNow * dtSec
+    // 🧬 8418-C — Ley-1: ∫(mid post-Vibe)·dt — MISMA señal que el slot MID
+    // (zMoverR = envVocal): si el gate cierra, el reloj se para. Los átomos
+    // componen su fase como Σw·xTime — nunca tiempo·señal.
+    this._midTimeSec += (pt?.zMoverR ?? 0) * dtSec
     // VOID_HOLD: segundos continuos con rhythmic_void ≥0.75. VOID_RELEASE
     // es el flanco de salida tras ≥2 s de hold (la amplitud del pulso la
     // deriva el worker a partir del hold acumulado).

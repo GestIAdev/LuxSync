@@ -288,6 +288,12 @@ export const useForgeGraphStore = create<ForgeGraphState>((set, get) => ({
   },
 
   inspectNode: (nodeId) => {
+    // 🔬 WAVE 8411-C DIAG (temporal — remover tras el fix):
+    // `window.__FORGE_INSPECTOR_DIAG__ = true` en devtools → cada cierre del
+    // inspector imprime el stack para identificar quién deselecciona.
+    if (nodeId === null && (globalThis as Record<string, unknown>).__FORGE_INSPECTOR_DIAG__) {
+      console.trace('[ForgeDiag] inspectNode(null) — inspector cerrado por:')
+    }
     if (nodeId === null) {
       set({ inspectedNodeId: null })
       return

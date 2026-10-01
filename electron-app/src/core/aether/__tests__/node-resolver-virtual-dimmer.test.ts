@@ -27,6 +27,11 @@
  *      - El virtualDim (brightness) sigue escalando los alias traducidos.
  *      - Solo nodos COLOR forjados — IMPACT/KINETIC no traducen.
  *
+ *   E) NODE-LEVEL VIRTUAL DIMMER CAP (WAVE 8411-B):
+ *      - maxVirtualDim clampea virtualDim → escalado proporcional, hue intacto.
+ *      - Gobierna L0 (airIntensity) y L2 (brightness inyectada) por igual.
+ *      - Nodos con dimmer físico: cap inerte (passthrough 1.0).
+ *
  * AXIOMA ANTI-SIMULACIÓN: Sin Math.random(). Entradas deterministas.
  *
  * @module core/aether/__tests__/node-resolver-virtual-dimmer.test
@@ -37,7 +42,7 @@ import { describe, test, expect, beforeEach } from 'vitest'
 import { NodeResolver } from '../resolver/NodeResolver'
 import { NodeFamily } from '../types'
 import type { INodeGraph, INodeView } from '../node-graph'
-import type { IColorNodeData } from '../capability-node'
+import type { ICapabilityNode, IColorNodeData } from '../capability-node'
 import type { IDeviceDefinition } from '../device'
 import type { ArbitratedNodeMap } from '../intent-bus'
 import type { CompiledForgeGraph } from '../../forge/compiler/types'
@@ -104,7 +109,7 @@ function makeDevice(governors?: IDeviceDefinition['dmxGovernors']): IDeviceDefin
   } as unknown as IDeviceDefinition
 }
 
-function makeView<T>(nodes: T[]): INodeView<T> {
+function makeView<T extends ICapabilityNode>(nodes: T[]): INodeView<T> {
   return {
     get count(): number { return nodes.length },
     forEach(fn: (node: T, index: number) => void): void { nodes.forEach((n, i) => fn(n, i)) },
@@ -127,7 +132,7 @@ function makeGraph(nodes: IColorNodeData[], device: IDeviceDefinition): INodeGra
     getDeviceNodes:  (id: string) =>
       id === device.deviceId ? nodes.map(n => n.nodeId) : [],
     getView: (family: NodeFamily) =>
-      family === NodeFamily.COLOR ? (colorView as INodeView<unknown>) : (empty as INodeView<unknown>),
+      family === NodeFamily.COLOR ? (colorView as INodeView<ICapabilityNode>) : (empty as INodeView<ICapabilityNode>),
     registerDevice:   () => [],
     unregisterDevice: () => {},
     getNodeSlot:      () => undefined,
@@ -344,7 +349,6 @@ describe('🌊 NodeResolver — Virtual Dimmer & Forge Governors (WAVE 8269)', (
       const device = makeDevice([
         {
           channelIndex: 11,   // red (0-based dentro del device)
-          description: 'beam red cap',
           rules: [{ when: { intentType: 'fallback' }, then: { clampMax: 100 } }],
         },
       ])
@@ -536,6 +540,210 @@ describe('🌊 NodeResolver — Virtual Dimmer & Forge Governors (WAVE 8269)', (
       const ch = packets[0]!.channels
       expect(ch[7]).toBe(128)    // dimmer passthrough intacto
       expect(ch[11]).toBe(0)     // 'r' NO traducido — ningún wire escrito
+    })
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // E — WAVE 8411-B: NODE-LEVEL VIRTUAL DIMMER CAP (maxVirtualDim)
+  //     Techo nativo de celda que clampea virtualDim en nodos huérfanos
+  //     de dimmer físico. Un escalar único → escalado proporcional →
+  //     hue preservado (a diferencia de clampMax per-canal).
+  // ═══════════════════════════════════════════════════════════════════════
+
+  describe('E — WAVE 8411-B: maxVirtualDim (cap del dimmer virtual)', () => {
+
+    const nodeWithCap = (cap: number): IColorNodeData =>
+      ({ ...makeOrphanRgbwNode(), maxVirtualDim: cap }) as IColorNodeData
+
+    test('E1 — cap 0.4: R:255,G:100 → R:102,G:40 (escalado proporcional, hue intacto)', () => {
+      const node   = nodeWithCap(0.4)
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 100 / 255, b: 0, brightness: 1 }),
+      )
+      const ch = packets[0]!.channels
+      expect(ch[11]).toBe(102)  // round(255 × 1.0 × 0.4)
+      expect(ch[12]).toBe(40)   // round(255 × 0.392 × 0.4) — ratio 2.55 preservado
+      expect(ch[13]).toBe(0)
+      expect(ch[14]).toBe(0)
+    })
+
+    test('E2 — el cap no infla: brightness=0.3 con cap=0.4 → usa 0.3', () => {
+      const node   = nodeWithCap(0.4)
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 0, b: 0, brightness: 0.3 }),
+      )
+      expect(packets[0]!.channels[11]).toBe(77)  // round(255 × 0.3) — airIntensity intacta
+    })
+
+    test('E3 — cap 0.392 ≈ techo DMX 100 (caso Tungsten lente colimadora)', () => {
+      const node   = nodeWithCap(0.392)
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 1, b: 1, w: 1, brightness: 1 }),
+      )
+      for (const off of [11, 12, 13, 14]) {
+        expect(packets[0]!.channels[off]).toBe(100)  // round(255 × 0.392)
+      }
+    })
+
+    test('E4 — nodo CON dimmer físico: cap inerte (el canal real gobierna)', () => {
+      const node   = { ...makeDimmerColorNode(), maxVirtualDim: 0.4 } as IColorNodeData
+      const device = makeDevice()
+      const washGraph: CompiledForgeGraph = {
+        ...makeBeamForgeGraph(),
+        inputMap: new Map([
+          ['wash-color:dimmer', 0],
+          ['wash-color:red',    1],
+        ]),
+        outputs: [
+          { wireIndex: 0, dmxOffset: 4, defaultDmxValue: 0, is16bit: false },
+          { wireIndex: 1, dmxOffset: 5, defaultDmxValue: 0, is16bit: false },
+        ],
+      }
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', washGraph)
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 0, b: 0, dimmer: 1 }),
+      )
+      const ch = packets[0]!.channels
+      expect(ch[5]).toBe(255)   // red a pleno — cap no aplica (hay dimmer real)
+      expect(ch[4]).toBe(255)   // dimmer físico intacto
+    })
+
+    test('E5 — cap 1.0 es no-op (paridad con comportamiento legacy)', () => {
+      const node   = nodeWithCap(1.0)
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 0, b: 0, brightness: 1 }),
+      )
+      expect(packets[0]!.channels[11]).toBe(255)
+    })
+  })
+
+  describe('F — WAVE 8411-E: minVirtualDim (floor remap del dimmer virtual)', () => {
+
+    const nodeWithRange = (cap: number, floor: number): IColorNodeData =>
+      ({ ...makeOrphanRgbwNode(), maxVirtualDim: cap, minVirtualDim: floor }) as IColorNodeData
+
+    const rig = (node: IColorNodeData) => {
+      const device = makeDevice()
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', makeBeamForgeGraph())
+      return resolver
+    }
+
+    test('F1 — remap [floor,cap]: brightness 1→cap, 0.6→punto medio de banda', () => {
+      const resolver = rig(nodeWithRange(0.4, 0.2))
+
+      // vd'=0.2 + 1.0×(0.4−0.2) = 0.4 → el techo sigue mandando
+      let ch = resolver.resolve(
+        makeArbitrated('dev-01:beam-color', { r: 1, g: 0, b: 0, brightness: 1 }),
+      )[0]!.channels
+      expect(ch[11]).toBe(102)  // round(255 × 0.4)
+
+      // vd'=0.2 + 0.6×0.2 = 0.32 → input 60% → 60% del rango visible
+      ch = resolver.resolve(
+        makeArbitrated('dev-01:beam-color', { r: 1, g: 0, b: 0, brightness: 0.6 }),
+      )[0]!.channels
+      expect(ch[11]).toBe(82)   // round(255 × 0.32)
+    })
+
+    test('F2 — hue preservado bajo remap (escalar único ×RGBW)', () => {
+      const resolver = rig(nodeWithRange(0.4, 0.2))
+      const ch = resolver.resolve(
+        makeArbitrated('dev-01:beam-color', { r: 1, g: 100 / 255, b: 0, w: 0.5, brightness: 1 }),
+      )[0]!.channels
+      expect(ch[11]).toBe(102)  // 255 × 0.4
+      expect(ch[12]).toBe(40)   // 100 × 0.4 — ratio intacto
+      expect(ch[14]).toBe(51)   // 128 × 0.4 ≈ 51
+    })
+
+    test('F3 — blackout absoluto: brightness=0 → 0 pese al floor', () => {
+      const resolver = rig(nodeWithRange(0.392, 0.31))
+      const ch = resolver.resolve(
+        makeArbitrated('dev-01:beam-color', { r: 1, g: 1, b: 1, w: 1, brightness: 0 }),
+      )[0]!.channels
+      for (const off of [11, 12, 13, 14]) {
+        expect(ch[off]).toBe(0)
+      }
+    })
+
+    test('F4 — floor sin cap: (0,1] → [floor, 1]', () => {
+      const node = { ...makeOrphanRgbwNode(), minVirtualDim: 0.3 } as IColorNodeData
+      const resolver = rig(node)
+
+      // vd=1 → vd'=0.3 + 1×0.7 = 1.0 → pleno
+      let ch = resolver.resolve(
+        makeArbitrated('dev-01:beam-color', { r: 1, g: 0, b: 0, brightness: 1 }),
+      )[0]!.channels
+      expect(ch[11]).toBe(255)
+
+      // vd=0.2 → vd'=0.3 + 0.2×0.7 = 0.44 → round(112.2)
+      ch = resolver.resolve(
+        makeArbitrated('dev-01:beam-color', { r: 1, g: 0, b: 0, brightness: 0.2 }),
+      )[0]!.channels
+      expect(ch[11]).toBe(112)
+    })
+
+    test('F5 — floor > cap: floor se clampea al cap (salida constante al techo)', () => {
+      const resolver = rig(nodeWithRange(0.4, 0.8))
+      const ch = resolver.resolve(
+        makeArbitrated('dev-01:beam-color', { r: 1, g: 0, b: 0, brightness: 0.6 }),
+      )[0]!.channels
+      expect(ch[11]).toBe(102)  // f=0.4, vd'=0.4 + 0.6×0 = 0.4
+    })
+
+    test('F6 — nodo CON dimmer físico: floor inerte (paridad con E4)', () => {
+      const node   = { ...makeDimmerColorNode(), maxVirtualDim: 0.4, minVirtualDim: 0.2 } as IColorNodeData
+      const device = makeDevice()
+      const washGraph: CompiledForgeGraph = {
+        ...makeBeamForgeGraph(),
+        inputMap: new Map([
+          ['wash-color:dimmer', 0],
+          ['wash-color:red',    1],
+        ]),
+        outputs: [
+          { wireIndex: 0, dmxOffset: 4, defaultDmxValue: 0, is16bit: false },
+          { wireIndex: 1, dmxOffset: 5, defaultDmxValue: 0, is16bit: false },
+        ],
+      }
+      const resolver = new NodeResolver(makeGraph([node], device))
+      resolver.registerUniverse(UNIVERSE)
+      resolver.registerDevice(device.deviceId)
+      resolver.registerForgeGraph('dev-01', washGraph)
+
+      const packets = resolver.resolve(
+        makeArbitrated(node.nodeId, { r: 1, g: 0, b: 0, dimmer: 1 }),
+      )
+      expect(packets[0]!.channels[5]).toBe(255)
+      expect(packets[0]!.channels[4]).toBe(255)
     })
   })
 })

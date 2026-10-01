@@ -113,30 +113,53 @@ const NodeInspectorInner: React.FC<{ node: IForgeNode }> = ({ node }) => {
   const [configDraft, setConfigDraft] = useState<IForgeNodeConfig>(node.config)
   const debouncedConfig = useDebounce(configDraft, DEBOUNCE_MS)
 
+  // 🌗 WAVE 8411-C FIX: dirty-flag + refs para flush fiable.
+  // El guard isFirstRender anterior tenía una race: el efecto de reset
+  // ([node.id]) se ejecutaba DESPUÉS del efecto de flush en mount y lo
+  // re-armaba a true — la PRIMERA escritura debounced de cada nodo se
+  // tragaba silenciosamente (el draft mostraba el valor pero el store
+  // jamás lo recibía → al re-seleccionar, el campo volvía al default).
+  // dirtyRef solo se activa desde handleConfigChange — escrituras reales.
+  const dirtyConfigRef = useRef(false)
+  const latestDraftRef = useRef(configDraft)
+  latestDraftRef.current = configDraft
+
   // Reset draft when node changes
   useEffect(() => {
     setConfigDraft(node.config)
+    dirtyConfigRef.current = false
   }, [node.id]) // intentionally only on node ID change — not on every config update
 
-  // Flush debounced config to store
-  const isFirstRender = useRef(true)
+  // Flush debounced config to store — solo si hubo edición real
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
+    if (!dirtyConfigRef.current) return
+    dirtyConfigRef.current = false
     updateNodeConfig(node.id, debouncedConfig)
-  }, [debouncedConfig]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [debouncedConfig, node.id, updateNodeConfig])
 
-  // Reset first-render guard on node change
-  useEffect(() => {
-    isFirstRender.current = true
-  }, [node.id])
+  // 🌗 WAVE 8411-C FIX: flush al desmontar — si el inspector se cierra o el
+  // nodo se deselecciona antes de que el debounce de 300ms dispare, la
+  // escritura pendiente no se pierde.
+  useEffect(
+    () => () => {
+      if (dirtyConfigRef.current) {
+        useForgeGraphStore
+          .getState()
+          .updateNodeConfig(node.id, latestDraftRef.current)
+      }
+    },
+    [node.id]
+  )
 
   // ── Config change handler (writes to draft only) ─────────────────────
   const handleConfigChange = useCallback(
     (partial: Partial<IForgeNodeConfig>) => {
-      setConfigDraft((prev) => ({ ...prev, ...partial } as IForgeNodeConfig))
+      dirtyConfigRef.current = true
+      setConfigDraft((prev) => {
+        const next = { ...prev, ...partial } as IForgeNodeConfig
+        latestDraftRef.current = next
+        return next
+      })
     },
     []
   )

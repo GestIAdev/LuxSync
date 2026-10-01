@@ -192,3 +192,118 @@ describe('NodeArbiter — WAVE 8409 Fase 1: L2 Virtual Dimmer Override', () => {
     expect(rec['brightness']).toBeCloseTo(0.4, 6)
   })
 })
+
+describe('NodeArbiter — WAVE 8413: Atmospheric Safety Firewall (Strict L2+ Isolation)', () => {
+  const busOf = (intents: any[]) => ({ getAll: () => intents }) as any
+  const chronosBusOf = (intents: any[]) => ({
+    count: intents.length,
+    getAt: (i: number) => intents[i],
+  }) as any
+  const l0 = (nodeId: string, values: Record<string, number>) => ({
+    nodeId, values, priority: 0, confidence: 1, source: 'atmos_system',
+  })
+  const NODE = 'fog-01:atmosphere'
+
+  test('F1 — contrato del brief: L0 {smoke:255, red:255} → solo {red:255}', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setSystemIntents(busOf([l0(NODE, { smoke: 255, red: 255 })]))
+
+    const rec = arbiter.arbitrate().get(NODE)!
+    expect(rec['smoke']).toBeUndefined()  // el gatillo muere en el firewall
+    expect(rec['red']).toBe(255)          // la luz sigue fluyendo
+  })
+
+  test('F2 — el veto cubre TODAS las claves peligrosas en L0, exacto por clave', () => {
+    const keys = [
+      'smoke', 'smoke_pump', 'smoke_density',
+      'fire', 'fire_valve', 'fire_ignite',
+      'emission', 'emission_gate',
+    ]
+    const payload: Record<string, number> = { red: 1 }
+    for (const k of keys) payload[k] = 1
+
+    const arbiter = new NodeArbiter()
+    arbiter.setSystemIntents(busOf([l0(NODE, payload)]))
+
+    const rec = arbiter.arbitrate().get(NODE)!
+    for (const k of keys) {
+      expect(rec[k], `L0 no debe escribir '${k}'`).toBeUndefined()
+    }
+    expect(rec['red']).toBe(1)
+  })
+
+  test('F3 — Selene (L1) vetada: la IA no abre la válvula', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setSeleneOverrides([{
+      nodeId: NODE,
+      values: { smoke: 1, fire_valve: 1, red: 1 },
+      priority: 100, confidence: 1, source: 'selene_ai',
+    }])
+
+    const rec = arbiter.arbitrate().get(NODE)!
+    expect(rec['smoke']).toBeUndefined()
+    expect(rec['fire_valve']).toBeUndefined()
+    expect(rec['red']).toBe(1)
+  })
+
+  test('F4 — Chronos (L1) vetado: playback automático no dispara pirotecnia', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setChronosBus(chronosBusOf([{
+      nodeId: NODE,
+      values: { fire_ignite: 1, emission_gate: 1 },
+      priority: 100, confidence: 1, source: 'chronos',
+    }]))
+
+    const rec = arbiter.arbitrate().get(NODE)
+    if (rec) {
+      expect(rec['fire_ignite']).toBeUndefined()
+      expect(rec['emission_gate']).toBeUndefined()
+    }
+  })
+
+  test('F5 — L2 (Programmer/MIDI) conserva permiso total sobre canales peligrosos', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setManualOverride(NODE, { smoke: 1, fire_valve: 0.5, emission: 1 })
+
+    const rec = arbiter.arbitrate().get(NODE)!
+    expect(rec['smoke']).toBe(1)
+    expect(rec['fire_valve']).toBe(0.5)
+    expect(rec['emission']).toBe(1)
+  })
+
+  test('F6 — L3 (cue explícito vía AtmosphereCueDriver) conserva permiso', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setEffectIntents([{
+      nodeId: NODE,
+      values: { smoke_pump: 0.8, fire_ignite: 1 },
+      priority: 300, confidence: 1, source: 'effect',
+    }])
+
+    const rec = arbiter.arbitrate().get(NODE)!
+    expect(rec['smoke_pump']).toBeCloseTo(0.8, 6)
+    expect(rec['fire_ignite']).toBe(1)
+  })
+
+  test('F7 — payload mixto: solo caen las claves peligrosas, fan_speed fluye', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setSystemIntents(busOf([l0(NODE, {
+      smoke_pump: 1, emission: 1,
+      fan_speed: 0.6, dimmer: 0.4,
+    })]))
+
+    const rec = arbiter.arbitrate().get(NODE)!
+    expect(rec['smoke_pump']).toBeUndefined()
+    expect(rec['emission']).toBeUndefined()
+    expect(rec['fan_speed']).toBeCloseTo(0.6, 6)  // ventilación ≠ consumible
+    expect(rec['dimmer']).toBeCloseTo(0.4, 6)
+  })
+
+  test('F8 — L0 vetado no resucita cuando L2 toca el mismo canal', () => {
+    const arbiter = new NodeArbiter()
+    arbiter.setSystemIntents(busOf([l0(NODE, { smoke: 1 })]))
+    arbiter.setManualOverride(NODE, { smoke: 0.3 })
+
+    const rec = arbiter.arbitrate().get(NODE)!
+    expect(rec['smoke']).toBeCloseTo(0.3, 6)  // solo el valor del operador
+  })
+})

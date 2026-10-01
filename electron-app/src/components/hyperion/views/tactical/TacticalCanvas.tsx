@@ -36,6 +36,7 @@ import {
   getCanvasMousePosition,
 } from './HitTestEngine'
 import { FixtureTooltip, useFixtureTooltip } from '../../widgets'
+import type { FixtureTooltipData } from '../../widgets'
 import type { 
   RenderMetrics,
   QualityMode
@@ -45,6 +46,9 @@ import { type CanonicalZone } from '../../shared/ZoneLayoutEngine'
 import { FLOATS_PER_FIXTURE, FIXTURE_FIELD } from '../../../../workers/hyperion-render.types'
 import { GLASS_HEADER_FLOATS, FLOATS_PER_FIX, CELL_COLOR_BASE } from '../../../../core/aether/glass/layout'
 import { getTransientFixture } from '../../../../stores/transientStore'
+import { useProgrammerStore } from '../../../../stores/programmerStore'
+import { NodeFamily } from '../../../../stores/programmer-types'
+import type { CellKey } from '../../../../stores/programmer-types'
 import type {
   WorkerInboundMessage,
   WorkerOutboundMessage,
@@ -413,13 +417,27 @@ export const TacticalCanvas = memo(function TacticalCanvas({
                 if (fixture) {
                   // Read live physics from transientStore (zero-cost imperative read)
                   const liveState = getTransientFixture(fixture.id)
+                  // 🌫️ WAVE 8412: nivel de emisión para ingenios atmosféricos.
+                  // phantomChannels no viaja por SeleneTruth; la fuente honesta
+                  // es el override manual del nodo `:atmosphere` (L2 del árbitro).
+                  let smoke: number | undefined
+                  if (fixture.type === 'fog') {
+                    const atmosOv = useProgrammerStore.getState()
+                      .cellOverrides.get(`${fixture.id}:atmosphere` as CellKey)
+                    if (atmosOv?.payload.family === NodeFamily.ATMOSPHERE) {
+                      let m = 0
+                      for (const v of atmosOv.payload.data.values()) m = Math.max(m, v)
+                      smoke = m
+                    }
+                  }
                   tooltipRef.current.onFixtureEnter(fixture.id, {
                     id: fixture.id,
                     name: fixture.id,
-                    type: fixture.type === 'moving' ? 'moving-head' as const : fixture.type as any,
+                    type: (fixture.type === 'moving' ? 'moving-head' : fixture.type) as FixtureTooltipData['type'],
                     zone: fixture.zone,
                     dmxAddress: 1,
                     intensity: liveState ? Math.min(1, liveState.dimmer / 255) : fixture.intensity,
+                    smoke,
                     color: liveState?.color
                       ? { r: liveState.color.r, g: liveState.color.g, b: liveState.color.b }
                       : { r: fixture.r, g: fixture.g, b: fixture.b },

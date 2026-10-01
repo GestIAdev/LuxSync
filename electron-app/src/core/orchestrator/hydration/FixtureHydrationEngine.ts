@@ -38,7 +38,19 @@ import type { VibeLifecycleManager } from '../lifecycle/VibeLifecycleManager'
 import { FixtureProfileResolver } from './FixtureProfileResolver'
 import { StageBoundsManager } from './StageBoundsManager'
 import type { StageBoundsInput } from './StageBoundsManager'
-import type { FixtureDefinition, FixtureChannel } from '../../../types/FixtureDefinition'
+import type { FixtureDefinition, FixtureChannel, FixtureType } from '../../../types/FixtureDefinition'
+
+// 🌫️ WAVE 8416: canal mínimo por tipo de fixture cuando no hay perfil
+// resuelto. Los ingenios obtienen su actuador real (nunca 'dimmer' — eso
+// crearía un nodo IMPACT fantasma que pulsa con el beat y escribe el byte
+// DMX de la bomba). 'generic' y fotónicos conservan el dimmer histórico.
+const MINIMAL_CHANNEL_FOR_TYPE: Partial<Record<FixtureType | 'generic', Pick<FixtureChannel, 'type' | 'name'>>> = {
+  'fog':         { type: 'smoke_pump', name: 'Smoke Pump' },
+  'pyro':        { type: 'fire_valve', name: 'Fire Valve' },
+  'mirror-ball': { type: 'rotation',   name: 'Rotation' },
+  'fan':         { type: 'fan_speed',  name: 'Fan Speed' },
+  'generic':     { type: 'dimmer',     name: 'Dimmer' },
+}
 
 // ── Local helper ───────────────────────────────────────────────────────────
 
@@ -536,10 +548,16 @@ export class FixtureHydrationEngine {
         if (!definition || definition.channels.length === 0) {
           const profileId = ctx.profileResolver.resolveFixtureProfileId(fixture)
           if (!profileId && !fixture.profileId && !fixture.id) continue
-          const minimalDimmerChannel: FixtureChannel = {
+          const normalizedType = ctx.profileResolver.normalizeFixtureType(fixture.type)
+          // 🌫️ WAVE 8416: los ingenios atmosféricos NUNCA reciben 'dimmer'
+          // sintético — un dimmer fantasma crea un nodo IMPACT que (a) proyecta
+          // telemetría rítmica al icono del canvas (pulso gris con el beat) y
+          // (b) escribe el byte DMX del slot físico de la bomba/válvula →
+          // disparo por automatización, la puerta trasera del bug de WAVE 8413.
+          // El canal mínimo honesto es el actuador del ingenio.
+          const minimalChannel: FixtureChannel = {
             index: 1,
-            name: 'Dimmer',
-            type: 'dimmer',
+            ...MINIMAL_CHANNEL_FOR_TYPE[normalizedType as FixtureType] ?? MINIMAL_CHANNEL_FOR_TYPE.generic!,
             defaultValue: 0,
             is16bit: false,
           }
@@ -547,15 +565,15 @@ export class FixtureHydrationEngine {
             id: profileId ?? fixture.id,
             name: fixture.name ?? fixture.id ?? 'Unknown Fixture',
             manufacturer: fixture.manufacturer ?? 'Unknown',
-            type: ctx.profileResolver.normalizeFixtureType(fixture.type),
-            channels: [minimalDimmerChannel],
+            type: normalizedType,
+            channels: [minimalChannel],
             physics: fixture.physics,
             capabilities: fixture.capabilities,
             wheels: fixture.wheels,
             nodeGraph: fixtureGraph, // 🧩 COMPOUND FIXTURE: preserve internal channel graph
           } as FixtureDefinition
           console.warn(
-            `[FixtureHydrationEngine] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`,
+            `[FixtureHydrationEngine] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (${minimalChannel.type})`,
           )
         }
 

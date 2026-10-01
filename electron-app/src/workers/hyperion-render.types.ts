@@ -75,8 +75,8 @@ export interface WorkerFixtureScaffold {
   x: number
   /** Normalized Y position 0-1 */
   y: number
-  /** Fixture type ('fan' = multicellular, WAVE 7761.5) */
-  type: 'par' | 'moving' | 'strobe' | 'laser' | 'wash' | 'fan'
+  /** Fixture type ('fan' = multicellular, WAVE 7761.5; 'fog' = atmospheric/ingenio hexagon, WAVE 8412) */
+  type: 'par' | 'moving' | 'strobe' | 'laser' | 'wash' | 'fan' | 'fog'
   /** Canonical zone */
   zone: CanonicalZone
   /** Gobo wheel */

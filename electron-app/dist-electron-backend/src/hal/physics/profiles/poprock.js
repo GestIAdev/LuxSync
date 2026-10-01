@@ -264,8 +264,8 @@ export const POPROCK_PROFILE = {
     // ═══════════════════════════════════════════════════════════════
     // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
     // Pop/Rock: energía media, guitarras dan mid consistente
-    morphFloor: 0.20, // El rock tiene mid desde la intro (guitarras)
-    morphCeiling: 0.60, // Chorus rock al 60% de mid → morph pleno
+    morphFloor: 0.10, // WAVE 8410-B: 0.20→0.10 — recalibración AGC-mid: el mid del rock vive ~0.16
+    morphCeiling: 0.30, // WAVE 8410-B: 0.60→0.30 — morph pleno con chorus post-AGC
     kickEdgeMinInterval: 50, // MUY corto — double bass drumming (blast beats 200+ BPM)
     kickVetoFrames: 0, // CERO — el bombo NO puede silenciar la guitarra
     // WAVE 4686: Ambient viscosity — Pop/Rock organic

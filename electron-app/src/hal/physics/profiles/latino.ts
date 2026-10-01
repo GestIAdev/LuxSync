@@ -298,8 +298,8 @@ export const LATINO_PROFILE: ILiquidProfile = {
   //   centroidFloor a 675Hz con morph=0.25, silenciando TAckas legítimos del dembow
   //   que coincidían en el mismo frame que un kick. Con 0.45: floor=495Hz,
   //   Shield mucho más permisivo con las frecuencias medias de caja/clave.
-  morphFloor: 0.45,      // WAVE 3312: 0.25→0.45 — Shield menos agresivo, caja/bombo legítimos pasan
-  morphCeiling: 0.65,    // Techo medio — no necesita mid extremo para morph pleno
+  morphFloor: 0.20,      // WAVE 8410-B: 0.45→0.20 — recalibración AGC-mid: con avgMid~0.16 el floor 0.45 clavaba morph≡0
+  morphCeiling: 0.35,    // WAVE 8410-B: 0.65→0.35 — morph pleno alcanzable en el nuevo régimen de mid
 
   kickEdgeMinInterval: 60,   // MÁS corto que techno (80) — el dembow es rápido
   kickVetoFrames: 0,         // CERO — la síncopa 3-3-2 no puede aguantar vetos
@@ -420,7 +420,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // backLTrebleSub=-0.8 inyecta agudos (güira, campana) sin quemar.
     // Las compuertas del envelopeHighMid se restauran a valores funcionales
     // para que el tsunami de señal no sature a 1.000 constante.
-    backLMidWeight: 0.50,     // WAVE 6071: inyección moderada, evita clipping de entrada >1.0
+    backLMidWeight: 0.75,     // WAVE 8410-B: 0.50→0.75 — compensación AGC-mid, las melodías recuperan cuerpo
     backLLowMidWeight: 0.45,
     backLTrebleSub: -0.8,      // WAVE 6070: conservar inyección de agudos, no quemar
 
@@ -464,7 +464,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // Ahora gateOn: 0.18 es LEY ESTÁTICA. La señal de entrada ronda 0.600-0.800
     // (con backLMidWeight=0.50) y el canal ondula fluidamente con el mid.
     envelopeHighMid: {
-      gateOn: 0.18,                     // WAVE 6071: umbral estático, el motor deja de "perseguir"
+      gateOn: 0.11,                     // WAVE 8410-B: 0.18→0.11 — melodías cruzan la compuerta con mid post-AGC
       squelchBase: 0.18,                // WAVE 6070: piso funcional contra ruido residual
       squelchSlope: 0.08,               // WAVE 6070: limpieza dinámica del piso
       boost: 2.6,                       // V&S: 2.2→2.6 — eleva la presencia de la capa melódica post-AGC
@@ -519,7 +519,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
       // 💊 VITAMINAS BACK R (mismo hotfix que el base): -20% gate, +1.3 boost.
       //   squelchBase 0.45 intocable (piso de ruido confirmado).
       gateOn: 0.36,         // VITAMINAS: 0.45→0.36 (-20%) — redobles en 4.1 también
-      squelchBase: 0.45,     // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
+      squelchBase: 0.28,     // WAVE 8410-B: 0.45→0.28 — la caja cruza y respira post-AGC
       decayBase: 0.50,       // V&S: 0.60→0.50 — caída eléctrica, menos fangosa
       decayRange: 0.10,
       ghostCap: 0.00,         // WAVE 7749.57: 0.01→0.00 — sin ghostcaps en ningún perfil

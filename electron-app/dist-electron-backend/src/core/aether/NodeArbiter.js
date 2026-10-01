@@ -123,6 +123,27 @@ const RELEASE_MS_SLOW = 700;
 // y los focos colapsan al techo (singularidad en X=0 para centrales).
 const IK_POISON_KEYS = new Set(['targetX', 'targetY', 'targetZ', 'focusX', 'focusY', 'focusZ']);
 const PHOTON_TRACER_EVERY_FRAMES = 20;
+// ── WAVE 8413: ATMOSPHERIC SAFETY FIREWALL (Strict L2+ Isolation) ──────
+// Canales peligrosos = consumibles físicos e interlocks de seguridad
+// (bomba de humo, densidad, válvula de fuego, ignición, compuerta de
+// emisión). Las capas de automatización — L0 (`system`: LiquidEngine/
+// Systems rítmicos) y L1 (`selene`/`chronos`: generadores y paletas
+// base) — tienen VETO TOTAL sobre estas claves: se descartan por clave
+// exacta dentro de _applyIntent() antes de fusionarse en el registro
+// del nodo. Cero bleed: un intent L0 {smoke:1, red:1} entra como {red:1}.
+// L3 (`effect`/`hephaestus`/`calibration`) NO se veta: es el path de
+// cues explícitos del operador (AtmosphereCueDriver RING-1, WAVE 7737).
+// L2 (manual) bypassa _applyIntent y L4 es flag de egress — ambos
+// conservan permiso pleno por construcción.
+// `smoke_pump`/`emission_gate` se incluyen junto a las claves del brief:
+// son los tipos de canal reales (HARD_SAFETY/ATMOSPHERE_FLUID) que el
+// bleed de automatización disparó. `fan_speed` queda fuera — es
+// ventilación, no un consumible ignífugo.
+const HAZARDOUS_INTENTS = new Set([
+    'smoke', 'smoke_pump', 'smoke_density',
+    'fire', 'fire_valve', 'fire_ignite',
+    'emission', 'emission_gate',
+]);
 // ── WAVE 4914: Relative Offset Routing ────────────────────────────────
 // Factor de escala que mapea offset ∈ [-1,+1] a desviación DMX normalizada.
 // 0.5 = legacy split-brain: `(x+1)/2 = 0.5 + x*0.5` se preserva cuando
@@ -1316,6 +1337,11 @@ export class NodeArbiter {
         const l3DominatedChannels = (layer === 'system' || layer === 'selene')
             ? this._l3DominatedChannels.get(intent.nodeId)
             : undefined;
+        // 🚨 WAVE 8413 — ATMOSPHERIC SAFETY FIREWALL: las capas automáticas
+        // L0 (system) y L1 (selene/chronos) tienen veto total sobre
+        // HAZARDOUS_INTENTS. El check vive dentro del bucle de canales —
+        // por clave exacta, sin filtrado de fixture ni del intent completo.
+        const hazardVetoedLayer = layer === 'system' || layer === 'selene' || layer === 'chronos';
         const values = intent.values;
         const shieldedColorNode = layer === 'selene' &&
             !this._seleneOverrideMoverShield &&
@@ -1334,6 +1360,13 @@ export class NodeArbiter {
         // efectos blandos (CumbiaMoon, CorazonLatino) — antes HTP per-canal
         // de WAVE 4832 los hacía perder ante L0 en un entorno musical activo.
         for (const channel in values) {
+            // 🚨 WAVE 8413: veto por clave exacta. Ningún bleed de intensidad
+            // rítmica puede abrir una bomba, válvula o compuerta desde L0/L1.
+            // Corre antes de cualquier gate de merge — el canal ni siquiera
+            // registra dominación ni contamina el record del nodo.
+            if (hazardVetoedLayer && HAZARDOUS_INTENTS.has(channel)) {
+                continue;
+            }
             // MoverShield: bloquea canales de color en L1 para movers con rueda física
             if (shieldedColorNode && MOVER_SHIELD_BLOCKED_CHANNELS.has(channel)) {
                 continue;

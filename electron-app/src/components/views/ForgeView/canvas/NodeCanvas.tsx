@@ -119,8 +119,22 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
   )
 
   // Hydrate cuando el grafo cambia en el store (apertura de nuevo fixture)
+  // 🌗 WAVE 8411-C FIX: preservar `selected` al reconstruir los XY nodes.
+  // Antes, cada updateNodeConfig/label/move recreaba el array sin la flag →
+  // XYFlow emitía onSelectionChange([]) → inspectNode(null) → el inspector
+  // se desmontaba a mitad de edición, matando el debounce de escritura.
   useEffect(() => {
-    setRfNodes(forgeNodes ? forgeNodes.map(forgeNodeToXY) : [])
+    setRfNodes((prev) => {
+      const selectedIds = new Set(
+        prev.filter((n) => n.selected).map((n) => n.id)
+      )
+      return forgeNodes
+        ? forgeNodes.map((n) => {
+            const xy = forgeNodeToXY(n)
+            return selectedIds.has(n.id) ? { ...xy, selected: true } : xy
+          })
+        : []
+    })
   }, [forgeNodes])
 
   useEffect(() => {
@@ -205,6 +219,12 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
   const onSelectionChange = useCallback(
     ({ nodes }: { nodes: XYNode[] }) => {
       const ids = nodes.map((n) => n.id)
+      // 🔬 WAVE 8411-C DIAG (temporal): qué emite XYFlow realmente.
+      // NO añadir deps al useCallback — su identidad alimenta el
+      // SelectionListener interno de RF (dep → re-fire del efecto).
+      if ((globalThis as Record<string, unknown>).__FORGE_INSPECTOR_DIAG__) {
+        console.log(`[ForgeDiag] onSelectionChange → ${ids.length} node(s):`, ids)
+      }
       setSelection(ids)
 
       const selectedId = nodes.length > 0 ? nodes[0].id : null

@@ -23,12 +23,49 @@ import type { TacticalFixture } from './types'
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Classify fixture type from zone and model hints.
+ * 🌫️ WAVE 8412: tipos de stage que identifican un dispositivo atmosférico
+ * o ingenio — comparten el glyph hexágono de Erebus (sin beam, sin DIM/RGB).
+ */
+const ATMOSPHERIC_STAGE_TYPES = new Set<string>(['fog', 'pyro', 'mirror-ball'])
+
+/**
+ * Stage `fixture.type` → tactical archetype. Solo para tipos concretos —
+ * 'generic'/'effect' caen a las heurísticas de model/zone.
+ */
+const STAGE_TYPE_MAP: Readonly<Record<string, TacticalFixture['type']>> = Object.freeze({
+  'moving-head': 'moving',
+  'scanner':     'moving',
+  'spot':        'moving',
+  'par':         'par',
+  'bar':         'par',
+  'blinder':     'par',
+  'wash':        'wash',
+  'strobe':      'strobe',
+  'laser':       'laser',
+  'fan':         'fan',
+})
+
+/**
+ * Classify fixture type from stage type, zone and model hints.
+ *
+ * 🌫️ WAVE 8412 FIX: el `fixture.type` declarado en Erebus es la fuente de
+ * verdad — antes se ignoraba por completo y una máquina de humo caía al
+ * fallback por zona ('par'), heredando DIM/RGB inútiles en el tooltip y un
+ * círculo PAR en el canvas.
  */
 function classifyFixtureType(
   zone: CanonicalZone,
-  model?: string
+  model?: string,
+  stageType?: string
 ): TacticalFixture['type'] {
+  // Stage type classification first — la identidad declarada manda.
+  if (stageType) {
+    if (ATMOSPHERIC_STAGE_TYPES.has(stageType)) return 'fog'
+    const mapped = STAGE_TYPE_MAP[stageType]
+    if (mapped !== undefined) return mapped
+    // 'generic' | 'effect' | desconocidos → heurísticas de abajo.
+  }
+
   // Model-based classification first
   if (model) {
     const m = model.toLowerCase()
@@ -38,6 +75,7 @@ function classifyFixtureType(
     if (m.includes('fan') || m.includes('tungsten')) return 'fan'
     if (m.includes('strobe') || m.includes('atomic')) return 'strobe'
     if (m.includes('laser')) return 'laser'
+    if (m.includes('fog') || m.includes('haze') || m.includes('smoke')) return 'fog'
     if (m.includes('par') || m.includes('led bar')) return 'par'
     if (m.includes('wash')) return 'wash'
     if (m.includes('spot') || m.includes('beam') || m.includes('profile') || m.includes('moving')) return 'moving'
@@ -127,7 +165,7 @@ export function useFixtureData(): TacticalFixture[] {
       // Normalize zone using the canonical normalizer
       const rawZone = fixture.zone || ''
       const zone = normalizeZone(rawZone)
-      const type = classifyFixtureType(zone, fixture.model)
+      const type = classifyFixtureType(zone, fixture.model, fixture.type)
 
       // Non-reactive physics snapshot from transientStore.
       // Glass → packGlassFrameInto → worker RAF provides live rendering.

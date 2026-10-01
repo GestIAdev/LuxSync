@@ -84,11 +84,12 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   vec3 SD = vec3(G_SEED * 43.1, G_SEED * -17.3, G_SEED * 99.2);
 
   // Ebullición pesada (lava/miel); en el colapso la turbulencia va x5.
-  // Ambos relojes obedecen al fader SPEED (u_speed): t la superficie (gen
-  // G_BOIL), tc la eyección de la corona (gen G_FLAME).
+  // 8418: u_speed fuera del dominio temporal — gBeats/u_time ya llegan
+  // gobernados por el master clock; re-multiplicar por el fader saltaba la
+  // fase en proporción al tiempo acumulado (espasmos crecientes).
   float boil = (0.65 + 0.55 * u_mid + 0.25 * u_energy) * G_BOIL * (1.0 + 4.0 * k);
-  float t    = gBeats * 0.030 * boil * u_speed;
-  float tc   = gBeats * 0.070 * G_FLAME * u_speed;
+  float t    = gBeats * 0.030 * boil;
+  float tc   = gBeats * 0.070 * G_FLAME;
 
   // Destello de frase (sin u_impact, 8287): arranque de u_barPhase, cegado
   // por u_blend durante el X-FADE (paridad HOTFIX 8312).
@@ -122,7 +123,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   float rr   = r / R;
   float z    = sqrt(max(1.0 - rr * rr, 0.0));
   vec3  nrm  = vec3(sp / R, z);
-  nrm.xz     = rot2(t * 0.35) * nrm.xz;
+  nrm.xz     = rot2(mod(t * 0.35, 6.2831853)) * nrm.xz;
   float gran = ridgeFbm(nrm * 7.5 + vec3(0.0, 0.0, t) + SD);         // celdas + filamentos
   float fine = noise3(nrm * 34.0 + vec3(t * 2.0) + SD);              // granito fino
   float spot = smoothstep(0.62, 0.80, noise3(nrm * 2.2 + vec3(9.0, 3.0, t * 0.4) + SD));  // manchas
@@ -174,7 +175,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
     // parte interna gira mucho más rápido → cizalla violenta del plasma.
     vec2  dq  = vec2(sp.x, sp.y * 3.2);
     float dr  = length(dq);
-    float ang = gBeats * 2.4 * 0.30 / (dr + 0.06);
+    // mod sobre el numerador con periodo TAU·d ≡ mod(ángulo, TAU) — idéntico
+    // en matemática exacta pero con intermedios acotados (f32 seguro).
+    float ang = mod(gBeats * 0.72, 6.2831853 * (dr + 0.06)) / (dr + 0.06);
     vec2  rq  = rot2(ang) * dq;
     // Motion blur matemático: el FBM varía LENTO sobre el plano rotado
     // (rq·2.2 → arcos largos a lo largo del giro) y RÁPIDO con el radio

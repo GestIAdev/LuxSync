@@ -268,8 +268,8 @@ export const LATINO_PROFILE = {
     //   centroidFloor a 675Hz con morph=0.25, silenciando TAckas legítimos del dembow
     //   que coincidían en el mismo frame que un kick. Con 0.45: floor=495Hz,
     //   Shield mucho más permisivo con las frecuencias medias de caja/clave.
-    morphFloor: 0.45, // WAVE 3312: 0.25→0.45 — Shield menos agresivo, caja/bombo legítimos pasan
-    morphCeiling: 0.65, // Techo medio — no necesita mid extremo para morph pleno
+    morphFloor: 0.20, // WAVE 8410-B: 0.45→0.20 — recalibración AGC-mid: con avgMid~0.16 el floor 0.45 clavaba morph≡0
+    morphCeiling: 0.35, // WAVE 8410-B: 0.65→0.35 — morph pleno alcanzable en el nuevo régimen de mid
     kickEdgeMinInterval: 60, // MÁS corto que techno (80) — el dembow es rápido
     kickVetoFrames: 0, // CERO — la síncopa 3-3-2 no puede aguantar vetos
     // WAVE 4686: Ambient viscosity — Latino fiesta
@@ -285,27 +285,44 @@ export const LATINO_PROFILE = {
     floorSubWeight: 0.4,
     // ═══════════════════════════════════════════════════════════════
     // ⚒️ WAVE 8410: AIR "CANTA" — Pad continuo alimentado por la voz.
-    // Topología stab→pad: decayBase 0.85, crushExponent 0.85 (cóncavo),
-    // gateOn 0.12, squelchBase 0.10. Mezcla: airMidWeight 0.6 (banda
-    // nueva WAVE 8410) + airHighMidWeight 0.9 — la voz autotuneada vive
-    // en mid+highMid; el haz canta continuo en lugar de dar destellos.
+    //
+    // PROBLEMA: el envAir base es un stab (gate 0.22, decay 0.08, crush 1.4)
+    // alimentado solo por treble+highMid (AGC-capados). En latino el aire
+    // debe CANTAR con las voces/sintetizadores — un haz continuo que sigue
+    // la frase, no un destello cortante.
+    //
+    // TOPOLOGÍA stab→pad:
+    //   decayBase 0.08→0.85: half-life ~4f (~100ms) — la luz fluye entre
+    //     sílabas y golpes del dembow sin cortarse; sigue cayendo a negro
+    //     cuando el DJ corta la mezcla (piso duro signal>0.15 intacto).
+    //   crushExponent 1.4→0.85 (cóncavo): los volúmenes bajos de las voces
+    //     ya generan luz suave — el envelope expande, no aplasta.
+    //   gateOn 0.22→0.12 + squelchBase 0.25→0.10: la línea vocal cruza el
+    //     umbral a medio volumen; cada frase ascendente re-dispara.
+    //   attackSlopeMin 0.0: la señal sostenida pasa (pad = sin filo exigido).
+    //
+    // MEZCLA ESPECTRAL: airMidWeight 0.6 (WAVE 8410 — banda nueva) +
+    //   airHighMidWeight 0.9. La voz autotuneada vive en mid+highMid;
+    //   input típico ≈ 0.10×0.75 + 0.25×0.9 + 0.32×0.6 ≈ 0.49, muy sobre
+    //   el gate efectivo ~0.14 → haz sostenido. airTrebleWeight hereda
+    //   0.75 del base (consonantes T/K/S añaden brillo al canto).
     // ═══════════════════════════════════════════════════════════════
     envelopeAir: {
         name: 'Air (El Cantante)',
-        gateOn: 0.12,          // WAVE 8410: 0.22→0.12 — la voz cruza a medio volumen
+        gateOn: 0.12, // WAVE 8410: 0.22→0.12 — la voz cruza a medio volumen
         boost: 4.0,
-        crushExponent: 0.85,   // WAVE 8410: cóncavo — voces suaves ya generan luz
-        decayBase: 0.85,       // WAVE 8410: stab→pad — half-life ~4f, la luz canta
+        crushExponent: 0.85, // WAVE 8410: cóncavo — voces suaves ya generan luz
+        decayBase: 0.85, // WAVE 8410: stab→pad — half-life ~4f, la luz canta
         decayRange: 0.05,
         maxIntensity: 1.0,
-        squelchBase: 0.10,     // WAVE 8410: 0.25→0.10 — re-disparo con frases modestas
+        squelchBase: 0.10, // WAVE 8410: 0.25→0.10 — re-disparo con frases modestas
         squelchSlope: 0.10,
-        ghostCap: 0.00,        // WAVE 7749.57: sin ghostcaps en ningún perfil
+        ghostCap: 0.00, // WAVE 7749.57: sin ghostcaps en ningún perfil
         gateMargin: 0.02,
-        attackSlopeMin: 0.0,   // señal sostenida pasa — pad sin filo exigido
+        attackSlopeMin: 0.0, // señal sostenida pasa — pad sin filo exigido
     },
-    airHighMidWeight: 0.9,   // WAVE 8410: sintes/armónicos de voz alimentan el haz
-    airMidWeight: 0.6,       // WAVE 8410: voz autotuneada = canto continuo
+    airHighMidWeight: 0.9, // WAVE 8410: sintes/armónicos de voz alimentan el haz
+    airMidWeight: 0.6, // WAVE 8410: voz autotuneada = canto continuo
     // ═══════════════════════════════════════════════════════════════
     // WAVE 7573: AMBIENT INTENSITY BOOST — Washer Tungsten necesita LUZ
     //
@@ -366,7 +383,7 @@ export const LATINO_PROFILE = {
         // backLTrebleSub=-0.8 inyecta agudos (güira, campana) sin quemar.
         // Las compuertas del envelopeHighMid se restauran a valores funcionales
         // para que el tsunami de señal no sature a 1.000 constante.
-        backLMidWeight: 0.50, // WAVE 6071: inyección moderada, evita clipping de entrada >1.0
+        backLMidWeight: 0.75, // WAVE 8410-B: 0.50→0.75 — compensación AGC-mid, las melodías recuperan cuerpo
         backLLowMidWeight: 0.45,
         backLTrebleSub: -0.8, // WAVE 6070: conservar inyección de agudos, no quemar
         // ── WAVE 7749.20: MOVERS — Meloso pero con punch ──────────────
@@ -406,7 +423,7 @@ export const LATINO_PROFILE = {
         // Ahora gateOn: 0.18 es LEY ESTÁTICA. La señal de entrada ronda 0.600-0.800
         // (con backLMidWeight=0.50) y el canal ondula fluidamente con el mid.
         envelopeHighMid: {
-            gateOn: 0.18, // WAVE 6071: umbral estático, el motor deja de "perseguir"
+            gateOn: 0.11, // WAVE 8410-B: 0.18→0.11 — melodías cruzan la compuerta con mid post-AGC
             squelchBase: 0.18, // WAVE 6070: piso funcional contra ruido residual
             squelchSlope: 0.08, // WAVE 6070: limpieza dinámica del piso
             boost: 2.6, // V&S: 2.2→2.6 — eleva la presencia de la capa melódica post-AGC
@@ -458,7 +475,7 @@ export const LATINO_PROFILE = {
             // 💊 VITAMINAS BACK R (mismo hotfix que el base): -20% gate, +1.3 boost.
             //   squelchBase 0.45 intocable (piso de ruido confirmado).
             gateOn: 0.36, // VITAMINAS: 0.45→0.36 (-20%) — redobles en 4.1 también
-            squelchBase: 0.45, // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
+            squelchBase: 0.28, // WAVE 8410-B: 0.45→0.28 — la caja cruza y respira post-AGC
             decayBase: 0.50, // V&S: 0.60→0.50 — caída eléctrica, menos fangosa
             decayRange: 0.10,
             ghostCap: 0.00, // WAVE 7749.57: 0.01→0.00 — sin ghostcaps en ningún perfil

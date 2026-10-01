@@ -274,6 +274,36 @@ export interface CapabilityContext<F extends NodeFamily = NodeFamily> {
  */
 export type EmbeddedImpactChannelType = 'dimmer' | 'strobe' | 'shutter'
 
+/**
+ * 🌫️ WAVE 8412: Referencia a un canal DMX real dentro de un nodo ATMOSPHERE.
+ *
+ * La UI de atmósfera necesita la IDENTIDAD del canal, no solo la etiqueta de
+ * la celda. `key` es el `chDef.type` del nodo (`'smoke_pump'`, `'custom'`,
+ * `'emission_gate'`…) — la única clave que el NodeResolver del backend
+ * resuelve contra `channelValues[type]`. Escribir cualquier otra clave
+ * (ej. el label del grupo) produce una entrada huérfana que nunca llega a DMX.
+ */
+export interface AtmosphereChannelRef {
+  /** Clave de escritura — `INodeChannelDef.type` ('smoke_pump', 'custom', …). */
+  readonly key: string
+  /** Etiqueta legible para la UI ('Smoke', customName del perfil, …). */
+  readonly label: string
+  /**
+   * Offset DMX del canal dentro del fixture (`INodeChannelDef.dmxOffset`).
+   * Permite a `useOrphanPhantomChannels` excluir con precisión los canales
+   * ya cubiertos por el nodo `:atmosphere` (match por offset, no por tipo —
+   * un fixture puede tener dos canales `custom` y solo uno ser atmosférico).
+   */
+  readonly dmxOffset: number
+  /**
+   * `true` si el canal porta el intent de emisión atmosférica
+   * (smoke_pump / smoke_density / emission_gate, o un canal `custom` cuyo
+   * nombre sugiere humo: "smoke", "fog", "pump"…). Los widgets dedicados
+   * (FogCard) lo usan para etiquetar el control principal como SMOKE.
+   */
+  readonly isEmission?: boolean
+}
+
 export interface CellDescriptor {
   readonly cellKey: CellKey
   readonly family: NodeFamily
@@ -297,6 +327,19 @@ export interface CellDescriptor {
    * Undefined o vacío → no hay canales de intensidad embebidos.
    */
   readonly embeddedImpactChannels?: ReadonlySet<EmbeddedImpactChannelType>
+  /**
+   * 🌫️ WAVE 8412: Canales DMX reales del nodo ATMOSPHERE (deduplicados por
+   * `key`). Solo presente cuando `family === NodeFamily.ATMOSPHERE`.
+   * Permite a los widgets de atmósfera escribir contra `chDef.type` real
+   * en lugar del label del grupo (que el resolver ignora — key muerta).
+   */
+  readonly atmosphereChannels?: readonly AtmosphereChannelRef[]
+  /**
+   * 🌫️ WAVE 8412: `IAtmosphereNodeData.atmosType` del nodo ('fog', 'fan',
+   * 'pyro', 'laser', 'custom'…). Distingue un dispositivo atmosférico real
+   * (→ tarjeta dedicada) de un nodo de cuarentena residual (→ cajón EXTRAS).
+   */
+  readonly atmosType?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -341,6 +384,17 @@ export interface AggregatedCellGroup {
    * Usado por ColorBody para saber qué InlineImpactRow mostrar sin override.
    */
   readonly embeddedImpactChannels?: ReadonlySet<EmbeddedImpactChannelType>
+  /**
+   * 🌫️ WAVE 8412: Unión (deduplicada por `key`) de los canales atmosféricos
+   * de todas las células del grupo. Solo para `family === ATMOSPHERE`.
+   */
+  readonly atmosphereChannels?: readonly AtmosphereChannelRef[]
+  /**
+   * 🌫️ WAVE 8412: atmosTypes distintos presentes en el grupo
+   * ('fog', 'fan', 'custom'…). Grupos con al menos un tipo no-`custom`
+   * corresponden a dispositivos atmosféricos reales.
+   */
+  readonly atmosTypes?: readonly string[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

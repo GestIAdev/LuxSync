@@ -17,7 +17,7 @@ import { TECHNO_PROFILE } from '../profiles/techno'
 import { LATINO_PROFILE } from '../profiles/latino'
 import { CHILL_PROFILE } from '../profiles/chilllounge'
 import { POPROCK_PROFILE } from '../profiles/poprock'
-import type { ILiquidProfile } from '../ILiquidProfile'
+import type { ILiquidProfile } from '../profiles/ILiquidProfile'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helper: Validación estructural de perfil
@@ -194,9 +194,10 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
   })
 
   // WAVE 2488 — DT-02: morphology calibration (techno = full pulse)
-  it('should preserve morphFloor = 0.30, morphCeiling = 0.70', () => {
-    expect(TECHNO_PROFILE.morphFloor).toBeCloseTo(0.30, 2)
-    expect(TECHNO_PROFILE.morphCeiling).toBeCloseTo(0.70, 2)
+  // WAVE 8410-B: recalibrado al régimen post-AGC (avgMid ~0.16)
+  it('should preserve morphFloor = 0.15, morphCeiling = 0.35', () => {
+    expect(TECHNO_PROFILE.morphFloor).toBeCloseTo(0.15, 2)
+    expect(TECHNO_PROFILE.morphCeiling).toBeCloseTo(0.35, 2)
   })
 
   it('should preserve harshnessAcidThreshold = 0.60', () => {
@@ -220,9 +221,10 @@ describe('🎲 Monte Carlo Regression: LATINO_PROFILE', () => {
   })
 
   // WAVE 2488 — DT-02: morphology calibration (dembow preciso)
-  it('should preserve morphFloor = 0.25, morphCeiling = 0.65', () => {
-    expect(LATINO_PROFILE.morphFloor).toBeCloseTo(0.45, 2)
-    expect(LATINO_PROFILE.morphCeiling).toBeCloseTo(0.65, 2)
+  // WAVE 8410-B: recalibrado al régimen post-AGC (avgMid ~0.16)
+  it('should preserve morphFloor = 0.20, morphCeiling = 0.35', () => {
+    expect(LATINO_PROFILE.morphFloor).toBeCloseTo(0.20, 2)
+    expect(LATINO_PROFILE.morphCeiling).toBeCloseTo(0.35, 2)
   })
 
   it('should preserve layout41Strategy = strict-split', () => {
@@ -234,9 +236,12 @@ describe('🎲 Monte Carlo Regression: LATINO_PROFILE', () => {
     expect(LATINO_PROFILE.overrides41).toBeDefined()
     if (LATINO_PROFILE.overrides41) {
       expect(LATINO_PROFILE.overrides41.percMidSubtract).toBe(4.0)
-      expect(LATINO_PROFILE.overrides41.envelopeTreble?.gateOn).toBeCloseTo(0.02, 2)
-      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.gateOn).toBeCloseTo(0.55, 2)
-      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.10, 2)
+      // WAVE 7749.20: envelopeTreble.gateOn 0.08→0.15 — ignora ruido de fondo
+      expect(LATINO_PROFILE.overrides41.envelopeTreble?.gateOn).toBeCloseTo(0.15, 2)
+      // WAVE 8410-B: envelopeHighMid.gateOn 0.18→0.11 — recalibración AGC-mid
+      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.gateOn).toBeCloseTo(0.11, 2)
+      // WAVE 6070: decayBase 0.75 — manto de melaza
+      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.75, 2)
       expect(LATINO_PROFILE.overrides41.envelopeSubBass?.gateOn).toBeCloseTo(0.22, 2)
     }
   })
@@ -293,9 +298,10 @@ describe('🎲 Monte Carlo Regression: POPROCK_PROFILE', () => {
   })
 
   // WAVE 2488 — DT-02: morphology calibration (rock = mid desde la intro)
-  it('should preserve morphFloor = 0.20, morphCeiling = 0.60', () => {
-    expect(POPROCK_PROFILE.morphFloor).toBeCloseTo(0.20, 2)
-    expect(POPROCK_PROFILE.morphCeiling).toBeCloseTo(0.60, 2)
+  // WAVE 8410-B: recalibrado al régimen post-AGC (avgMid ~0.16)
+  it('should preserve morphFloor = 0.10, morphCeiling = 0.30', () => {
+    expect(POPROCK_PROFILE.morphFloor).toBeCloseTo(0.10, 2)
+    expect(POPROCK_PROFILE.morphCeiling).toBeCloseTo(0.30, 2)
   })
 
   it('should preserve sidechainDepth = 0.00 (exterminado)', () => {

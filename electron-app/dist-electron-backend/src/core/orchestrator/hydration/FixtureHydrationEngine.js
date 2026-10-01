@@ -24,6 +24,16 @@ import { AtmosphereCueDriver } from '../../aether/atmosphere/AtmosphereCueDriver
 import { LiquidAetherAdapter } from '../../aether/adapters/LiquidAetherAdapter';
 import { KineticStateStore } from '../../aether/KineticStateStore';
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine';
+// 🌫️ WAVE 8416: canal mínimo por tipo cuando no hay perfil resuelto.
+// Los ingenios obtienen su actuador real — nunca 'dimmer' (nodo IMPACT
+// fantasma: pulso rítmico en canvas + escritura DMX en el slot de la bomba).
+const MINIMAL_CHANNEL_FOR_TYPE = {
+    'fog': { type: 'smoke_pump', name: 'Smoke Pump' },
+    'pyro': { type: 'fire_valve', name: 'Fire Valve' },
+    'mirror-ball': { type: 'rotation', name: 'Rotation' },
+    'fan': { type: 'fan_speed', name: 'Fan Speed' },
+    'generic': { type: 'dimmer', name: 'Dimmer' },
+};
 // ── Local helper ───────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function detectLiquidLayoutFromFixtures(fixtures) {
@@ -423,10 +433,14 @@ export class FixtureHydrationEngine {
                     const profileId = ctx.profileResolver.resolveFixtureProfileId(fixture);
                     if (!profileId && !fixture.profileId && !fixture.id)
                         continue;
-                    const minimalDimmerChannel = {
+                    const normalizedType = ctx.profileResolver.normalizeFixtureType(fixture.type);
+                    // 🌫️ WAVE 8416: los ingenios atmosféricos NUNCA reciben
+                    // 'dimmer' sintético — un nodo IMPACT fantasma proyecta
+                    // telemetría rítmica al canvas y escribe el byte DMX de la
+                    // bomba/válvula (puerta trasera del bug de WAVE 8413).
+                    const minimalChannel = {
                         index: 1,
-                        name: 'Dimmer',
-                        type: 'dimmer',
+                        ...(MINIMAL_CHANNEL_FOR_TYPE[normalizedType] ?? MINIMAL_CHANNEL_FOR_TYPE.generic),
                         defaultValue: 0,
                         is16bit: false,
                     };
@@ -434,14 +448,14 @@ export class FixtureHydrationEngine {
                         id: profileId ?? fixture.id,
                         name: fixture.name ?? fixture.id ?? 'Unknown Fixture',
                         manufacturer: fixture.manufacturer ?? 'Unknown',
-                        type: ctx.profileResolver.normalizeFixtureType(fixture.type),
-                        channels: [minimalDimmerChannel],
+                        type: normalizedType,
+                        channels: [minimalChannel],
                         physics: fixture.physics,
                         capabilities: fixture.capabilities,
                         wheels: fixture.wheels,
                         nodeGraph: fixtureGraph, // 🧩 COMPOUND FIXTURE: preserve internal channel graph
                     };
-                    console.warn(`[FixtureHydrationEngine] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`);
+                    console.warn(`[FixtureHydrationEngine] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (${minimalChannel.type})`);
                 }
                 const fixtureV2 = ctx.profileResolver.buildFixtureV2ForAether(fixture, definition);
                 // GovernorEngine DIAG logs silenced — fires per-fixture on every setFixtures

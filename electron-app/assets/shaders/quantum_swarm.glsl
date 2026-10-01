@@ -64,13 +64,13 @@ vec2 hash22(vec2 p) {
 vec2 fireflyPos(vec2 id, float layer) {
   vec2 h = hash22(id + layer * 31.7 + G_SEED);
   // Órbita continua (obedece SPEED).
-  vec2 o = 0.5 + 0.36 * sin(gBeats * (0.5 + h * 1.5) * PI * 0.5 + h * TAU);
+  vec2 o = 0.5 + 0.36 * sin(mod(gBeats * (0.5 + h * 1.5) * PI * 0.5, TAU) + h * TAU);
   // Nervio: temblor cuantizado a 24 Hz que el hi-hat amplifica.
   vec2 j = hash22(id + floor(u_time * 24.0) + layer) - 0.5;
   o += j * G_JITTER * (0.08 + 0.5 * u_hihatEnergy);
   // Glitch: teletransporte — saltos discretos a otra posición de la celda.
   if (gGlitch > 0.01) {
-    float q = floor(gBeats * 4.0);
+    float q = floor(mod(gBeats * 4.0, 1024.0));
     float tp = step(1.0 - 0.6 * gGlitch, hash21(id + q + layer));
     o = mix(o, hash22(id + q + 7.7), tp);
   }
@@ -124,7 +124,7 @@ vec3 swarmLayer(vec2 uv, float layer) {
     float sd = segDist(vec2(0.0), p0, pk, hs);
     float fade = 1.0 - L / lmax;
     // Paquetes de datos corriendo por el enlace (reloj → SPEED).
-    float pulse = exp(-abs(fract(hs - gBeats * 1.5 + hash21(pk + p0)) - 0.5) * 18.0);
+    float pulse = exp(-abs(fract(hs - mod(gBeats * 1.5, 64.0) + hash21(pk + p0)) - 0.5) * 18.0);
     link += exp(-sd * 55.0) * fade * fade * (0.25 + 0.9 * pulse);
   }
 
@@ -133,7 +133,7 @@ vec3 swarmLayer(vec2 uv, float layer) {
   float membrane = 1.0 - smoothstep(0.0, 0.05, sqrt(d2) - dd);      // pared celular
 
   // Snare: celdas que se encienden por dentro (sorteo por golpe).
-  float fill = step(0.82, hash21(id0 + floor(u_beatTime * 2.0))) * euSnare();
+  float fill = step(0.82, hash21(id0 + floor(mod(u_beatTime * 2.0, 1024.0)))) * euSnare();
 
   vec3 col = hue * fly * sing * (1.0 + 2.5 * u_kickPulse);
   col += hue * hue * link * gLinkGain;
@@ -173,8 +173,10 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // Bombo: estalla hacia fuera (transitorio — golpea a cualquier SPEED).
   float contract = 1.0 + 0.8 * gBeatP + 1.4 * fx;
   float burst    = 1.0 + 1.5 * u_kickPulse + 0.35 * u_bass * live;
-  vec2 suv = uv * contract / burst;
-  suv = rot2(gBeats * TAU / 64.0 + 0.8 * gBeatP * r + 0.3 * swell) * suv;
+  // 8418: zoom clampeado — el kick golpea el encuadre sin reventarlo
+  // (kick=1 solo → ratio ~0.37 → ahora cede ×1.8 de zoom-in, no ×2.7).
+  vec2 suv = uv * clamp(contract / burst, 0.55, 1.75);
+  suv = rot2(mod(gBeats * TAU / 64.0, TAU) + 0.8 * gBeatP * r + 0.3 * swell) * suv;
 
   // ── 3. RENDER — con separación RGB cuántica bajo glitch ───────────
   vec3 col;
@@ -201,7 +203,7 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 6. MEMORIA — estelas de las luciérnagas (deriva con el estallido)
   if (u_hasPrev > 0.5) {
     vec2 st = fragCoord / u_resolution.xy - 0.5;
-    st *= 0.994 - 0.02 * u_kickPulse + 0.01 * fx;                   // estalla fuera · implosiona
+    st *= clamp(0.994 - 0.02 * u_kickPulse + 0.01 * fx, 0.985, 1.003); // deriva acotada
     vec3 prev = texture(u_prevFrame, st + 0.5).rgb;
     prev *= prev;                                                   // sRGB → lineal (aprox. γ2)
     float persist = clamp(0.78 + 0.12 * u_trails - 0.3 * glitch, 0.0, 0.93);

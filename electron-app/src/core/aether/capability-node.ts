@@ -247,6 +247,24 @@ export interface ICapabilityNode {
   /** Restricciones físicas y de seguridad del hardware */
   readonly constraints: INodeConstraints
   /**
+   * 🌗 WAVE 8411-B: MAX VIRTUAL DIMMER — techo opcional [0.0-1.0] del
+   * dimmer virtual (multiplicador de los canales de emisión cromática en
+   * nodos sin dimmer físico). El NodeResolver lo aplica como clamp sobre
+   * `virtualDim` antes del escalado → todos los canales RGBW se atenúan
+   * proporcionalmente (colorimetría preservada). Goberna tanto la señal
+   * L0 (airIntensity) como la L2 manual (brightness inyectada). Solo
+   * tiene efecto en nodos huérfanos de dimmer físico.
+   */
+  readonly maxVirtualDim?: number
+  /**
+   * 🌗 WAVE 8411-E: MIN VIRTUAL DIMMER — suelo opcional [0.0-1.0]. Si está
+   * definido, el virtualDim activo (0,1] se remapea linealmente a
+   * [floor, cap]: el travel completo del control cubre la banda visible
+   * del driver (deadzone clearing). virtualDim=0 → blackout absoluto.
+   * El resolver clampea floor a ≤ cap. Sin efecto con dimmer físico.
+   */
+  readonly minVirtualDim?: number
+  /**
    * Metadata extra del perfil HAL.
    * Datos específicos por familia que no encajan en los campos
    * estándar. Ejemplo: definición de rueda de colores para

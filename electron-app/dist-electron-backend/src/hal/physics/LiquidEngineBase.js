@@ -2281,7 +2281,9 @@ LiquidEngineBase.KICK_COOLDOWN_MS = 150;
 // Floor: bassDelta-driven onset gate. Zero-attack, fast decay (0.12),
 //   high crush (2.0). Reacts to transient impact, not sustained amplitude.
 // Air: treble+highMid velocity-driven. Zero-attack (riseRate=1.0),
-//   fast decay (0.08, ~45-65ms), high gate (0.35), high crush (2.5).
+//   fast decay (0.08, ~45-65ms), gate moderado (0.22 — WAVE 8409: 0.35
+//   era inalcanzable con el treble capado por AGC a targetRMS 0.10),
+//   crush suavizado (1.4 — antes 2.5, solo picos imposibles pasaban).
 LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR = {
     name: 'Floor',
     gateOn: 0.08, // low — bassDelta transients are small but sharp

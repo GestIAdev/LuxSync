@@ -33,13 +33,14 @@ import {
   makeCellKey,
   type CellDescriptor,
   type AggregatedCellGroup,
+  type AtmosphereChannelRef,
   type CellKey,
   type EmbeddedImpactChannelType,
   NodeFamily,
   type DeviceId,
   type NodeId,
 } from '../stores/programmer-types'
-import type { ICapabilityNode } from '../core/aether/capability-node'
+import type { ICapabilityNode, IAtmosphereNodeData } from '../core/aether/capability-node'
 import type { FixtureV2 } from '../core/stage/ShowFileV2'
 import type { FixtureDefinition, FixtureChannel, FixtureType } from '../types/FixtureDefinition'
 import { deriveCapabilitiesUnified } from '../types/FixtureDefinition'
@@ -61,9 +62,38 @@ const pipeline = new NodeExtractionPipeline()
 // NodeExtractionPipeline puede procesar el resultado igual que un perfil real.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * 🌫️ WAVE 8415 — ORPHAN ATMOSPHERE: canales reales del Channel Rack.
+ *
+ * FixtureV2.channels persiste el mapeo exacto del rack (types reales como
+ * 'smoke_pump', 'custom', 'rotation'). El fallback sintético anterior los
+ * IGNORABA y fabricaba un 'dimmer' fantasma → un fog de 1 canal producía
+ * una celda IMPACT (purgada por WAVE 8414) en vez de su nodo ATMOSPHERE.
+ * Si el stage fixture lleva channels[] inline, esos son los datos reales.
+ */
+function buildChannelsFromStageFixture(stageFix: FixtureV2): FixtureChannel[] | null {
+  const raw = stageFix.channels
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  return raw.map((ch, idx) => ({
+    index: typeof ch.index === 'number' ? ch.index : idx,
+    name: ch.name ?? `Ch${idx + 1}`,
+    type: (typeof ch.type === 'string' ? ch.type : 'custom') as FixtureChannel['type'],
+    defaultValue: typeof ch.defaultValue === 'number' ? ch.defaultValue : 0,
+    is16bit: ch.is16bit === true,
+    // El nombre del rack describe canales 'custom' ('Fog Output'…) — es la
+    // pista semántica que EMISSION_NAME_RE usa para marcar canales de emisión.
+    ...(typeof ch.name === 'string' && ch.name.length > 0 ? { customName: ch.name } : {}),
+  }))
+}
+
 function synthesizeFixtureDefinition(stageFix: FixtureV2): FixtureDefinition {
   const fixtureType = (stageFix.type ?? 'generic') as FixtureType
   const channelCount = (stageFix as { channelCount?: number }).channelCount ?? 1
+
+  // 🌫️ WAVE 8415: los canales reales del Channel Rack ganan sobre cualquier
+  // plantilla — una máquina de humo mapeada como 'smoke_pump' produce su
+  // nodo ATMOSPHERE real en lugar de un dimmer fantasma.
+  const rackChannels = buildChannelsFromStageFixture(stageFix)
 
   let channelTemplate: Omit<FixtureChannel, 'index'>[]
 
@@ -104,8 +134,33 @@ function synthesizeFixtureDefinition(stageFix: FixtureV2): FixtureDefinition {
         { name: 'Blue',   type: 'blue',   defaultValue: 0, is16bit: false },
       ]
       break
+    // 🌫️ WAVE 8415: plantillas atmosféricas — un fog/pyro/mirror-ball creado
+    // en 10 segundos sin channels[] inline produce su nodo ATMOSPHERE/KINETIC
+    // real, nunca un dimmer fantasma (que WAVE 8414 purga → panel vacío).
+    case 'fog':
+      channelTemplate = [
+        { name: 'Smoke',   type: 'smoke_pump',    defaultValue: 0, is16bit: false },
+        { name: 'Density', type: 'smoke_density', defaultValue: 0, is16bit: false },
+      ]
+      break
+    case 'pyro':
+      channelTemplate = [
+        { name: 'Valve',  type: 'fire_valve',  defaultValue: 0, is16bit: false },
+        { name: 'Ignite', type: 'fire_ignite', defaultValue: 0, is16bit: false },
+      ]
+      break
+    case 'mirror-ball':
+      channelTemplate = [
+        { name: 'Rotation', type: 'rotation', defaultValue: 0, is16bit: false },
+      ]
+      break
+    case 'fan':
+      channelTemplate = [
+        { name: 'Fan Speed', type: 'fan_speed', defaultValue: 0, is16bit: false },
+      ]
+      break
     default:
-      // generic, fan, fog, laser, mirror-ball, pyro, unknown
+      // generic, laser, unknown
       channelTemplate = [
         { name: 'Dimmer', type: 'dimmer', defaultValue: 0, is16bit: false },
       ]
@@ -113,9 +168,9 @@ function synthesizeFixtureDefinition(stageFix: FixtureV2): FixtureDefinition {
   }
 
   // Recortar al channelCount real para no asumir más canales de los que hay
-  const channels: FixtureChannel[] = channelTemplate
+  const channels: FixtureChannel[] = (rackChannels ?? channelTemplate
     .slice(0, channelCount)
-    .map((ch, idx) => ({ ...ch, index: idx }))
+    .map((ch, idx) => ({ ...ch, index: idx })))
 
   // Si channelCount > template, rellenar con canales custom
   for (let i = channels.length; i < channelCount; i++) {
@@ -176,6 +231,89 @@ function suffixToRole(suffix: string, family: NodeFamily): string {
   return predefined[base] ?? FAMILY_DEFAULT_ROLE[family]
 }
 
+// ── 🌫️ WAVE 8414: FOG UI EXORCISM — tipos no-fotónicos ────────────────────
+// Estos stage types declaran aparatos que NO emiten luz (humo, fuego,
+// bola de espejos). Sus celdas IMPACT/COLOR/BEAM son fantasmas: provienen
+// del fallback sintético (dimmer genérico) o de canales auxiliares del
+// perfil — no de capacidades lumínicas reales. Se purgan a nivel de
+// descriptor para que NI el CellRouter (INTENSITY/COLOR/BEAM) ni ningún
+// otro consumidor los vea. ATMOSPHERE queda (widget dedicado) y KINETIC
+// también — el motor de una mirror-ball es control legítimo, no luz.
+// 'fan' QUEDA EXCLUIDO del set: el Tungsten multicelular declara
+// type='fan' y tiene sub-zonas RGB reales que sí emiten.
+const NON_PHOTONIC_FIXTURE_TYPES = new Set<string>(['fog', 'pyro', 'mirror-ball'])
+
+/** Familias lumínicas prohibidas para dispositivos no-fotónicos. */
+const NON_PHOTONIC_PURGED_FAMILIES = new Set<NodeFamily>([
+  NodeFamily.IMPACT,
+  NodeFamily.COLOR,
+  NodeFamily.BEAM,
+])
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🌫️ WAVE 8412: ATMOSPHERE CHANNEL REFS — identidad real de canales DMX
+//
+// La fila genérica de ExtrasAggregator escribía `setCellExtra(k, group.label)`
+// → el NodeResolver resuelve `channelValues[chDef.type]`, así que 'Extras'
+// era una KEY MUERTA (nunca llegaba a DMX). El widget atmosférico escribe
+// contra `ch.type` real: 'smoke_pump', 'smoke_density', 'custom', …
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Tipos cuyo intent de gobernador es 'smoke'/'emission' (DMXGovernorEvaluator). */
+const EMISSION_CHANNEL_TYPES = new Set<string>([
+  'smoke_pump',
+  'smoke_density',
+  'emission_gate',
+])
+
+/**
+ * Heurística de rescate: un canal `custom` cuyo nombre sugiere emisión
+ * ('Smoke', 'Fog Output', 'Pump'… configurado en el Channel Rack) se trata
+ * como canal de emisión aunque su type sea 'custom'.
+ */
+const EMISSION_NAME_RE = /smoke|fog|haze|pump|emissi/i
+
+/** Etiquetas por defecto para tipos de canal atmosféricos. */
+const ATMOSPHERE_CHANNEL_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  smoke_pump:    'Smoke',
+  smoke_density: 'Density',
+  fan_speed:     'Fan',
+  emission_gate: 'Emission',
+  fire_valve:    'Valve',
+  fire_ignite:   'Ignite',
+  macro:         'Macro',
+  effect:        'Effect',
+  sound_active:  'Sound',
+  auto:          'Auto',
+  control:       'Control',
+  custom:        'Custom',
+})
+
+/**
+ * Construye los `AtmosphereChannelRef` de un nodo ATMOSPHERE.
+ * Deduplica por `key` — dos canales `custom` colapsan a una sola escritura
+ * porque el resolver backend es por tipo (limitación preexistente).
+ */
+function buildAtmosphereChannelRefs(node: ICapabilityNode): AtmosphereChannelRef[] {
+  const seen = new Set<string>()
+  const refs: AtmosphereChannelRef[] = []
+  for (const ch of node.channels) {
+    const key = ch.type
+    if (seen.has(key)) continue
+    seen.add(key)
+    const customLabel = ch.customName
+    const isEmission = EMISSION_CHANNEL_TYPES.has(key)
+      || (key === 'custom' && !!customLabel && EMISSION_NAME_RE.test(customLabel))
+    refs.push({
+      key,
+      label: customLabel ?? ATMOSPHERE_CHANNEL_LABELS[key] ?? key.replace(/_/g, ' '),
+      dmxOffset: ch.dmxOffset,
+      ...(isEmission ? { isEmission: true } : {}),
+    })
+  }
+  return refs
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CORE: Mapea ICapabilityNode[] → CellDescriptor[]
 // ─────────────────────────────────────────────────────────────────────────────
@@ -221,6 +359,16 @@ function capabilityNodesToDescriptors(
       }
     }
 
+    // 🌫️ WAVE 8412: Para nodos ATMOSPHERE, propagar la identidad de canal
+    // (chDef.type) y el atmosType del dispositivo — el widget fog los usa
+    // para escribir keys reales y decidir la tarjeta dedicada.
+    let atmosphereChannels: readonly AtmosphereChannelRef[] | undefined
+    let atmosType: string | undefined
+    if (family === NodeFamily.ATMOSPHERE) {
+      atmosphereChannels = Object.freeze(buildAtmosphereChannelRefs(node))
+      atmosType = (node as IAtmosphereNodeData).atmosType
+    }
+
     descriptors.push({
       cellKey,
       family,
@@ -234,6 +382,8 @@ function capabilityNodesToDescriptors(
       ...(embeddedImpactChannels && embeddedImpactChannels.size > 0
         ? { embeddedImpactChannels: Object.freeze(embeddedImpactChannels) as ReadonlySet<EmbeddedImpactChannelType> }
         : {}),
+      ...(atmosphereChannels && atmosphereChannels.length > 0 ? { atmosphereChannels } : {}),
+      ...(atmosType !== undefined ? { atmosType } : {}),
     })
   }
 
@@ -333,7 +483,16 @@ export function useCapabilityCells(selectedIds: readonly string[]): DeviceCells[
 
       // NodeExtractionPipeline produce los mismos ICapabilityNode[] que Aether backend
       const deviceDef = pipeline.extract(fixtureDef, stageFix)
-      const descriptors = capabilityNodesToDescriptors(fixtureId, deviceDef.nodes)
+      let descriptors = capabilityNodesToDescriptors(fixtureId, deviceDef.nodes)
+
+      // 🌫️ WAVE 8414 — FOG UI EXORCISM: purga de acordeones lumínicos.
+      // Una máquina de humo/pyro/mirror-ball no debe mostrar INTENSITY,
+      // COLOR ni BEAM — solo su widget atmosférico (+ KINETIC legítimo).
+      if (NON_PHOTONIC_FIXTURE_TYPES.has(stageFix.type ?? '')) {
+        descriptors = descriptors.filter(
+          d => !NON_PHOTONIC_PURGED_FAMILIES.has(d.family)
+        )
+      }
 
       result.push({
         deviceId: fixtureId as DeviceId,
@@ -423,6 +582,8 @@ export function useAggregatedCapabilityCells(
       nodeIds: NodeId[]
       deviceSet: Set<DeviceId>
       embeddedImpactChannels: Set<EmbeddedImpactChannelType>
+      atmosphereChannelMap: Map<string, AtmosphereChannelRef>
+      atmosTypeSet: Set<string>
     }
 
     const groups = new Map<string, MutableGroup>()
@@ -441,6 +602,8 @@ export function useAggregatedCapabilityCells(
             nodeIds: [],
             deviceSet: new Set(),
             embeddedImpactChannels: new Set<EmbeddedImpactChannelType>(),
+            atmosphereChannelMap: new Map(),
+            atmosTypeSet: new Set(),
           }
           groups.set(groupKey, entry)
           groupOrder.push(groupKey)
@@ -456,6 +619,15 @@ export function useAggregatedCapabilityCells(
             entry.embeddedImpactChannels.add(ch)
           }
         }
+        // 🌫️ WAVE 8412: unión deduplicada de canales atmosféricos + atmosTypes.
+        if (cell.atmosphereChannels) {
+          for (const ref of cell.atmosphereChannels) {
+            if (!entry.atmosphereChannelMap.has(ref.key)) {
+              entry.atmosphereChannelMap.set(ref.key, ref)
+            }
+          }
+        }
+        if (cell.atmosType) entry.atmosTypeSet.add(cell.atmosType)
       }
     }
 
@@ -463,6 +635,8 @@ export function useAggregatedCapabilityCells(
     for (const groupKey of groupOrder) {
       const e = groups.get(groupKey)!
       const hasEmbedded = e.embeddedImpactChannels.size > 0
+      const hasAtmosChannels = e.atmosphereChannelMap.size > 0
+      const hasAtmosTypes = e.atmosTypeSet.size > 0
       result.push({
         groupKey,
         family: e.family,
@@ -474,6 +648,12 @@ export function useAggregatedCapabilityCells(
         deviceCount: e.deviceSet.size,
         ...(hasEmbedded
           ? { embeddedImpactChannels: Object.freeze(e.embeddedImpactChannels) as ReadonlySet<EmbeddedImpactChannelType> }
+          : {}),
+        ...(hasAtmosChannels
+          ? { atmosphereChannels: Object.freeze([...e.atmosphereChannelMap.values()]) }
+          : {}),
+        ...(hasAtmosTypes
+          ? { atmosTypes: Object.freeze([...e.atmosTypeSet]) }
           : {}),
       })
     }

@@ -17,7 +17,7 @@
  */
 
 import { useMemo } from 'react'
-import type { AggregatedCellGroup, CellKey, NodeId, EmbeddedImpactChannelType } from '../stores/programmer-types'
+import type { AggregatedCellGroup, AtmosphereChannelRef, CellKey, NodeId, EmbeddedImpactChannelType } from '../stores/programmer-types'
 import { useCapabilityCells } from './useCapabilityCells'
 
 export function useAggregatedCapabilityCells(selectedIds: readonly string[]): AggregatedCellGroup[] {
@@ -34,6 +34,9 @@ export function useAggregatedCapabilityCells(selectedIds: readonly string[]): Ag
       nodeIds:   NodeId[]
       deviceIds: Set<string>
       embeddedImpactChannels: Set<EmbeddedImpactChannelType>
+      // 🌫️ WAVE 8412: unión deduplicada por key + atmosTypes del grupo.
+      atmosphereChannelMap: Map<string, AtmosphereChannelRef>
+      atmosTypeSet: Set<string>
     }
 
     // Map preserva orden de inserción = primer-aparece-primero
@@ -52,6 +55,8 @@ export function useAggregatedCapabilityCells(selectedIds: readonly string[]): Ag
             nodeIds:   [],
             deviceIds: new Set(),
             embeddedImpactChannels: new Set(),
+            atmosphereChannelMap: new Map(),
+            atmosTypeSet: new Set(),
           }
           map.set(sig, entry)
         }
@@ -64,6 +69,15 @@ export function useAggregatedCapabilityCells(selectedIds: readonly string[]): Ag
             entry.embeddedImpactChannels.add(ch)
           }
         }
+        // 🌫️ WAVE 8412: propagar canales atmosféricos + atmosType.
+        if (cell.atmosphereChannels) {
+          for (const ref of cell.atmosphereChannels) {
+            if (!entry.atmosphereChannelMap.has(ref.key)) {
+              entry.atmosphereChannelMap.set(ref.key, ref)
+            }
+          }
+        }
+        if (cell.atmosType) entry.atmosTypeSet.add(cell.atmosType)
       }
     }
 
@@ -81,6 +95,13 @@ export function useAggregatedCapabilityCells(selectedIds: readonly string[]): Ag
         // WAVE 4743: Incluir embeddedImpactChannels si existe
         ...(g.embeddedImpactChannels.size > 0 && {
           embeddedImpactChannels: Object.freeze(g.embeddedImpactChannels) as ReadonlySet<EmbeddedImpactChannelType>
+        }),
+        // 🌫️ WAVE 8412: incluir canales atmosféricos + atmosTypes si existen
+        ...(g.atmosphereChannelMap.size > 0 && {
+          atmosphereChannels: Object.freeze([...g.atmosphereChannelMap.values()]) as readonly AtmosphereChannelRef[]
+        }),
+        ...(g.atmosTypeSet.size > 0 && {
+          atmosTypes: Object.freeze([...g.atmosTypeSet]) as readonly string[]
         }),
       })
     }

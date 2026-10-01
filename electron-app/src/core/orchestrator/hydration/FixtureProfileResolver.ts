@@ -211,7 +211,31 @@ export class FixtureProfileResolver {
       case 'control':
       case 'rotation':
       case 'custom':
+      // 🌫️ WAVE 8415: canales atmosféricos del Channel Rack básico — antes
+      // caían a 'unknown' y la key de escritura (chDef.type) quedaba muerta.
+      case 'smoke_pump':
+      case 'smoke_density':
+      case 'fan_speed':
+      case 'fire_valve':
+      case 'fire_ignite':
+      case 'emission_gate':
         return normalized
+      // Intents crudos → canonicalización gemela de CHANNEL_TYPE_ALIASES
+      // (NodeExtractionPipeline). Ambos extremos acuerdan el mismo tipo.
+      case 'smoke':
+      case 'fog':
+      case 'haze':
+        return 'smoke_pump'
+      case 'density':
+        return 'smoke_density'
+      case 'fire':
+      case 'flame':
+        return 'fire_valve'
+      case 'ignite':
+      case 'ignition':
+        return 'fire_ignite'
+      case 'emission':
+        return 'emission_gate'
       default:
         return 'unknown'
     }
@@ -225,6 +249,12 @@ export class FixtureProfileResolver {
     if (normalizedName.includes('strobe')) return 'strobe'
     if (normalizedName.includes('pan')) return 'pan'
     if (normalizedName.includes('tilt')) return 'tilt'
+    // 🌫️ WAVE 8415: intents atmosféricos por nombre ('Smoke', 'Fog Output'…)
+    if (normalizedName.includes('smoke') || normalizedName.includes('fog') || normalizedName.includes('haze')) return 'smoke_pump'
+    if (normalizedName.includes('fire') || normalizedName.includes('flame')) return 'fire_valve'
+    if (normalizedName.includes('ignit')) return 'fire_ignite'
+    if (normalizedName.includes('emissi')) return 'emission_gate'
+    if (normalizedName.includes('fan')) return 'fan_speed'
     if (normalizedName === 'red' || normalizedName.includes(' red')) return 'red'
     if (normalizedName === 'green' || normalizedName.includes(' green')) return 'green'
     if (normalizedName === 'blue' || normalizedName.includes(' blue')) return 'blue'

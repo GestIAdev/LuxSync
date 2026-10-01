@@ -28,6 +28,14 @@ const ZONE_MAP = {
     'LASER': 'effects', 'UV': 'effects',
 };
 const DMX_OUTPUT_ZEROS = Object.freeze(new Array(512).fill(0));
+// 🌫️ WAVE 8416: tipos de fixture no-fotónicos. Su FixtureState.dimmer solo
+// porta EMISIÓN real (clamp del projector). El peak-hold captura dimmer
+// PRE-proyección (telemetría legada en fixtures sin nodos) → se excluyen
+// para no reintroducir el bleed en el truth feed a 11Hz. 'fan' fuera:
+// el Tungsten multicelular declara type='fan'.
+const ATMOSPHERIC_FIXTURE_TYPES = new Set([
+    'fog', 'haze', 'smoke', 'pyro', 'spark', 'sparker', 'mirror-ball', 'snow', 'bubble',
+]);
 // 🔮 WAVE 8227 · E1: mapas string→enum para el slot ENUMS del anillo Euclid.
 // Claves = strings internos de Selene/Cassandra; valores = códigos del
 // blueprint §2.3 (prediction_type / hunt_state / energy_zone). Módulo-estáticos:
@@ -232,15 +240,21 @@ export class TickEngine {
             p[S.BEAT_PHASE] = m.beatPhase;
             p[S.BAR_PHASE] = ((m.beatCount % 4) + m.beatPhase) / 4;
             p[S.BEAT_CONFIDENCE] = m.beatConfidence;
-            p[S.ENERGY] = m.energy;
-            // GODEAR — 7 bandas tácticas (post-AGC)
-            p[S.SUB_BASS] = m.subBass;
-            p[S.BASS] = m.bass;
-            p[S.LOW_MID] = m.lowMid;
-            p[S.MID] = m.mid;
-            p[S.HIGH_MID] = m.highMid;
-            p[S.TREBLE] = m.high;
-            p[S.ULTRA_AIR] = ad?.ultraAir ?? 0;
+            // 🌊 WAVE 8418-B — POST-VIBE ROUTING: las bandas canónicas consumen los
+            // envelopes GATEADOS del LiquidEngine (los mismos valores que conducen el
+            // rig físico), no el FFT crudo post-AGC. Si el engine cierra su compuerta
+            // (silencio real / noise floor), los slots reciben 0.0 matemático real —
+            // paridad luces↔pantallas nativa. pt = null (engine stale >500 ms) → ceros.
+            const pt = this._euclidPhys;
+            p[S.ENERGY] = pt === null ? 0 : Math.max(pt.zFrontL, pt.zFrontR, pt.zBackL, pt.zBackR, pt.zMoverL, pt.zMoverR, pt.zSnareAttack, lf?.floorIntensity ?? 0, lf?.ambientIntensity ?? 0, lf?.airIntensity ?? 0);
+            // GODEAR→LIQUID — 7 bandas tácticas post-Vibe (outputs de envelope):
+            p[S.SUB_BASS] = pt?.zFrontL ?? 0;
+            p[S.BASS] = pt?.zFrontR ?? 0;
+            p[S.LOW_MID] = pt?.cleanMid ?? 0;
+            p[S.MID] = pt?.zMoverR ?? 0;
+            p[S.HIGH_MID] = pt?.zBackL ?? 0;
+            p[S.TREBLE] = pt?.zMoverL ?? 0;
+            p[S.ULTRA_AIR] = pt === null ? 0 : (lf?.airIntensity ?? 0);
             // GODEAR — métricas perceptuales
             p[S.CENTROID_N] = Math.min(1, Math.max(0, m.spectralCentroid / 8000));
             p[S.FLATNESS] = m.spectralFlatness;
@@ -251,10 +265,11 @@ export class TickEngine {
             p[S.SATURATION] = photon?.saturation ?? 0;
             p[S.CHROMA_HUE] = photon?.hue ?? 0;
             p[S.CHROMA_FLUX] = photon?.chromaFlux ?? 0;
-            // RITMO
-            p[S.KICK_ENERGY] = Math.max(0, m.bass - m.lowMid * 0.4);
-            p[S.SNARE_ENERGY] = rhythmic?.snare_energy ?? 0;
-            p[S.HIHAT_ENERGY] = rhythmic?.hh_energy ?? 0;
+            // RITMO — 🌊 WAVE 8418-B: post-Vibe — las energías de golpe son los
+            // envelopes gateados (kick/snare/highMid), no los agregados crudos.
+            p[S.KICK_ENERGY] = pt?.zFrontR ?? 0;
+            p[S.SNARE_ENERGY] = pt?.zBackR ?? 0;
+            p[S.HIHAT_ENERGY] = pt?.zBackL ?? 0;
             p[S.SYNCOPATION] = ctx?.syncopation ?? 0;
             // SELENE / CASSANDRA
             p[S.SEL_CONFIDENCE] = sel.confidence;
@@ -292,8 +307,8 @@ export class TickEngine {
             p[S.ABS_BEAT_TIME] = this._masterClock.beatTime;
             // ── 🌊 PÁGINA B (64-92) — WAVE 8279 · F3: física Liquid + GodEar ──
             // `pt` = referencia viva al physicsTel del engine activo (o null si
-            // stale >500 ms → ceros). Todo escalar, cero allocs, §2.2.
-            const pt = this._euclidPhys;
+            // stale >500 ms → ceros) — declarado arriba para el routing 8418-B.
+            // Todo escalar, cero allocs, §2.2.
             // VOCAL — u_vocalVec = u_tel4[15]
             p[S.VOCAL_SUSTAIN] = pt?.vocalSustain ?? 0;
             p[S.VOCAL_ISOLATION] = pt?.vocalIsolation ?? 0;
@@ -1381,6 +1396,10 @@ export class TickEngine {
                 const _f = fixtureStates[_pi];
                 if (!_f)
                     continue; // WAVE 7749.77: skip holes from unpatched/virtual fixtures
+                // 🌫️ WAVE 8416: los ingenios no acumulan peak — su dimmer
+                // pre-proyección puede ser telemetría legada, no emisión.
+                if (ATMOSPHERIC_FIXTURE_TYPES.has((_f.type ?? '').toLowerCase()))
+                    continue;
                 const _id = this.fixtures[_pi]?.id;
                 if (!_id)
                     continue;
@@ -1888,7 +1907,10 @@ export class TickEngine {
                 }
                 const _mappedZone = ZONE_MAP[_f.zone] || _f.zone || 'center';
                 let _broadcastDimmer;
-                if (chronosPlaying) {
+                // 🌫️ WAVE 8416: un ingenio nunca reporta "pico" — su dimmer ya
+                // es emisión pura post-clamp. El peak sería telemetría legada.
+                const _isAtmo = ATMOSPHERIC_FIXTURE_TYPES.has((_f.type ?? '').toLowerCase());
+                if (chronosPlaying || _isAtmo) {
                     _broadcastDimmer = _f.dimmer;
                 }
                 else {
@@ -2193,7 +2215,10 @@ export class TickEngine {
             flags |= 1 << TEL_FLAG.KICK;
         if (lf?.isKickEdge)
             flags |= 1 << TEL_FLAG.KICK_EDGE;
-        if (m.snareDetected)
+        // 🌊 WAVE 8418-B — post-Vibe: el flanco SNARE nace del onset gateado del
+        // engine (snareMacdOnset — detector MACD con fallback crack), no del
+        // crudo del worker — el ruido de fondo ya no dispara u_snarePulse.
+        if (pt?.snareMacdOnset)
             flags |= 1 << TEL_FLAG.SNARE;
         if (m.hihatDetected)
             flags |= 1 << TEL_FLAG.HIHAT;

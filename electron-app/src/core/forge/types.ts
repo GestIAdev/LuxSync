@@ -278,6 +278,26 @@ export interface IOutputDmxConfig {
    * Permite rutar petal-l/c/r a 'flash', wash a 'ambient', etc.
    */
   readonly aetherZone?: string
+  /**
+   * 🌗 WAVE 8411-B: MAX VIRTUAL DIMMER — techo [0.0-1.0] sobre el dimmer
+   * virtual del capability node resultante. Cuando varios output_dmx del
+   * mismo aetherNodeId lo declaran, gana el valor MÁS BAJO (el más
+   * estricto). Pensado para celdas de color huérfanas de dimmer físico
+   * (p.ej. beam RGBW con lente colimadora): el cap clampea el
+   * multiplicador `virtualDim` en NodeResolver antes de escalar los
+   * canales — atenuación proporcional, hue preservado.
+   */
+  readonly maxVirtualDim?: number
+  /**
+   * 🌗 WAVE 8411-E: MIN VIRTUAL DIMMER — suelo [0.0-1.0] del dimmer virtual.
+   * Cuando está definido, el rango activo del virtualDim (0,1] se REMAPEA a
+   * [floor, cap] en lugar de clampearse: el recorrido completo del control
+   * barre la banda visible del hardware (fixtures con deadzone de driver,
+   * p.ej. LEDs que no emiten bajo ~80 DMX). virtualDim=0 sigue siendo
+   * blackout absoluto. Cuando varios output_dmx de la celda lo declaran,
+   * gana el valor MÁS ALTO (el suelo más estricto). Se clampea a ≤ cap.
+   */
+  readonly minVirtualDim?: number
 }
 
 export interface ICompoundIngenioConfig {

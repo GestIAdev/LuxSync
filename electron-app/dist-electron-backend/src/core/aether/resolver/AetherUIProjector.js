@@ -47,6 +47,23 @@ function isAtmosphericZone(zoneId) {
     const z = zoneId.toLowerCase().trim();
     return ATMOSPHERIC_ZONES.has(z);
 }
+// 🌫️ WAVE 8416 — ATMOSPHERIC TELEMETRY DECOUPLING
+// Keys que cuentan como EMISIÓN real en un nodo ATMOSPHERE (el icono del
+// canvas solo debe responder a esto — nunca a dimmer/rgb rítmicos).
+// Incluye intents crudos ('smoke','fire','emission') que un writer pueda
+// dejar en el mapa arbitrado aunque no resuelvan a DMX.
+const ATMOSPHERE_EMISSION_KEYS = [
+    'smoke_pump', 'smoke_density', 'fan_speed',
+    'fire_valve', 'fire_ignite', 'emission_gate',
+    'smoke', 'fire', 'emission',
+];
+/** Canal 'custom' con nombre de emisión ('Smoke', 'Fog Output'…). */
+const ATMO_EMISSION_NAME_RE = /smoke|fog|haze|pump|emissi|flame|spark/i;
+// Tipos de fixture no-fotónicos: su icono táctico solo refleja emisión real.
+// 'fan' queda FUERA a propósito — el Tungsten multicelular declara type='fan'.
+const ATMOSPHERIC_FIXTURE_TYPES = new Set([
+    'fog', 'haze', 'smoke', 'pyro', 'spark', 'sparker', 'mirror-ball', 'snow', 'bubble',
+]);
 export class AetherUIProjector {
     constructor() {
         /**
@@ -81,9 +98,20 @@ export class AetherUIProjector {
             const deviceId = fixture.fixtureId;
             if (!deviceId)
                 continue;
+            // 🌫️ WAVE 8416: fixtures atmosféricos — clamp absoluto post-loop.
+            // atmoEmission acumula la emisión real de sus nodos :atmosphere;
+            // la fotónica de nodos IMPACT fantasma o del path legado se
+            // descarta al final — el projector es el último escritor del frame.
+            const isAtmoFixture = ATMOSPHERIC_FIXTURE_TYPES.has((fixture.type ?? '').toLowerCase().trim());
+            let atmoEmission = 0;
             const nodeIds = graph.getDeviceNodes(deviceId);
-            if (!nodeIds || nodeIds.length === 0)
+            if (!nodeIds || nodeIds.length === 0) {
+                // Ingenio huérfano (rack sin grafo): su única verdad visual es
+                // el canal phantom/safety — el clamp mata el dimmer legado.
+                if (isAtmoFixture)
+                    this._clampAtmosphericFixture(fixture, 0);
                 continue;
+            }
             // 🌊 WAVE 4695: Pre-scan — does this device own at least one IMPACT node?
             // When yes, the IMPACT path handles luminance via fixture.dimmer and the
             // renderer scales color by it (HDR boost path). Scaling r/g/b by brightness
@@ -139,6 +167,30 @@ export class AetherUIProjector {
                         fixture.tilt = tiltDmx;
                         fixture.physicalPan = panDmx;
                         fixture.physicalTilt = tiltDmx;
+                    }
+                    continue;
+                }
+                // 🌫️ WAVE 8416: ATMOSPHERE — TELEMETRÍA DESACOPLADA.
+                // Este nodo NUNCA proyecta fotónica (dimmer/rgb/white/amber/uv):
+                // adapters L0/L1 pueden escribir esas keys por broadcast zonal y el
+                // duck-typing las filtraba al canvas → el icono del fog pulsaba con
+                // el beat aunque la bomba estuviera a 0. Solo se proyecta la EMISIÓN
+                // real a `fixture.dimmer` (métrica de encendido del icono — sin
+                // efecto DMX: un ingenio no declara canal 'dimmer').
+                if (node.family === NodeFamily.ATMOSPHERE) {
+                    const ch = arbitrated.get(nodeId);
+                    if (ch) {
+                        for (let k = 0; k < ATMOSPHERE_EMISSION_KEYS.length; k++) {
+                            const v = ch[ATMOSPHERE_EMISSION_KEYS[k]];
+                            if (v !== undefined && v > atmoEmission)
+                                atmoEmission = v;
+                        }
+                        const customVal = ch['custom'];
+                        if (customVal !== undefined && customVal > atmoEmission) {
+                            const hasEmissionName = node.channels.some(c => c.type === 'custom' && !!c.customName && ATMO_EMISSION_NAME_RE.test(c.customName));
+                            if (hasEmissionName)
+                                atmoEmission = customVal;
+                        }
                     }
                     continue;
                 }
@@ -238,11 +290,64 @@ export class AetherUIProjector {
                     fixture.uv = Math.max(fixture.uv, toDmx(uvNorm * strobeMask));
                 }
             }
+            // 🌫️ WAVE 8416 — ATMOSPHERIC CLAMP: el projector es el ÚLTIMO
+            // escritor de FixtureState antes del pack Glass — barrera
+            // matemática absoluta. Fotónica proyectada (IMPACT fantasma,
+            // path legado) se descarta: dimmer/rgb/sub-zonas := emisión/0.
+            if (isAtmoFixture) {
+                this._clampAtmosphericFixture(fixture, atmoEmission);
+            }
+            else if (atmoEmission > 0) {
+                fixture.dimmer = Math.max(fixture.dimmer, toDmx(atmoEmission));
+            }
             // WAVE 4822: Blackout eliminado del proyector UI.
             // La Aduana de hardware vive en HAL.sendToDriver() (WAVE 3160) y opera
             // exclusivamente en la capa de bytes DMX, sin mutar FixtureState.
             // El simulador Canvas 2D/3D SIEMPRE recibe el estado combinado real
             // (L0 + L1 + L2) para permitir pre-programación a ciegas (Blind Mode).
         }
+    }
+    /**
+     * 🌫️ WAVE 8416 — CLAMP ATMOSFÉRICO: el único escalar que puede alterar
+     * el icono es la emisión real: nodos :atmosphere, phantomChannels (path
+     * huérfano setExtra → IPC → byte DMX real), safetyChannels (L4) y
+     * rotation (motor de mirror-ball). Fotónica → 0. Emisión 0 → roca inerte.
+     */
+    _clampAtmosphericFixture(fixture, nodeEmission) {
+        let emission = nodeEmission;
+        const ph = fixture.phantomChannels;
+        if (ph) {
+            for (let k = 0; k < ATMOSPHERE_EMISSION_KEYS.length; k++) {
+                const v = ph[ATMOSPHERE_EMISSION_KEYS[k]];
+                if (typeof v === 'number' && Number.isFinite(v) && v / DMX_MAX > emission) {
+                    emission = v / DMX_MAX;
+                }
+            }
+        }
+        const sc = fixture.safetyChannels;
+        if (sc) {
+            for (let k = 0; k < ATMOSPHERE_EMISSION_KEYS.length; k++) {
+                const v = sc[ATMOSPHERE_EMISSION_KEYS[k]];
+                if (typeof v === 'number' && Number.isFinite(v) && v / DMX_MAX > emission) {
+                    emission = v / DMX_MAX;
+                }
+            }
+        }
+        const rot = fixture.rotation ?? 0;
+        if (rot / DMX_MAX > emission)
+            emission = rot / DMX_MAX;
+        fixture.dimmer = toDmx(emission);
+        fixture.r = 0;
+        fixture.g = 0;
+        fixture.b = 0;
+        fixture.rAmbient = 0;
+        fixture.gAmbient = 0;
+        fixture.bAmbient = 0;
+        fixture.rAir = 0;
+        fixture.gAir = 0;
+        fixture.bAir = 0;
+        fixture.rStrobe = 0;
+        fixture.gStrobe = 0;
+        fixture.bStrobe = 0;
     }
 }

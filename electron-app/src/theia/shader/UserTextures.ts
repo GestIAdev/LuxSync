@@ -6,8 +6,8 @@
  *
  *     // @euclid tex0 logo-mg
  *
- * El motor la decodifica UNA vez (data-URI inlined por Vite → sin fetch de
- * red ni CORS bajo file://), la sube a la unidad TEXTURE3 y publica:
+ * El motor la decodifica UNA vez (data-URI embebido en código → sin fetch de
+ * red ni CORS ni `new URL` bajo file://), la sube a la unidad TEXTURE3 y publica:
  *
  *     uniform sampler2D u_tex0;   // RGBA premultiplicada, mipmapped
  *     uniform float     u_hasTex0; // 1.0 cuando la textura está lista
@@ -30,14 +30,19 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import logoMgUrl from './textures/logo-mg.png?inline'
+// WAVE 8417 — NO usar `?inline`/`?url` aquí: dentro del bundle del worker
+// emiten `new URL(..., self.location.href)` y el import.meta.url de un Blob
+// worker bajo file:// es inválido → crash al evaluar el módulo → crash loop.
+// El data-URI embebido no toca el asset pipeline y funciona idéntico en
+// worker (blob:) y main thread (file://).
+import { LOGO_MG_DATA_URI } from './textures/logoMg'
 
 /** Unidad de textura reservada para `u_tex0` (0=prev 1=flash 2=state). */
 export const USER_TEX0_UNIT = 3
 
 /** Nombre de cabecera → data-URI. Añadir aquí nuevas texturas de pack. */
 const USER_TEXTURE_SOURCES: Readonly<Record<string, string>> = {
-  'logo-mg': logoMgUrl,
+  'logo-mg': LOGO_MG_DATA_URI,
 }
 
 export function hasUserTexture(name: string): boolean {

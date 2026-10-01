@@ -15,6 +15,10 @@
  * │ ZOOM  Wash   FOCUS  Sharp      │  ← Optics (solo movers)
  * │ DMX  @089                       │  ← Dirección DMX
  * └─────────────────────────────────┘
+ *
+ * 🌫️ WAVE 8412: type 'fog' (ingenios atmosféricos: fog/pyro/mirror-ball)
+ *   → icono 🌫️, sin DIM, sin RGB — la máquina no emite luz. En su lugar
+ *   una fila SMOKE con el nivel de emisión manual del programmer.
  * 
  * @module components/hyperion/widgets/FixtureTooltip
  * @since WAVE 2042.4 (Project Hyperion — Phase 2)
@@ -37,8 +41,8 @@ export interface FixtureTooltipData {
   /** Nombre display (ej: "PAR 01") */
   name: string
   
-  /** Tipo de fixture */
-  type: 'moving-head' | 'par' | 'wash' | 'strobe' | 'laser' | 'blinder' | 'generic'
+  /** Tipo de fixture. 'fog' = ingenio atmosférico (fog/pyro/mirror-ball, WAVE 8412) */
+  type: 'moving-head' | 'par' | 'wash' | 'strobe' | 'laser' | 'blinder' | 'generic' | 'fog'
   
   /** Zona canónica */
   zone: CanonicalZone
@@ -69,6 +73,13 @@ export interface FixtureTooltipData {
   
   /** ¿Tiene override manual? */
   hasOverride: boolean
+
+  /**
+   * 🌫️ WAVE 8412: Nivel de emisión atmosférica (0-1) — solo type 'fog'.
+   * Fuente: override manual del nodo `:atmosphere` en programmerStore
+   * (la telemetría live de phantomChannels no llega al renderer todavía).
+   */
+  smoke?: number
 }
 
 export interface FixtureTooltipProps {
@@ -100,6 +111,7 @@ function getFixtureIcon(type: FixtureTooltipData['type']): string {
     case 'strobe': return '⚡'
     case 'laser': return '✨'
     case 'blinder': return '☀️'
+    case 'fog': return '🌫️'
     default: return '○'
   }
 }
@@ -113,6 +125,7 @@ function getFixtureTypeLabel(type: FixtureTooltipData['type']): string {
     case 'strobe': return 'Strobe'
     case 'laser': return 'Laser'
     case 'blinder': return 'Blinder'
+    case 'fog': return 'Atmosphere FX'
     default: return 'Fixture'
   }
 }
@@ -175,11 +188,16 @@ export function FixtureTooltip({
     focus,
     selected,
     hasOverride,
+    smoke,
   } = data
 
   const intensityPercent = Math.round(intensity * 100)
   const isOff = intensity < 0.01
   const showMoverData = isMover(type)
+  // 🌫️ WAVE 8412: los ingenios atmosféricos no emiten luz — DIM/RGB son
+  // controles engañosos (el fallback a PAR que esta wave elimina).
+  const isAtmospheric = type === 'fog'
+  const smokePercent = Math.round((smoke ?? 0) * 100)
   const fixtureColor = rgbToHex(color.r, color.g, color.b)
   const zoneColor = ZONE_COLORS[zone]
   const zoneLabel = ZONE_LABELS[zone]
@@ -264,29 +282,44 @@ export function FixtureTooltip({
         <span className="tooltip-zone-badge">{zoneLabel}</span>
       </div>
 
-      {/* Intensity Bar */}
-      <div className="tooltip-intensity-row">
-        <span className="tooltip-label">DIM</span>
-        <div className="tooltip-dim-bar">
-          <div 
-            className="tooltip-dim-fill" 
-            style={{ width: `${intensityPercent}%` }} 
-          />
+      {/* Intensity Bar — los atmosféricos muestran SMOKE en lugar de DIM/RGB */}
+      {isAtmospheric ? (
+        <div className="tooltip-intensity-row">
+          <span className="tooltip-label">SMOKE</span>
+          <div className="tooltip-dim-bar">
+            <div
+              className="tooltip-dim-fill"
+              style={{ width: `${smokePercent}%` }}
+            />
+          </div>
+          <span className="tooltip-dim-value">{smokePercent}%</span>
         </div>
-        <span className="tooltip-dim-value">{intensityPercent}%</span>
-      </div>
+      ) : (
+        <>
+          <div className="tooltip-intensity-row">
+            <span className="tooltip-label">DIM</span>
+            <div className="tooltip-dim-bar">
+              <div 
+                className="tooltip-dim-fill" 
+                style={{ width: `${intensityPercent}%` }} 
+              />
+            </div>
+            <span className="tooltip-dim-value">{intensityPercent}%</span>
+          </div>
 
-      {/* Color Row */}
-      <div className="tooltip-color-row">
-        <span className="tooltip-label">RGB</span>
-        <div className="tooltip-color-values">
-          <span>({color.r}, {color.g}, {color.b})</span>
-        </div>
-        <div 
-          className="tooltip-color-swatch" 
-          style={{ backgroundColor: fixtureColor }}
-        />
-      </div>
+          {/* Color Row */}
+          <div className="tooltip-color-row">
+            <span className="tooltip-label">RGB</span>
+            <div className="tooltip-color-values">
+              <span>({color.r}, {color.g}, {color.b})</span>
+            </div>
+            <div 
+              className="tooltip-color-swatch" 
+              style={{ backgroundColor: fixtureColor }}
+            />
+          </div>
+        </>
+      )}
 
       {/* Position Row (solo movers) */}
       {showMoverData && pan !== undefined && tilt !== undefined && (

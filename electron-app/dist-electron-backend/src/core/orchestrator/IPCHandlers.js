@@ -18,6 +18,7 @@ import { getTrinity } from '../../workers/TrinityOrchestrator';
 import { liquidEngine41, liquidEngine71 } from '../../hal/physics';
 import { TickEngine } from './tick/TickEngine';
 import { NodeGraphBuilder } from '../forge/NodeGraphBuilder';
+import { upsertRuntimeFixtureDefinition } from '../library/RuntimeFixtureLibrary';
 // 🌊 WAVE 8215 — Glass Bridge telemetry pump (transferable ping-pong)
 import { TheiaTelemetryPump } from '../../theia/TheiaTelemetryPump';
 // âš’ï¸ WAVE 2030.18: Singleton runtime for .lfx execution
@@ -1089,6 +1090,12 @@ function setupFixtureHandlers(deps) {
             const edgeCount = Array.isArray(payload?.nodeGraph?.edges) ? payload.nodeGraph.edges.length : 0;
             const channelCount = Array.isArray(payload.channels) ? payload.channels.length : 0;
             console.log(`[FORGE] Saved: ${filePath} | nodes=${nodeCount} edges=${edgeCount} channels=${channelCount}`);
+            // WAVE 8411-D: Refresh the backend runtime library BEFORE the hot-reload
+            // event fires. FixtureHydrationEngine resolves nodeGraph via
+            // resolveRuntimeFixtureDefinition → this Map — not from disk. Without the
+            // upsert, Forge saves only reach capability extraction on app restart
+            // or a full library rescan (e.g. maxVirtualDim would never arrive).
+            upsertRuntimeFixtureDefinition(payload);
             // WAVE 2241: THE FORGE HOT-RELOAD
             safeWebSend(getMainWindow(), 'lux:profile:updated', payload);
             return { success: true, filePath, fixture: payload };

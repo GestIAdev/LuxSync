@@ -386,8 +386,8 @@ describe('⚡ LiquidEngine41', () => {
 
     it('should apply latino overrides41.envelopeHighMid.gateOn correctly', () => {
       const eng = new LiquidEngine41(LATINO_PROFILE)
-      // Override: gateOn = 0.55 (vs base 0.50)
-      expect(eng.profile.envelopeHighMid.gateOn).toBe(0.55)
+      // Override: gateOn = 0.11 (vs base 0.12) — WAVE 8410-B recalibración AGC-mid
+      expect(eng.profile.envelopeHighMid.gateOn).toBe(0.11)
     })
 
     it('should preserve base values when override is absent', () => {

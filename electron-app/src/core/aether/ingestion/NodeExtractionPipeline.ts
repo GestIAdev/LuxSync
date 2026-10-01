@@ -175,6 +175,22 @@ const ATMOSPHERE_FIXTURE_TYPES = new Set<string>([
   'fog', 'fan', 'pyro',
 ])
 
+/**
+ * 🌫️ WAVE 8415: alias de intents → tipos de canal canónicos.
+ * Ver _normalizeChannelType().
+ */
+const CHANNEL_TYPE_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  smoke:    'smoke_pump',
+  fog:      'smoke_pump',
+  haze:     'smoke_pump',
+  density:  'smoke_density',
+  fire:     'fire_valve',
+  flame:    'fire_valve',
+  ignite:   'fire_ignite',
+  ignition: 'fire_ignite',
+  emission: 'emission_gate',
+})
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTRAINT & CURVE DEFAULTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -654,7 +670,7 @@ export class NodeExtractionPipeline {
 
     // 2. Agrupar por aetherNodeId (con fallback inferido)
     // WAVE 4738: recopilamos el label custom del IForgeNode para propagar al profileMeta.
-    type ForgeGroup = { zone: ZoneId; nodes: OutputNode[]; customLabel?: string }
+    type ForgeGroup = { zone: ZoneId; nodes: OutputNode[]; customLabel?: string; maxVirtualDim?: number; minVirtualDim?: number }
     const groups = new Map<string, ForgeGroup>()
 
     for (const n of outputNodes) {
@@ -664,6 +680,18 @@ export class NodeExtractionPipeline {
         ? normalizeZoneId(cfg.aetherZone) as ZoneId
         : fallbackZone
 
+      // 🌗 WAVE 8411-B: si varios canales de la celda declaran
+      // maxVirtualDim, gana el MÁS BAJO — el techo más estricto manda.
+      const mvd = typeof cfg.maxVirtualDim === 'number' && Number.isFinite(cfg.maxVirtualDim)
+        ? cfg.maxVirtualDim
+        : undefined
+      // 🌗 WAVE 8411-E: si varios canales declaran minVirtualDim, gana el
+      // MÁS ALTO — el suelo más estricto garantiza que todos los canales
+      // de la celda superan su deadzone de hardware.
+      const mvdFloor = typeof cfg.minVirtualDim === 'number' && Number.isFinite(cfg.minVirtualDim)
+        ? cfg.minVirtualDim
+        : undefined
+
       const group = groups.get(suffix)
       if (group) {
         group.nodes.push(n)
@@ -672,9 +700,15 @@ export class NodeExtractionPipeline {
         if (!group.customLabel && n.profileMeta?.customLabel) {
           group.customLabel = n.profileMeta.customLabel
         }
+        if (mvd !== undefined && (group.maxVirtualDim === undefined || mvd < group.maxVirtualDim)) {
+          group.maxVirtualDim = mvd
+        }
+        if (mvdFloor !== undefined && (group.minVirtualDim === undefined || mvdFloor > group.minVirtualDim)) {
+          group.minVirtualDim = mvdFloor
+        }
       } else {
         // profileMeta.customLabel = nombre de célula user-defined; n.label = "CH1: dimmer" genérico.
-        groups.set(suffix, { zone, nodes: [n], customLabel: n.profileMeta?.customLabel ?? undefined })
+        groups.set(suffix, { zone, nodes: [n], customLabel: n.profileMeta?.customLabel ?? undefined, maxVirtualDim: mvd, minVirtualDim: mvdFloor })
       }
     }
 
@@ -691,10 +725,19 @@ export class NodeExtractionPipeline {
       )
       if (node) {
         // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
+        const labeled = group.customLabel
+          ? ({ ...node, profileMeta: { ...node.profileMeta, customLabel: group.customLabel } satisfies IProfileMetadata })
+          : node
+        // 🌗 WAVE 8411-B/E: inyectar cap y/o floor del dimmer virtual
+        // (ya resueltos a min()/max() en el agrupado).
         nodes.push(
-          group.customLabel
-            ? ({ ...node, profileMeta: { ...node.profileMeta, customLabel: group.customLabel } satisfies IProfileMetadata })
-            : node,
+          group.maxVirtualDim !== undefined || group.minVirtualDim !== undefined
+            ? ({
+                ...labeled,
+                ...(group.maxVirtualDim !== undefined && { maxVirtualDim: group.maxVirtualDim }),
+                ...(group.minVirtualDim !== undefined && { minVirtualDim: group.minVirtualDim }),
+              })
+            : labeled,
         )
       }
     }
@@ -1497,8 +1540,20 @@ export class NodeExtractionPipeline {
     return 0
   }
 
+  /**
+   * 🌫️ WAVE 8415 — canonicalización de intents atmosféricos crudos.
+   * El Channel Rack básico (sin Forja) puede persistir tipos libres como
+   * 'smoke', 'fire' o 'emission' — nombres de intent, no tipos de canal.
+   * Sin este alias caían en el void: ni ATMOSPHERE_CHANNEL_TYPES ni ninguna
+   * familia los reclamaba, y el canal quedaba sin nodo (panel vacío).
+   * El alias aquí — no en el resolver — hace que el MISMO tipo canónico
+   * llegue a chDef.type en frontend y backend, así la escritura
+   * channelValues['smoke_pump'] resuelve end-to-end.
+   */
   private _normalizeChannelType(type: string): string {
-    return typeof type === 'string' ? type.toLowerCase() : 'unknown'
+    if (typeof type !== 'string') return 'unknown'
+    const lower = type.toLowerCase()
+    return CHANNEL_TYPE_ALIASES[lower] ?? lower
   }
 
   private _detectMixingType(channels: readonly FixtureChannel[]): ColorMixingType {

@@ -36,7 +36,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useSelectedArray } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useLibraryStore } from '../../../stores/libraryStore'
-import { NodeFamily } from '../../../stores/programmer-types'
+import { NodeFamily, cellKeyDeviceId } from '../../../stores/programmer-types'
 import type { AggregatedCellGroup } from '../../../stores/programmer-types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +62,26 @@ export interface OrphanPhantom {
   readonly fixtureId: string
 }
 
+/**
+ * 🌫️ WAVE 8412+8415: Resultado clasificado por afinidad con el dispositivo.
+ *
+ *   - `atmosphereRows`: canales huérfanos de EMISIÓN/fluido (smoke_pump,
+ *     smoke_density, 'smoke' crudo, custom llamado "Fog Output"…) →
+ *     AtmosphereCard dedicada con slider + BURST (WAVE 8415: un ingenio
+ *     hecho en el Channel Rack sin Node Graph debe mostrar su widget).
+ *   - `phantomOnly`: canales huérfanos de fixtures SIN afinidad atmosférica
+ *     (zoom/prism sueltos, macros de movimiento…) → cajón EXTRAS.
+ *   - `deviceExtraRows`: canales huérfanos de fixtures que SÍ tienen nodo
+ *     `:atmosphere` o canales atmosféricos propios, pero cuyo offset no fue
+ *     absorbido — auxiliares, interlocks, macros del aparato de humo… →
+ *     cajón CONTROL & MACROS junto a la FogCard.
+ */
+export interface OrphanPhantomResult {
+  readonly atmosphereRows: readonly OrphanPhantom[]
+  readonly phantomOnly: readonly OrphanPhantom[]
+  readonly deviceExtraRows: readonly OrphanPhantom[]
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +90,36 @@ export interface OrphanPhantom {
  * Tipos de canal que se consideran "phantom" — NO los maneja ninguna Section
  * atomic (COLOR / IMPACT / BEAM / KINETIC).
  */
-const PHANTOM_TYPES = new Set(['custom', 'rotation', 'macro', 'speed', 'control'])
+const PHANTOM_TYPES = new Set([
+  'custom', 'rotation', 'macro', 'speed', 'control',
+  // 🌫️ WAVE 8415: tipos/intents atmosféricos. Los canónicos (smoke_pump,
+  // fire_valve…) normalmente son absorbidos por el nodo :atmosphere — la
+  // exclusión por dmxOffset evita doble-UI. Los crudos ('smoke', 'fire',
+  // 'emission') del Channel Rack básico no son reclamados por ninguna
+  // familia cuando el fixture no es de tipo atmosférico: sin esto el canal
+  // de humo quedaba INVISIBLE en el panel (bug WAVE 8415).
+  'smoke', 'smoke_pump', 'smoke_density', 'fan_speed', 'fog', 'haze',
+  'fire', 'fire_valve', 'fire_ignite', 'emission', 'emission_gate',
+])
+
+/**
+ * 🌫️ WAVE 8415: tipos de EMISIÓN/fluido — elegibles para la card dedicada
+ * (slider + BURST). Gemelo de EMISSION_CHANNEL_TYPES en useCapabilityCells.
+ */
+const ATMO_EMISSION_TYPES = new Set<string>([
+  'smoke', 'smoke_pump', 'smoke_density', 'fan_speed', 'fog', 'haze',
+])
+
+/** Interlocks de seguridad — NUNCA en la card, van a CONTROL & MACROS. */
+const ATMO_SAFETY_TYPES = new Set<string>([
+  'fire', 'fire_valve', 'fire_ignite', 'emission', 'emission_gate',
+])
+
+/** Heurística: canal 'custom' cuyo nombre sugiere emisión atmosférica. */
+const EMISSION_NAME_RE = /smoke|fog|haze|pump|emissi/i
+
+/** Tipos de fixture intrínsecamente atmosféricos (para clasificar auxiliares). */
+const ATMO_FIXTURE_TYPES = new Set<string>(['fog', 'pyro', 'fan', 'mirror-ball'])
 
 /** TTL de la caché de definiciones IPC (las defs no cambian en runtime). */
 const CACHE_TTL_MS = 60_000
@@ -118,12 +167,12 @@ function mergeNoDup(target: OrphanPhantom[], incoming: OrphanPhantom[]): OrphanP
  * @param aggregatedGroups Grupos Aether activos. Se usa para filtrar canales
  *   que YA están cubiertos por una Section atomic. Pasar `[]` devuelve todos.
  *
- * @returns Lista estable de `OrphanPhantom` lista para UI. La referencia solo
- *   cambia cuando la selección o los phantoms reales cambian.
+ * @returns `OrphanPhantomResult` clasificado (`phantomOnly` / `deviceExtraRows`).
+ *   La referencia solo cambia cuando la selección o los phantoms reales cambian.
  */
 export function useOrphanPhantomChannels(
   aggregatedGroups: readonly AggregatedCellGroup[] = [],
-): readonly OrphanPhantom[] {
+): OrphanPhantomResult {
   const selectedIds = useSelectedArray()
 
   // ── Stores ────────────────────────────────────────────────────────────────
@@ -173,11 +222,47 @@ export function useOrphanPhantomChannels(
     return covered
   }, [aggregatedGroups])
 
+  // 🌫️ WAVE 8412: cobertura ATMOSPHERE por dispositivo.
+  //
+  // El nodo `:atmosphere` absorbe canales custom/control/macro/smoke del
+  // fixture — sin esta exclusión aparecerían DOS controles (fila phantom +
+  // fila de la FogCard). El match es por `dmxOffset` (no por `type`): un
+  // fixture puede tener dos canales `custom` y solo uno ser atmosférico.
+  //
+  // Además registramos QUÉ fixtures tienen nodo atmosférico — sus phantoms
+  // residuales se clasifican como `deviceExtraRows` (compartimento
+  // QUARANTINE), separados de los phantoms de fixtures sin atmósfera.
+  const atmosphereCoverage = useMemo<{
+    offsetsByDevice: Map<string, Set<number>>
+    deviceIds: Set<string>
+  }>(() => {
+    const offsetsByDevice = new Map<string, Set<number>>()
+    const deviceIds = new Set<string>()
+    for (const group of aggregatedGroups) {
+      if (group.family !== NodeFamily.ATMOSPHERE || !group.atmosphereChannels) continue
+      for (const cellKey of group.cellKeys) {
+        const deviceId = cellKeyDeviceId(cellKey)
+        deviceIds.add(deviceId)
+        let set = offsetsByDevice.get(deviceId)
+        if (!set) {
+          set = new Set()
+          offsetsByDevice.set(deviceId, set)
+        }
+        for (const ch of group.atmosphereChannels) {
+          set.add(ch.dmxOffset)
+        }
+      }
+    }
+    return { offsetsByDevice, deviceIds }
+  }, [aggregatedGroups])
+
   // WAVE 7694: Ref estable para coveredTypes — evita que el useEffect
   // se re-ejecute cuando coveredTypes cambia de referencia sin cambiar
   // contenido (causa del loop "Maximum update depth exceeded").
   const coveredTypesRef = useRef(coveredTypes)
   useEffect(() => { coveredTypesRef.current = coveredTypes }, [coveredTypes])
+  const atmosphereCoverageRef = useRef(atmosphereCoverage)
+  useEffect(() => { atmosphereCoverageRef.current = atmosphereCoverage }, [atmosphereCoverage])
 
   // ── Resolución de fixtures seleccionados ──────────────────────────────────
   const resolveDefId = useCallback((f: Record<string, unknown>): string | null => {
@@ -207,6 +292,31 @@ export function useOrphanPhantomChannels(
 
       // WAVE 7694: Leer coveredTypes del ref estable, no del closure.
       const _coveredTypes = coveredTypesRef.current
+      // 🌫️ WAVE 8412: cobertura atmosférica por offset (Map<deviceId, Set<dmxOffset>>).
+      const _atmosCoverage = atmosphereCoverageRef.current
+      const isCoveredByAtmosphere = (
+        ch: Record<string, unknown>,
+        fixtureId: string,
+        sourceChannels: readonly Record<string, unknown>[],
+      ): boolean => {
+        const covered = _atmosCoverage.offsetsByDevice.get(fixtureId)
+        if (!covered) return false
+        const rawIdx = typeof ch.index === 'number'        ? ch.index
+                     : typeof ch.channelIndex === 'number' ? ch.channelIndex
+                     : -1
+        if (rawIdx < 0) return false
+        // 🌫️ WAVE 8415: dmxOffset es SIEMPRE 0-based; el index del canal
+        // puede ser 1-based (defs FXTParser). Detectar la base desde el
+        // array fuente — sin esto un canal 1-based nunca matcheaba y el
+        // canal absorbido por :atmosphere se renderizaba dos veces.
+        const firstIdx = sourceChannels.length > 0
+          ? (typeof sourceChannels[0].index === 'number'
+              ? sourceChannels[0].index
+              : (sourceChannels[0].channelIndex as number | undefined))
+          : undefined
+        const offset = firstIdx === 0 ? rawIdx : rawIdx - 1
+        return covered.has(offset)
+      }
 
       let accumulated: OrphanPhantom[] = []
       const now = Date.now()
@@ -217,8 +327,9 @@ export function useOrphanPhantomChannels(
 
         // ── PATH 1: channels[] embebido ────────────────────────────────────
         if (Array.isArray(fixture.channels) && fixture.channels.length > 0) {
-          const phantoms = (fixture.channels as Record<string, unknown>[])
-            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string))
+          const chs = fixture.channels as Record<string, unknown>[]
+          const phantoms = chs
+            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string) && !isCoveredByAtmosphere(ch, fixtureId, chs))
             .map(ch => buildOrphanFromRaw(ch, fixtureId))
           accumulated = mergeNoDup(accumulated, phantoms)
           continue
@@ -230,8 +341,9 @@ export function useOrphanPhantomChannels(
         if (defId) {
           const libEntry = getLibraryFixtureById(defId)
           if (Array.isArray(libEntry?.channels) && libEntry.channels.length > 0) {
-            const phantoms = (libEntry.channels as unknown as Record<string, unknown>[])
-              .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string))
+            const chs = libEntry.channels as unknown as Record<string, unknown>[]
+            const phantoms = chs
+              .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string) && !isCoveredByAtmosphere(ch, fixtureId, chs))
               .map(ch => buildOrphanFromRaw(ch, fixtureId))
             accumulated = mergeNoDup(accumulated, phantoms)
             continue
@@ -254,8 +366,9 @@ export function useOrphanPhantomChannels(
             cacheRef.current.set(defId, { phantoms: [], ts: now })
             continue
           }
-          const phantoms = (result.definition.channels as Record<string, unknown>[])
-            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string))
+          const chs = result.definition.channels as Record<string, unknown>[]
+          const phantoms = chs
+            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string) && !isCoveredByAtmosphere(ch, fixtureId, chs))
             .map(ch => buildOrphanFromRaw(ch, fixtureId))
           cacheRef.current.set(defId, { phantoms, ts: now })
           accumulated = mergeNoDup(accumulated, phantoms)
@@ -274,5 +387,42 @@ export function useOrphanPhantomChannels(
     return () => { cancelled = true }
   }, [selectionKey, resolveDefId, getLibraryFixtureById]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return orphans
+  // 🌫️ WAVE 8412+8415: split por afinidad — en tres compartimentos.
+  //   1. Canales de EMISIÓN huérfanos → card atmosférica dedicada.
+  //   2. Auxiliares de dispositivos atmosféricos (nodo :atmosphere, type
+  //      atmosférico, o con canales de emisión propios) → CONTROL & MACROS.
+  //   3. Resto → cajón EXTRAS genérico.
+  return useMemo<OrphanPhantomResult>(() => {
+    // Fixtures atmosféricos por type o por poseer canales de emisión huérfanos.
+    const atmosDeviceIds = new Set<string>(atmosphereCoverage.deviceIds)
+    for (const f of stageFixtures as { id?: string; type?: string }[]) {
+      if (f?.id && f.type && ATMO_FIXTURE_TYPES.has(f.type)) atmosDeviceIds.add(f.id)
+    }
+    for (const p of orphans) {
+      if (ATMO_EMISSION_TYPES.has(p.type) || (p.type === 'custom' && EMISSION_NAME_RE.test(p.label))) {
+        atmosDeviceIds.add(p.fixtureId)
+      }
+    }
+
+    const atmosphereRows: OrphanPhantom[] = []
+    const phantomOnly: OrphanPhantom[] = []
+    const deviceExtraRows: OrphanPhantom[] = []
+    for (const p of orphans) {
+      if (ATMO_SAFETY_TYPES.has(p.type)) {
+        // Interlock (fire_valve, emission_gate…) — jamás en la card.
+        deviceExtraRows.push(p)
+      } else if (ATMO_EMISSION_TYPES.has(p.type) || (p.type === 'custom' && EMISSION_NAME_RE.test(p.label))) {
+        atmosphereRows.push(p)
+      } else if (atmosDeviceIds.has(p.fixtureId)) {
+        deviceExtraRows.push(p)
+      } else {
+        phantomOnly.push(p)
+      }
+    }
+    return {
+      atmosphereRows:  Object.freeze(atmosphereRows),
+      phantomOnly:     Object.freeze(phantomOnly),
+      deviceExtraRows: Object.freeze(deviceExtraRows),
+    }
+  }, [orphans, atmosphereCoverage, stageFixtures])
 }

@@ -136,17 +136,22 @@ const HELIX_SPRITE_SIZE = 96; // fan: 3 aspas (ambient/air/strobe)
 const DIAMOND_SPRITE_SIZE = 80; // mover: rombo direccional
 const LASER_SPRITE_W = 96; // laser: barra direccional
 const LASER_SPRITE_H = 32;
+// 🌫️ WAVE 8412: hexágono atmosférico — identidad Erebus para ingenios
+// (fog / pyro / mirror-ball). Mismo lenguaje visual que EffectSymbol.
+const FOG_SPRITE_SIZE = 96; // fog/ingenio: hexágono + círculo interior
 const glowSpriteCache = new Map();
 const beamSpriteCache = new Map();
 const helixSpriteCache = new Map();
 const diamondSpriteCache = new Map();
 const laserBarSpriteCache = new Map();
+const fogSpriteCache = new Map();
 // 🩸 WAVE 7761.5.1: sprites OFF — singletons color-independent (relleno oscuro
 // uniforme). No necesitan LRU: hay exactamente uno por tipo. Se cierran en
 // disposeFixtureLayerSprites como los demás.
 let offHelixSprite = null;
 let offDiamondSprite = null;
 let offLaserSprite = null;
+let offFogSprite = null;
 /**
  * 🩸 WAVE 7761.5: LRU TOUCH — on cache hit, refresh insertion order
  * (Map preserva orden de inserción = orden de uso). Convierte la política
@@ -391,6 +396,47 @@ function getLaserBarSprite(r, g, b) {
     laserBarSpriteCache.set(key, sprite);
     return sprite;
 }
+/**
+ * 🌫️ WAVE 8412: HEXÁGONO ATMOSFÉRICO (fog/pyro/mirror-ball — ingenios).
+ * Silueta hexagonal con vértice arriba + círculo interior más claro —
+ * la misma firma que SymbolLayer→EffectSymbol usa en Erebus.
+ * Sin beam, sin halo direccional: la emisión del aparato no es luz.
+ */
+function getFogSprite(r, g, b) {
+    const q = quantizeColor(r, g, b);
+    const key = `f|${q.r},${q.g},${q.b}`;
+    const cached = cacheGet(fogSpriteCache, key);
+    if (cached)
+        return cached;
+    evictLRU(fogSpriteCache);
+    const sprite = new OffscreenCanvas(FOG_SPRITE_SIZE, FOG_SPRITE_SIZE);
+    const sctx = sprite.getContext('2d');
+    const c = FOG_SPRITE_SIZE / 2;
+    const rr = c - 4;
+    sctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 3;
+        const px = c + Math.cos(a) * rr;
+        const py = c + Math.sin(a) * rr;
+        if (i === 0)
+            sctx.moveTo(px, py);
+        else
+            sctx.lineTo(px, py);
+    }
+    sctx.closePath();
+    sctx.fillStyle = `rgb(${q.r}, ${q.g}, ${q.b})`;
+    sctx.fill();
+    // Núcleo interior — el "emisor" del ingenio (blend hacia blanco 45%).
+    sctx.beginPath();
+    sctx.arc(c, c, rr * 0.36, 0, Math.PI * 2);
+    const ir = Math.round(q.r + (255 - q.r) * 0.45);
+    const ig = Math.round(q.g + (255 - q.g) * 0.45);
+    const ib = Math.round(q.b + (255 - q.b) * 0.45);
+    sctx.fillStyle = `rgb(${ir}, ${ig}, ${ib})`;
+    sctx.fill();
+    fogSpriteCache.set(key, sprite);
+    return sprite;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // 🩸 WAVE 7761.5.1: SPRITES OFF — chasis apagados por tipo.
 // Relleno muy oscuro rgba(20,20,25,0.8) + trazo visible rgba(255,255,255,0.3)
@@ -469,6 +515,43 @@ function getOffLaserSprite() {
     offLaserSprite = sprite;
     return sprite;
 }
+/**
+ * 🌫️ WAVE 8412: chasis apagado del ingenio atmosférico — hexágono oscuro
+ * con contorno visible + círculo interior (misma geometría que el sprite lit).
+ */
+function getOffFogSprite() {
+    if (offFogSprite)
+        return offFogSprite;
+    const sprite = new OffscreenCanvas(FOG_SPRITE_SIZE, FOG_SPRITE_SIZE);
+    const sctx = sprite.getContext('2d');
+    const c = FOG_SPRITE_SIZE / 2;
+    const rr = c - 4;
+    sctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 3;
+        const px = c + Math.cos(a) * rr;
+        const py = c + Math.sin(a) * rr;
+        if (i === 0)
+            sctx.moveTo(px, py);
+        else
+            sctx.lineTo(px, py);
+    }
+    sctx.closePath();
+    sctx.fillStyle = OFF_FILL;
+    sctx.fill();
+    sctx.strokeStyle = OFF_STROKE;
+    sctx.lineWidth = OFF_LINE_WIDTH;
+    sctx.stroke();
+    sctx.beginPath();
+    sctx.arc(c, c, rr * 0.36, 0, Math.PI * 2);
+    sctx.fillStyle = OFF_FILL;
+    sctx.fill();
+    sctx.strokeStyle = OFF_STROKE;
+    sctx.lineWidth = OFF_LINE_WIDTH;
+    sctx.stroke();
+    offFogSprite = sprite;
+    return sprite;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // 🩸 WAVE 7749.25: SPRITE CACHE TEARDOWN — release GPU/CPU memory on SHUTDOWN.
 // Called from the render worker's SHUTDOWN handler so orphaned workers (HMR)
@@ -512,6 +595,14 @@ export function disposeFixtureLayerSprites() {
         catch { }
     }
     laserBarSpriteCache.clear();
+    // 🌫️ WAVE 8412: cache del hexágono atmosférico — mismo teardown LRU.
+    for (const sprite of fogSpriteCache.values()) {
+        try {
+            sprite.close();
+        }
+        catch { }
+    }
+    fogSpriteCache.clear();
     // 🩸 WAVE 7761.5.1: sprites OFF singletons — mismo teardown.
     if (offHelixSprite) {
         try {
@@ -533,6 +624,13 @@ export function disposeFixtureLayerSprites() {
         }
         catch { }
         offLaserSprite = null;
+    }
+    if (offFogSprite) {
+        try {
+            offFogSprite.close();
+        }
+        catch { }
+        offFogSprite = null;
     }
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -600,8 +698,8 @@ function drawHalo(ctx, x, y, fixture, baseRadius, beatScale) {
 function drawBeam(ctx, x, y, fixture, canvasHeight) {
     const { r, g, b, intensity, physicalPan, physicalTilt, zoom, focus, type } = fixture;
     // Only movers get beams. Fans (Tungsten) son atmosféricos — no proyectan
-    // cono direccional (WAVE 7761.5).
-    if (type === 'par' || type === 'wash' || type === 'fan' || intensity < 0.03)
+    // cono direccional (WAVE 7761.5). Ingenios fog/pyro tampoco (WAVE 8412).
+    if (type === 'par' || type === 'wash' || type === 'fan' || type === 'fog' || intensity < 0.03)
         return;
     // Pan angle: 0→ +45°, 0.5→ 0°, 1→ -45°
     const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
@@ -760,6 +858,13 @@ function drawOffFixture(ctx, x, y, fixture, baseRadius, frameTime) {
             ctx.restore();
             break;
         }
+        case 'fog': {
+            // 🌫️ WAVE 8412: hexágono atmosférico — sin rotación (no tiene pan).
+            const sprite = getOffFogSprite();
+            const size = baseRadius * 2.4;
+            ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
+            break;
+        }
         default: {
             // par / wash / strobe / unknown — círculo oscuro con borde de contraste
             ctx.beginPath();
@@ -901,6 +1006,34 @@ function drawLaserFixture(ctx, x, y, fixture, baseRadius, beatBoost) {
     ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
     ctx.restore();
 }
+// 🌫️ WAVE 8416: tinte atmosférico fijo — slate azul-gris (mismo color que
+// SmokeIcon en QuickActions). El icono fog NUNCA usa fixture.r/g/b: esos
+// canales son telemetría rítmica residual que haría "colorear" el humo
+// con la música. El hexágono es mate, inerte, y solo respira con emisión.
+const FOG_TINT = { r: 139, g: 157, b: 195 };
+/**
+ * 🌫️ WAVE 8412+8416: FOG/INGENIO — hexágono atmosférico.
+ * Sin rotación ni beam: el aparato emite atmósfera, no luz direccional.
+ *
+ * WAVE 8416 — DESACOPLE RÍTMICO TOTAL:
+ *   - Color: FOG_TINT constante (nunca r/g/b del frame — telemetría musical).
+ *   - Alpha: solo `fixture.intensity`, que AetherUIProjector vincula a la
+ *     EMISIÓN real del nodo :atmosphere (smoke_pump/fire_valve/emission_gate).
+ *     Sin beatBoost, sin baseline lumínico: smoke=0 → icono inerte.
+ */
+function drawFogFixture(ctx, x, y, fixture, baseRadius) {
+    const emission = clamp(fixture.intensity, 0, 1);
+    if (emission <= 0.02)
+        return;
+    const sprite = getFogSprite(FOG_TINT.r, FOG_TINT.g, FOG_TINT.b);
+    const size = baseRadius * 2.4;
+    // Opaco y estable: 35% de base + emisión. Ni un fotón del beat.
+    const alpha = clamp(0.35 + emission * 0.65, 0, 1);
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
+    ctx.globalAlpha = prevAlpha;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FIXTURE LAYER RENDERER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -933,6 +1066,10 @@ export function renderFixtureLayer(ctx, width, height, fixtures, options) {
         for (const fixture of fixtures) {
             if (fixture.intensity < 0.35)
                 continue;
+            // 🌫️ WAVE 8414: los ingenios (fog/pyro/mirror-ball → tipo 'fog') no
+            // emiten fotones — nunca scatter atmosférico bajo el icono.
+            if (fixture.type === 'fog')
+                continue;
             const fx = fixture.x * width;
             const fy = fixture.y * height;
             drawAura(ctx, fx, fy, fixture, baseRadius);
@@ -945,10 +1082,15 @@ export function renderFixtureLayer(ctx, width, height, fixtures, options) {
         // 🩸 WAVE 7761.6.2: Despertar por color — la UI se enciende si hay dimmer
         // O si hay color en las sub-zonas (air, ambient, strobe). El Beam central
         // puede iluminarse con su color puro sin depender del dimmer del Washer.
-        const isLit = fixture.intensity > 0.02 ||
-            (fixture.rAir ?? 0) > 0 || (fixture.gAir ?? 0) > 0 || (fixture.bAir ?? 0) > 0 ||
-            (fixture.rAmbient ?? 0) > 0 || (fixture.gAmbient ?? 0) > 0 || (fixture.bAmbient ?? 0) > 0 ||
-            (fixture.rStrobe ?? 0) > 0 || (fixture.gStrobe ?? 0) > 0 || (fixture.bStrobe ?? 0) > 0;
+        // 🌫️ WAVE 8416: para 'fog' isLit = SOLO emisión real (intensity ← el
+        // projector la vincula a smoke_pump/emission). Las sub-zonas RGB nunca
+        // pueden despertar un ingenio — son telemetría lumínica ajena.
+        const isLit = fixture.type === 'fog'
+            ? fixture.intensity > 0.02
+            : fixture.intensity > 0.02 ||
+                (fixture.rAir ?? 0) > 0 || (fixture.gAir ?? 0) > 0 || (fixture.bAir ?? 0) > 0 ||
+                (fixture.rAmbient ?? 0) > 0 || (fixture.gAmbient ?? 0) > 0 || (fixture.bAmbient ?? 0) > 0 ||
+                (fixture.rStrobe ?? 0) > 0 || (fixture.gStrobe ?? 0) > 0 || (fixture.bStrobe ?? 0) > 0;
         if (!isLit) {
             // Off fixture
             drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime);
@@ -961,8 +1103,13 @@ export function renderFixtureLayer(ctx, width, height, fixtures, options) {
             // (color 0 por la Ley del Fotón). El sprite encendido se estampa
             // encima, sumando luz al chasis en lugar de reemplazarlo.
             drawOffFixture(ctx, fx, fy, fixture, baseRadius, frameTime);
-            // Lit fixture: halo + geometría por tipo + hot center
-            drawHalo(ctx, fx, fy, fixture, baseRadius, beatScale);
+            // 🌫️ WAVE 8414 — FOG UI EXORCISM: 'fog' (fog/pyro/mirror-ball) no
+            // emite luz — el halo naranja pulsante era un fantasma del fallback
+            // a PAR. El icono queda sólido, sin brillos ni latidos de beat.
+            if (fixture.type !== 'fog') {
+                // Lit fixture: halo + geometría por tipo + hot center
+                drawHalo(ctx, fx, fy, fixture, baseRadius, beatScale);
+            }
             // 🩸 WAVE 7761.5 (Multi-RGB Fase 5): despacho de geometría vectorial
             // por tipo. Reemplaza drawCore + drawNeonRim cuando el tipo tiene
             // primitiva propia; default conserva el comportamiento circular
@@ -977,6 +1124,12 @@ export function renderFixtureLayer(ctx, width, height, fixtures, options) {
                 case 'laser':
                     drawLaserFixture(ctx, fx, fy, fixture, baseRadius, beatBoost);
                     break;
+                case 'fog':
+                    // 🌫️ WAVE 8412+8416: hexágono atmosférico (fog/pyro/mirror-ball).
+                    // Sin beatBoost en la firma: el icono no tiene reloj rítmico.
+                    // Su alpha solo sigue la emisión real (projector → intensity).
+                    drawFogFixture(ctx, fx, fy, fixture, baseRadius);
+                    break;
                 default:
                     drawCore(ctx, fx, fy, fixture, baseRadius, beatBoost);
                     drawNeonRim(ctx, fx, fy, fixture, baseRadius);
@@ -984,7 +1137,8 @@ export function renderFixtureLayer(ctx, width, height, fixtures, options) {
             // 🩸 WAVE 7761.5.3: hot center solo para fixtures sin geometría propia.
             // fan/moving/laser tienen su propia firma visual (hélice/diamante/barra)
             // — el punto blanco genérico tapa el color real del hub del Tungsten.
-            if (fixture.type !== 'fan' && fixture.type !== 'moving' && fixture.type !== 'laser') {
+            // fog igual: el hexágono ya porta su núcleo emisor interior (WAVE 8412).
+            if (fixture.type !== 'fan' && fixture.type !== 'moving' && fixture.type !== 'laser' && fixture.type !== 'fog') {
                 drawHotCenter(ctx, fx, fy, fixture, baseRadius);
             }
         }

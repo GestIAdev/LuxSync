@@ -309,15 +309,19 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                           setRules(gov.rules.map((r, i) => (i === ri ? updater(r) : r)))
                         const numStyle: React.CSSProperties = { width: '46px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 4px', fontSize: '10px' }
                         const selStyle: React.CSSProperties = { background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 2px', fontSize: '10px', fontFamily: 'inherit' }
+                        // 🩹 WAVE 8411-B: los inputs decimales usan type="text"
+                        // (type="number" reportaba "" en estados intermedios "0.",
+                        // lo que despachaba undefined y reseteaba el campo) y
+                        // parseNorm acepta coma decimal (locale ES).
                         const parseNorm = (raw: string): number | undefined => {
-                          const v = parseFloat(raw)
+                          const v = parseFloat(raw.replace(',', '.'))
                           return Number.isNaN(v) ? undefined : Math.min(1, Math.max(0, v))
                         }
                         const parseByte = (raw: string): number =>
                           Math.min(255, Math.max(0, parseInt(raw) || 0))
                         // 🌊 CURVE GOVERNOR: exponent domain [1,5], default 2
                         const parseExp = (raw: string): number =>
-                          Math.min(5, Math.max(1, parseFloat(raw) || 2))
+                          Math.min(5, Math.max(1, parseFloat(raw.replace(',', '.')) || 2))
                         return (
                           <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', flexWrap: 'wrap' }}>
                             <span style={{ color: 'rgba(255,255,255,0.35)', minWidth: '14px' }}>{ri + 1}.</span>
@@ -330,7 +334,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                               {INTENT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                             <input
-                              type="number" min="0" max="1" step="0.05"
+                              type="text" inputMode="decimal"
                               defaultValue={rule.when.min ?? ''}
                               placeholder="min"
                               title="when.min — normalized lower bound, inclusive (empty = none)"
@@ -339,7 +343,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                             />
                             <span style={{ color: 'rgba(255,255,255,0.35)' }}>–</span>
                             <input
-                              type="number" min="0" max="1" step="0.05"
+                              type="text" inputMode="decimal"
                               defaultValue={rule.when.max ?? ''}
                               placeholder="max"
                               title="when.max — normalized upper bound, exclusive (empty = none)"
@@ -402,7 +406,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                               <>
                                 <span style={{ color: 'rgba(255,255,255,0.4)' }}>x^</span>
                                 <input
-                                  type="number" min="1" max="5" step="0.1"
+                                  type="text" inputMode="decimal"
                                   defaultValue={rule.then.curve.exponent ?? 2.0}
                                   title="curve exponent [1-5] — 2.0 = quadratic (flattens the low end)"
                                   style={numStyle}
@@ -410,7 +414,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                                 />
                                 <span style={{ color: 'rgba(255,255,255,0.4)' }}>ceil</span>
                                 <input
-                                  type="number" min="0" max="1" step="0.05"
+                                  type="text" inputMode="decimal"
                                   defaultValue={rule.then.curve.ceiling ?? 1.0}
                                   title="curve ceiling [0-1] — absolute normalized output cap"
                                   style={numStyle}

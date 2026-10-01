@@ -999,9 +999,36 @@ export class NodeResolver {
         // cuando el nodo carece de canal 'dimmer' físico (los que lo tienen
         // reciben 'dimmer', no 'brightness', por contrato del adapter).
         const brightnessRaw = channelValues['brightness'];
-        const virtualDim = brightnessRaw !== undefined && Number.isFinite(brightnessRaw)
-            ? (node.channels.some(ch => ch.type === DIMMER_CHANNEL) ? 1.0 : brightnessRaw)
+        const hasPhysicalDimmer = node.channels.some(ch => ch.type === DIMMER_CHANNEL);
+        let virtualDim = brightnessRaw !== undefined && Number.isFinite(brightnessRaw) && !hasPhysicalDimmer
+            ? brightnessRaw
             : 1.0;
+        // 🌗 WAVE 8411-B: NODE-LEVEL VIRTUAL DIMMER CAP — techo nativo de la
+        // celda (fixture JSON → output_dmx.config.maxVirtualDim → ICapabilityNode).
+        // Un escalar único atenúa TODOS los canales de emisión proporcionalmente
+        // → colorimetría preservada (vs clampMax por canal, que destruye el hue).
+        // Goberna igual a L0 (airIntensity) que a L2 (brightness: 1.0 inyectada
+        // por WAVE 8409). Solo nodos huérfanos de dimmer físico — con dimmer real
+        // el virtualDim es passthrough 1.0 y el canal físico gobierna.
+        if (!hasPhysicalDimmer) {
+            const vdCap = node.maxVirtualDim;
+            const vdFloor = node.minVirtualDim;
+            if (vdFloor !== undefined) {
+                // 🌗 WAVE 8411-E: FLOOR REMAP — con suelo declarado el dominio
+                // activo (0,1] se mapea linealmente a [floor, cap]: el recorrido
+                // completo del control barre la banda visible del hardware
+                // (deadzone clearing). virtualDim=0 permanece blackout absoluto.
+                const cap = vdCap === undefined ? 1 : vdCap < 0 ? 0 : vdCap > 1 ? 1 : vdCap;
+                const floor = vdFloor < 0 ? 0 : vdFloor > 1 ? 1 : vdFloor;
+                const f = floor > cap ? cap : floor; // el suelo nunca supera el techo
+                if (virtualDim > 0) {
+                    virtualDim = f + virtualDim * (cap - f);
+                }
+            }
+            else if (vdCap !== undefined && virtualDim > vdCap) {
+                virtualDim = vdCap < 0 ? 0 : vdCap > 1 ? 1 : vdCap;
+            }
+        }
         // WAVE 7122.1: Cross-Cell Isolation — prefix channel keys with the cell
         // suffix extracted from nodeId so that homonymous channels in different
         // cells (e.g. strobe in golden-master vs wash) don't overwrite each other.
@@ -1392,7 +1419,10 @@ export class NodeResolver {
             const bNorm = channelValues[CH_B] ?? channelValues[CH_BLUE];
             if (rNorm !== undefined && gNorm !== undefined && bNorm !== undefined) {
                 const colorData = node;
-                translatedValues = this._translateColor(nodeId, colorData.mixingType, colorData.colorWheel, rNorm, gNorm, bNorm, channelValues);
+                // 🌗 WAVE 8411-B/E: cap y floor del dimmer virtual solo aplican a
+                // nodos huérfanos de dimmer físico (paridad con la ruta Forge).
+                const noPhysicalDimmer = !node.channels.some(ch => ch.type === DIMMER_CHANNEL);
+                translatedValues = this._translateColor(nodeId, colorData.mixingType, colorData.colorWheel, rNorm, gNorm, bNorm, channelValues, noPhysicalDimmer ? node.maxVirtualDim : undefined, noPhysicalDimmer ? node.minVirtualDim : undefined);
             }
         }
         // ── Fin traducción cromática ───────────────────────────────────────
@@ -2202,11 +2232,28 @@ export class NodeResolver {
      * @param bNorm - Canal B normalizado (0-1 del Aether)
      * @param original - Mapa original (para pass-through de otros canales)
      */
-    _translateColor(nodeId, mixingType, aetherWheel, rNorm, gNorm, bNorm, original) {
+    _translateColor(nodeId, mixingType, aetherWheel, rNorm, gNorm, bNorm, original, virtualDimCap, virtualDimFloor) {
         // 🌊 WAVE 4690: brightness (intensidad virtual L0) escala r/g/b de L1.
         // Fixtures RGB sin dimmer físico necesitan que brightness actúe como
         // master dimmer multiplicativo para que el DMX refleje la curva líquida.
-        const brightnessMult = sanitizeNormalizedValue(original['brightness'], 1.0);
+        // 🌗 WAVE 8411-B: maxVirtualDim — techo nativo de la celda, clamp
+        // proporcional sobre el multiplicador → hue preservado. El caller solo
+        // lo pasa cuando el nodo carece de dimmer físico.
+        // 🌗 WAVE 8411-E: minVirtualDim — con suelo declarado, el dominio
+        // activo (0,1] se remapea a [floor, cap]; 0 permanece blackout.
+        const vdCap = virtualDimCap === undefined
+            ? 1.0
+            : virtualDimCap < 0 ? 0 : virtualDimCap > 1 ? 1 : virtualDimCap;
+        const brightnessRaw = sanitizeNormalizedValue(original['brightness'], 1.0);
+        let brightnessMult;
+        if (virtualDimFloor !== undefined) {
+            const floorRaw = virtualDimFloor < 0 ? 0 : virtualDimFloor > 1 ? 1 : virtualDimFloor;
+            const f = floorRaw > vdCap ? vdCap : floorRaw;
+            brightnessMult = brightnessRaw > 0 ? f + brightnessRaw * (vdCap - f) : 0;
+        }
+        else {
+            brightnessMult = Math.min(brightnessRaw, vdCap);
+        }
         // Escalar a 0-255 para el ColorTranslator (que trabaja en 255)
         const safeR = sanitizeNormalizedValue(rNorm) * brightnessMult;
         const safeG = sanitizeNormalizedValue(gNorm) * brightnessMult;

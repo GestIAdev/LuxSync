@@ -1,20 +1,29 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🧪  DIAGNÓSTICO WAVE — Mover sustain audit (física real vs UI)
+ * 🔥 WAVE 8417 — MOVER SUSTAIN REGRESSION (Apocalipsis Efímero + Anti-sustain)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Reporte: los movers quedan "encendidos casi fijos" en TODAS las vibes y
- * solo se apagan en silencios obvios. Este harness conduce el engine con
- * audio sintético determinista a 44 Hz (fake timers controlan Date.now)
- * y mide el steady-state real de moverLeftIntensity/moverRightIntensity.
+ * Síntoma reportado: movers encendidos casi fijos en TODAS las vibes (incluido
+ * rave, no tocado por WAVE 8410-B) — solo se apagaban en silencios obvios, y
+ * en rave ambos diamantes se encendían a la vez (pinning por chaosEnergy).
  *
- *   Escenarios:
- *     A) Groove sostenido con energía media (melodía presente continua).
- *     B) Pasaje de baja energía (pad suave — donde "casi fijos" molesta).
- *     C) Silencio tras música — debe decaer a ~0 (sanity check).
+ * Causa endémica:
+ *   · Apocalypse = gate binario por frame, sin enter-gate ni burnout → con
+ *     umbrales bajo el régimen post-AGC el "modo" era permanente y clavaba
+ *     moverL = moverR = max(mid, treble).
+ *   · envTreble/envVocal sin sustainedSquelch → notas planas congelaban el
+ *     envelope arriba segundos (avgMidProfiler ~2.5s de memoria térmica).
  *
- * Los números impresos permiten separar "el engine sustenta" (physics real)
- * de "la UI exagera" (mentira de render).
+ * Invariantes de regresión (lo que NO puede volver a pasar):
+ *   1. El apocalipsis es un EVENTO: con harshness/flatness sostenidos sobre
+ *      el umbral, el estado quema y se APAGA (isApocalypse false tras
+ *      burnout) — y los movers recuperan independencia (min(L,R) toca negro).
+ *   2. Una señal plana sostenida es asfixiada por el anti-sustain del engine
+ *      (envTreble/envVocal) — la salida decae aunque la señal siga viva.
+ *   3. Groove dinámico mantiene contraste — algún valle oscuro existe.
+ *   4. Silencio real → 0.000 (blackout gate intacto).
+ *
+ * chill-lounge NO está aquí: es performance estática desconectada del audio.
  */
 
 import { describe, test, expect, vi, afterEach } from 'vitest'
@@ -35,40 +44,23 @@ function makeInput(over: Partial<LiquidStereoInput> = {}): LiquidStereoInput {
     isRealSilence: false,
     isAGCTrap: false,
     harshness: 0.4,
-    flatness: 0.30,        // contenido tonal → isTonal = 1 (gate abierto)
+    flatness: 0.30,
     bpm: 120,
     ...over,
   }
 }
 
-/** Groove sostenido: kick cada 11 frames (~2.7/s @120bpm-ish), melodía continua. */
-function grooveInput(frame: number, kickPulse: boolean): LiquidStereoInput {
-  return makeInput({
-    bands: {
-      subBass: kickPulse ? 0.5 : 0.3,
-      bass:    kickPulse ? 0.55 : 0.25,
-      lowMid:  0.30,
-      mid:     0.45,
-      highMid: 0.35,
-      treble:  0.25,
-      ultraAir: 0.08,
-    },
-    isKick: kickPulse,
-    flatness: 0.25,
-    harshness: 0.45,
-  })
-}
-
 /**
- * Groove REALISTA: hi-hats en semicorcheas (pulso/valle alternados), kick en
- * beat, melodía con respiración. Las bandas hi-mid/treble BAJAN entre golpes
- * — la dinámica que diferencia un envelope que respira de uno clavado.
- * 120bpm, 16ths ≈ cada 5-6 frames @44Hz.
+ * Groove REALISTA: hi-hats en semicorcheas (pulso/valle), kick en beat,
+ * melodía con respiración Y huecos de frase (1.5s on / 0.5s off — una
+ * frase real respira; sin el hueco la señal es continua y la oscuridad
+ * no es físicamente esperable). 120bpm, 16ths ≈ cada 5 frames @44Hz.
  */
 function grooveDynamicInput(frame: number, kickPulse: boolean): LiquidStereoInput {
-  const hhPhase = frame % 5 === 0           // 16ths
-  const snarePhase = frame % 11 === 5       // backbeat
-  const melody = 0.28 + 0.15 * Math.sin(frame / 14) // synth respirando
+  const hhPhase = frame % 5 === 0
+  const snarePhase = frame % 11 === 5
+  const phraseOn = frame % 88 < 66   // 1.5s de frase → 0.5s de hueco
+  const melody = phraseOn ? 0.28 + 0.15 * Math.sin(frame / 14) : 0.06
   return makeInput({
     bands: {
       subBass: kickPulse ? 0.5 : 0.22,
@@ -85,167 +77,211 @@ function grooveDynamicInput(frame: number, kickPulse: boolean): LiquidStereoInpu
   })
 }
 
-/** Pasaje suave: pad melódico de baja energía, sin percusión fuerte. */
-function softPassageInput(): LiquidStereoInput {
+/** Señal plana sostenida — pad/nota sostenida (velocity≈0 cada frame). */
+function flatSustainInput(): LiquidStereoInput {
   return makeInput({
     bands: {
-      subBass: 0.10, bass: 0.12, lowMid: 0.15, mid: 0.18,
-      highMid: 0.12, treble: 0.08, ultraAir: 0.03,
+      subBass: 0.15, bass: 0.15, lowMid: 0.30, mid: 0.55,
+      highMid: 0.40, treble: 0.30, ultraAir: 0.10,
     },
-    flatness: 0.20,
-    harshness: 0.25,
+    flatness: 0.25,
+    harshness: 0.40,
   })
 }
 
-interface SweepResult { max: number; mean: number; min: number }
-
-function percentile(sorted: number[], q: number): number {
-  if (!sorted.length) return 0
-  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
+interface DriveStats {
+  mean: number
+  min: number
+  last: number
+  darkFrac: number
 }
 
-function drive(engine: LiquidEngine41, frames: number, makeFrame: (f: number) => LiquidStereoInput): SweepResult & { last: number; p10: number; p25: number; p50: number; darkFrac: number } {
-  let max = 0, min = Infinity, sum = 0, last = 0
-  const acc = { l: 0, r: 0 }
-  const vals: number[] = []
+function driveMovers(
+  engine: LiquidEngine41,
+  frames: number,
+  makeFrame: (f: number) => LiquidStereoInput,
+): DriveStats {
+  let max2 = 0, min = Infinity, sum = 0, last = 0, dark = 0
   for (let f = 0; f < frames; f++) {
     const res = engine.applyBands(makeFrame(f))
-    acc.l = res.moverLeftIntensity
-    acc.r = res.moverRightIntensity
-    last = Math.max(acc.l, acc.r)
-    vals.push(last)
-    if (last > max) max = last
+    last = Math.max(res.moverLeftIntensity, res.moverRightIntensity)
+    if (last > max2) max2 = last
     if (last < min) min = last
+    if (last < 0.05) dark++
     sum += last
     vi.advanceTimersByTime(FRAME_MS)
   }
-  const sorted = [...vals].sort((a, b) => a - b)
   return {
-    max,
-    min: vals.length ? min : 0,
-    mean: vals.length ? sum / vals.length : 0,
+    mean: frames ? sum / frames : 0,
+    min: frames ? min : 0,
     last,
-    p10: percentile(sorted, 0.10),
-    p25: percentile(sorted, 0.25),
-    p50: percentile(sorted, 0.50),
-    // fracción de frames "oscuras" (<5% — percibible como apagado real)
-    darkFrac: vals.length ? vals.filter((v) => v < 0.05).length / vals.length : 0,
+    darkFrac: frames ? dark / frames : 0,
   }
 }
 
-describe('Mover sustain audit — física real (LiquidEngine41)', () => {
+const PROFILES: Array<[string, ILiquidProfile]> = [
+  ['techno-club',   PROFILE_REGISTRY['techno-club']],
+  ['fiesta-latina', PROFILE_REGISTRY['fiesta-latina']],
+  ['pop-rock',      PROFILE_REGISTRY['pop-rock']],
+  ['rave',          PROFILE_REGISTRY['rave']],
+]
+
+describe('WAVE 8417 — Mover sustain regression (LiquidEngine41)', () => {
   afterEach(() => vi.useRealTimers())
 
-  // 🧪 A/B: el mismo perfil con el rango morph ANTERIOR a WAVE 8410-B.
-  // Si el mean del groove colapsa al restaurar floor/ceiling, la
-  // recalibración morph (no la zona back) es la fuente del sustain.
-  const OLD_MORPH: Record<string, { morphFloor: number; morphCeiling: number }> = {
-    'techno-club':   { morphFloor: 0.30, morphCeiling: 0.70 },
-    'fiesta-latina': { morphFloor: 0.45, morphCeiling: 0.65 },
-    'pop-rock':      { morphFloor: 0.20, morphCeiling: 0.60 },
-    'rave':          { morphFloor: 0.30, morphCeiling: 0.70 },
-  }
+  // ═══════════════════════════════════════════════════════════════════
+  // P1 — EPHEMERAL APOCALYPSE: el estado quema y libera los movers
+  // ═══════════════════════════════════════════════════════════════════
+  test('rave: harshness/flatness sostenidos → el apocalipsis ENTRA, QUEMA y libera los movers', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    const engine = new LiquidEngine41(PROFILE_REGISTRY['rave'])
+    // Sin warmup de silencio: estado fresco, condición cierta desde t=0 →
+    // enter ~500ms → burn hasta ~2500ms → cooldown hasta ~5500ms.
+    let bothPinOn = 0, onFrames = 0
+    let bothPinOff = 0, offFrames = 0
+    let minBothAfterBurn = Infinity
+    let sawActive = false
+    let apocAt4s: boolean | undefined
+    for (let f = 0; f < 6 * FRAMES_PER_SECOND; f++) {
+      const res = engine.applyBands({
+        ...grooveDynamicInput(f, f % 11 === 0),
+        harshness: 0.50,
+        flatness: 0.45,
+      })
+      const both = Math.min(res.moverLeftIntensity, res.moverRightIntensity)
+      const t = f * FRAME_MS
+      if (engine.lastFrame?.isApocalypse) sawActive = true
+      if (t >= 3900 && t <= 4100) apocAt4s = engine.lastFrame?.isApocalypse
+      if (t >= 550 && t <= 2400) {           // ventana BURN
+        onFrames++
+        if (both > 0.12) bothPinOn++
+      } else if (t >= 2600 && t <= 5400) {   // ventana OFF (post-burnout, en cooldown)
+        offFrames++
+        if (both > 0.12) bothPinOff++
+        if (both < minBothAfterBurn) minBothAfterBurn = both
+      }
+      vi.advanceTimersByTime(FRAME_MS)
+    }
 
-  const profiles: Array<[string, ILiquidProfile]> = [
-    ['techno-club',   PROFILE_REGISTRY['techno-club']],
-    ['fiesta-latina', PROFILE_REGISTRY['fiesta-latina']],
-    ['pop-rock',      PROFILE_REGISTRY['pop-rock']],
-    ['rave',          PROFILE_REGISTRY['rave']],
-  ]
+    // 1) El estado quemado existe y luego se apaga aunque la condición siga.
+    //    (A los ~6s puede haber re-entrado — cooldown 3s + enter 0.5s — eso
+    //    es CORRECTO: el apocalipsis puede volver, pero nunca quedarse.)
+    expect(sawActive).toBe(true)
+    expect(apocAt4s).toBe(false)
 
-  for (const [vibe, profile] of profiles) {
-    test(`${vibe}: groove sostenido 4s — A/B morph nuevo vs viejo`, () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(0)
+    // 2) Tras el burnout los movers se desacoplan: existe oscuridad real en
+    //    el más débil (antes: min(min(L,R)) = 0.070 — nunca tocaba negro).
+    expect(minBothAfterBurn).toBeLessThan(0.05)
 
-      // A: perfil actual (post-8410-B)
-      const engineNew = new LiquidEngine41(profile)
-      drive(engineNew, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
-      const grooveNew = drive(engineNew, 4 * FRAMES_PER_SECOND, (f) => grooveDynamicInput(f, f % 11 === 0))
-      // morphFactor efectivo — capturado AL FINAL DEL GROOVE (pre-silencio)
-      const avgMidGroove = (engineNew as unknown as { avgMidProfiler: number }).avgMidProfiler
-      const afterNew = drive(engineNew, 2 * FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
+    // 3) El pinning simultáneo cae respecto a la ventana de burn.
+    const pctOn = bothPinOn / Math.max(1, onFrames)
+    const pctOff = bothPinOff / Math.max(1, offFrames)
+    console.log(`[rave APO] burn bothPin=${(pctOn * 100).toFixed(1)}% → off ${(pctOff * 100).toFixed(1)}% | minBothOff=${minBothAfterBurn.toFixed(3)}`)
+    expect(pctOff).toBeLessThanOrEqual(0.45)
+  })
 
-      // B: perfil con el rango morph pre-8410-B (resto idéntico)
-      const old = OLD_MORPH[vibe]
-      const profileOld = old ? { ...profile, ...old } : profile
-      const engineOld = new LiquidEngine41(profileOld)
-      drive(engineOld, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
-      const grooveOld = drive(engineOld, 4 * FRAMES_PER_SECOND, (f) => grooveDynamicInput(f, f % 11 === 0))
-      const afterOld = drive(engineOld, 2 * FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
+  test('techno: harshness 0.50 / flatness 0.45 NO entra en apocalipsis (umbrales 0.55)', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    const engine = new LiquidEngine41(PROFILE_REGISTRY['techno-club'])
+    for (let f = 0; f < 6 * FRAMES_PER_SECOND; f++) {
+      engine.applyBands({
+        ...grooveDynamicInput(f, f % 11 === 0),
+        harshness: 0.50,
+        flatness: 0.45,
+      })
+      vi.advanceTimersByTime(FRAME_MS)
+    }
+    expect(engine.lastFrame?.isApocalypse).toBe(false)
+  })
 
-      // morphFactor efectivo en ambos regímenes, evaluado sobre el avgMid
-      // que el groove dejó acumulado (el EMA decae 0.98/frame — mide el
-      // régimen activo, no el reposo).
-      const morphNew = Math.min(1, Math.max(0, (avgMidGroove - profile.morphFloor) / Math.max(0.0001, profile.morphCeiling - profile.morphFloor)))
-      const morphOld = old
-        ? Math.min(1, Math.max(0, (avgMidGroove - old.morphFloor) / Math.max(0.0001, old.morphCeiling - old.morphFloor)))
-        : NaN
-
-      console.log(
-        `[${vibe}] NEW mean=${grooveNew.mean.toFixed(3)} p10=${grooveNew.p10.toFixed(3)} p25=${grooveNew.p25.toFixed(3)} p50=${grooveNew.p50.toFixed(3)} dark=${(grooveNew.darkFrac * 100).toFixed(1)}%` +
-        ` | OLD mean=${grooveOld.mean.toFixed(3)} p10=${grooveOld.p10.toFixed(3)} dark=${(grooveOld.darkFrac * 100).toFixed(1)}%` +
-        ` | avgMid=${avgMidGroove.toFixed(3)} morph new=${morphNew.toFixed(2)} old=${morphOld.toFixed(2)}` +
-        ` | silence end new=${afterNew.last.toFixed(4)} old=${afterOld.last.toFixed(4)}`,
-      )
-      // Sanity: tras silencio real ambos deben llegar a ~0
-      expect(afterNew.last).toBeLessThan(0.02)
-      expect(afterOld.last).toBeLessThan(0.02)
-    })
-
-    test(`${vibe}: pasaje suave 4s — A/B morph nuevo vs viejo`, () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(0)
-
-      const engineNew = new LiquidEngine41(profile)
-      drive(engineNew, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
-      const softNew = drive(engineNew, 4 * FRAMES_PER_SECOND, () => softPassageInput())
-
-      const old = OLD_MORPH[vibe]
-      const profileOld = old ? { ...profile, ...old } : profile
-      const engineOld = new LiquidEngine41(profileOld)
-      drive(engineOld, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
-      const softOld = drive(engineOld, 4 * FRAMES_PER_SECOND, () => softPassageInput())
-
-      console.log(
-        `[${vibe}] SOFT new mean=${softNew.mean.toFixed(3)} last=${softNew.last.toFixed(3)}` +
-        ` | old mean=${softOld.mean.toFixed(3)} last=${softOld.last.toFixed(3)}`,
-      )
-      expect.soft(softNew.mean).toBeLessThan(0.15)
-    })
-
-    // 🔥 APOCALYPSE PROBE — harshness/flatness por encima del umbral de RaveX
-    // (0.34/0.30) pero BAJO techno (0.55) y latino/poprock (0.65-0.70).
-    // Si isApocalypse dispara: min(moverL,moverR) ≥ max(mid,treble) → ambos
-    // diamantes encendidos a la vez — la firma del reporte del usuario.
-    test(`${vibe}: harshness 0.45 / flatness 0.40 sostenidos → ¿ambos movers clavados?`, () => {
+  // ═══════════════════════════════════════════════════════════════════
+  // P2 — ANTI-SUSTAIN: la nota plana sostenida se asfixia sola
+  // ═══════════════════════════════════════════════════════════════════
+  for (const [vibe, profile] of PROFILES) {
+    test(`${vibe}: señal plana sostenida 4s → el mover se asfixia (anti-sustain)`, () => {
       vi.useFakeTimers()
       vi.setSystemTime(0)
       const engine = new LiquidEngine41(profile)
-      drive(engine, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
+      driveMovers(engine, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
 
-      let bothPinned = 0
-      let frames = 0
-      let minBoth = Infinity
-      for (let f = 0; f < 4 * FRAMES_PER_SECOND; f++) {
-        const res = engine.applyBands({
-          ...grooveDynamicInput(f, f % 11 === 0),
-          // Zona "rave-on, resto-off": flatness 0.40 > rave 0.30 pero < techno 0.55
-          harshness: 0.45,
-          flatness: 0.40,
-        })
-        const both = Math.min(res.moverLeftIntensity, res.moverRightIntensity)
-        if (both < minBoth) minBoth = both
-        if (both > 0.20) bothPinned++
-        frames++
-        vi.advanceTimersByTime(FRAME_MS)
-      }
-      const pct = (bothPinned / frames) * 100
-      console.log(
-        `[${vibe}] APO-PROBE frames con AMBOS movers >0.20: ${pct.toFixed(1)}% | min(min(moverL,moverR))=${minBoth.toFixed(3)}`,
-      )
-      // Reporte informativo — el assert pertenece a la decisión de diseño.
-      expect(frames).toBeGreaterThan(0)
+      // Primer segundo: deja que el envelope dispare (transitorio inicial)
+      const early = driveMovers(engine, FRAMES_PER_SECOND, () => flatSustainInput())
+      // 3s más de la MISMA señal plana — el tracker acumula sustainedFrames
+      // (66/88f) → squelch escala + avgSignal persigue → la nota muere.
+      const late = driveMovers(engine, 3 * FRAMES_PER_SECOND, () => flatSustainInput())
+
+      console.log(`[${vibe}] flat-sustain: early mean=${early.mean.toFixed(3)} → late mean=${late.mean.toFixed(3)} last=${late.last.toFixed(4)}`)
+      // El movimiento residual debe ser mucho menor que el pico inicial —
+      // y en el tramo final la luminaria cae a <15% sostenido.
+      expect(late.mean).toBeLessThan(Math.max(0.15, early.mean * 0.5))
     })
   }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // CONTRASTE — groove dinámico conserva valles oscuros
+  // ═══════════════════════════════════════════════════════════════════
+  for (const [vibe, profile] of PROFILES) {
+    test(`${vibe}: groove dinámico 4s — existe oscuridad entre frases y silencio → 0`, () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(0)
+      const engine = new LiquidEngine41(profile)
+      driveMovers(engine, FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
+
+      const groove = driveMovers(engine, 4 * FRAMES_PER_SECOND, (f) => grooveDynamicInput(f, f % 11 === 0))
+      const silence = driveMovers(engine, 2 * FRAMES_PER_SECOND, () => makeInput({ isRealSilence: true }))
+
+      console.log(`[${vibe}] groove mean=${groove.mean.toFixed(3)} min=${groove.min.toFixed(3)} dark=${(groove.darkFrac * 100).toFixed(1)}% | silence end=${silence.last.toFixed(4)}`)
+      // Contraste real: en el hueco de frase (mid cae a 0.06 durante 0.5s)
+      // el mover más fuerte debe caer a valle — no negro absoluto (los hats
+      // siguen alimentando los envelopes, y eso es musicalmente correcto),
+      // pero sí una caída visible. Pre-fix: techno p10=0.34, latino 0.49 —
+      // nunca bajaban del 30%.
+      expect(groove.min).toBeLessThan(0.15)
+      // Blackout sanity: silencio real → cero absoluto.
+      expect(silence.last).toBeLessThan(0.02)
+    })
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // P4 — TELEMETRÍA: physicsTel publica el estado quemado, no el umbral
+  // ═══════════════════════════════════════════════════════════════════
+  test('physicsTel.isApocalypse refleja el estado BURN (entra tarde, se apaga con burnout)', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    const engine = new LiquidEngine41(PROFILE_REGISTRY['rave'])
+    const pt = (engine as unknown as { physicsTel: { isApocalypse: boolean; apocEnergy: number } }).physicsTel
+
+    // Sin warmup de silencio: éste fija un cooldown de 3s (WAVE 8417 — el
+    // vacío mata el caos) y taparía la ventana de entrada.
+    expect(pt.isApocalypse).toBe(false)
+
+    // Condición cierta desde frame 0 — el enter-gate (500ms) retrasa el BURN.
+    for (let f = 0; f < 10; f++) {
+      engine.applyBands(makeInput({ harshness: 0.50, flatness: 0.45,
+        bands: { subBass: 0.3, bass: 0.4, lowMid: 0.3, mid: 0.45, highMid: 0.35, treble: 0.30, ultraAir: 0.1 } }))
+      vi.advanceTimersByTime(FRAME_MS)
+    }
+    // ~230ms — la condición es cierta pero el estado aún NO ha entrado.
+    expect(pt.isApocalypse).toBe(false)
+
+    // Sobrepasa enterMs → BURN activo con energía alta.
+    for (let f = 0; f < 20; f++) {
+      engine.applyBands(makeInput({ harshness: 0.50, flatness: 0.45,
+        bands: { subBass: 0.3, bass: 0.4, lowMid: 0.3, mid: 0.45, highMid: 0.35, treble: 0.30, ultraAir: 0.1 } }))
+      vi.advanceTimersByTime(FRAME_MS)
+    }
+    expect(pt.isApocalypse).toBe(true)
+    expect(pt.apocEnergy).toBeGreaterThan(0.3)
+
+    // Burnout (2s) + condición SIGUE cierta → el estado ya salió.
+    for (let f = 0; f < 2 * FRAMES_PER_SECOND; f++) {
+      engine.applyBands(makeInput({ harshness: 0.50, flatness: 0.45,
+        bands: { subBass: 0.3, bass: 0.4, lowMid: 0.3, mid: 0.45, highMid: 0.35, treble: 0.30, ultraAir: 0.1 } }))
+      vi.advanceTimersByTime(FRAME_MS)
+    }
+    expect(pt.isApocalypse).toBe(false)
+    expect(pt.apocEnergy).toBe(0)
+  })
 })

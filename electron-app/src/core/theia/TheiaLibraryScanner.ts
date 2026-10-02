@@ -260,6 +260,7 @@ export const FACTORY_ATOM_FILES: readonly string[] = [
   'turing_cannibals.glsl',
   'atom_voice_mandala.glsl',
   'atom_phase_mercury.glsl',
+  'dosel_selvatico.glsl',
 ]
 
 /**

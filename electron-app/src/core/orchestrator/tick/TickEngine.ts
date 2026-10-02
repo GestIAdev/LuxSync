@@ -29,6 +29,7 @@ import type { HardwareAbstraction } from '../../../hal/HardwareAbstraction'
 import type { TrinityOrchestrator } from '../../../workers/TrinityOrchestrator'
 import type { AudioPipelineManager, AudioDataSnapshot, BeatState } from '../audio/AudioPipelineManager'
 import type { ProcessedFrame, LiquidPhysicsTelemetry } from '../../../hal/physics/LiquidEngineBase'
+import { vibeNumericId } from '../../vibe/VibeCanon'
 import type { MusicalContext as BrainMusicalContext } from '../../protocol/MusicalContext'
 import type { ColorAdapter } from '../../aether/adapters/ColorAdapter'
 import type { BeamAdapter } from '../../aether/adapters/BeamAdapter'
@@ -321,6 +322,8 @@ export class TickEngine {
   private _euclidContext: BrainMusicalContext | null = null
   private _euclidAd: AudioDataSnapshot | null = null
   private _euclidLf: ProcessedFrame | null = null
+  // 🎭 WAVE 8427 · A — identidad de vibe activa (VIBE_NUM_IDS, VibeCanon).
+  private _euclidVibeId = 0
   // 🌊 WAVE 8279 · F3 — página B: física Liquid viva (referencia al
   // physicsTel preasignado del engine, o null si stale >500ms) + relojes
   // integrales host (VOCAL_TIME / VOID_HOLD) y gates con histéresis.
@@ -490,6 +493,9 @@ export class TickEngine {
     p[S.ACTIVE_FX_AGE] = fx.ageN
     p[S.ACTIVE_FX_ID] = fx.typeId
     p[S.ACTIVE_FX_COUNT] = fx.count
+    // 🎭 WAVE 8427 · A — VIBE_ID (slot 102): identidad discreta del vibe
+    // activo, publicada cada tick — los átomos bifurcan por `u_vibe`.
+    p[S.VIBE_ID] = this._euclidVibeId
   }
 
   get brain() { return this.ctx.brain }
@@ -2280,6 +2286,13 @@ export class TickEngine {
             dominant: bass > mid && bass > high ? 'bass' as const : 
                      mid > bass && mid > high ? 'mid' as const : 'treble' as const,
             flux: Math.abs((this.audioPipeline.lastAudioData.energy || 0) - energy)
+          },
+          // 🔥 WAVE 8417 · P4: estado QUEMADO del apocalipsis efímero
+          // (enter-gate → burn 1→0 → cooldown) — el badge lee esto, no el
+          // umbral crudo de harshness/flatness.
+          apocalypse: {
+            active: this.engine?.getActiveLiquidEngine()?.lastFrame?.isApocalypse ?? false,
+            energy: this.engine?.getActiveLiquidEngine()?.lastFrame?.apocalypseEnergy ?? 0,
           }
         },
         // ðŸŒ¡ï¸ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
@@ -2418,11 +2431,11 @@ export class TickEngine {
     beatState: BeatState,
     workerOnBeat: boolean,
   ): void {
-    // 🧬 WAVE 8233 · G1 — ∫energy·dt corre SIEMPRE (incluso sin writer:
-    // el integral debe seguir continuo para cuando el consumidor vuelva).
-    stepIntegralClocks(this._euclidClocks, now, m.energy, m.beatCount)
     // ⏱️ WAVE 8404 — el reloj maestro corre SIEMPRE (mismo patrón que los
-    // integrales: continuidad aunque el consumidor desaparezca).
+    // integrales: continuidad aunque el consumidor desaparezca). Va PRIMERO:
+    // WAVE 8425 — su timeScale gobierna los relojes integrales de abajo
+    // (energyTime/vocalTime/midTime = ∫señal·dt·timeScale — el fader Master
+    // Speed los congela sin saltos de fase).
     stepMasterClock(
       this._masterClock,
       now,
@@ -2430,6 +2443,12 @@ export class TickEngine {
       getTheiaMasterSpeed(),
       context?.bpm ?? m.bpm,
       m.beatPhase,
+    )
+    // 🧬 WAVE 8233 · G1 — ∫energy·dt corre SIEMPRE (incluso sin writer:
+    // el integral debe seguir continuo para cuando el consumidor vuelva).
+    stepIntegralClocks(
+      this._euclidClocks, now, m.energy, m.beatCount,
+      this._masterClock.timeScale,
     )
 
     // 🌊 WAVE 8279 · F3 — física Liquid + relojes/gates host. Corren
@@ -2447,12 +2466,13 @@ export class TickEngine {
       : 0
     this._liquidClockPrevMs = now
     const vocalIsoNow = pt?.vocalIsolation ?? 0
-    // Ley-1: ∫vocalIsolation·dt — reloj propio de la voz; si calla, se para.
-    this._vocalTimeSec += vocalIsoNow * dtSec
-    // 🧬 8418-C — Ley-1: ∫(mid post-Vibe)·dt — MISMA señal que el slot MID
-    // (zMoverR = envVocal): si el gate cierra, el reloj se para. Los átomos
-    // componen su fase como Σw·xTime — nunca tiempo·señal.
-    this._midTimeSec += (pt?.zMoverR ?? 0) * dtSec
+    // Ley-1: ∫vocalIsolation·dt·timeScale — reloj propio de la voz; si calla
+    // (o el fader Master baja a 0), se para — mismo dominio que u_time.
+    this._vocalTimeSec += vocalIsoNow * dtSec * this._masterClock.timeScale
+    // 🧬 8418-C — Ley-1: ∫(mid post-Vibe)·dt·timeScale — MISMA señal que el
+    // slot MID (zMoverR = envVocal): si el gate cierra, el reloj se para.
+    // Los átomos componen su fase como Σw·xTime — nunca tiempo·señal.
+    this._midTimeSec += (pt?.zMoverR ?? 0) * dtSec * this._masterClock.timeScale
     // VOID_HOLD: segundos continuos con rhythmic_void ≥0.75. VOID_RELEASE
     // es el flanco de salida tras ≥2 s de hold (la amplitud del pulso la
     // deriva el worker a partir del hold acumulado).
@@ -2606,6 +2626,10 @@ export class TickEngine {
     this._euclidContext = context
     this._euclidAd = ad
     this._euclidLf = lf
+    // 🎭 WAVE 8427 · A — verdad de vibe del ENGINE (no del store renderer:
+    // vibeStore solo espeja este valor vía 'lux:vibe-changed'). custom:* →
+    // VIBE_CUSTOM_NUM_ID; desconocido → idle.
+    this._euclidVibeId = vibeNumericId(this.engine?.getCurrentVibe?.() ?? null)
 
     writer.publish(this.frameCount, flags, enumsPacked, this._euclidFill)
   }

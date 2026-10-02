@@ -112,6 +112,19 @@ function fuseProfileFor41(base) {
 //   if (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1)
 //   and re-add the LUX_FINESSE_AUDIT env gate.
 export class LiquidEngineBase {
+    /** Rellena los campos anti-sustain AUSENTES de un envelope de mover.
+     *  Valores declarados en el perfil ganan siempre (opt-out explícito). */
+    static withMoverAntiSustain(cfg) {
+        return {
+            ...cfg,
+            sustainedSquelchStartFrames: cfg.sustainedSquelchStartFrames ?? LiquidEngineBase.MOVER_ANTI_SUSTAIN.sustainedSquelchStartFrames,
+            sustainedSquelchRisePerFrame: cfg.sustainedSquelchRisePerFrame ?? LiquidEngineBase.MOVER_ANTI_SUSTAIN.sustainedSquelchRisePerFrame,
+            sustainedSquelchMaxBoost: cfg.sustainedSquelchMaxBoost ?? LiquidEngineBase.MOVER_ANTI_SUSTAIN.sustainedSquelchMaxBoost,
+            adaptiveNoiseAlpha: cfg.adaptiveNoiseAlpha ?? LiquidEngineBase.MOVER_ANTI_SUSTAIN.adaptiveNoiseAlpha,
+            sustainedFlatVelocityMax: cfg.sustainedFlatVelocityMax ?? LiquidEngineBase.MOVER_ANTI_SUSTAIN.sustainedFlatVelocityMax,
+            attackSlopeMin: cfg.attackSlopeMin ?? LiquidEngineBase.MOVER_ANTI_SUSTAIN.attackSlopeMin,
+        };
+    }
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 9001: PASSIVE TELEMETRY ACCESSORS — read-only probes for observers.
     // These expose the internal envelope state AFTER applyBands() has run,
@@ -126,6 +139,10 @@ export class LiquidEngineBase {
             treble: this.envTreble.probe,
             vocal: this.envVocal.probe,
         };
+    }
+    /** 🔬 WAVE 8422: morphFactor del último applyBands — para el dump de producción */
+    get diagMorphFactor() {
+        return this._diagMorphFactor;
     }
     get lastHybridSnare() {
         return this._lastHybridSnare;
@@ -147,6 +164,17 @@ export class LiquidEngineBase {
         this.traits = VIBE_TRAITS[VIBE_FALLBACK_ID];
         // morphFactor state
         this.avgMidProfiler = 0.0;
+        /** 🔬 WAVE 8422: morphFactor del último frame (sonda de producción) */
+        this._diagMorphFactor = 0.0;
+        // 🔥 WAVE 8417 · P1 — Apocalypse como EVENTO efímero (máquina de estados).
+        // Antes: gate binario por frame — con umbrales bajos (rave 0.34/0.30) el
+        // modo quedaba ON durante todo el track y clavaba AMBOS movers a
+        // max(mid,treble). Ahora: entrada sostenida → burn 1→0 → cooldown.
+        this._apocCondSince = 0; // ts desde que la condición raw es cierta (0 = no)
+        this._apocStartedAt = 0; // ts de entrada al estado quemado
+        this._apocActive = false; // estado quemado — lo que sale como isApocalypse
+        this._apocEnergy = 0; // 1→0 durante el burnout
+        this._apocCooldownUntil = 0; // refractario tras salida
         // Silence / AGC rebound state
         this.lastSilenceTime = 0;
         this.inSilence = false;
@@ -332,6 +360,8 @@ export class LiquidEngineBase {
             rawTrebleDelta: 0,
             realSilence: false,
             noiseMode: false,
+            isApocalypse: false,
+            apocEnergy: 0,
         };
         // Edge-tracker del fallback SNARE_TRUE para perfiles sin MACD (§2.3):
         // flanco al alza de snare_crack_flux > 0.25.
@@ -354,10 +384,12 @@ export class LiquidEngineBase {
         this.traits = LiquidEngineBase.deriveTraitsFromProfile(effective);
         this.envSubBass = new LiquidEnvelope(effective.envelopeSubBass);
         this.envKick = new LiquidEnvelope(effective.envelopeKick);
-        this.envVocal = new LiquidEnvelope(effective.envelopeVocal);
+        // 🔥 WAVE 8417 · P2: envVocal/envTreble = moverR/moverL — anti-sustain
+        // engine-level (el perfil puede sobreescribir, nunca nacer sin él).
+        this.envVocal = new LiquidEnvelope(LiquidEngineBase.withMoverAntiSustain(effective.envelopeVocal));
         this.envSnare = new LiquidEnvelope(effective.envelopeSnare);
         this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid);
-        this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
+        this.envTreble = new LiquidEnvelope(LiquidEngineBase.withMoverAntiSustain(effective.envelopeTreble));
         // ⚒️ WAVE 7749.52: Onset-gated Floor & Air envelopes with fallback defaults.
         this.envFloor = new LiquidEnvelope(effective.envelopeFloor ?? LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR);
         this.envAir = new LiquidEnvelope(effective.envelopeAir ?? LiquidEngineBase.DEFAULT_ENVELOPE_AIR);
@@ -411,10 +443,11 @@ export class LiquidEngineBase {
             this.traits = LiquidEngineBase.deriveTraitsFromProfile(effective);
         this.envSubBass = new LiquidEnvelope(effective.envelopeSubBass);
         this.envKick = new LiquidEnvelope(effective.envelopeKick);
-        this.envVocal = new LiquidEnvelope(effective.envelopeVocal);
+        // 🔥 WAVE 8417 · P2: anti-sustain engine-level en envelopes de mover.
+        this.envVocal = new LiquidEnvelope(LiquidEngineBase.withMoverAntiSustain(effective.envelopeVocal));
         this.envSnare = new LiquidEnvelope(effective.envelopeSnare);
         this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid);
-        this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
+        this.envTreble = new LiquidEnvelope(LiquidEngineBase.withMoverAntiSustain(effective.envelopeTreble));
         // ⚒️ WAVE 7749.52: hot-swap air & floor envelopes
         this.envFloor = new LiquidEnvelope(effective.envelopeFloor ?? LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR);
         this.envAir = new LiquidEnvelope(effective.envelopeAir ?? LiquidEngineBase.DEFAULT_ENVELOPE_AIR);
@@ -494,7 +527,11 @@ export class LiquidEngineBase {
                 this.avgMidProfiler = this.avgMidProfiler * 0.85 + bands.mid * 0.15;
             }
             else {
-                this.avgMidProfiler = this.avgMidProfiler * 0.98 + bands.mid * 0.02;
+                // 🔥 WAVE 8417 · P3 — release adaptativo: drenaje rápido (~0.36s)
+                // cuando la señal cae muy por debajo de la memoria térmica; decay
+                // suave (0.98) cerca del nivel — conserva la elasticidad melódica.
+                const releaseK = bands.mid < this.avgMidProfiler * 0.6 ? 0.94 : 0.98;
+                this.avgMidProfiler = this.avgMidProfiler * releaseK + bands.mid * (1 - releaseK);
             }
         }
         else {
@@ -502,10 +539,13 @@ export class LiquidEngineBase {
                 this.avgMidProfiler = this.avgMidProfiler * 0.85 + bands.mid * 0.15;
             }
             else {
-                this.avgMidProfiler = this.avgMidProfiler * 0.98 + bands.mid * 0.02;
+                // 🔥 WAVE 8417 · P3 — release adaptativo (misma regla que arriba).
+                const releaseK = bands.mid < this.avgMidProfiler * 0.6 ? 0.94 : 0.98;
+                this.avgMidProfiler = this.avgMidProfiler * releaseK + bands.mid * (1 - releaseK);
             }
             morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - p.morphFloor) / Math.max(0.0001, (p.morphCeiling - p.morphFloor))));
         }
+        this._diagMorphFactor = morphFactor;
         // ═══════════════════════════════════════════════════════════════════
         // WAVE 4845 — THE ABSOLUTE ZERO (CHILLOUT ISOLATION)
         // Modo chill/ambient: cortocircuito total del flujo audio-reactivo.
@@ -590,6 +630,18 @@ export class LiquidEngineBase {
             pt.now = now;
             pt.realSilence = true;
             pt.noiseMode = noiseMode;
+            // 🔥 WAVE 8417 · P1: sin música no hay caos — el vacío mata el estado
+            // apocalíptico (y el frame stale no puede seguir gritando APOCALYPSE).
+            this._apocActive = false;
+            this._apocCondSince = 0;
+            this._apocEnergy = 0;
+            this._apocCooldownUntil = now + (p.apocalypseCooldownMs ?? 3000);
+            pt.isApocalypse = false;
+            pt.apocEnergy = 0;
+            if (this.lastFrame) {
+                this.lastFrame.isApocalypse = false;
+                this.lastFrame.apocalypseEnergy = 0;
+            }
             pt.vocalIsolation = 0;
             pt.cleanMid = 0;
             pt.snareDrive = 0;
@@ -1887,10 +1939,66 @@ export class LiquidEngineBase {
         // WAVE 8005.2: PHOTON STROBE — Back channels preserved (strobe only affects front)
         // ═══════════════════════════════════════════════════════════════════
         // 7. APOCALYPSE MODE (universal)
+        // 🔥 WAVE 8417 · P1 — EPHEMERAL APOCALYPSE (máquina de estados).
+        //
+        // Antes: gate binario por frame — `harshness>T && flatness>T` → ambos
+        // movers clavados a max(mid,treble) CADA frame. Con umbrales bajos
+        // (rave 0.34/0.30, por debajo del régimen post-AGC de un track
+        // comprimido) el "modo" era permanente: pinning simultáneo sin
+        // contrapunto durante toda la canción.
+        //
+        // Ahora es un EVENTO con ciclo de vida:
+        //   IDLE → (condición ≥ enterMs) → BURN (energy 1→0 en burnoutMs)
+        //        → COOLDOWN (refractario) → IDLE
+        // La salida además usa histéresis (umbral − exitHyst) anti-chatter.
+        // El caos se escala por EXCEDENCIA sobre el umbral — rozar el techo ya
+        // no clava los movers a medio nivel; el pinning es efímero y los movers
+        // recuperan su ruteo independiente al agotarse el burn.
         // ═══════════════════════════════════════════════════════════════════
-        const isApocalypse = harshness > p.apocalypseHarshness && flatness > p.apocalypseFlatness;
-        if (isApocalypse) {
-            const chaosEnergy = Math.max(bands.mid, bands.treble);
+        const apocEnterMs = p.apocalypseEnterMs ?? 500;
+        const apocExitHyst = p.apocalypseExitHyst ?? 0.08;
+        const apocBurnoutMs = p.apocalypseBurnoutMs ?? 2000;
+        const apocCooldownMs = p.apocalypseCooldownMs ?? 3000;
+        const apocCondIn = harshness > p.apocalypseHarshness && flatness > p.apocalypseFlatness;
+        const apocCondHold = harshness > Math.max(0, p.apocalypseHarshness - apocExitHyst) &&
+            flatness > Math.max(0, p.apocalypseFlatness - apocExitHyst);
+        if (this._apocActive) {
+            const apocAge = now - this._apocStartedAt;
+            if (!apocCondHold || apocAge >= apocBurnoutMs) {
+                // Exit — el track se calmó (histéresis) o el burn se agotó aunque
+                // el track siga saturado. Cooldown antes de poder re-entrar.
+                this._apocActive = false;
+                this._apocEnergy = 0;
+                this._apocCooldownUntil = now + apocCooldownMs;
+                this._apocCondSince = 0;
+            }
+            else {
+                // Burn: energía decae linealmente 1→0 — el clímax se agota solo.
+                this._apocEnergy = Math.max(0, 1 - apocAge / apocBurnoutMs);
+            }
+        }
+        else if (now >= this._apocCooldownUntil && apocCondIn) {
+            if (this._apocCondSince === 0) {
+                this._apocCondSince = now;
+            }
+            else if (now - this._apocCondSince >= apocEnterMs) {
+                this._apocActive = true;
+                this._apocStartedAt = now;
+                this._apocEnergy = 1;
+                this._apocCondSince = 0;
+            }
+        }
+        else {
+            this._apocCondSince = 0;
+        }
+        const isApocalypse = this._apocActive;
+        if (isApocalypse && this._apocEnergy > 0) {
+            // Excedencia: min(distancia normalizada al umbral) ×2.5 — necesita
+            // ~40% del headroom restante para caos pleno; rozar no clava nada.
+            const hEx = (harshness - p.apocalypseHarshness) / Math.max(0.0001, 1 - p.apocalypseHarshness);
+            const fEx = (flatness - p.apocalypseFlatness) / Math.max(0.0001, 1 - p.apocalypseFlatness);
+            const exceedance = Math.min(1, Math.max(0, Math.min(hEx, fEx) * 2.5));
+            const chaosEnergy = Math.max(bands.mid, bands.treble) * this._apocEnergy * exceedance;
             backRight = Math.max(backRight, chaosEnergy);
             moverLeft = Math.max(moverLeft, chaosEnergy);
             moverRight = Math.max(moverRight, chaosEnergy);
@@ -2005,6 +2113,7 @@ export class LiquidEngineBase {
             acidMode,
             noiseMode,
             isApocalypse,
+            apocalypseEnergy: this._apocEnergy,
             harshness,
             flatness,
             spectralCentroid: input.spectralCentroid ?? 0,
@@ -2032,6 +2141,9 @@ export class LiquidEngineBase {
         pt.now = now;
         pt.realSilence = false;
         pt.noiseMode = noiseMode;
+        // 🔥 WAVE 8417 · P4: estado quemado + energía residual del caos.
+        pt.isApocalypse = isApocalypse;
+        pt.apocEnergy = this._apocEnergy;
         pt.cleanMid = cleanMid;
         pt.zFrontL = frontLeft;
         pt.zFrontR = frontRight;
@@ -2102,6 +2214,12 @@ export class LiquidEngineBase {
         this._snareEnergyEma = 0;
         // 🌊 WAVE 8279 · F3: reset fallback SNARE_TRUE edge-tracker
         this._prevSnareCrackFlux = 0;
+        // 🔥 WAVE 8417 · P1: reset apocalypse state machine
+        this._apocCondSince = 0;
+        this._apocStartedAt = 0;
+        this._apocActive = false;
+        this._apocEnergy = 0;
+        this._apocCooldownUntil = 0;
     }
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 2513 — AMBIENT GENERATIVE ENGINE
@@ -2134,6 +2252,7 @@ export class LiquidEngineBase {
             acidMode: false,
             noiseMode: false,
             isApocalypse: false,
+            apocalypseEnergy: 0,
             harshness: 0,
             flatness: 0,
             spectralCentroid: 0,
@@ -2163,6 +2282,8 @@ export class LiquidEngineBase {
         pt.now = now;
         pt.realSilence = false;
         pt.noiseMode = false;
+        pt.isApocalypse = false;
+        pt.apocEnergy = 0;
         pt.vocalSustain = 0;
         pt.vocalIsolation = 0;
         pt.cleanMid = 0;
@@ -2330,6 +2451,30 @@ LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
     ghostCap: 0.01, // minimal ghost glow — air should be dark between stabs
     gateMargin: 0.05, // moderate hysteresis — prevents flicker
     attackSlopeMin: 0.0,
+};
+// 🔥 WAVE 8417 · P2 — MOVER ANTI-SUSTAIN (cortafuegos de notas planas).
+// envTreble (moverL) y envVocal (moverR) no declaraban sustainedSquelch —
+// una nota sostenida (vocal held, synth pad, ruido comprimido) congelaba
+// el mover arriba durante segundos. Defaults engine-level: el perfil puede
+// sobreescribir, pero ya ningún mover nace sin asfixia progresiva.
+//   66 frames ≈ 1.5s a 44Hz — la nota plana muere, el transitorio no la toca.
+//
+// 🔥 WAVE 8421 · JITTER-TOLERANT TRIGGER — AUDITORÍA 8420 demostró que el
+// default de envelope (sustainedFlatVelocityMax 0.006) exigía planitud
+// matemática imposible: el micro-jitter del FFT real ±AGC supera ese límite
+// cada frame → sustainedFrames reseteaba eternamente y el cortafuegos
+// nunca enganchaba en producción. 0.04 absorbe el ruido de bandas
+// suavizadas (~0.9% nivel/frame) sin contar rampas genuinas como planas.
+// attackSlopeMin 0.01 endurece el gate de inercia: con el default 0 cualquier
+// jitter no-descendente re-disparaba el hit (isAttacking = vel ≥ -0.005) →
+// plateau permanente. Ahora solo flancos de subida reales inyectan energía.
+LiquidEngineBase.MOVER_ANTI_SUSTAIN = {
+    sustainedSquelchStartFrames: 66,
+    sustainedSquelchRisePerFrame: 0.02,
+    sustainedSquelchMaxBoost: 0.35,
+    adaptiveNoiseAlpha: 0.05,
+    sustainedFlatVelocityMax: 0.04,
+    attackSlopeMin: 0.01,
 };
 LiquidEngineBase.SNARE_REFRACTORY_FRAMES = 4;
 // ⚒️ WAVE 7749.91: 10→7→4 frames. calib10 Opus showed 59/73 misses blocked by

@@ -54,6 +54,8 @@ import {
   type KineticCellPayload,
 } from '../stores/programmerStore'
 import { NodeFamily } from '../core/aether/types'
+// 🩸 WAVE 8425 — console silencer: probes diag solo con __ZOMBIE_DIAG__ = true
+import { zDiagOn } from '../core/diagnostics/zombieDiag'
 // WAVE 4720: necesitamos saber si hay patrón activo para emitir pan_base/tilt_base
 // en vez de pan/tilt LTP, evitando que el MANUAL HARD LOCK aplaste la órbita.
 import { useMovementStore } from '../stores/movementStore'
@@ -137,7 +139,7 @@ function extractKinetic(ov: ProgrammerOverrides | undefined, hasActivePattern: b
     ch['targetX'] = ov.targetX!
     ch['targetY'] = ov.targetY!
     ch['targetZ'] = ov.targetZ!
-    console.log(`[ZOMBIE-DIAG] extractKinetic LEGACY EMITIÓ SPATIAL: targetX=${ov.targetX} targetY=${ov.targetY} targetZ=${ov.targetZ}`)
+    if (zDiagOn()) console.log(`[ZOMBIE-DIAG] extractKinetic LEGACY EMITIÓ SPATIAL: targetX=${ov.targetX} targetY=${ov.targetY} targetZ=${ov.targetZ}`)
   } else if (!hasActivePattern) {
     // Sin patrón activo → canales absolutos LTP normales
     if (ov.pan  !== null) ch['pan']  = ov.pan
@@ -309,7 +311,7 @@ function extractCellKinetic(data: KineticCellPayload, hasActivePattern: boolean)
     ch['targetX'] = data.targetX!
     ch['targetY'] = data.targetY!
     ch['targetZ'] = data.targetZ!
-    console.log(`[ZOMBIE-DIAG] extractCellKinetic EMITIÓ SPATIAL: targetX=${data.targetX} targetY=${data.targetY} targetZ=${data.targetZ}`)
+    if (zDiagOn()) console.log(`[ZOMBIE-DIAG] extractCellKinetic EMITIÓ SPATIAL: targetX=${data.targetX} targetY=${data.targetY} targetZ=${data.targetZ}`)
   } else if (!hasActivePattern) {
     if (data.pan  !== undefined) ch['pan']  = data.pan
     if (data.tilt !== undefined) ch['tilt'] = data.tilt
@@ -411,7 +413,8 @@ class ProgrammerAetherBridgeClass {
     // 🔬 WAVE 4735.6 BRIDGE DIAG: log every 50 ticks (~1s) when there is work
     const _bridgeTick = (this as any)._diagTick ?? 0
     ;(this as any)._diagTick = _bridgeTick + 1
-    const _shouldLog = _bridgeTick % 50 === 0 && (hasLegacyWork || hasCellWork)
+    // 🩸 WAVE 8425 — BridgeDiag solo con __ZOMBIE_DIAG__ (silencio @44Hz)
+    const _shouldLog = _bridgeTick % 50 === 0 && (hasLegacyWork || hasCellWork) && zDiagOn()
     if (_shouldLog) {
       console.log(
         `[BridgeDiag 🌉] tick=${_bridgeTick} | ` +
@@ -623,28 +626,32 @@ class ProgrammerAetherBridgeClass {
     }
 
     if (finalSetPayloads.length > 0) {
-      // 🔬 WAVE 4735.6 BRIDGE DIAG: exact payload about to be sent via IPC
-      const spatialPayloads = finalSetPayloads.filter(p =>
-        Object.keys(p.channels).some(k => ['targetX','targetY','targetZ','focusX','focusY','focusZ'].includes(k))
-      )
-      if (spatialPayloads.length > 0) {
-        console.log(`[ZOMBIE-DIAG] 🚨 Bridge sending SPATIAL payloads: ${spatialPayloads.map(p => `{nodeId:${p.nodeId}, ch:[${Object.keys(p.channels).join(',')}]}`).join(' | ')}`)
+      // 🔬 WAVE 4735.6 BRIDGE DIAG → 8425: el filter/map vive DENTRO del gate
+      if (zDiagOn()) {
+        const spatialPayloads = finalSetPayloads.filter(p =>
+          Object.keys(p.channels).some(k => ['targetX','targetY','targetZ','focusX','focusY','focusZ'].includes(k))
+        )
+        if (spatialPayloads.length > 0) {
+          console.log(`[ZOMBIE-DIAG] 🚨 Bridge sending SPATIAL payloads: ${spatialPayloads.map(p => `{nodeId:${p.nodeId}, ch:[${Object.keys(p.channels).join(',')}]}`).join(' | ')}`)
+        }
+        console.log(
+          `[BridgeDiag 🌉 SEND] setPayloads=${finalSetPayloads.length} ` +
+          `samples:` +
+          finalSetPayloads.slice(0, 3).map(p =>
+            ` {nodeId:${p.nodeId}, ch:[${Object.keys(p.channels).join(',')}]}`
+          ).join(' |')
+        )
       }
-      console.log(
-        `[BridgeDiag 🌉 SEND] setPayloads=${finalSetPayloads.length} ` +
-        `samples:` +
-        finalSetPayloads.slice(0, 3).map(p =>
-          ` {nodeId:${p.nodeId}, ch:[${Object.keys(p.channels).join(',')}]}`
-        ).join(' |')
-      )
       requests.push(aether.setManualOverrides(finalSetPayloads))
     }
 
     if (finalClearNodeIds.length > 0) {
-      // 🩸 WAVE 6040-DIAG: trace accidental kinetic clears
-      const kineticClears = finalClearNodeIds.filter(id => id.includes(':kinetic'))
-      if (kineticClears.length > 0) {
-        console.log(`[ZOMBIE-DIAG] 🚨 Bridge CLEARING KINETIC nodes: ${kineticClears.join(', ')} | allClears=[${finalClearNodeIds.join(', ')}]`)
+      // 🩸 WAVE 6040-DIAG → 8425: el filter vive dentro del gate
+      if (zDiagOn()) {
+        const kineticClears = finalClearNodeIds.filter(id => id.includes(':kinetic'))
+        if (kineticClears.length > 0) {
+          console.log(`[ZOMBIE-DIAG] 🚨 Bridge CLEARING KINETIC nodes: ${kineticClears.join(', ')} | allClears=[${finalClearNodeIds.join(', ')}]`)
+        }
       }
       requests.push(aether.clearManualOverrides(finalClearNodeIds))
     }

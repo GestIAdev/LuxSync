@@ -34,6 +34,8 @@ import { useSelectionStore } from '../stores/selectionStore'
 import { useStageStore } from '../stores/stageStore'
 import { useKineticHydrationStore, nativePatternToUI } from '../stores/kineticHydrationStore'
 import type { Position3D } from '../core/stage/ShowFileV2'
+// 🩸 WAVE 8425 — console silencer: probes diag solo con __ZOMBIE_DIAG__ = true
+import { zDiagOn } from '../core/diagnostics/zombieDiag'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -532,8 +534,8 @@ class KineticsBridgeClass {
       }
     })
 
-    // 🩸 WAVE 6040-DIAG: trace radar classic flush
-    console.log(`[ZOMBIE-DIAG] _flushClassic sending ${payloads.length} payloads:`, payloads.map(p => `${p.nodeId}=[${Object.entries(p.channels).map(([k,v])=>`${k}:${(v as number).toFixed(3)}`).join(',')}]`).join(' | '))
+    // 🩸 WAVE 6040-DIAG → WAVE 8425: tras zDiagOn (cero alloc en hot path)
+    if (zDiagOn()) console.log(`[ZOMBIE-DIAG] _flushClassic sending ${payloads.length} payloads:`, payloads.map(p => `${p.nodeId}=[${Object.entries(p.channels).map(([k,v])=>`${k}:${(v as number).toFixed(3)}`).join(',')}]`).join(' | '))
 
     window.lux?.aether?.setManualOverrides(payloads)
   }
@@ -562,7 +564,7 @@ class KineticsBridgeClass {
     // intentaría enviar 'hold' inmediatamente después del RELEASE.
     // Este escudo neutraliza la race condition por 50ms.
     if (useMovementStore.getState()._isUnlocking) {
-      console.log('[ZOMBIE-DIAG] _flushPattern ABORTED — _isUnlocking shield active')
+      if (zDiagOn()) console.log('[ZOMBIE-DIAG] _flushPattern ABORTED — _isUnlocking shield active')
       return
     }
 
@@ -635,8 +637,10 @@ class KineticsBridgeClass {
     // no tiene información fresca y respeta la memoria existente en L2.
     // Cuando el operador SÍ mueve el radar, _flushClassic escribe pan_base/tilt_base
     // en _manualOverrides vía setManualOverrides — esa es la ruta correcta para el anchor.
-    console.log('[ZOMBIE-DIAG] _flushPattern payload:', { enginePattern, fixtureIds: fixtureIds.length, isStop, samePatternAndFixtures, activePattern })
-    console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, '(anchor delegado al backend)')
+    if (zDiagOn()) {
+      console.log('[ZOMBIE-DIAG] _flushPattern payload:', { enginePattern, fixtureIds: fixtureIds.length, isStop, samePatternAndFixtures, activePattern })
+      console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, '(anchor delegado al backend)')
+    }
     window.lux?.aether?.setManualPattern({
       fixtureIds,
       pattern: enginePattern,
@@ -671,14 +675,14 @@ class KineticsBridgeClass {
     fanMode: string,
     fanAmplitude: number,
   ): Promise<void> {
-    console.log('[ZOMBIE-DIAG] _flushSpatial ENTER. target:', target, 'fixtureIds:', fixtureIds.length)
+    if (zDiagOn()) console.log('[ZOMBIE-DIAG] _flushSpatial ENTER. target:', target, 'fixtureIds:', fixtureIds.length)
     // WAVE 6020 OPUS FIX: Guard de seguridad. Si el frontend ya no está
     // en modo espacial (el operador hizo Unlock o cambió a clásico),
     // este timer es un stale debounce — abortar para no re-inyectar
     // _motorKineticOverrides huérfanos.
     const { radarModeOverride } = useMovementStore.getState()
     if (radarModeOverride !== 'spatial') {
-      console.log('[ZOMBIE-DIAG] _flushSpatial ABORTED — radarModeOverride is', radarModeOverride)
+      if (zDiagOn()) console.log('[ZOMBIE-DIAG] _flushSpatial ABORTED — radarModeOverride is', radarModeOverride)
       return
     }
 

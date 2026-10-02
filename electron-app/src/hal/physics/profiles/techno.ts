@@ -267,7 +267,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
   // Techno industrial: energía media-alta, rango estándar
   morphFloor: 0.15,      // WAVE 8410-B: 0.30→0.15 — recalibración AGC-mid: avgMid~0.16 nunca superaba el floor
-  morphCeiling: 0.35,    // WAVE 8410-B: 0.70→0.35 — rango medio alineado con el mid post-AGC
+  morphCeiling: 0.50,    // 🔥 WAVE 8417 · P3: 0.35→0.50 — headroom: 0.35 saturaba morph≈1.0 en música normal
 
   kickEdgeMinInterval: 180,  // WAVE 8005.2: 80→180 — subbass rodante dispara armónicos cada ~120ms, 180ms los filtra
   kickVetoFrames: 0,    // WAVE 2419: 5→0 (veto ON 48% del tiempo, asfixiaba Mover R)

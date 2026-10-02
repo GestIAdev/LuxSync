@@ -116,7 +116,9 @@ export function createDefaultSensory() {
             ultraAir: 0,
             dominant: 'mid',
             flux: 0
-        }
+        },
+        // 🔥 WAVE 8417 · P4
+        apocalypse: { active: false, energy: 0 }
     };
 }
 /**

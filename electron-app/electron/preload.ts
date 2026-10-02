@@ -1005,6 +1005,13 @@ const luxApi = {
     ): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('theia:atom:save-overrides', { packId, atomId, ...patch }),
 
+    /** ⏱️ WAVE 8425 — Fader Master Speed → singleton del BACKEND (el pump
+     *  TickEngine corre en main: sin este puente los relojes u_time/
+     *  u_beatTime/u_energyTime ignoran el fader — corren a 1.0 eternos). */
+    setMasterSpeed: (value: number): void => {
+      ipcRenderer.send('theia:master-speed', value)
+    },
+
   },
 
   mood: {

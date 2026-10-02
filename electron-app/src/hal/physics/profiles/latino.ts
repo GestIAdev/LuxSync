@@ -93,8 +93,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
     ghostCap: 0.00,        // WAVE 7749.57: 0.04→0.00 — sin ghostcaps en ningún perfil
     gateMargin: 0.01,
     attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real, ignora colchón
-    sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo, nunca considera "plano"
-    sustainedSquelchStartFrames: 9999 // WAVE 6050: nunca penaliza notas sostenidas
+    sustainedFlatVelocityMax: 0.05,    // 🔥 WAVE 8417 · P2: 0.50→0.05 — detecta sustain real
+    sustainedSquelchStartFrames: 88,   // 🔥 WAVE 8417 · P2: 9999→88 (~2s) — la nota sostenida suelta el mover
+    sustainedSquelchRisePerFrame: 0.015,
+    sustainedSquelchMaxBoost: 0.30,
+    adaptiveNoiseAlpha: 0.03           // 🔥 WAVE 8417 · P2: avgSignal persigue la nota plana
     // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno strict-split
   },
 
@@ -182,8 +185,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
     ghostCap: 0.00,            // WAVE 7749.57: 0.06→0.00 — sin ghostcaps en ningún perfil
     gateMargin: 0.01,
     attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real, ignora colchón sostenido
-    sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo, nunca considera "plano"
-    sustainedSquelchStartFrames: 9999 // WAVE 6050: nunca penaliza notas sostenidas
+    sustainedFlatVelocityMax: 0.05,    // 🔥 WAVE 8417 · P2: 0.50→0.05 — detecta sustain real
+    sustainedSquelchStartFrames: 88,   // 🔥 WAVE 8417 · P2: 9999→88 (~2s) — la nota sostenida suelta el mover
+    sustainedSquelchRisePerFrame: 0.015,
+    sustainedSquelchMaxBoost: 0.30,
+    adaptiveNoiseAlpha: 0.03           // 🔥 WAVE 8417 · P2: avgSignal persigue la nota plana
     // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno strict-split
   },
 
@@ -299,7 +305,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   //   que coincidían en el mismo frame que un kick. Con 0.45: floor=495Hz,
   //   Shield mucho más permisivo con las frecuencias medias de caja/clave.
   morphFloor: 0.20,      // WAVE 8410-B: 0.45→0.20 — recalibración AGC-mid: con avgMid~0.16 el floor 0.45 clavaba morph≡0
-  morphCeiling: 0.35,    // WAVE 8410-B: 0.65→0.35 — morph pleno alcanzable en el nuevo régimen de mid
+  morphCeiling: 0.50,    // 🔥 WAVE 8417 · P3: 0.35→0.50 — headroom: morph saturaba a 1.0 en régimen normal
 
   kickEdgeMinInterval: 60,   // MÁS corto que techno (80) — el dembow es rápido
   kickVetoFrames: 0,         // CERO — la síncopa 3-3-2 no puede aguantar vetos
@@ -436,8 +442,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
       decayBase: 0.82,     // WAVE 7749.20: 0.72→0.82 — miel, sustain fluido
       ghostCap: 0.00,      // WAVE 7749.20: 0.06→0.00 — negro absoluto en silencio
       attackSlopeMin: 0.05,      // WAVE 7749.20: 0.02→0.05 — ignora micro-fluctuaciones
-      sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo
-      sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
+      sustainedFlatVelocityMax: 0.05,    // 🔥 WAVE 8417 · P2: 0.50→0.05 — detecta sustain real
+      sustainedSquelchStartFrames: 88,   // 🔥 WAVE 8417 · P2: 9999→88 (~2s) — la nota sostenida suelta el mover
+      sustainedSquelchRisePerFrame: 0.015,
+      sustainedSquelchMaxBoost: 0.30,
+      adaptiveNoiseAlpha: 0.03,          // 🔥 WAVE 8417 · P2: avgSignal persigue la nota plana
       // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno
     },
 
@@ -449,8 +458,11 @@ export const LATINO_PROFILE: ILiquidProfile = {
       decayBase: 0.85,     // WAVE 7749.20: 0.72→0.85 — más miel que el Galán
       ghostCap: 0.00,      // WAVE 7749.20: 0.04→0.00 — negro absoluto para contraste
       attackSlopeMin: 0.05,      // WAVE 7749.20: 0.02→0.05 — derrite sílabas en palabras
-      sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo
-      sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
+      sustainedFlatVelocityMax: 0.05,    // 🔥 WAVE 8417 · P2: 0.50→0.05 — detecta sustain real
+      sustainedSquelchStartFrames: 88,   // 🔥 WAVE 8417 · P2: 9999→88 (~2s) — la nota sostenida suelta el mover
+      sustainedSquelchRisePerFrame: 0.015,
+      sustainedSquelchMaxBoost: 0.30,
+      adaptiveNoiseAlpha: 0.03,          // 🔥 WAVE 8417 · P2: avgSignal persigue la nota plana
       // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno
     },
 

@@ -409,6 +409,8 @@ declare global {
         atomId: string,
         patch: { genes?: Record<string, number>; params?: Record<string, number> },
       ) => Promise<{ success: boolean; error?: string }>
+      /** WAVE 8425 — Forwards the Master Speed fader to the backend telemetry clock. */
+      setMasterSpeed: (value: number) => void
     }
 
     // �🎭 WAVE 700.5.4: Mood Control

@@ -22,6 +22,12 @@ import {
   TEL_FLAG,
   SCHEMA_VERSION,
 } from '../telemetry/TheiaTelemetryRing'
+import {
+  VIBE_IDS,
+  VIBE_NUM_IDS,
+  VIBE_GLSL_MACROS,
+  VIBE_CUSTOM_NUM_ID,
+} from '../../core/vibe/VibeCanon'
 
 // ─────────────────────────── Constantes §4 ───────────────────────────
 
@@ -263,6 +269,18 @@ export function buildPreamble(maxSteps = DEFAULT_MAX_STEPS): string {
   for (const [name, bit] of Object.entries(TEL_FLAG)) {
     lines.push(`#define ${name.padEnd(18)} telFlag(${bit})`)
   }
+  lines.push('')
+
+  // 🎭 WAVE 8427 · A — IDENTIDAD DE VIBE: `u_vibe` (slot 102, generado por
+  // el schema) lleva el VIBE_NUM_IDS activo. Los `#define VIBE_*` se emiten
+  // desde VibeCanon (fuente única — el átomo bifurca por nombre, nunca por
+  // número mágico): `if (u_vibe == VIBE_LATINO) …` / `u_vibe == VIBE_CUSTOM`.
+  lines.push('// ── 🎭 Vibe activo (WAVE 8427) — u_vibe = ID numérico ──')
+  for (const id of VIBE_IDS) {
+    lines.push(`#define ${VIBE_GLSL_MACROS[id].padEnd(16)} ${VIBE_NUM_IDS[id].toFixed(1)}`)
+  }
+  lines.push(`#define VIBE_CUSTOM      ${VIBE_CUSTOM_NUM_ID.toFixed(1)}`)
+  lines.push('#define VIBE_RAVEX       VIBE_RAVE') // alias cómodo (id canónico 'rave')
   lines.push('')
 
   // 🧬 WAVE 8237 · G6 — biblioteca estándar de canales (§3.1, Ley de

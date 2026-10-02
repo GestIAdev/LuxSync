@@ -136,7 +136,7 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
     expect(TECHNO_PROFILE.envelopeKick.gateOn).toBeCloseTo(0.28, 2)
     expect(TECHNO_PROFILE.envelopeKick.boost).toBeCloseTo(3.3013, 3)
     expect(TECHNO_PROFILE.envelopeKick.crushExponent).toBeCloseTo(1.0, 1)
-    expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.08, 2)
+    expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.06, 2)
     expect(TECHNO_PROFILE.envelopeKick.decayRange).toBeCloseTo(0.0329, 3)
     expect(TECHNO_PROFILE.envelopeKick.maxIntensity).toBeCloseTo(0.80, 2)
   })
@@ -157,16 +157,18 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
     expect(TECHNO_PROFILE.envelopeVocal.squelchBase).toBeCloseTo(0.15, 2)
   })
 
-  it('should preserve anti-micro-strobe envelopeKick.decayBase = 0.08', () => {
-    expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.08, 2)
+  // WAVE 7749.57: 0.08→0.06 — más snap, más contraste techno
+  it('should preserve anti-micro-strobe envelopeKick.decayBase = 0.06', () => {
+    expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.06, 2)
   })
 
   it('should have overrides41 for 4.1 independence', () => {
     expect(TECHNO_PROFILE.overrides41).toBeDefined()
     if (TECHNO_PROFILE.overrides41) {
       // Back PAR isolation: Coro capped below Látigo peak
-      expect(TECHNO_PROFILE.overrides41.envelopeHighMid?.maxIntensity).toBeCloseTo(0.60, 2)
-      expect(TECHNO_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.45, 2)
+      // AGC-COMPENSATION: maxIntensity 0.60→0.80, decayBase 0.45→0.55
+      expect(TECHNO_PROFILE.overrides41.envelopeHighMid?.maxIntensity).toBeCloseTo(0.80, 2)
+      expect(TECHNO_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.55, 2)
       // Látigo más sensible en compactación
       expect(TECHNO_PROFILE.overrides41.envelopeSnare?.gateOn).toBeCloseTo(0.22, 2)
       // Metrónomo uniforme (smoothing del motor neutralizado)
@@ -195,9 +197,10 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
 
   // WAVE 2488 — DT-02: morphology calibration (techno = full pulse)
   // WAVE 8410-B: recalibrado al régimen post-AGC (avgMid ~0.16)
-  it('should preserve morphFloor = 0.15, morphCeiling = 0.35', () => {
+  // WAVE 8417: ceiling 0.35→0.50 — headroom para que no sature a 1.0 en sección media
+  it('should preserve morphFloor = 0.15, morphCeiling = 0.50', () => {
     expect(TECHNO_PROFILE.morphFloor).toBeCloseTo(0.15, 2)
-    expect(TECHNO_PROFILE.morphCeiling).toBeCloseTo(0.35, 2)
+    expect(TECHNO_PROFILE.morphCeiling).toBeCloseTo(0.50, 2)
   })
 
   it('should preserve harshnessAcidThreshold = 0.60', () => {
@@ -222,9 +225,10 @@ describe('🎲 Monte Carlo Regression: LATINO_PROFILE', () => {
 
   // WAVE 2488 — DT-02: morphology calibration (dembow preciso)
   // WAVE 8410-B: recalibrado al régimen post-AGC (avgMid ~0.16)
-  it('should preserve morphFloor = 0.20, morphCeiling = 0.35', () => {
+  // WAVE 8417: ceiling 0.35→0.50 — headroom para que no sature a 1.0 en sección media
+  it('should preserve morphFloor = 0.20, morphCeiling = 0.50', () => {
     expect(LATINO_PROFILE.morphFloor).toBeCloseTo(0.20, 2)
-    expect(LATINO_PROFILE.morphCeiling).toBeCloseTo(0.35, 2)
+    expect(LATINO_PROFILE.morphCeiling).toBeCloseTo(0.50, 2)
   })
 
   it('should preserve layout41Strategy = strict-split', () => {
@@ -299,9 +303,10 @@ describe('🎲 Monte Carlo Regression: POPROCK_PROFILE', () => {
 
   // WAVE 2488 — DT-02: morphology calibration (rock = mid desde la intro)
   // WAVE 8410-B: recalibrado al régimen post-AGC (avgMid ~0.16)
-  it('should preserve morphFloor = 0.10, morphCeiling = 0.30', () => {
+  // WAVE 8417: ceiling 0.30→0.45 — headroom para que no sature a 1.0 en sección media
+  it('should preserve morphFloor = 0.10, morphCeiling = 0.45', () => {
     expect(POPROCK_PROFILE.morphFloor).toBeCloseTo(0.10, 2)
-    expect(POPROCK_PROFILE.morphCeiling).toBeCloseTo(0.30, 2)
+    expect(POPROCK_PROFILE.morphCeiling).toBeCloseTo(0.45, 2)
   })
 
   it('should preserve sidechainDepth = 0.00 (exterminado)', () => {

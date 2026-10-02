@@ -47,6 +47,8 @@ import type { Target3D } from '../engine/movement/InverseKinematicsEngine'
 
 // ── WAVE 4724: Capa Multi-Cell ───────────────────────────────────────────────
 import { NodeFamily } from '../core/aether/types'
+// 🩸 WAVE 8425 — console silencer: probes diag solo con __ZOMBIE_DIAG__ = true
+import { zDiagOn } from '../core/diagnostics/zombieDiag'
 import type { DeviceId, NodeId } from '../core/aether/types'
 import type {
   CellKey,
@@ -890,7 +892,7 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     },
 
     clearSpatialTargets: (fixtureIds) => {
-      console.log('[ZOMBIE-DIAG] clearSpatialTargets called for:', fixtureIds)
+      if (zDiagOn()) console.log('[ZOMBIE-DIAG] clearSpatialTargets called for:', fixtureIds)
       set(state => {
         const next = new Map(state.fixtureOverrides)
         for (const id of fixtureIds) {
@@ -1105,7 +1107,7 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     },
 
     releaseKinetics: () => {
-      console.log('[ZOMBIE-DIAG] releaseKinetics ENTER')
+      if (zDiagOn()) console.log('[ZOMBIE-DIAG] releaseKinetics ENTER')
       set(state => {
         // ── CELL LAYER: limpia overrides KINETIC
         const nextCellOverrides = new Map(state.cellOverrides)
@@ -1114,14 +1116,14 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
         let clearedCellCount = 0
         for (const [key, ov] of state.cellOverrides) {
           if (ov.payload.family === NodeFamily.KINETIC) {
-            console.log(`[ZOMBIE-DIAG] releaseKinetics clearing cell key=${key} nodeIds=[${ov.nodeIds.join(',')}]`)
+            if (zDiagOn()) console.log(`[ZOMBIE-DIAG] releaseKinetics clearing cell key=${key} nodeIds=[${ov.nodeIds.join(',')}]`)
             for (const nid of ov.nodeIds) nextClears.add(nid)
             nextCellOverrides.delete(key)
             nextDirtyCells.delete(key)
             clearedCellCount++
           }
         }
-        console.log(`[ZOMBIE-DIAG] releaseKinetics cleared ${clearedCellCount} kinetic cells. pendingClearNodeIds=${nextClears.size}`)
+        if (zDiagOn()) console.log(`[ZOMBIE-DIAG] releaseKinetics cleared ${clearedCellCount} kinetic cells. pendingClearNodeIds=${nextClears.size}`)
 
         // ── LEGACY LAYER: limpia pan/tilt/speed/targetXYZ + extras phantom kinetic
         const KINETIC_PHANTOM = new Set(['rotation', 'speed'])
@@ -1504,13 +1506,17 @@ function upsertCellOverride(
     }
   }
 
-  const nextOverrides = new Map(state.cellOverrides)
-  nextOverrides.set(cellKey, nextOverride)
-  const nextDirty = new Set(state.dirtyCells)
-  nextDirty.add(cellKey)
-
-  return {
-    cellOverrides: nextOverrides,
-    dirtyCells: nextDirty,
-  }
+  // 🩸 WAVE 8425 · M2 — MUTACIÓN IN-PLACE (anti-churn Oilpan):
+  // Antes: `new Map(cellOverrides)` + `new Set(dirtyCells)` por CADA evento
+  // onChange → O(N) clone × ~100 eventos/s en un drag = tormenta GC.
+  // Ahora: set/add in-place O(1). La reactividad no se pierde — TODOS los
+  // suscriptores seleccionan `s.cellOverrides.get(cellKey)` y reciben el
+  // CellOverride NUEVO (identidad distinta → re-render correcto), mientras
+  // el bridge lee dirtyCells imperativamente vía getState() en su tick 44Hz.
+  // Idempotente bajo StrictMode double-invoke: set/add del mismo valor.
+  // Retornar {} fuerza un state nuevo → zustand notifica → selectores
+  // re-evalúan con los Map mutados.
+  state.cellOverrides.set(cellKey, nextOverride)
+  state.dirtyCells.add(cellKey)
+  return {}
 }

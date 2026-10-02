@@ -223,6 +223,18 @@ export interface ILiquidProfile {
   readonly apocalypseHarshness: number
   /** Flatness mínimo para Apocalypse Mode */
   readonly apocalypseFlatness: number
+  /** 🔥 WAVE 8417 · P1: ms de caos sostenido antes de ENTRAR en apocalipsis
+   *  (anti-blip — un drop de medio segundo no es fin del mundo). Default 500. */
+  readonly apocalypseEnterMs?: number
+  /** 🔥 WAVE 8417 · P1: histéresis de salida — el estado muere cuando
+   *  harshness/flatness caen por debajo de (umbral − hyst). Default 0.08. */
+  readonly apocalypseExitHyst?: number
+  /** 🔥 WAVE 8417 · P1: duración del burn — la energía del caos decae 1→0 en
+   *  este tiempo aunque el track siga saturado. Default 2000ms. */
+  readonly apocalypseBurnoutMs?: number
+  /** 🔥 WAVE 8417 · P1: refractario tras salir — sin re-disparo inmediato.
+   *  Default 3000ms. */
+  readonly apocalypseCooldownMs?: number
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 7749: TONALITY VETO — Snare isolation thresholds

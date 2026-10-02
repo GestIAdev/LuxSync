@@ -138,6 +138,10 @@ export interface LiquidEnvelopeProbe {
   squelch: number
   kickPower: number
   gatePassed: boolean
+  /** 🔬 WAVE 8422: estado crudo del gatillo para dump de producción */
+  velocity: number
+  isAttacking: boolean
+  sustainedFrames: number
   ignited: boolean
   output: number
 }
@@ -150,7 +154,7 @@ export class LiquidEnvelope {
 
   private config: LiquidEnvelopeConfig
   private state: LiquidEnvelopeState
-  private _lastProbe: LiquidEnvelopeProbe = { signal: 0, dynamicGate: 0, squelch: 0, kickPower: 0, gatePassed: false, ignited: false, output: 0 }
+  private _lastProbe: LiquidEnvelopeProbe = { signal: 0, dynamicGate: 0, squelch: 0, kickPower: 0, gatePassed: false, ignited: false, output: 0, velocity: 0, isAttacking: false, sustainedFrames: 0 }
 
   constructor(config: LiquidEnvelopeConfig) {
     this.config = config
@@ -391,7 +395,7 @@ export class LiquidEnvelope {
     // WAVE 8009.1: Store probe for telemetry — zero-cost when not read
     const gatePassed = signal > dynamicGate && isAttacking && signal > 0.15 && velocity >= attackSlopeMin
     const ignited = kickPower > squelch
-    this._lastProbe = { signal, dynamicGate, squelch, kickPower, gatePassed, ignited, output: faded }
+    this._lastProbe = { signal, dynamicGate, squelch, kickPower, gatePassed, ignited, output: faded, velocity, isAttacking, sustainedFrames: s.sustainedFrames }
 
     // WAVE 2990: GHOST CAP FLOOR ELIMINATED.
     // The artificial dimmer floor (ghostCap * max(morph, 0.1)) prevented DMX 0.

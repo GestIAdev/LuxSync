@@ -229,6 +229,7 @@ export const FACTORY_ATOM_FILES = [
     'turing_cannibals.glsl',
     'atom_voice_mandala.glsl',
     'atom_phase_mercury.glsl',
+    'dosel_selvatico.glsl',
 ];
 /**
  * 🌊 WAVE 8300 — FACTORY BOOTSTRAP (Opus Library Extraction)

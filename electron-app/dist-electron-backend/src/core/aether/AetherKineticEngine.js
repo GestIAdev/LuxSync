@@ -53,6 +53,8 @@
  * @module core/aether/AetherKineticEngine
  * @version WAVE 4700
  */
+// 🩸 WAVE 8425 — console silencer: probes diag solo con __ZOMBIE_DIAG__ = true
+import { zDiagOn } from '../diagnostics/zombieDiag';
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,7 +303,8 @@ export class AetherKineticEngine {
      * @param fan       [0, 1] — valor del slider Fan/Dispersión
      */
     setManualKinetics(nodeIds, pattern, speed, amplitude, fan, _arbiter, mountOrientations) {
-        console.log('[SONDA L2-ENGINE] Multitrack upsert:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds);
+        if (zDiagOn())
+            console.log('[SONDA L2-ENGINE] Multitrack upsert:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds);
         if (nodeIds.length === 0)
             return; // no-op: multitrack NO tiene 'stop global' implícito
         // ── WAVE 4712 MULTITRACK UPSERT ─────────────────────────────────────────

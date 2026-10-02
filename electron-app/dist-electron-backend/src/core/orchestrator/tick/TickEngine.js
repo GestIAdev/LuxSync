@@ -15,6 +15,7 @@ import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 // only overrides top-level fields (stableEmotion, thermalTemperature, ai, vibe),
 // so the nested defaults can be shared by reference safely.
 const _cachedDefaultCognitive = createDefaultCognitive();
+import { vibeNumericId } from '../../vibe/VibeCanon';
 import { SCHEMA_VERSION, TEL_FLAG, TELEMETRY_SLOT, createIntegralClocks, stepIntegralClocks, createMasterClock, stepMasterClock, getTheiaMasterSpeed, } from '../../../theia/telemetry/TheiaTelemetryRing';
 // 🔫 WAVE 8287 — Clean Shot: envolvente del clip Hephaestus vivo (slots 96-99)
 import { createEffectEnergyTracker, createFxEnergySample, } from '../../../theia/telemetry/EffectEnergyTracker';
@@ -207,6 +208,8 @@ export class TickEngine {
         this._euclidContext = null;
         this._euclidAd = null;
         this._euclidLf = null;
+        // 🎭 WAVE 8427 · A — identidad de vibe activa (VIBE_NUM_IDS, VibeCanon).
+        this._euclidVibeId = 0;
         // 🌊 WAVE 8279 · F3 — página B: física Liquid viva (referencia al
         // physicsTel preasignado del engine, o null si stale >500ms) + relojes
         // integrales host (VOCAL_TIME / VOID_HOLD) y gates con histéresis.
@@ -305,8 +308,8 @@ export class TickEngine {
             }
             // 🧬 WAVE 8233 · G1 — relojes integrales (slots 58/59, kind 'none').
             p[S.ENERGY_TIME] = this._euclidClocks.energyTime;
-            p[S.MID_TIME] = this._midTimeSec;
             p[S.BAR_COUNT] = this._euclidClocks.barCount;
+            p[S.MID_TIME] = this._midTimeSec;
             // ⏱️ WAVE 8404 — slots 100/101: la hora absoluta del mundo shader.
             p[S.ABS_SHADER_TIME] = this._masterClock.shaderTimeSec;
             p[S.ABS_BEAT_TIME] = this._masterClock.beatTime;
@@ -365,6 +368,9 @@ export class TickEngine {
             p[S.ACTIVE_FX_AGE] = fx.ageN;
             p[S.ACTIVE_FX_ID] = fx.typeId;
             p[S.ACTIVE_FX_COUNT] = fx.count;
+            // 🎭 WAVE 8427 · A — VIBE_ID (slot 102): identidad discreta del vibe
+            // activo, publicada cada tick — los átomos bifurcan por `u_vibe`.
+            p[S.VIBE_ID] = this._euclidVibeId;
         };
         this.ctx = ctx;
         TickEngine._instances.add(this);
@@ -2021,6 +2027,13 @@ export class TickEngine {
                         dominant: bass > mid && bass > high ? 'bass' :
                             mid > bass && mid > high ? 'mid' : 'treble',
                         flux: Math.abs((this.audioPipeline.lastAudioData.energy || 0) - energy)
+                    },
+                    // 🔥 WAVE 8417 · P4: estado QUEMADO del apocalipsis efímero
+                    // (enter-gate → burn 1→0 → cooldown) — el badge lee esto, no el
+                    // umbral crudo de harshness/flatness.
+                    apocalypse: {
+                        active: this.engine?.getActiveLiquidEngine()?.lastFrame?.isApocalypse ?? false,
+                        energy: this.engine?.getActiveLiquidEngine()?.lastFrame?.apocalypseEnergy ?? 0,
                     }
                 },
                 // ðŸŒ¡ï¸ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
@@ -2144,12 +2157,15 @@ export class TickEngine {
      * lambdas en este path.
      */
     publishEuclidTelemetry(now, m, context, beatState, workerOnBeat) {
+        // ⏱️ WAVE 8404 — el reloj maestro corre SIEMPRE (mismo patrón que los
+        // integrales: continuidad aunque el consumidor desaparezca). Va PRIMERO:
+        // WAVE 8425 — su timeScale gobierna los relojes integrales de abajo
+        // (energyTime/vocalTime/midTime = ∫señal·dt·timeScale — el fader Master
+        // Speed los congela sin saltos de fase).
+        stepMasterClock(this._masterClock, now, this.audioPipeline.hasRealAudio, getTheiaMasterSpeed(), context?.bpm ?? m.bpm, m.beatPhase);
         // 🧬 WAVE 8233 · G1 — ∫energy·dt corre SIEMPRE (incluso sin writer:
         // el integral debe seguir continuo para cuando el consumidor vuelva).
-        stepIntegralClocks(this._euclidClocks, now, m.energy, m.beatCount);
-        // ⏱️ WAVE 8404 — el reloj maestro corre SIEMPRE (mismo patrón que los
-        // integrales: continuidad aunque el consumidor desaparezca).
-        stepMasterClock(this._masterClock, now, this.audioPipeline.hasRealAudio, getTheiaMasterSpeed(), context?.bpm ?? m.bpm, m.beatPhase);
+        stepIntegralClocks(this._euclidClocks, now, m.energy, m.beatCount, this._masterClock.timeScale);
         // 🌊 WAVE 8279 · F3 — física Liquid + relojes/gates host. Corren
         // SIEMPRE como _euclidClocks: continuidad del integral aunque el
         // consumidor desaparezca. `pt.now` es el stamp del último applyBands
@@ -2165,10 +2181,13 @@ export class TickEngine {
             : 0;
         this._liquidClockPrevMs = now;
         const vocalIsoNow = pt?.vocalIsolation ?? 0;
-        // Ley-1: ∫vocalIsolation·dt — reloj propio de la voz; si calla, se para.
-        this._vocalTimeSec += vocalIsoNow * dtSec;
-        // 🧬 8418-C — ∫(mid post-Vibe)·dt — misma señal que slot MID.
-        this._midTimeSec += (pt?.zMoverR ?? 0) * dtSec;
+        // Ley-1: ∫vocalIsolation·dt·timeScale — reloj propio de la voz; si calla
+        // (o el fader Master baja a 0), se para — mismo dominio que u_time.
+        this._vocalTimeSec += vocalIsoNow * dtSec * this._masterClock.timeScale;
+        // 🧬 8418-C — Ley-1: ∫(mid post-Vibe)·dt·timeScale — MISMA señal que el
+        // slot MID (zMoverR = envVocal): si el gate cierra, el reloj se para.
+        // Los átomos componen su fase como Σw·xTime — nunca tiempo·señal.
+        this._midTimeSec += (pt?.zMoverR ?? 0) * dtSec * this._masterClock.timeScale;
         // VOID_HOLD: segundos continuos con rhythmic_void ≥0.75. VOID_RELEASE
         // es el flanco de salida tras ≥2 s de hold (la amplitud del pulso la
         // deriva el worker a partir del hold acumulado).
@@ -2326,6 +2345,10 @@ export class TickEngine {
         this._euclidContext = context;
         this._euclidAd = ad;
         this._euclidLf = lf;
+        // 🎭 WAVE 8427 · A — verdad de vibe del ENGINE (no del store renderer:
+        // vibeStore solo espeja este valor vía 'lux:vibe-changed'). custom:* →
+        // VIBE_CUSTOM_NUM_ID; desconocido → idle.
+        this._euclidVibeId = vibeNumericId(this.engine?.getCurrentVibe?.() ?? null);
         writer.publish(this.frameCount, flags, enumsPacked, this._euclidFill);
     }
 }

@@ -29,6 +29,8 @@ import { aetherKineticEngine } from './AetherKineticEngine';
 import { NodeFamily } from './types';
 // 🜨 WAVE 8000 (ASTERIA): broadcast del evento de refresco del Node Atlas
 import { broadcastAetherTopologyChanged } from './ingestion/SpatialRegistrar';
+// 🩸 WAVE 8425 — console silencer: probes diag solo con __ZOMBIE_DIAG__ = true
+import { zDiagOn } from '../diagnostics/zombieDiag';
 // ─────────────────────────────────────────────────────────────────────────────
 // CALIBRATION STATE — Global tracker para fixtures en modo calibración
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,15 +140,17 @@ export function registerAetherIPCHandlers() {
             return;
         }
         try {
-            // 🔬 WAVE 4681: Log de supervivencia — confirma que el canal IPC llega al backend.
-            console.log('[Aether IPC] 📥 Recibidos overrides manuales:', payloads.length);
+            // 🔬 WAVE 4681 → 8425: tras zDiagOn (flood @44Hz silenciado)
+            const diag = zDiagOn();
+            if (diag)
+                console.log('[Aether IPC] 📥 Recibidos overrides manuales:', payloads.length);
             const arbiter = getTitanOrchestrator().getAetherArbiter();
             for (const { nodeId, channels } of payloads) {
                 if (typeof nodeId === 'string' && nodeId.length > 0 && channels && typeof channels === 'object') {
                     const resolvedNodeId = resolveKineticNodeId(nodeId);
                     // WAVE 6020.8 DIAG: Log base anchor values — IK-space contamination check
                     const ch = channels;
-                    if ('pan_base' in ch || 'tilt_base' in ch) {
+                    if (diag && ('pan_base' in ch || 'tilt_base' in ch)) {
                         const hasFade = arbiter.hasReleaseFade(resolvedNodeId);
                         console.log(`[ZOMBIE-DIAG] setManualOverrides ${resolvedNodeId}: pan_base=${ch['pan_base']?.toFixed(4)} tilt_base=${ch['tilt_base']?.toFixed(4)} hasFade=${hasFade}`);
                     }
@@ -154,8 +158,10 @@ export function registerAetherIPCHandlers() {
                 }
             }
             // 🔬 WAVE 4735.6 DIAG: confirmar que _manualOverrides tiene las entradas
-            const manualCount = arbiter.getManualOverrideNodeIds().length;
-            console.log(`[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: ${manualCount}`);
+            if (diag) {
+                const manualCount = arbiter.getManualOverrideNodeIds().length;
+                console.log(`[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: ${manualCount}`);
+            }
         }
         catch (err) {
             console.error('[AetherIPC] setManualOverrides error:', err);
@@ -172,9 +178,12 @@ export function registerAetherIPCHandlers() {
         }
         try {
             const arbiter = getTitanOrchestrator().getAetherArbiter();
-            const kineticClears = nodeIds.filter(id => typeof id === 'string' && id.includes(':kinetic'));
-            if (kineticClears.length > 0) {
-                console.log(`[ZOMBIE-DIAG] 🔥 AetherIPC clearManualOverrides KINETIC: ${kineticClears.join(', ')} | total=${nodeIds.length}`);
+            const diag = zDiagOn();
+            if (diag) {
+                const kineticClears = nodeIds.filter(id => typeof id === 'string' && id.includes(':kinetic'));
+                if (kineticClears.length > 0) {
+                    console.log(`[ZOMBIE-DIAG] 🔥 AetherIPC clearManualOverrides KINETIC: ${kineticClears.join(', ')} | total=${nodeIds.length}`);
+                }
             }
             for (const nodeId of nodeIds) {
                 if (typeof nodeId === 'string') {
@@ -183,7 +192,8 @@ export function registerAetherIPCHandlers() {
                     // The SURVIVAL layer fires reactive clears after upserts;
                     // without this guard, the anchor pan_base/tilt_base is wiped.
                     if (arbiter.hasManualPatternLock(resolved)) {
-                        console.log(`[ZOMBIE-DIAG] clearManualOverrides SKIPPED (pattern-lock): ${resolved}`);
+                        if (diag)
+                            console.log(`[ZOMBIE-DIAG] clearManualOverrides SKIPPED (pattern-lock): ${resolved}`);
                         continue;
                     }
                     arbiter.clearManualOverride(resolved);
@@ -230,12 +240,15 @@ export function registerAetherIPCHandlers() {
      * sin arbiter (stop() sin argumento) y quedan overrides huérfanos.
      */
     ipcMain.on('lux:aether:clearAllMotorKineticOverrides', () => {
-        console.log('[ZOMBIE-DIAG] IPC clearAllMotorKineticOverrides called');
+        const diag = zDiagOn();
+        if (diag)
+            console.log('[ZOMBIE-DIAG] IPC clearAllMotorKineticOverrides called');
         try {
             const arbiter = getTitanOrchestrator().getAetherArbiter();
             const preCount = arbiter._motorKineticOverrides?.size ?? 'unknown';
             arbiter.clearAllMotorKineticOverrides();
-            console.log(`[ZOMBIE-DIAG] clearAllMotorKineticOverrides: ${preCount} entries cleared`);
+            if (diag)
+                console.log(`[ZOMBIE-DIAG] clearAllMotorKineticOverrides: ${preCount} entries cleared`);
         }
         catch (err) {
             console.error('[AetherIPC] clearAllMotorKineticOverrides error:', err);
@@ -462,14 +475,19 @@ export function registerAetherIPCHandlers() {
      * el L0 queda en home (0.5) y el orbit math del Arbiter pasa pan_base sin suma.
      */
     ipcMain.on('lux:aether:setManualPattern', (_event, { fixtureIds, pattern, speed, amplitude, fan, anchorPan, anchorTilt }) => {
-        console.log('[ZOMBIE-DIAG] 🔥 setManualPattern ENTER. Payload:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan, anchorPan, anchorTilt });
+        // 🩸 WAVE 8425 — el pre-op scan (map + 2 lookups por nodo) vive tras el gate
+        const diag = zDiagOn();
+        if (diag)
+            console.log('[ZOMBIE-DIAG] 🔥 setManualPattern ENTER. Payload:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan, anchorPan, anchorTilt });
         const arbiter = getTitanOrchestrator().getAetherArbiter();
-        const diagNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`));
-        for (const nodeId of diagNodeIds) {
-            const manual = arbiter.getManualOverride(nodeId);
-            const motor = arbiter.getMotorKineticOverride(nodeId);
-            if (manual || motor) {
-                console.log(`[ZOMBIE-DIAG] Pre-op state ${nodeId}: manualKeys=[${manual ? Object.keys(manual).join(',') : 'none'}] motorKeys=[${motor ? Object.keys(motor).join(',') : 'none'}]`);
+        if (diag) {
+            const diagNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`));
+            for (const nodeId of diagNodeIds) {
+                const manual = arbiter.getManualOverride(nodeId);
+                const motor = arbiter.getMotorKineticOverride(nodeId);
+                if (manual || motor) {
+                    console.log(`[ZOMBIE-DIAG] Pre-op state ${nodeId}: manualKeys=[${manual ? Object.keys(manual).join(',') : 'none'}] motorKeys=[${motor ? Object.keys(motor).join(',') : 'none'}]`);
+                }
             }
         }
         if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
@@ -488,7 +506,8 @@ export function registerAetherIPCHandlers() {
             //   posición espacial. El operador quiere mantener la escena.
             // ═══════════════════════════════════════════════════════════════
             if (pattern === 'release' || pattern === 'idle' || pattern === null) {
-                console.log('[ZOMBIE-DIAG] → Branch RELEASE/NULL (restoring fade + clean snapshot)');
+                if (diag)
+                    console.log('[ZOMBIE-DIAG] → Branch RELEASE/NULL (restoring fade + clean snapshot)');
                 const orchestrator = getTitanOrchestrator();
                 const nodeGraph = orchestrator.getAetherNodeGraph();
                 const removeNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`));
@@ -559,7 +578,8 @@ export function registerAetherIPCHandlers() {
                             // correcto que _applyReleaseFades inyecta. Con seed=snapshot,
                             // delta PPP = 0 → no interpola → fixture permanece en posición.
                             physicsPP.seedClassicState(nodeId, safePan, safeTilt);
-                            console.log(`[ZOMBIE-DIAG] Safe snapshot seeded ${nodeId}: pan=${safePan.toFixed(4)} tilt=${safeTilt.toFixed(4)} (classicInv=${isClassicInverted} wasIK=${wasInIKMode})`);
+                            if (diag)
+                                console.log(`[ZOMBIE-DIAG] Safe snapshot seeded ${nodeId}: pan=${safePan.toFixed(4)} tilt=${safeTilt.toFixed(4)} (classicInv=${isClassicInverted} wasIK=${wasInIKMode})`);
                         }
                     }
                     arbiter.clearManualOverride(nodeId);
@@ -580,20 +600,23 @@ export function registerAetherIPCHandlers() {
                     }
                     physicsPP.resetSpatialState(resolveKineticNodeId(`${id}:kinetic`));
                 }
-                for (const nodeId of removeNodeIds) {
-                    const manual = arbiter.getManualOverride(nodeId);
-                    const motor = arbiter.getMotorKineticOverride(nodeId);
-                    console.log(`[ZOMBIE-DIAG] Post-RELEASE ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
-                }
+                if (diag)
+                    for (const nodeId of removeNodeIds) {
+                        const manual = arbiter.getManualOverride(nodeId);
+                        const motor = arbiter.getMotorKineticOverride(nodeId);
+                        console.log(`[ZOMBIE-DIAG] Post-RELEASE ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
+                    }
                 if (!aetherKineticEngine.isActive()) {
                     vibeMovementManager.setL2Active(false);
                     vibeMovementManager.setKineticFanOffsets({});
                 }
-                console.log('[ZOMBIE-DIAG] ✅ RELEASE branch complete');
+                if (diag)
+                    console.log('[ZOMBIE-DIAG] ✅ RELEASE branch complete');
                 return { success: true };
             }
             if (pattern === 'hold' || pattern === 'static') {
-                console.log('[ZOMBIE-DIAG] → Branch HOLD (freeze intentional)');
+                if (diag)
+                    console.log('[ZOMBIE-DIAG] → Branch HOLD (freeze intentional)');
                 const removeNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`));
                 // MANUAL PATTERN LOCK: release the locks for HOLD (motor stops, freeze takes over).
                 for (const nodeId of removeNodeIds) {
@@ -631,16 +654,18 @@ export function registerAetherIPCHandlers() {
                         arbiter.clearManualOverride(resolveKineticNodeId(`${id}:kinetic`));
                     }
                 }
-                for (const nodeId of removeNodeIds) {
-                    const manual = arbiter.getManualOverride(nodeId);
-                    const motor = arbiter.getMotorKineticOverride(nodeId);
-                    console.log(`[ZOMBIE-DIAG] Post-HOLD ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
-                }
+                if (diag)
+                    for (const nodeId of removeNodeIds) {
+                        const manual = arbiter.getManualOverride(nodeId);
+                        const motor = arbiter.getMotorKineticOverride(nodeId);
+                        console.log(`[ZOMBIE-DIAG] Post-HOLD ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
+                    }
                 if (!aetherKineticEngine.isActive()) {
                     vibeMovementManager.setL2Active(false);
                     vibeMovementManager.setKineticFanOffsets({});
                 }
-                console.log('[ZOMBIE-DIAG] ✅ HOLD branch complete');
+                if (diag)
+                    console.log('[ZOMBIE-DIAG] ✅ HOLD branch complete');
                 return { success: true };
             }
             // Normalizar speed/amplitude de rango UI [0–100] a [0, 1]
@@ -779,7 +804,7 @@ export function registerAetherIPCHandlers() {
                 else if (ikPan !== null)
                     ikPreservedCount++;
             }
-            if (radarPreservedCount > 0 || ikPreservedCount > 0) {
+            if (diag && (radarPreservedCount > 0 || ikPreservedCount > 0)) {
                 console.log(`[AetherIPC ⚡ WAVE-4934] setManualPattern anchor: ` +
                     `radar=${radarPreservedCount} ik=${ikPreservedCount} ` +
                     `fallback=${nodeIds.length - radarPreservedCount - ikPreservedCount} ` +
@@ -1086,7 +1111,8 @@ export function registerAetherIPCHandlers() {
         if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
             return { success: false, error: 'fixtureIds must be a non-empty array' };
         }
-        console.log(`[WAVE-7734] kineticHandoff ENTER. fixtures=${fixtureIds.length}`);
+        if (zDiagOn())
+            console.log(`[WAVE-7734] kineticHandoff ENTER. fixtures=${fixtureIds.length}`);
         try {
             const orchestrator = getTitanOrchestrator();
             const arbiter = orchestrator.getAetherArbiter();
@@ -1174,9 +1200,10 @@ export function registerAetherIPCHandlers() {
                 vibeMovementManager.setL2Active(false);
                 vibeMovementManager.setKineticFanOffsets({});
             }
-            console.log(`[WAVE-7734] kineticHandoff COMPLETE. ` +
-                `snapshots=${snapshots.length}/${removeNodeIds.length} ` +
-                `fadeMs=${HANDOFF_FADE_MS}`);
+            if (zDiagOn())
+                console.log(`[WAVE-7734] kineticHandoff COMPLETE. ` +
+                    `snapshots=${snapshots.length}/${removeNodeIds.length} ` +
+                    `fadeMs=${HANDOFF_FADE_MS}`);
             return { success: true };
         }
         catch (err) {

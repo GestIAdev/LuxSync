@@ -35,6 +35,8 @@
  * @version WAVE 4518.1
  */
 import { NodeFamily } from '../types';
+// 🩸 WAVE 8425 — console silencer: probes diag solo con __ZOMBIE_DIAG__ = true
+import { zDiagOn } from '../../diagnostics/zombieDiag';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS — Seguridad mecánica
 // ═══════════════════════════════════════════════════════════════════════════
@@ -499,7 +501,8 @@ export class PhysicsPostProcessor {
             state[SLOT_X3D_VEL] = 0;
             state[SLOT_Y3D_VEL] = 0;
             state[SLOT_Z3D_VEL] = 0;
-            console.log(`[ZOMBIE-DIAG] resetSpatialState ${nodeId}: 3D state exorcized`);
+            if (zDiagOn())
+                console.log(`[ZOMBIE-DIAG] resetSpatialState ${nodeId}: 3D state exorcized`);
         }
     }
     /**

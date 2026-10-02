@@ -253,6 +253,22 @@ no la intención.
 *Clean Shot: `y`/`z`/`w` son post-gate — solo para diagnóstico/TELDIAG,
 no para geometría.*
 
+### 6.3 Identidad de Vibe (WAVE 8427 — El Superpoder Geométrico)
+
+El motor inyecta automáticamente la variable `u_vibe` y las constantes macro de cada ecosistema. Usa esto **EXCLUSIVAMENTE** para metamorfosis geométricas duras o cambios de topología estructural (ej. dibujar círculos líquidos en Chill vs. triángulos afilados en RaveX) que la física de audio pura no puede alterar.
+
+```glsl
+// Defines disponibles (inyectados en el preámbulo, NO los declares):
+// VIBE_IDLE, VIBE_TECHNO, VIBE_LATINO, VIBE_POPROCK, VIBE_CHILL, VIBE_RAVE, VIBE_RAVEX (alias), VIBE_CUSTOM
+
+// Uso canónico (Bifurcación estructural):
+float sides = 5.0; // pentágono por defecto
+if (u_vibe == VIBE_RAVEX) sides = 3.0;     // Esquizofrenia: triángulos cortantes
+if (u_vibe == VIBE_LATINO) sides = 100.0;  // Groove: círculos perfectos y viscosos
+```
+
+⚠️ Atención: Para reactividad dinámica (elasticidad, rebotes rápidos, viscosidad del movimiento), confía en las variables del `LiquidEngineBase` (como `u_kickPulse` o `euTimbre()`), ya que el motor físico ya las altera por vibe automáticamente. Reserva `u_vibe` solo para cambiar la forma o el algoritmo matemático base.
+
 ## 7. Flags — `telFlag(bit)` y defines booleanos
 
 ```glsl

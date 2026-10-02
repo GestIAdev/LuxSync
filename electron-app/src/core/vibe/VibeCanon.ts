@@ -193,6 +193,56 @@ export function isAnyVibeKey(value: string): value is AnyVibeKey {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎭 WAVE 8427 · A — IDS NUMÉRICOS ESTABLES (telemetría Theia / GLSL)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Índice numérico estable de cada vibe canónico — viaja por el slot VIBE_ID
+ * del anillo Euclid (`u_vibe` en los átomos) y los macros `#define VIBE_*`
+ * del preámbulo generado usan estos mismos valores.
+ *
+ * CONTRATO CON LOS ÁTOMOS COMPILADOS: el orden es INVARIANTE — añadir solo
+ * nuevas vibes al final, JAMÁS renumerar (un shader publicado dependería
+ * del número viejo). `Record<VibeId, …>` fuerza exhaustividad canónica.
+ */
+export const VIBE_NUM_IDS: Readonly<Record<VibeId, number>> = {
+  'idle':          0,
+  'techno-club':   1,
+  'fiesta-latina': 2,
+  'pop-rock':      3,
+  'chill-lounge':  4,
+  'rave':          5,
+}
+
+/** Vibes `custom:*` (VibeLab) → ID numérico reservado (GLSL: `VIBE_CUSTOM`). */
+export const VIBE_CUSTOM_NUM_ID = -1
+
+/**
+ * Nombre de la macro GLSL por vibe — el preámbulo generado emite
+ * `#define <macro> <VIBE_NUM_IDS[id]>` para que los átomos nunca
+ * hardcodeen números mágicos.
+ */
+export const VIBE_GLSL_MACROS: Readonly<Record<VibeId, string>> = {
+  'idle':          'VIBE_IDLE',
+  'techno-club':   'VIBE_TECHNO',
+  'fiesta-latina': 'VIBE_LATINO',
+  'pop-rock':      'VIBE_POPROCK',
+  'chill-lounge':  'VIBE_CHILL',
+  'rave':          'VIBE_RAVE',
+}
+
+/**
+ * `AnyVibeKey | string` → ID numérico para el ring. Canónico → su slot;
+ * `custom:*` → VIBE_CUSTOM_NUM_ID; desconocido/null → fallback idle (0),
+ * coherente con la política VIBE_FALLBACK_ID.
+ */
+export function vibeNumericId(key: string | null | undefined): number {
+  if (key && isVibeId(key)) return VIBE_NUM_IDS[key]
+  if (key && isCustomVibeKey(key)) return VIBE_CUSTOM_NUM_ID
+  return VIBE_NUM_IDS[VIBE_FALLBACK_ID]
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ALIASES
 // ═══════════════════════════════════════════════════════════════════════════
 

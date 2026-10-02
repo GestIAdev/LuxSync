@@ -111,6 +111,10 @@ interface SeqState {
   holdAnchorMs: number
   lastPeekMs: number
   lastSeleneAtomId: string
+  // 🎭 WAVE 8427 · M2 — refire pendiente por cambio de vibe (dispara en la
+  // próxima frontera quant; stamp para el anti-overshoot).
+  vibeRefire: boolean
+  vibeRefireAtMs: number
 }
 
 function freshSeq(): SeqState {
@@ -130,6 +134,8 @@ function freshSeq(): SeqState {
     holdAnchorMs: 0,
     lastPeekMs: -Infinity,
     lastSeleneAtomId: '',
+    vibeRefire: false,
+    vibeRefireAtMs: 0,
   }
 }
 
@@ -242,6 +248,12 @@ export class TheiaAutopilot {
         if (s.activeIndex !== prev.activeIndex) {
           this.onExternalFire(s.activeIndex)
         }
+      }),
+      // 🎭 WAVE 8427 · M2 — el vibe es input de Selene: un cambio debe
+      // re-elegir el átomo (auditoría 8426: sin suscriptor el shader quedaba
+      // congelado con la selección del vibe anterior hasta el próximo dwell).
+      useVibeStore.subscribe((s, prev) => {
+        if (s.currentVibe !== prev.currentVibe) this.onVibeChange()
       }),
     )
     // 🎬 El Director arbitra la IA legacy: solo con MANUAL puede actuar.
@@ -429,6 +441,22 @@ export class TheiaAutopilot {
 
     const wantFire = dwellDone && (boundaryHit || !audioAlive || forced)
 
+    // 🎭 WAVE 8427 · M2 — refire por cambio de vibe: cuantizado a la misma
+    // frontera que el dwell (boundaryHit honra ap.quant). Sin audio vivo —
+    // o con overshoot >8s sin frontera — dispara ya; nunca queda armado.
+    if (isSelene && this.seq.vibeRefire) {
+      const overdue = now - this.seq.vibeRefireAtMs > MAX_OVERSHOOT_SEC * 1000
+      if (boundaryHit || !audioAlive || overdue) {
+        this.seq.vibeRefire = false
+        if (!this.fireSelene(tel, now)) {
+          this.seq.firedAtMs = now
+          this.seq.firedBarFloat = barFloat
+          this.seq.syncWaiting = false
+        }
+        return
+      }
+    }
+
     if (dwellDone && !this.seq.syncWaiting) this.seq.syncWaiting = true
 
     if (wantFire) {
@@ -468,6 +496,7 @@ export class TheiaAutopilot {
   // ── 🎬 Director: HOLD ────────────────────────────────────────────────
 
   private onDirectorChange(prev: string, next: string, now: number): void {
+    if (next !== 'selene') this.seq.vibeRefire = false // 🎭 8427: no arrastrar pendientes fuera de Selene
     if (next === 'hold') {
       this.seq.holdEpochSeen = -1 // fuerza re-anclaje de la ventana
       return
@@ -540,17 +569,48 @@ export class TheiaAutopilot {
   }
 
   private chooseSelene(): SelenePick | null {
-    const pl = useTheiaPlaylistStore.getState()
-    const live = pl.activeIndex >= 0 ? pl.items[pl.activeIndex] : undefined
-    const avoidAtomId =
-      (live ? resolvePlaylistAtom(live).atomId ?? undefined : undefined) ??
-      (this.seq.lastSeleneAtomId || undefined)
     return seleneChoose(this.seleneCandidates(), {
       target: this.aco.target(),
       energy: this.aco.energy,
       vibe: this.deps.vibe(),
-      avoidAtomId,
+      avoidAtomId: this.liveAtomId(),
     })
+  }
+
+  /** Átomo actualmente en LIVE (ítem activo de playlist, o el último
+   *  disparo Selene desde catálogo). */
+  private liveAtomId(): string | undefined {
+    const pl = useTheiaPlaylistStore.getState()
+    const live = pl.activeIndex >= 0 ? pl.items[pl.activeIndex] : undefined
+    return (
+      (live ? resolvePlaylistAtom(live).atomId ?? undefined : undefined) ??
+      (this.seq.lastSeleneAtomId || undefined)
+    )
+  }
+
+  /** Ranking completo SIN antirrepetición — responde "¿LIVE sigue siendo
+   *  el óptimo?" (si `avoidAtomId` lo excluyera, siempre ganaría otro). */
+  private chooseSeleneUnbiased(): SelenePick | null {
+    return seleneChoose(this.seleneCandidates(), {
+      target: this.aco.target(),
+      energy: this.aco.energy,
+      vibe: this.deps.vibe(),
+    })
+  }
+
+  /**
+   * 🎭 WAVE 8427 · M2 — el vibe cambió: si bajo el nuevo perfil el átomo en
+   *  LIVE deja de ser el ganador, arma un refire que el tick dispara en la
+   *  próxima frontera quant (cuantización intacta; inmediato sin audio).
+   *  Solo Director SELENE — en playlist el orden es del operador y en
+   *  manual/hold la decisión es humana.
+   */
+  private onVibeChange(): void {
+    if (useTheiaAutopilotStore.getState().director !== 'selene') return
+    const pick = this.chooseSeleneUnbiased()
+    if (!pick || pick.atomId === this.liveAtomId()) return // LIVE ya es óptimo
+    this.seq.vibeRefire = true
+    this.seq.vibeRefireAtMs = this.deps.now()
   }
 
   /** Selene decide y dispara. false = no había nada que elegir/disparar. */

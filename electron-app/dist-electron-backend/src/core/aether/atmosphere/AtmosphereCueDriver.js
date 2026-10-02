@@ -143,35 +143,75 @@ export class AtmosphereCueDriver extends BaseSystem {
         const nowMs = context.nowMs;
         view.forEach((node) => {
             const nodeId = node.nodeId;
+            // ── WAVE 8423: PHANTOM ATMOSPHERE DECOUPLING ──────────────────────
+            // WAVE 3517.1 enruta canales 'control'/'macro'/'custom' de fixtures
+            // NO atmosféricos (p.ej. el canal Reset de un moving-head) a un nodo
+            // :atmosphere de cuarentena. Ese nodo es un contenedor L2, no un
+            // emisor: empujarle smoke_pump fabricaba emisión fantasma que el
+            // AetherUIProjector fundía en fixture.dimmer, dejando los movers
+            // visualmente encendidos en permanencia.
+            //
+            // Regla: el nodo solo participa en el ciclo de empuje si posee
+            // canales físicos de emisión — fluidos (smoke_*/fan_speed) o
+            // interlocks de seguridad (emission_gate/fire_*/láser residual).
+            // Un contenedor puro de control/macros no recibe NINGÚN intent.
+            let hasFluid = false;
+            let hasSafety = false;
+            for (const ch of node.channels) {
+                const t = ch.type;
+                if (t === 'smoke_pump' || t === 'smoke_density' || t === 'fan_speed') {
+                    hasFluid = true;
+                }
+                else if (t === 'emission_gate' || t === 'fire_valve' || t === 'fire_ignite') {
+                    hasSafety = true;
+                }
+            }
+            if (!hasFluid && !hasSafety)
+                return;
             // ── RING 2: recomputar la física fluídica solo cada 11 frames ─────
-            if (shouldRecompute) {
+            // (sin canales fluidos no hay bomba que simular — ahorramos el recompute)
+            if (shouldRecompute && hasFluid) {
                 this._recomputeFluid(node, node.atmosType, context);
             }
-            // ── Emitir SIEMPRE — hold del último valor computado/armado ───────
-            // Las 6 keys se fijan incondicionalmente: `_valuesDict` es un objeto
-            // compartido y reutilizado por push() (ver IntentBus.push() doc);
-            // dejar una key sin asignar filtraría el valor del nodo anterior.
-            this._valuesDict['smoke_pump'] = this._cachedPump.get(nodeId) ?? 0;
-            this._valuesDict['smoke_density'] = this._cachedDensity.get(nodeId) ?? 0;
-            this._valuesDict['fan_speed'] = this._cachedFan.get(nodeId) ?? 0;
+            // ── Emitir — hold del último valor computado/armado ───────────────
+            // `_valuesDict` es compartido y reutilizado por push() (ver doc de
+            // IntentBus.push()); una key sin asignar filtraría el valor del nodo
+            // anterior — por eso las keys no aplicables se ponen a undefined.
+            if (hasFluid) {
+                this._valuesDict['smoke_pump'] = this._cachedPump.get(nodeId) ?? 0;
+                this._valuesDict['smoke_density'] = this._cachedDensity.get(nodeId) ?? 0;
+                this._valuesDict['fan_speed'] = this._cachedFan.get(nodeId) ?? 0;
+            }
+            else {
+                this._valuesDict['smoke_pump'] = undefined;
+                this._valuesDict['smoke_density'] = undefined;
+                this._valuesDict['fan_speed'] = undefined;
+            }
             // ── RING 3 + RING 4: SAFETY CHANNELS — deadman evaluado CADA frame ─
             // (no decimado — la ventana de 2s de gracia debe cerrarse con
             // precisión de frame, no con la granularidad de 4Hz del path fluídico).
             const lastCue = this._lastCueMs.get(nodeId) ?? 0;
             const deadmanExpired = (nowMs - lastCue) > DEADMAN_MS;
-            const armed = !deadmanExpired && (this._emissionArmed.get(nodeId) ?? false);
-            this._valuesDict['emission_gate'] = armed ? 1 : 0;
-            const valveTarget = deadmanExpired ? 0 : (this._fireValveTarget.get(nodeId) ?? 0);
-            this._valuesDict['fire_valve'] = valveTarget;
-            const igniteUntil = this._ignitePulseUntilMs.get(nodeId) ?? 0;
-            const igniting = !deadmanExpired && nowMs < igniteUntil;
-            this._valuesDict['fire_ignite'] = igniting ? 1 : 0;
-            if (deadmanExpired) {
-                // Purgar el estado armado — el próximo cue debe re-armar explícitamente.
-                // Sin esto, un cue viejo "reviviría" instantáneamente si llegase
-                // un refresco de `_lastCueMs` sin re-especificar el valor deseado.
-                this._emissionArmed.set(nodeId, false);
-                this._fireValveTarget.set(nodeId, 0);
+            if (hasSafety) {
+                const armed = !deadmanExpired && (this._emissionArmed.get(nodeId) ?? false);
+                this._valuesDict['emission_gate'] = armed ? 1 : 0;
+                const valveTarget = deadmanExpired ? 0 : (this._fireValveTarget.get(nodeId) ?? 0);
+                this._valuesDict['fire_valve'] = valveTarget;
+                const igniteUntil = this._ignitePulseUntilMs.get(nodeId) ?? 0;
+                const igniting = !deadmanExpired && nowMs < igniteUntil;
+                this._valuesDict['fire_ignite'] = igniting ? 1 : 0;
+                if (deadmanExpired) {
+                    // Purgar el estado armado — el próximo cue debe re-armar explícitamente.
+                    // Sin esto, un cue viejo "reviviría" instantáneamente si llegase
+                    // un refresco de `_lastCueMs` sin re-especificar el valor deseado.
+                    this._emissionArmed.set(nodeId, false);
+                    this._fireValveTarget.set(nodeId, 0);
+                }
+            }
+            else {
+                this._valuesDict['emission_gate'] = undefined;
+                this._valuesDict['fire_valve'] = undefined;
+                this._valuesDict['fire_ignite'] = undefined;
             }
             this._intentScratch.nodeId = nodeId;
             this._intentScratch.confidence = 1.0;

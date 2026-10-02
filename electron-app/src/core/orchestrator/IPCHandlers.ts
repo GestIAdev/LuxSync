@@ -25,6 +25,7 @@ import { NodeGraphBuilder } from '../forge/NodeGraphBuilder'
 import { upsertRuntimeFixtureDefinition } from '../library/RuntimeFixtureLibrary'
 // 🌊 WAVE 8215 — Glass Bridge telemetry pump (transferable ping-pong)
 import { TheiaTelemetryPump } from '../../theia/TheiaTelemetryPump'
+import { setTheiaMasterSpeed } from '../../theia/telemetry/TheiaTelemetryRing'
 // ðŸ”¥ WAVE 2040.24: FixtureZone viene de la fuente canÃ³nica Ãºnica (ShowFileV2)
 import type { FixtureZone } from '../stage/ShowFileV2'
 export type { FixtureZone }
@@ -225,6 +226,14 @@ function setupTheiaHandlers(deps: IPCDependencies): void {
     } catch (err) {
       console.error('[IPC] theia:request-telemetry failed:', err)
     }
+  })
+
+  // ⏱️ WAVE 8425 — el fader u_speed nace en el renderer (ThetaOrchestrator
+  // escribe su singleton local + postea al worker) pero los relojes de
+  // telemetría los computa ESTE proceso (TickEngine.getTheiaMasterSpeed).
+  // Sin este puente el singleton del backend quedaba en 1.0 eterno.
+  ipcMain.on('theia:master-speed', (_event, value: unknown) => {
+    setTheiaMasterSpeed(typeof value === 'number' ? value : 1)
   })
 }
 

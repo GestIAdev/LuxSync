@@ -9,9 +9,10 @@
  *   slots 0..63  → PÁGINA A — schema v1, BYTE-IDÉNTICO al layout original.
  *   slots 64..127 → PÁGINA B — física Liquid/GodEar (F3 la puebla; hoy
  *                   RESERVED_64..127, `kind:'none'` → pasan verbatim).
- *   SCHEMA_VERSION 1 → 2 (viaja en el byte 0 de ENUMS). Los lectores
+ *   SCHEMA_VERSION 1 → 2 → 3 (viaja en el byte 0 de ENUMS). Los lectores
  *   toleran buffers legados de 256 B: la página B queda a 0 y se expone
  *   `schemaVersion = 1` — un consumidor v2 nunca rompe con un productor v1.
+ *   🎭 WAVE 8427: v3 añade VIBE_ID en el slot 102 (antes RESERVED).
  *
  * Sincronización: SEQLOCK sobre el slot 0.
  *   Escritor: SEQ→impar, escribe, SEQ→par.  Nunca espera.
@@ -38,7 +39,7 @@ export const TELEMETRY_RING_SLOTS = 128
 export const TELEMETRY_RING_BYTES = TELEMETRY_RING_SLOTS * 4 // 512 B
 /** Primer slot de la página B (frontera vec4 del payload: idx 60). */
 export const TELEMETRY_PAGE_B_BASE = 64
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 // ───────────────────────── Header (Int32) ──────────────────────────
 
@@ -285,11 +286,16 @@ export const TELEMETRY_SCHEMA: readonly TelemetrySlotDescriptor[] = [
   // y los inyectan a `u_time`/`u_beatTime` fuera del array u_tel.
   { slot: 100, name: 'ABS_SHADER_TIME',    uniform: '',                  kind: 'none' },
   { slot: 101, name: 'ABS_BEAT_TIME',      uniform: '',                  kind: 'none' },
-  // 102-127: margen, generados.
+  // 🎭 WAVE 8427 · A — IDENTIDAD DE VIBE: VIBE_NUM_IDS (VibeCanon) como
+  // float crudo — kind 'none': un ID discreto JAMÁS se interpola (un EMA
+  // entre VIBE_LATINO=2 y VIBE_CHILL=4 inventaría el vibe "3"). GLSL lo
+  // lee como `u_vibe` y bifurca contra los `#define VIBE_*` del preámbulo.
+  { slot: 102, name: 'VIBE_ID',            uniform: 'u_vibe',            kind: 'none' },
+  // 103-127: margen, generados.
   ...Array.from(
-    { length: TELEMETRY_RING_SLOTS - 102 },
+    { length: TELEMETRY_RING_SLOTS - 103 },
     (_, i): TelemetrySlotDescriptor => {
-      const slot = 102 + i
+      const slot = 103 + i
       return { slot, name: `RESERVED_${slot}`, uniform: '', kind: 'none' }
     },
   ),
@@ -306,12 +312,15 @@ export const TELEMETRY_SLOT: Readonly<Record<string, number>> = (() => {
 
 /**
  * Estado de los relojes integrales del host (Infinite Genome Ley 1/§4.6).
- * `u_energyTime` = ∫energy·dt — el shader suma una FASE continua en lugar
- * de multiplicar un reloj por señales cambiantes (Ley 1). `u_barCount` =
- * compases absolutos — frontera de frase para la mutación del genoma.
+ * `u_energyTime` = ∫energy·timeScale·dt — el shader suma una FASE continua
+ * en lugar de multiplicar un reloj por señales cambiantes (Ley 1), y el
+ * fader Master Speed lo gobierna en la fuente (WAVE 8425): a speed 0 el
+ * reloj se congela, nunca salta. `u_barCount` = compases absolutos —
+ * frontera de frase para la mutación del genoma.
  */
 export interface IntegralClockState {
-  /** ∫max(0,energy)·dt — segundos de energía acumulados, monótono. */
+  /** ∫max(0,energy)·timeScale·dt — segundos de energía acumulados
+   *  en el dominio del reloj maestro, monótono. */
   energyTime: number
   /** Compases absolutos transcurridos (floor(beatCount/4), ratchet). */
   barCount: number
@@ -325,8 +334,12 @@ export function createIntegralClocks(): IntegralClockState {
 
 /**
  * Avanza los relojes integrales un tick del motor.
- *  · `energyTime += max(0,energy) · dt` — dt real del reloj del tick,
- *    clamp [0, 0.5 s]: un stall/NTP jamás produce un salto del integral.
+ *  · `energyTime += max(0,energy) · dt · timeScale` — dt real del reloj
+ *    del tick, clamp [0, 0.5 s]: un stall/NTP jamás produce un salto del
+ *    integral. `timeScale` es el factor gobernado del master clock (EMA
+ *    de `(audioLive?1:0.5)·masterSpeed`) — WAVE 8425: el fader manda en
+ *    la fuente, así el shader nunca multiplica el integral por u_speed
+ *    (salto de fase ∝ tiempo acumulado — Ley 1).
  *  · `barCount` = ratchet monótono de floor(beatCount/4): cruza en cada
  *    frontera de compás y nunca retrocede aunque el pacemaker reinicie.
  * Zero-alloc: muta `st` in-place.
@@ -336,12 +349,13 @@ export function stepIntegralClocks(
   nowMs: number,
   energy: number,
   beatCount: number,
+  timeScale = 1,
 ): void {
   const dtSec = st.prevNowMs > 0
     ? Math.min(0.5, Math.max(0, (nowMs - st.prevNowMs) * 0.001))
     : 0
   st.prevNowMs = nowMs
-  st.energyTime += Math.max(0, energy) * dtSec
+  st.energyTime += Math.max(0, energy) * dtSec * Math.max(0, timeScale)
   const barNow = Math.floor(Math.max(0, beatCount) / 4)
   if (barNow > st.barCount) st.barCount = barNow
 }

@@ -84,7 +84,7 @@ describe('🔮 WAVE 8226 — TheiaTelemetryRing: layout y schema', () => {
     expect(TELEMETRY_RING_BYTES_V1).toBe(256)
     expect(TELEMETRY_RING_SLOTS_V1).toBe(64)
     expect(TELEMETRY_PAYLOAD_SLOTS_V1).toBe(60)
-    expect(SCHEMA_VERSION).toBe(2)
+    expect(SCHEMA_VERSION).toBe(3)
     expect(new Int32Array(sab).length).toBe(128)
     expect(new Float32Array(sab).length).toBe(128)
   })
@@ -329,6 +329,17 @@ describe('G1 — relojes integrales (u_energyTime / u_barCount)', () => {
     expect(st.energyTime).toBeCloseTo(t1 + 0.5, 6)
   })
 
+  it('WAVE 8425 — timeScale gobierna el integral (0 = congelado, 2 = doble)', () => {
+    const st = createIntegralClocks()
+    stepIntegralClocks(st, 1000, 1.0, 0, 1.0)
+    stepIntegralClocks(st, 1100, 1.0, 0, 0.5) // 100 ms × 1.0 × 0.5
+    expect(st.energyTime).toBeCloseTo(0.05, 6)
+    stepIntegralClocks(st, 1200, 1.0, 0, 0.0) // fader a 0 → congelado
+    expect(st.energyTime).toBeCloseTo(0.05, 6)
+    stepIntegralClocks(st, 1300, 1.0, 0, 2.0) // 100 ms × 1.0 × 2.0
+    expect(st.energyTime).toBeCloseTo(0.25, 6)
+  })
+
   it('barCount: cruza en fronteras de compás y es monótono ante resets', () => {
     const st = createIntegralClocks()
     stepIntegralClocks(st, 1000, 0, 0)
@@ -460,9 +471,10 @@ describe('🌊 WAVE 8279 · F3 — página B: schema físico Liquid/GodEar', () 
   it('slots 64-92 tienen nombre real (no RESERVED) y u_tel4 alineados a vec4', () => {
     const pageB = TELEMETRY_SCHEMA.filter((d) => d.slot >= TELEMETRY_PAGE_B_BASE)
     // 64-92 nombrados + 83 reservado + 93-95 reserva + 96-99 FX (🔫 8287)
-    // + 100-101 relojes absolutos (⏱️ 8404) + 102-127 reserva generada
+    // + 100-101 relojes absolutos (⏱️ 8404) + VIBE_ID 102 (🎭 8427)
+    // + 103-127 reserva generada
     const named = pageB.filter((d) => !d.name.startsWith('RESERVED_'))
-    expect(named.length).toBe(35) // 64-92 menos RESERVED_83, +MID_TIME 93 (8418-C), +FX 96-99, +ABS 100-101
+    expect(named.length).toBe(36) // 64-92 menos RESERVED_83, +MID_TIME 93 (8418-C), +FX 96-99, +ABS 100-101, +VIBE_ID 102
     // Los grupos semánticos están alineados a frontera vec4 (idx%4==0):
     // vocal=64, void=68, snare=72, zoneA=76, zoneB=80, texture=84, delta=88,
     // master=92, fx=96
@@ -500,6 +512,11 @@ describe('🌊 WAVE 8279 · F3 — página B: schema físico Liquid/GodEar', () 
     const fx = pageB.filter((d) => d.slot >= 96 && d.slot <= 99)
     expect(fx.every((d) => d.kind === 'none')).toBe(true)
     expect(TEL_FLAG.EFFECT_ACTIVE).toBe(23)
+    // 🎭 WAVE 8427 · A — VIBE_ID: slot 102, verbatim (un ID jamás se suaviza)
+    const vibe = pageB.find((d) => d.slot === 102)
+    expect(vibe?.name).toBe('VIBE_ID')
+    expect(vibe?.uniform).toBe('u_vibe')
+    expect(vibe?.kind).toBe('none')
   })
 
   it('flags página B 17-22 declarados + STROBE_ACTIVE sigue existiendo (deprecated)', () => {

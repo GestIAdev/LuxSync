@@ -26,7 +26,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 export class LiquidEnvelope {
     constructor(config) {
-        this._lastProbe = { signal: 0, dynamicGate: 0, squelch: 0, kickPower: 0, gatePassed: false, ignited: false, output: 0 };
+        this._lastProbe = { signal: 0, dynamicGate: 0, squelch: 0, kickPower: 0, gatePassed: false, ignited: false, output: 0, velocity: 0, isAttacking: false, sustainedFrames: 0 };
         this.config = config;
         this.state = LiquidEnvelope.freshState();
     }
@@ -244,7 +244,7 @@ export class LiquidEnvelope {
         // WAVE 8009.1: Store probe for telemetry — zero-cost when not read
         const gatePassed = signal > dynamicGate && isAttacking && signal > 0.15 && velocity >= attackSlopeMin;
         const ignited = kickPower > squelch;
-        this._lastProbe = { signal, dynamicGate, squelch, kickPower, gatePassed, ignited, output: faded };
+        this._lastProbe = { signal, dynamicGate, squelch, kickPower, gatePassed, ignited, output: faded, velocity, isAttacking, sustainedFrames: s.sustainedFrames };
         // WAVE 2990: GHOST CAP FLOOR ELIMINATED.
         // The artificial dimmer floor (ghostCap * max(morph, 0.1)) prevented DMX 0.
         // If audio energy is zero, output must be zero. No residual glow.

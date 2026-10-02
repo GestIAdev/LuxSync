@@ -31,6 +31,7 @@ import React, {
 } from 'react'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useStageStore, selectStageDimensions } from '../../../../stores/stageStore'
+import { useTruthStore } from '../../../../stores/truthStore'
 import { useFixtureData } from './useFixtureData'
 import {
   getCanvasMousePosition,
@@ -292,6 +293,13 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
   const [isSpaceDown, setIsSpaceDown] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
+
+  // 🔥 WAVE 8417 · P4: Apocalypse badge — estado QUEMADO del motor
+  // (enter-gate + burn + cooldown), no el umbral crudo. Truth ~2Hz basta
+  // para un indicador de estado; re-render solo cuando el booleano cambia.
+  const apocalypseActive = useTruthStore(
+    (state) => state.truth.sensory.apocalypse?.active ?? false
+  )
 
   // ── Store Subscriptions ─────────────────────────────────────────────────
   
@@ -950,6 +958,14 @@ export const TacticalCanvas = memo(function TacticalCanvas({
           visible={tooltip.visible}
         />
       </div>
+
+      {/* 🔥 WAVE 8417 · P4: Apocalypse badge — visible solo mientras el
+          motor está en el estado BURN efímero (post enter-gate). */}
+      {apocalypseActive && (
+        <div className="tactical-apocalypse-badge" role="status">
+          ☢ APOCALIPSIS
+        </div>
+      )}
 
       {/* 🩸 WAVE 7600: Floating Zoom Controls — bottom-right corner.
           Dark minimalist aesthetic matching Hyperion UI. */}

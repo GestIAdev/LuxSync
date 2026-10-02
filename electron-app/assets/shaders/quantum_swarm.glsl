@@ -172,11 +172,18 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // Beat/compás: el enjambre se condensa y enrosca con el pulso musical.
   // Bombo: estalla hacia fuera (transitorio — golpea a cualquier SPEED).
   float contract = 1.0 + 0.8 * gBeatP + 1.4 * fx;
-  float burst    = 1.0 + 1.5 * u_kickPulse + 0.35 * u_bass * live;
-  // 8418: zoom clampeado — el kick golpea el encuadre sin reventarlo
-  // (kick=1 solo → ratio ~0.37 → ahora cede ×1.8 de zoom-in, no ×2.7).
-  vec2 suv = uv * clamp(contract / burst, 0.55, 1.75);
-  suv = rot2(mod(gBeats * TAU / 64.0, TAU) + 0.8 * gBeatP * r + 0.3 * swell) * suv;
+  // 🩹 WAVE 8424 · QUANTUM SWARM NAUSEA CONTROL — el zoom de cámara era el
+  // mareo: kick ×1.5 a 140+ BPM bombeaba el encuadre sin descanso. Ahora es
+  // un groove: palpitación ×0.18 (una décima parte del salto original).
+  float burst    = 1.0 + 0.18 * u_kickPulse + 0.35 * u_bass * live;
+  // 8418+8424: zoom asfixiado a rango milimétrico — contract/burst solo puede
+  // oscilar ±5% sobre el encuadre canónico, nada de hiperespacio.
+  vec2 suv = uv * clamp(contract / burst, 0.95, 1.05);
+  // 🩹 WAVE 8424-B · ROTATION NAUSEA — la torsión por beat (0.8·gBeatP·r)
+  // bombeaba el espacio 2-3 veces/segundo a 140+ BPM. El enjambre mantiene
+  // un drift lento (vuelta cada 128 beats) y una respiración tenue por
+  // golpe/compás — gira como una galaxia, no como un ventilador.
+  suv = rot2(mod(gBeats * TAU / 128.0, TAU) + 0.2 * gBeatP * r + 0.15 * swell) * suv;
 
   // ── 3. RENDER — con separación RGB cuántica bajo glitch ───────────
   vec3 col;
@@ -203,7 +210,9 @@ void mainImage(out vec4 c, in vec2 fragCoord) {
   // ── 6. MEMORIA — estelas de las luciérnagas (deriva con el estallido)
   if (u_hasPrev > 0.5) {
     vec2 st = fragCoord / u_resolution.xy - 0.5;
-    st *= clamp(0.994 - 0.02 * u_kickPulse + 0.01 * fx, 0.985, 1.003); // deriva acotada
+    // 🩹 WAVE 8424: kick ×0.002 (décima parte) — la estela deja de succionar
+    // la pantalla con cada bombo; la deriva radial sigue viva pero tibia.
+    st *= clamp(0.994 - 0.002 * u_kickPulse + 0.01 * fx, 0.985, 1.003); // deriva acotada
     vec3 prev = texture(u_prevFrame, st + 0.5).rgb;
     prev *= prev;                                                   // sRGB → lineal (aprox. γ2)
     float persist = clamp(0.78 + 0.12 * u_trails - 0.3 * glitch, 0.0, 0.93);

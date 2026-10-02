@@ -26,7 +26,8 @@ const FACTORY_GLSL = import.meta.glob('../../../../assets/shaders/*.glsl', {
 }) as Record<string, string>
 
 // Espejo de FACTORY_ATOM_FILES en TheiaLibraryScanner.ts — los 13
-// canónicos del extinto opusLibrary.ts. `assets/shaders/` puede contener
+// canónicos del extinto opusLibrary.ts + dosel_selvatico (graduado del
+// pack latino, WAVE 8425). `assets/shaders/` puede contener
 // WIP que aún no pasan el contrato v2: no forman parte de la siembra.
 const FACTORY_ATOM_FILES = [
   'aether_serpent.glsl',
@@ -42,6 +43,7 @@ const FACTORY_ATOM_FILES = [
   'turing_cannibals.glsl',
   'atom_voice_mandala.glsl',
   'atom_phase_mercury.glsl',
+  'dosel_selvatico.glsl',
 ]
 const FACTORY_NAMES = FACTORY_ATOM_FILES.filter((n) =>
   Object.keys(FACTORY_GLSL).some((p) => p.endsWith(`/${n}`)),
@@ -85,7 +87,7 @@ function _stubScan(scan: ReturnType<typeof _factoryScan>): void {
 
 describe('WAVE 8300 — corpus de fábrica (assets/shaders/*.glsl)', () => {
   it('los .glsl de fábrica existen en disco y llevan header @euclid completo', () => {
-    expect(FACTORY_NAMES.length).toBe(13)
+    expect(FACTORY_NAMES.length).toBe(14)
     expect(FACTORY_NAMES).toContain('aether_serpent.glsl')
     expect(FACTORY_NAMES).toContain('tribu_mental.glsl')
     for (const name of FACTORY_NAMES) {

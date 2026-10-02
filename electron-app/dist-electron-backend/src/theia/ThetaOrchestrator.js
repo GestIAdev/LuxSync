@@ -928,8 +928,12 @@ export class ThetaOrchestrator {
         this.desiredUniforms.set(name, value);
         // ⏱️ WAVE 8404 — el fader SPEED también alimenta el master clock del
         // pump (mismo proceso renderer): una sola fuente canónica.
-        if (name === 'u_speed')
+        // ⏱️ WAVE 8425 — …y del BACKEND: TickEngine (main) computa los relojes
+        // integrales con su propio singleton — el puente IPC lo mantiene a par.
+        if (name === 'u_speed') {
             setTheiaMasterSpeed(value);
+            window.lux?.theia?.setMasterSpeed?.(value);
+        }
         if (!this.worker)
             return;
         try {

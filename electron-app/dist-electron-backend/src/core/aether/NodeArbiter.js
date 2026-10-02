@@ -52,6 +52,8 @@
  * @module core/aether/NodeArbiter
  * @version WAVE 4914 — Relative Offset Routing
  */
+// 🩸 WAVE 8425 — console silencer: probes diag solo con __ZOMBIE_DIAG__ = true
+import { zDiagOn } from '../diagnostics/zombieDiag';
 // ── Canales con prioridad estricta por capa (WAVE 4775 / 4752) ─────────────
 // strobe/shutter/strobeRate: prioridad estricta descendente (L4>LP>L3>L2>L1>L0).
 // HTP solo dentro de L0 (multi-fuente en el mismo bus).
@@ -423,13 +425,13 @@ export class NodeArbiter {
             for (const key in effectiveChannels) {
                 mutable[key] = effectiveChannels[key];
             }
-            if (hasSpatial || IK_POISON_KEYS.has(incomingKeys[0] || '')) {
+            if (zDiagOn() && (hasSpatial || IK_POISON_KEYS.has(incomingKeys[0] || ''))) {
                 console.log(`[ZOMBIE-DIAG] setManualOverride MERGE ${nodeId}: incoming=[${incomingKeys.join(',')}] postKeys=[${Object.keys(mutable).join(',')}]`);
             }
         }
         else {
             this._manualOverrides.set(nodeId, effectiveChannels);
-            if (hasSpatial) {
+            if (hasSpatial && zDiagOn()) {
                 console.log(`[ZOMBIE-DIAG] setManualOverride NEW ${nodeId}: keys=[${incomingKeys.join(',')}]`);
             }
         }
@@ -441,7 +443,7 @@ export class NodeArbiter {
             this._releaseStates.delete(nodeId);
         }
         // 🩸 WAVE 6040-DIAG: trace ALL kinetic overrides arriving at L2
-        if (nodeId.includes(':kinetic') && (incomingKeys.some(k => k === 'pan' || k === 'tilt' || k === 'pan_base' || k === 'tilt_base'))) {
+        if (zDiagOn() && nodeId.includes(':kinetic') && (incomingKeys.some(k => k === 'pan' || k === 'tilt' || k === 'pan_base' || k === 'tilt_base'))) {
             console.log(`[ZOMBIE-DIAG] setManualOverride KINETIC ${nodeId}: keys=[${incomingKeys.join(',')}] existing=${existing ? 'YES' : 'NO'}`);
         }
         // 🧠 WAVE 8271: espejo persistente del post-state en KineticStateStore.
@@ -485,11 +487,11 @@ export class NodeArbiter {
         if (channels) {
             const allKeys = Object.keys(channels);
             const poisonKeys = allKeys.filter(k => IK_POISON_KEYS.has(k));
-            if (poisonKeys.length > 0) {
+            if (poisonKeys.length > 0 && zDiagOn()) {
                 console.log(`[ZOMBIE-DIAG] clearManualOverride ${nodeId}: DELETING node that had POISON keys=[${poisonKeys.join(',')}] allKeys=[${allKeys.join(',')}]`);
             }
             // 🩸 WAVE 6040-DIAG: trace classic kinetic clears
-            if (nodeId.includes(':kinetic') && (allKeys.some(k => k === 'pan' || k === 'tilt'))) {
+            if (zDiagOn() && nodeId.includes(':kinetic') && (allKeys.some(k => k === 'pan' || k === 'tilt'))) {
                 console.log(`[ZOMBIE-DIAG] 🔥 clearManualOverride KINETIC CLASSIC ${nodeId}: keys=[${allKeys.join(',')}] releaseMs=${releaseMs ?? 'default'}`);
             }
             // WAVE 6020 FIX: releaseMs === 0 salta el fade snapshot.
@@ -504,7 +506,7 @@ export class NodeArbiter {
             const anchorKeys = new Set(['pan_base', 'tilt_base']);
             if (hasPatternLock) {
                 const nonAnchorKeys = allKeys.filter(k => !anchorKeys.has(k));
-                if (nonAnchorKeys.length > 0) {
+                if (nonAnchorKeys.length > 0 && zDiagOn()) {
                     console.log(`[ZOMBIE-DIAG] clearManualOverride PATTERN-LOCK ${nodeId}: preserving anchor [pan_base,tilt_base], clearing=[${nonAnchorKeys.join(',')}]`);
                 }
                 if (!skipFade) {
@@ -581,7 +583,8 @@ export class NodeArbiter {
                         startedAtMs: performance.now(),
                         durationByChannel,
                     });
-                    console.log(`[WAVE-6020.9-SURVIVAL] clearManualOverride ${nodeId}: snapshotKeys=[${Object.keys(snapshot).join(',')}] pan=${snapshot['pan']?.toFixed(4) ?? 'N/A'} tilt=${snapshot['tilt']?.toFixed(4) ?? 'N/A'}`);
+                    if (zDiagOn())
+                        console.log(`[WAVE-6020.9-SURVIVAL] clearManualOverride ${nodeId}: snapshotKeys=[${Object.keys(snapshot).join(',')}] pan=${snapshot['pan']?.toFixed(4) ?? 'N/A'} tilt=${snapshot['tilt']?.toFixed(4) ?? 'N/A'}`);
                 }
             }
         }
@@ -871,7 +874,7 @@ export class NodeArbiter {
         this._manualChannelLocks.clear();
         // 🔬 WAVE 4735.6 DIAG: log every 200 frames how many L2 overrides we have
         const _l2Count = this._manualOverrides.size;
-        if (this._photonTracerFrame % 200 === 0 && _l2Count > 0) {
+        if (this._photonTracerFrame % 200 === 0 && _l2Count > 0 && zDiagOn()) {
             const _sampleKeys = [...this._manualOverrides.keys()].slice(0, 3);
             console.log(`[NodeArbiter L2-DIAG] frame=${this._photonTracerFrame} | ` +
                 `manualOverrides=${_l2Count} | samples:[${_sampleKeys.join(',')}]`);
@@ -1236,7 +1239,7 @@ export class NodeArbiter {
         }
         // Telemetría throttled — confirma que la fusión está viva en producción.
         this._fusionLogCounter++;
-        if (this._fusionLogCounter >= RELATIVE_FUSION_LOG_EVERY_FRAMES && sampleNodeId !== null) {
+        if (this._fusionLogCounter >= RELATIVE_FUSION_LOG_EVERY_FRAMES && sampleNodeId !== null && zDiagOn()) {
             this._fusionLogCounter = 0;
             console.log(`[NodeArbiter ⚡ WAVE-4914] fusion=${fusionCount} amp=${amp.toFixed(2)} ` +
                 `sample[${sampleNodeId}] base=(${sampleBasePan.toFixed(3)},${sampleBaseTilt.toFixed(3)}) ` +
@@ -1761,7 +1764,8 @@ export class NodeArbiter {
             }
             if (fadeCompleted) {
                 this._releaseStates.delete(nodeId);
-                console.log(`[WAVE-6020.9-SURVIVAL] Fade COMPLETED for ${nodeId} — purge code executing`);
+                if (zDiagOn())
+                    console.log(`[WAVE-6020.9-SURVIVAL] Fade COMPLETED for ${nodeId} — purge code executing`);
                 // WAVE 6020.8: Purgar pan_base/tilt_base del manual override al terminar el fade.
                 // Si setManualOverrides inyectó valores desde espacio IK (ej. tilt_base=0.698
                 // para un ceiling fixture), la fusión post-fade oscila alrededor de ese base
@@ -1777,7 +1781,8 @@ export class NodeArbiter {
                         delete mutable['pan_base'];
                     if (hadTiltBase)
                         delete mutable['tilt_base'];
-                    console.log(`[WAVE-6020.9-SURVIVAL] Purged manual for ${nodeId}: hadPanBase=${hadPanBase} hadTiltBase=${hadTiltBase} keysLeft=${Object.keys(mutable).length}`);
+                    if (zDiagOn())
+                        console.log(`[WAVE-6020.9-SURVIVAL] Purged manual for ${nodeId}: hadPanBase=${hadPanBase} hadTiltBase=${hadTiltBase} keysLeft=${Object.keys(mutable).length}`);
                     if (Object.keys(mutable).length === 0) {
                         this._manualOverrides.delete(nodeId);
                     }

@@ -172,6 +172,15 @@ export interface SensoryData {
     /** Spectral flux (change rate) */
     flux: number
   }
+
+  /** 🔥 WAVE 8417 · P4: Apocalypse engine state — el estado QUEMADO de la
+   *  máquina efímera (post enter-gate, durante burn 1→0), no el umbral crudo. */
+  apocalypse: {
+    /** True mientras el motor está en el estado BURN del apocalipsis */
+    active: boolean
+    /** Energía residual del caos 1→0 durante el burnout */
+    energy: number
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -956,7 +965,9 @@ export function createDefaultSensory(): SensoryData {
       ultraAir: 0,
       dominant: 'mid',
       flux: 0
-    }
+    },
+    // 🔥 WAVE 8417 · P4
+    apocalypse: { active: false, energy: 0 }
   }
 }
 
